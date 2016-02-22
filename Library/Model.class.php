@@ -99,9 +99,17 @@ class Model
         // 数据库初始化操作
         // 获取数据库操作对象
         // 当前模型有独立的数据库连接信息
-        $this->db(0, empty($this->connection) ? $connection : $this->connection, true);
+//        print_r( empty($this->connection) ? $connection : $this->connection);exit;
+        $connection =  empty($this->connection) ? $connection : $this->connection;
+        $this->db(0, $connection, true);
+//        $this->setConnection($connection);
     }
 
+//    protected function setConnection($connection)
+//    {
+//        if ($this->connection != $connection)
+//            $this->connection = $connection;
+//    }
     /**
      * 自动检测数据表信息
      * @access protected
@@ -270,7 +278,6 @@ class Model
      */
     protected function _facade($data)
     {
-
         // 检查数据字段合法性
         if (!empty($this->fields)) {
             if (!empty($this->options['field'])) {
@@ -294,12 +301,12 @@ class Model
                 }
             }
         }
-
         // 安全过滤
         if (!empty($this->options['filter'])) {
             $data = array_map($this->options['filter'], $data);
             unset($this->options['filter']);
         }
+
         $this->_before_write($data);
         return $data;
     }
@@ -328,8 +335,10 @@ class Model
                 $this->error = L('_DATA_TYPE_INVALID_');
                 return false;
             }
+            echo 1,PHP_EOL;
         }
         // 数据处理
+//        var_dump($data);
         $data = $this->_facade($data);
         // 分析表达式
         $options = $this->_parseOptions($options);
@@ -616,6 +625,7 @@ class Model
         }
         // 分析表达式
         $options = $this->_parseOptions($options);
+//        print_r($options);
         // 判断查询缓存
         if (isset($options['cache'])) {
             $cache = $options['cache'];

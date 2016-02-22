@@ -7,5 +7,6 @@
  */
 include 'autoload.php';
 include 'Common/functions.php';
-include 'Conf/pft.conf.php';
+include '/var/www/html/conf/pft.conf.php';
 include '/var/www/html/new/d/common/func.inc.php';
+

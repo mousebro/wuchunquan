@@ -102,12 +102,12 @@ if (!function_exists('yaml_parse_file')) {
  * 抛出异常处理
  * @param string $msg 异常消息
  * @param integer $code 异常代码 默认为0
- * @throws Think\Exception
+ * @throws Library\Exception
  * @return void
  */
 function E($msg, $code = 0)
 {
-    throw new Think\Exception($msg, $code);
+    throw new Library\Exception($msg, $code);
 }
 
 /**
@@ -210,7 +210,7 @@ function L($name = null, $value = null)
  */
 function trace($value = '[think]', $label = '', $level = 'DEBUG', $record = false)
 {
-    return Think\Think::trace($value, $label, $level, $record);
+    return Library\Think::trace($value, $label, $level, $record);
 }
 
 /**
@@ -643,7 +643,7 @@ function vendor($class, $baseUrl = '', $ext = '.php')
 function D($name = '', $layer = '')
 {
     if (empty($name)) {
-        return new Think\Model;
+        return new Library\Model;
     }
 
     static $_model = array();
@@ -662,10 +662,10 @@ function D($name = '', $layer = '')
         } else {
             $class = '\\Common\\' . $layer . '\\' . $name . $layer;
         }
-        $model = class_exists($class) ? new $class($name) : new Think\Model($name);
+        $model = class_exists($class) ? new $class($name) : new Library\Model($name);
     } else {
-        Think\Log::record('D方法实例化没找到模型类' . $class, Think\Log::NOTICE);
-        $model = new Think\Model(basename($name));
+        Library\Log::record('D方法实例化没找到模型类' . $class, Library\Log::NOTICE);
+        $model = new Library\Model(basename($name));
     }
     $_model[$name . $layer] = $model;
     return $model;
@@ -676,7 +676,7 @@ function D($name = '', $layer = '')
  * @param string $name Model名称 支持指定基础模型 例如 MongoModel:User
  * @param string $tablePrefix 表前缀
  * @param mixed $connection 数据库连接信息
- * @return Think\Model
+ * @return Library\Model
  */
 function M($name = '', $tablePrefix = '', $connection = '')
 {
@@ -684,7 +684,7 @@ function M($name = '', $tablePrefix = '', $connection = '')
     if (strpos($name, ':')) {
         list($class, $name) = explode(':', $name);
     } else {
-        $class = 'Think\\Model';
+        $class = 'Library\\Model';
     }
     $guid = (is_array($connection) ? implode('', $connection) : $connection) . $tablePrefix . $name . '_' . $class;
     if (!isset($_model[$guid])) {
@@ -738,7 +738,7 @@ function parse_res_name($name, $layer, $level = 1)
  * 用于实例化访问控制器
  * @param string $name 控制器名
  * @param string $path 控制器命名空间（路径）
- * @return Think\Controller|false
+ * @return Library\Controller|false
  */
 function controller($name, $path = '')
 {
@@ -766,7 +766,7 @@ function controller($name, $path = '')
  * @param string $name 资源地址
  * @param string $layer 控制层名称
  * @param integer $level 控制器层次
- * @return Think\Controller|false
+ * @return Library\Controller|false
  */
 function A($name, $layer = '', $level = 0)
 {
@@ -818,7 +818,7 @@ function R($url, $vars = array(), $layer = '')
  */
 function tag($tag, &$params = null)
 {
-    \Think\Hook::listen($tag, $params);
+    \Library\Hook::listen($tag, $params);
 }
 
 /**
@@ -833,7 +833,7 @@ function B($name, $tag = '', &$params = null)
     if ('' == $tag) {
         $name .= 'Behavior';
     }
-    return \Think\Hook::exec($name, $tag, $params);
+    return \Library\Hook::exec($name, $tag, $params);
 }
 
 /**
@@ -890,17 +890,17 @@ function strip_whitespace($content)
 /**
  * 自定义异常处理
  * @param string $msg 异常消息
- * @param string $type 异常类型 默认为Think\Exception
+ * @param string $type 异常类型 默认为Library\Exception
  * @param integer $code 异常代码 默认为0
  * @return void
  */
-function throw_exception($msg, $type = 'Think\\Exception', $code = 0)
+function throw_exception($msg, $type = 'Library\\Exception', $code = 0)
 {
-    Think\Log::record('建议使用E方法替代throw_exception', Think\Log::NOTICE);
+    Library\Log::record('建议使用E方法替代throw_exception', Library\Log::NOTICE);
     if (class_exists($type, false)) {
         throw new $type($msg, $code);
     } else {
-        Think\Think::halt($msg);
+        Library\Think::halt($msg);
     }
     // 异常类型不存在则输出错误信息字串
 }
@@ -1114,7 +1114,7 @@ function U($url = '', $vars = '', $suffix = true, $domain = false)
         } else {
             $path = implode($depr, array_reverse($var));
             if (C('URL_ROUTER_ON')) {
-                $url = Think\Route::reverse($path, $vars, $depr, $suffix);
+                $url = Library\Route::reverse($path, $vars, $depr, $suffix);
                 if (!$url) {
                     $url = $path;
                 }
@@ -1225,15 +1225,15 @@ function S($name, $value = '', $options = null)
     if (is_array($options)) {
         // 缓存操作的同时初始化
         $type  = isset($options['type']) ? $options['type'] : '';
-        $cache = Think\Cache::getInstance($type, $options);
+        $cache = Library\Cache::getInstance($type, $options);
     } elseif (is_array($name)) {
         // 缓存初始化
         $type  = isset($name['type']) ? $name['type'] : '';
-        $cache = Think\Cache::getInstance($type, $name);
+        $cache = Library\Cache::getInstance($type, $name);
         return $cache;
     } elseif (empty($cache)) {
         // 自动初始化
-        $cache = Think\Cache::getInstance();
+        $cache = Library\Cache::getInstance();
     }
     if ('' === $value) {
         // 获取缓存
@@ -1270,10 +1270,10 @@ function F($name, $value = '', $path = DATA_PATH)
                 return false; // TODO
             } else {
                 unset($_cache[$name]);
-                return Think\Storage::unlink($filename, 'F');
+                return Library\Storage::unlink($filename, 'F');
             }
         } else {
-            Think\Storage::put($filename, serialize($value), 'F');
+            Library\Storage::put($filename, serialize($value), 'F');
             // 缓存数据
             $_cache[$name] = $value;
             return null;
@@ -1284,8 +1284,8 @@ function F($name, $value = '', $path = DATA_PATH)
         return $_cache[$name];
     }
 
-    if (Think\Storage::has($filename, 'F')) {
-        $value         = unserialize(Think\Storage::read($filename, 'F'));
+    if (Library\Storage::has($filename, 'F')) {
+        $value         = unserialize(Library\Storage::read($filename, 'F'));
         $_cache[$name] = $value;
     } else {
         $value = false;

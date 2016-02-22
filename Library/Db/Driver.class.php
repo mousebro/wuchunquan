@@ -9,7 +9,7 @@
 // | Author: liu21st <liu21st@gmail.com>
 // +----------------------------------------------------------------------
 
-namespace Think\Db;
+namespace Library\Db;
 
 use PDO;
 use Think\Config;
@@ -1053,6 +1053,7 @@ abstract class Driver
     {
         $this->model = $options['model'];
         $this->parseBind(!empty($options['bind']) ? $options['bind'] : array());
+//        print_r($options);
         $sql    = $this->buildSelectSql($options);
         $result = $this->query($sql, !empty($options['fetch_sql']) ? true : false, !empty($options['master']) ? true : false);
         return $result;
@@ -1145,6 +1146,7 @@ abstract class Driver
      */
     public function escapeString($str)
     {
+        if (is_array($str)) return $str;
         return addslashes($str);
     }
 
