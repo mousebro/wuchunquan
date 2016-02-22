@@ -1,16 +1,18 @@
 <?php
 use Model\Demo\Foo;
 use Model\Demo\Bar;
-include 'init.php';
-//\Model\Member\Member::say();
+include dirname(__DIR__).'../../init.php';
+\Model\Demo\Foo::say();
 
 //$name, $tablePrefix,
-//print_r(C('db')['localhost']);
+print_r(C('db')['localhost']);
+exit('0000');
 $connection = C('db')['localhost'];
+
 $foo = new Foo('member','pft_',$connection);
 $bar = new Bar('jq_ticket','uu_',$connection);
-var_dump($foo->show_ticket(800,  $bar));
-print_r($bar->call_procudure());
+//var_dump($foo->show_ticket(800,  $bar));
+//print_r($bar->call_procudure());
 //$member->members();
 //print_r($member->findMemberById(94));
 

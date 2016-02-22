@@ -10,16 +10,15 @@ use Library\Exception;
 use Library\Model;
 class Foo extends Model
 {
-//    public function setConnection($connection)
-//    {
-//        $this->connection = $connection;
-//    }
-//    protected $tableName = 'pft_member';
     public static function say()
     {
         echo 'hello world';
     }
-    protected $fields = [];
+    public static function response()
+    {
+        # print_r(C());
+        echo 'hi~';
+    }
     //不自动检测数据表字段信息
     protected $autoCheckFields = false;
 
