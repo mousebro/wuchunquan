@@ -335,7 +335,6 @@ class Model
                 $this->error = L('_DATA_TYPE_INVALID_');
                 return false;
             }
-            echo 1,PHP_EOL;
         }
         // 数据处理
 //        var_dump($data);

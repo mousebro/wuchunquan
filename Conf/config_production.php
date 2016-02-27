@@ -12,16 +12,16 @@ return array(
             'db_host' => '127.0.0.1',
             'db_user' => 'admin',
             'db_pwd' => 'adm*753951',
-            'db_port' => 3307,
+            'db_port' => 3306,
             'db_name' => 'myuu',
         ),
-        'remote_1' => array(
+        'remote_1' => array(//s.12301.cc
             'db_type'=>'mysql',
-            'db_host' => '192.168.20.138',
-            'db_user' => 'adminSS',
+            'db_host' => '10.169.9.198',
+            'db_user' => 'admin_140',
             'db_pwd' => '5f40019b80@pft',
-            'db_port' => 3307,
-            'db_name' => 'myuu_ss',
+            'db_port' => 3306,
+            'db_name' => 'myuu',
         ),
         //10.160.4.140
         'remote_2' => array(
@@ -29,11 +29,23 @@ return array(
             'db_host'=>'10.117.7.197',
             'db_user' => 'pft_user_140',
             'db_pwd' => '5f40019b80@pft',
-            'db_port' => 3307,
+            'db_port' => 3306,
+            'db_name' => 'myuu',
+        ),
+        'slave'   => array(//slave db
+            'db_type'=>'mysql',
+            'db_host'=>'192.168.20.138',//内网ip：10.51.26.214
+            'db_user' => 'mainS',
+            'db_pwd' => 'su*7645901',
+            'db_port' => 3308,
             'db_name' => 'myuu',
         ),
     ),
-
-
-
+    'redis'=>array(
+        'main'=> array(
+            'db_host'=>'10.169.9.198',
+            'db_prot'=> 6379,
+            'db_pwd' => 'myPft!12301!&',
+        ),
+    ),
 );

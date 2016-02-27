@@ -1,16 +1,20 @@
 <?php
 use Model\Demo\Foo;
 use Model\Demo\Bar;
-include dirname(__DIR__).'../../init.php';
+
+include_once dirname(__FILE__) . '/../../init.php';
+include 'my.class.php';
+include '../../Model/Demo/Foo.class.php';
+//$bar = new Bar();
+my::say();
 \Model\Demo\Foo::say();
-
-//$name, $tablePrefix,
-print_r(C('db')['localhost']);
-exit('0000');
-$connection = C('db')['localhost'];
-
-$foo = new Foo('member','pft_',$connection);
-$bar = new Bar('jq_ticket','uu_',$connection);
+$OnlineTrade = new \Model\TradeRecord\OnlineTrade('','',C('db')['localhost']);
+$res = $OnlineTrade->addLog('test_1232',1,'test','test', \Model\TradeRecord\OnlineTrade::CHANNEL_ALIPAY);
+var_dump($res);
+//$connection = C('db')['localhost'];
+//
+//$foo = new Foo('member','pft_',$connection);
+//$bar = new Bar('jq_ticket','uu_',$connection);
 //var_dump($foo->show_ticket(800,  $bar));
 //print_r($bar->call_procudure());
 //$member->members();

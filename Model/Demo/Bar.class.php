@@ -14,6 +14,11 @@ class Bar extends Model
 {
     protected $autoCheckFields = false;
 
+    public function test()
+    {
+        return 'test';
+    }
+
     /**
      * 关联查询
      *

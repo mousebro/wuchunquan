@@ -8,6 +8,12 @@
 namespace AutoLoading;
 define('DIR', dirname(__FILE__));
 class loading {
+    /**
+     * 向PHP注册在自动载入函数
+     */
+    public static function register(){
+        spl_autoload_register(array(new self, 'autoload'));
+    }
     public static function autoload($className)
     {
         //根据PSR-O的第4点 把 \ 转换层（目录风格符） DIRECTORY_SEPARATOR ,
@@ -16,14 +22,11 @@ class loading {
 //        $fileName = str_replace('\\', DIRECTORY_SEPARATOR,  DIR . '\\'. $className) . '.php';
         $fileName = str_replace('\\', DIRECTORY_SEPARATOR,  DIR . '\\'. $className) . '.class.php';
         if (is_file($fileName)) {
-            require $fileName;
-        }
-        elseif (is_file($fileName)) {
-            require $fileName;
+            include_once $fileName;
         }
         else {
-            echo $fileName . ' is not exist'; die;
+//            echo $fileName .' not found';
+           return false;
         }
     }
 }
-spl_autoload_register("\\AutoLoading\\loading::autoload");
