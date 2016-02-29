@@ -9,7 +9,8 @@ return array(
     'db'=> array(
         'localhost' => array(
             'db_type'=>'mysql',
-            'db_host' => '127.0.0.1',
+            'db_host' => '10.160.4.140',
+            //'db_host' => '127.0.0.1',
             'db_user' => 'admin',
             'db_pwd' => 'adm*753951',
             'db_port' => 3306,
@@ -34,10 +35,10 @@ return array(
         ),
         'slave'   => array(//slave db
             'db_type'=>'mysql',
-            'db_host'=>'192.168.20.138',//内网ip：10.51.26.214
+            'db_host'=>'10.51.26.214',//内网ip：10.51.26.214
             'db_user' => 'mainS',
             'db_pwd' => 'su*7645901',
-            'db_port' => 3308,
+            'db_port' => 3306,
             'db_name' => 'myuu',
         ),
     ),
