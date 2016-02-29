@@ -1,5 +1,6 @@
 <?php
 include dirname(__FILE__) . '/env.php';
+if (!defined('ENV')) define('EVN', 'PRODUCTION');
 if (ENV=='PRODUCTION') {
     define('PFT_WECHAT_APPID', 'wxd72be21f7455640d');
     define('BASE_WWW_DIR', '/var/www/html/new/d');

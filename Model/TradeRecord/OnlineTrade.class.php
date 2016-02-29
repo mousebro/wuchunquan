@@ -95,4 +95,25 @@ class OnlineTrade extends Model
         //UPDATE pft_alipay_rec SET seller_email='$json_sell', buyer_email='$json_buy',status=1,dtime=now(),`trade_no`='$trade_no'
 //        WHERE out_trade_no='$ordern' AND `sourceT`=$sourceT limit 1
     }
+
+    /**
+     * 支付后交互
+     *
+     * @param $tid int 门票ID
+     * @return mixed
+     */
+    public function getTicketMpath($tid)
+    {
+        $where = [
+            'id'=> ':id',
+        ];
+        return $this->where($where)
+            ->bind([':id'=>$tid])
+            ->field('Mpath,Mdetails')
+            ->limit(1)
+            ->find();
+        //$sql = "select  from uu_jq_ticket where id=$tid limit 1";
+        //$GLOBALS['le']->query($sql);
+        //$GLOBALS['le']->fetch_assoc();
+    }
 }
