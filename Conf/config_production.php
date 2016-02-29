@@ -16,6 +16,15 @@ return array(
             'db_port' => 3306,
             'db_name' => 'myuu',
         ),
+        'localhost_wsdl' => array(
+            'db_type'=>'mysql',
+            'db_host' => '10.160.4.140',
+            //'db_host' => '127.0.0.1',
+            'db_user' => 'wsdl',
+            'db_pwd' => 'ws*753951',
+            'db_port' => 3306,
+            'db_name' => 'myuu',
+        ),
         'remote_1' => array(//s.12301.cc
             'db_type'=>'mysql',
             'db_host' => '10.169.9.198',
