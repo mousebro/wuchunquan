@@ -1,14 +1,17 @@
 <?php
 use Model\Demo\Foo;
 use Model\Demo\Bar;
-
+ini_set('display_errors', 'On');
 include_once dirname(__FILE__) . '/../../init.php';
-include 'my.class.php';
-include '../../Model/Demo/Foo.class.php';
-//$bar = new Bar();
-my::say();
-\Model\Demo\Foo::say();
+//include 'my.class.php';
+//include '../../Model/Demo/Foo.class.php';
+////$bar = new Bar();
+//my::say();
+//\Model\Demo\Foo::say();
 $OnlineTrade = new \Model\TradeRecord\OnlineTrade('','',C('db')['localhost']);
+$res = $OnlineTrade->getTicketMpath(5796);
+var_dump($res);
+exit;
 $res = $OnlineTrade->addLog('test_1232',1,'test','test', \Model\TradeRecord\OnlineTrade::CHANNEL_ALIPAY);
 var_dump($res);
 //$connection = C('db')['localhost'];
