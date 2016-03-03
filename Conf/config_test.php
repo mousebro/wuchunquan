@@ -44,7 +44,7 @@ return array(
     'redis'=>array(
         'main'=> array(
             'db_host'=>'127.0.0.1',
-            'db_prot'=> 6379,
+            'db_port'=> 6379,
             'db_pwd' => 'myPft!12301!&',
         ),
     ),
