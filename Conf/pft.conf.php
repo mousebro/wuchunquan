@@ -31,9 +31,17 @@ elseif (ENV=='DEVELOP') {
     define('BASE_WX_DIR', '/var/www/html/wx');
     define('BASE_LOG_DIR', '/var/www/log/site');
     define('IMAGE_UPLOAD_DIR', '/var/www/images/');
-    define('MAIN_DOMAIN', 'http://www.12301.local/');
-    define('IMAGE_URL', 'http://images.12301.local/');
-    define('STATIC_URL', 'http://static.12301.cc/');
-    define('MOBILE_URL', 'http://12301.local/');
+    if (strpos($_SERVER['HTTP_HOST'], 'test')) {
+        define('MAIN_DOMAIN', 'http://www.12301.test/');
+        define('IMAGE_URL', 'http://images.12301.test/');
+        define('STATIC_URL', 'http://static.12301.cc/');
+        define('MOBILE_URL', 'http://12301.test/');
+    }
+    else {
+        define('MAIN_DOMAIN', 'http://www.12301.local/');
+        define('IMAGE_URL', 'http://images.12301.local/');
+        define('STATIC_URL', 'http://static.12301.cc/');
+        define('MOBILE_URL', 'http://12301.local/');
+    }
     define('IP_INSIDE', '10.0.2.15');
 }
