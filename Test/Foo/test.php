@@ -1,15 +1,19 @@
 <?php
+
 use Model\Demo\Foo;
 use Model\Demo\Bar;
 ini_set('display_errors', 'On');
+
 include_once dirname(__FILE__) . '/../../init.php';
-//include 'my.class.php';
-//include '../../Model/Demo/Foo.class.php';
-////$bar = new Bar();
-//my::say();
-//\Model\Demo\Foo::say();
-//$OnlineTrade = new \Model\TradeRecord\OnlineTrade('','',C('db')['localhost']);
-var_dump(\Model\Product\Land::saveData());
+
+$model = new Foo();
+$name = $model->getName();
+var_dump($name);
+
+
+die;
+
+
 $obj = new \Model\Product\Land('','',C('db')['localhost']);
 $res = $obj->getTerminalId();
 var_dump($res);

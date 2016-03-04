@@ -10,6 +10,14 @@ use Library\Exception;
 use Library\Model;
 class Foo extends Model
 {
+
+
+
+    public function getName() {
+                $res = $this->table('pft_resellers_storage_fixed')->where(['id' => 1])->find();
+        return $res;
+    }
+
     public static function say()
     {
         echo 'hello world';
