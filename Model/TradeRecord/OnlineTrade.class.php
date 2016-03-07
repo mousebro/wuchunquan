@@ -103,18 +103,7 @@ class OnlineTrade extends Model
      */
     public function getTicketMpath($tid)
     {
-        //$where = [
-        //    'id'=> ':id',
-        //];
-        $sql = "SELECT Mpath,Mdetails FROM uu_jq_ticket WHERE id=$tid LIMIT 1";
-        return $this->query($sql);
-        //return $this->table('uu_jq_ticket')->where($where)
-        //    ->bind([':id'=>$tid])
-        //    ->field('Mpath,Mdetails')
-        //    ->limit(1)
-        //    ->find();
-        //$sql = "select  from uu_jq_ticket where id=$tid limit 1";
-        //$GLOBALS['le']->query($sql);
-        //$GLOBALS['le']->fetch_assoc();
+        $tid = intval($tid);
+        return $this->table('uu_jq_ticket')->where("id=$tid")->field("Mpath,Mdetails")->find();
     }
 }
