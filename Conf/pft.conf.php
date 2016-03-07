@@ -45,6 +45,6 @@ elseif (ENV=='DEVELOP') {
         define('STATIC_URL', 'http://static.12301.cc/');
         define('MOBILE_URL', 'http://12301.local/');
     }
-    define('IP_INSIDE', '10.0.2.15');
+    define('IP_INSIDE', '192.168.20.138');
     define('IP_TERMINAL', '192.168.20.138');
 }
