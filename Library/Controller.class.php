@@ -62,7 +62,7 @@ class Controller {
 	 * 
 	 * @return   [type]                         如果值不存在，返回false
 	 */
-	public function getParam($key, $type = 'get') {
+	public function getParam($key, $type = 'post') {
 	    $typeArr = array('get', 'post');
 	    if(!in_array($type, $typeArr)) {
 	        $type = 'post';
