@@ -12,6 +12,7 @@ if (ENV=='PRODUCTION') {
     define('STATIC_URL', 'http://static.12301.cc/');
     define('MOBILE_URL', 'http://12301.cc/');
     define('IP_INSIDE', '10.160.4.140');//内网IP地址
+    define('IP_TERMINAL', '121.40.69.184');//终端服务器IP
 }
 elseif (ENV=='TEST') {
     define('PFT_WECHAT_APPID', 'wxd72be21f7455640d');
@@ -24,6 +25,7 @@ elseif (ENV=='TEST') {
     define('STATIC_URL', 'http://static.12301.cc/');
     define('MOBILE_URL', 'http://12301dev.com/');
     define('IP_INSIDE', '10.117.7.197');
+    define('IP_TERMINAL', '121.43.119.39');
 }
 elseif (ENV=='DEVELOP') {
     define('PFT_WECHAT_APPID', 'wxd72be21f7455640d');
@@ -44,4 +46,5 @@ elseif (ENV=='DEVELOP') {
         define('MOBILE_URL', 'http://12301.local/');
     }
     define('IP_INSIDE', '10.0.2.15');
+    define('IP_TERMINAL', '192.168.20.138');
 }
