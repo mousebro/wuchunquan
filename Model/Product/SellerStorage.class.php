@@ -1003,7 +1003,7 @@ class SellerStorage extends Model{
 		 }
 
 		 if(!$arr) {
-		 	return array();
+		 	return array(); 
 		 }
 
 		 $where = array(
@@ -1068,8 +1068,6 @@ class SellerStorage extends Model{
 
 		//获取需要扣除库存的分销商
 		$res = $this->_getLastResellers($resellerUid, $pid, $resellerUid, $date, $attr);
-
-		var_dump($res);die;
 
 		//如果供应链上都没有设置库存
 		if(!$res) {
