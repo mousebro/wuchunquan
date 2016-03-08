@@ -11,4 +11,7 @@ include_once 'Common/functions.php';
 C(include  'Conf/config_'.strtolower(ENV).'.php');
 spl_autoload_register("\\AutoLoading\\loading::autoload");
 
+//添加全局的初始化常量标识
+define('PFT_INIT', true);
+
 
