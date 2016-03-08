@@ -6,6 +6,13 @@ ini_set('display_errors', 'On');
 
 include_once dirname(__FILE__) . '/../../init.php';
 
+$online = new \Model\TradeRecord\OnlineTrade();
+$orderid = 'test_'.time();
+$res = $online->addLog($orderid, 100, 'test','test',1);
+var_dump($res);
+$ret = $online->getLog($orderid, 1);
+var_dump($ret);
+exit;
 $model = new Foo();
 $name = $model->getName();
 var_dump($name);
