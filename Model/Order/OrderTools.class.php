@@ -62,7 +62,7 @@ class OrderTools extends Model {
 	public function cancelOutOfDateOrder($orderid, \SoapClient $soap_cli, $connection) {
 		$res = $soap_cli->Order_Change_Pro($item['ordernum'], 0, -1, 1, 1);
 		if ($res == 100) {//取消成功
-			$remote_con = new Model('', '', $connection['remote_1']);
+			$remote_con = new Model('remote_1');
 			$seat = $remote_con->table('pft_roundseat_dyn')
 						->where(array('ordernum' => $orderid, 'status' => 2))	
 						->find();
