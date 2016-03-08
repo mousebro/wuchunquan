@@ -144,6 +144,25 @@ class SellerStorage extends Model{
 	}
 
 	/**
+	 * 获取产品信息
+	 * @author dwer
+	 * @date   2016-03-08
+	 *
+	 * @param  [type] $pid
+	 * @return [type]
+	 */
+	public function getProductInfo($pid) {
+		$field = "l.title as ltitle, t.title as ttitle, p.id";
+		$table = "{$this->_productTable} p";
+		$where = "p.id = {$pid}";
+		$join  = "left join uu_jq_ticket as t on p.id=t.pid left join uu_land l on p.contact_id=l.id";
+
+		$info = $this->table($table)->field($field)->join($join)->where($where)->find();
+
+		return $info;
+	}
+
+	/**
 	 * 获取产品分销库存的开启状态
 	 * 
 	 * @param pid 产品ID
