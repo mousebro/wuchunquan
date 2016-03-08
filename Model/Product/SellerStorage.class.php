@@ -1029,6 +1029,50 @@ class SellerStorage extends Model{
 		 return $res;
 	}
 
+	/**
+	 * 获取可用的分销库存 
+	 * @author dwer
+	 * @date   2016-03-08
+	 *
+	 * @param   $pid 产品ID
+	 * @param   $setterId 供应商ID
+	 * @param   $resellerId 分销商ID
+	 * @param   $date 查询日期
+	 * @return 
+	 */
+	public function getLeftStorageNum($pid, $setterId, $resellerId, $date, $attr = false) {
+		//参数判断
+		if(!$pid || !$setterId || !$resellerId || !$date) {
+			return -1;
+		}
+
+		//日期处理
+		$tmp = strtotime($date);
+		if(!$tmp) {
+			return -1;
+		}
+		$date = date('Ymd', $tmp);
+
+		//判断当前分销库存是否开启
+		$status = $this->getInfoStatus($pid);
+		if($status === false) {
+			//没有开启分销库存
+			return false;
+		}
+
+		//获取需要扣除库存的分销商
+		$res = $this->_getLastResellers($resellerId, $pid, $setterId, $date, $attr);
+
+		//如果供应链上都没有设置库存
+		if(!$res) {
+			//没有开启分销库存
+			return false;
+		}
+
+		//获取当前可用使用的最大库存
+		
+	}
+
 
 	/**
 	 * 判断库存是否充足
@@ -1045,10 +1089,10 @@ class SellerStorage extends Model{
 	 *         true  ：库存充足
 	 *         false : 库存不足
 	 */
-	public function isStorageAvailable($orderId, $pid, $setterUid, $resellerUid, $date, $buyNum, $attr = false) {
+	public function isStorageAvailable($pid, $setterUid, $resellerUid, $date, $buyNum, $attr = false) {
 		//参数判断
 		$buyNum = intval($buyNum);
-		if(!$orderId || !$pid || !$setterUid || !$resellerUid || !$date || ($buyNum <=0)) {
+		if(!$pid || !$setterUid || !$resellerUid || !$date || ($buyNum <=0)) {
 			return -1;
 		}
 
