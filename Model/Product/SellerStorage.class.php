@@ -1070,7 +1070,14 @@ class SellerStorage extends Model{
 		}
 
 		//获取当前可用使用的最大库存
+		$needArr = $res[0];
+
+		$resSeller = $needArr['first'];
+		$resSetter = $needArr['second'];
 		
+		$leftNums = $this->_getLeftNums($pid, $resSetter, $resSeller, $date);
+
+		return $leftNums;
 	}
 
 
@@ -2093,6 +2100,28 @@ class SellerStorage extends Model{
 	 *   
 	 */
 	private function _isStorageEnough($pid, $setterUid, $resellerUid, $date, $buyNum, $attr = false) {
+		$leftNums = $this->_getLeftNums($pid, $setterUid, $resellerUid, $date);
+
+		if($buyNum > $leftNums) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+
+	/**
+	 * 获取最大分销库存量
+	 * @author dwer
+	 * @date   2016-03-08
+	 *
+	 * @param pid 产品ID
+	 * @param setterUid 供应商ID或是上级分销商ID
+	 * @param resellerUid 分销商ID
+	 * @param date 日期 - 20161023
+	 * @param  bool $attr
+	 * @return
+	 */
+	private function _getLeftNums($pid, $setterUid, $resellerUid, $date, $attr = false) {
 		$tmp = $this->getMaxStorage($pid, $setterUid, $resellerUid, $date, $attr);
 		$maxStorage = $tmp['max_fixed'] + $tmp['max_dynamic'];
 		
@@ -2101,13 +2130,9 @@ class SellerStorage extends Model{
 		$usedFixed   = $tmp['fixed'];
 
 		//现在可售卖数量
-		$leftNums = $maxStorage - $usedFixed;
+		$leftNums = intval($maxStorage - $usedFixed);
 
-		if($buyNum > $leftNums) {
-			return false;
-		} else {
-			return true;
-		}
+		return $leftNums;
 	}
 
 	/**
