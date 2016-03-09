@@ -26,6 +26,9 @@ class SellerStorage extends Model{
 
 	private $_memberTable   = 'pft_member';
 
+	private $_setLogPath = 'product/seller_storage_set';
+	private $_getLogPath = 'product/seller_storage_get';
+
 	/**
 	 * 初始化函数
 	 * 
@@ -227,6 +230,13 @@ class SellerStorage extends Model{
 		);
 
 		$res = $this->table($this->_infoTable)->where($where)->save($resData);
+
+		//写日志
+		$logData         = ['ac' => 'setInfo'];
+		$logData['data'] = array_merge($where, $resData);
+		$logData['rs']   = $res;
+		$this->_log($logData, 'set');
+
 		return $res === false ? false : true;
 	}
 
@@ -658,6 +668,12 @@ class SellerStorage extends Model{
 			}
 		}
 
+		//写日志
+		$logData         = ['ac' => 'setStorage'];
+		$logData['data'] = [$pid, $setterUid, $dayNum, $setNum, $level , $setData, $date];
+		$logData['rs']   = $mark;
+		$this->_log($logData, 'set');
+
 		if($mark) {
 			$this->commit();
 			return true;
@@ -741,6 +757,12 @@ class SellerStorage extends Model{
 				$mark = false;
 			}
 		}
+
+		//写日志
+		$logData         = ['ac' => 'setStorage'];
+		$logData['data'] = [$pid, $setterUid, $dayNum, $level, $useLimit, $setData, $dynamicNum, $date, $attr];
+		$logData['rs']   = $mark;
+		$this->_log($logData, 'set');
 
 		if($mark) {
 			$this->commit();
@@ -1129,6 +1151,12 @@ class SellerStorage extends Model{
 		}
 		$date = date('Ymd', $tmp);
 
+		//写日志
+		$logData         = ['ac' => 'storage_available_init'];
+		$logData['data'] = [$pid, $setterUid, $resellerUid, $date, $buyNum, $attr];
+		$logData['rs']   = 1;
+		$this->_log($logData, 'get');
+
 		//判断当前分销库存是否开启
 		$status = $this->getInfoStatus($pid);
 		if($status === false) {
@@ -1151,6 +1179,13 @@ class SellerStorage extends Model{
 		$resSetter = $needArr['second'];
 
 		$tmp = $this->_isStorageEnough($pid, $resSetter, $resSeller, $date, $buyNum, $attr);
+
+		//写日志
+		$logData         = ['ac' => 'storage_available_return'];
+		$logData['data'] = [$pid, $setterUid, $resellerUid, $date, $buyNum, $resSeller, $resSetter, $attr];
+		$logData['rs']   = $tmp;
+		$this->_log($logData, 'get');
+
 		if($tmp) {
 			return true;
 		} else {
@@ -1220,6 +1255,12 @@ class SellerStorage extends Model{
 				break;
 			}
 		}
+
+		//写日志
+		$logData         = ['ac' => 'useStorage'];
+		$logData['data'] = [$orderId, $pid, $setterUid, $resellerUid, $date, $buyNum, $attr];
+		$logData['rs']   = $mark;
+		$this->_log($logData, 'get');
 
 		if($mark) {
 			$this->commit();
@@ -1302,6 +1343,12 @@ class SellerStorage extends Model{
 				return false;
 			}
 		}
+
+		//写日志
+		$logData         = ['ac' => 'recoverStorage'];
+		$logData['data'] = [$orderId];
+		$logData['rs']   = $mark;
+		$this->_log($logData, 'get');
 
    		//提交事务
 		$this->commit();
@@ -1534,6 +1581,12 @@ class SellerStorage extends Model{
 		} else {
 			$mark = false;
 		}
+
+		//写日志
+		$logData         = ['ac' => 'copyStorage'];
+		$logData['data'] = [$pid, $setterId, $sourceDate, $targetDate, $attr];
+		$logData['rs']   = $mark;
+		$this->_log($logData, 'set');
 
 		if($mark) {
 			$this->commit();
@@ -2674,6 +2727,30 @@ class SellerStorage extends Model{
 		$res = $this->table($this->_logTable)->add($data);
 
 		return $res === false ? false : true;
+	}
+
+	/**
+	 * 模型日志
+	 * @author dwer
+	 * @date   2016-03-09
+	 *
+	 * @param  [type] $dataArr 日志数组内容
+	 * @param  [type] $type 类型 get ： 获取判断日志，set ： 设置日志
+	 * @return [type]
+	 */
+	private function _log($dataArr, $type = 'get') {
+		if(!$dataArr) {
+			return false;
+		}
+
+		$content = json_encode($dataArr);
+		if($type == 'set') {
+			$res = pft_log($this->_setLogPath, $content);
+		} else {
+			$res = pft_log($this->_getLogPath, $content);
+		}
+
+		return $res;
 	}
 
 }
