@@ -403,7 +403,7 @@ if(!function_exists('pft_log')) {
 
         //如果文件不存在，就创建文件
         if(!file_exists($tmpPath)) {
-            $res = mkdir($tmpPath, '0777', true);
+            $res = mkdir($tmpPath, 0777, true);
             if(!$res) {
                 return false;
             }
