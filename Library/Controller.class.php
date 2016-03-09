@@ -21,6 +21,7 @@ class Controller {
      */
     public function model($modelName){
         $realModel = 'Model\\' . str_replace('/', '\\', $modelName);
+
         if(!class_exists($realModel)) {
             return false;
         } else {
