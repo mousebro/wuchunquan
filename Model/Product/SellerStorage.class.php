@@ -926,22 +926,37 @@ class SellerStorage extends Model{
             return array('max_fixed' => 0, 'max_dynamic' => 0);
         }
 
-        
         if($setterUid == $resellerUid) {
-            //如果是自供自销的话
+            //自供自销，或是有设置分销库存的一级分销商
+            if ($publicInfo['level'] == 1) {
+                //如果是自供自销的话
+                $availableDynamic = 0;
+                $availableFixed   = 0;
+                if($publicInfo['mode'] == 2) {
+                    //动态库存模式，只能使用动态库存
+                    $availableDynamic = intval($publicInfo['total_num']) - intval($publicInfo['set_num']);
+                } else {
+                    //固定库存模式，只能使用未分配库存
+                    $availableFixed = intval($publicInfo['total_num']) - intval($publicInfo['set_num']);
+                }
 
-            $availableDynamic = 0;
-            $availableFixed   = 0;
-            if($publicInfo['mode'] == 2) {
-                //动态库存模式，只能使用动态库存
-                $availableDynamic = intval($publicInfo['total_num']) - intval($publicInfo['set_num']);
+                return array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
             } else {
-                //固定库存模式，只能使用未分配库存
-                $availableFixed = intval($publicInfo['total_num']) - intval($publicInfo['set_num']);
+                //有设置分销库存的一级分销商
+                $totalNum = $this->getSettedDayNum($pid, $resellerUid, $date, $attr);
+
+                $availableDynamic = 0;
+                $availableFixed   = 0;
+                if($publicInfo['mode'] == 2) {
+                    //动态库存模式，只能使用动态库存
+                    $availableDynamic = intval($totalNum) - intval($publicInfo['set_num']);
+                } else {
+                    //固定库存模式，只能使用未分配库存
+                    $availableFixed = intval($totalNum) - intval($publicInfo['set_num']);
+                }
+
+                return array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
             }
-
-            return array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
-
         } else {
             if($publicInfo['mode'] == 2) {
                 //动态库存模式
@@ -2314,7 +2329,18 @@ class SellerStorage extends Model{
             return array(array('first' => $memberId, 'second' => $setterId));
         }
 
-        //判断是不是直接找供应商购买   
+        //如果一级分销商有设置分销库存，所以自己就只能使用未分配库存或是动态库存
+        $publicInfo = $this->getAvailablePublic($memberId, $pid, $date, $attr);
+        if($publicInfo) {
+            if($this->_isSetStorage($memberId, $setterId, $pid, $date, $attr)) {
+                //设置
+                return array(array('first' => $memberId, 'second' => $memberId));
+            } else {
+                return false;
+            }
+        }
+
+        //判断是不是直接找供应商购买
         $where = array(
             'fid' => $memberId,
             'aid' => $setterId
