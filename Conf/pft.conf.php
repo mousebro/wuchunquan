@@ -5,21 +5,14 @@ if (ENV=='PRODUCTION') {
     define('PFT_WECHAT_APPID', 'wxd72be21f7455640d');
     define('BASE_WWW_DIR', '/var/www/html/new/d');
     define('BASE_WX_DIR', '/var/www/html/wx');
-    //define('BASE_LOG_DIR', '/mnt/log/site');
-    define('BASE_LOG_DIR', '/alidata/log/site');
-    //define('IMAGE_UPLOAD_DIR', '/databak/images/');
-    define('IMAGE_UPLOAD_DIR', '/alidata/images/');
-    //define('MAIN_DOMAIN', 'http://www.12301.cc/');
-    //define('IMAGE_URL', 'http://images.12301.cc/');
-    define('MAIN_DOMAIN', 'http://www.12301dev.com/');
-    define('IMAGE_URL', 'http://images.12301dev.com/');
+    define('BASE_LOG_DIR', '/mnt/log/site');
+    define('IMAGE_UPLOAD_DIR', '/databak/images/');
+    define('MAIN_DOMAIN', 'http://www.12301.cc/');
+    define('IMAGE_URL', 'http://images.12301.cc/');
     define('STATIC_URL', 'http://static.12301.cc/');
-    //define('OPEN_URL', 'http://open.12301.cc/');
-    //define('MOBILE_URL', 'http://12301.cc/');
-    define('OPEN_URL', 'http://open.12301dev.com/');
-    define('MOBILE_URL', 'http://12301dev.com/');
-    //define('IP_INSIDE', '10.160.4.140');//内网IP地址
-    define('IP_INSIDE', '10.132.33.244');//内网IP地址
+    define('OPEN_URL', 'http://open.12301.cc/');
+    define('MOBILE_URL', 'http://12301.cc/');
+    define('IP_INSIDE', '10.160.4.140');//内网IP地址
     define('IP_TERMINAL', '121.40.69.184');//终端服务器IP
 }
 elseif (ENV=='TEST') {

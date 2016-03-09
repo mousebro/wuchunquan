@@ -20,13 +20,13 @@ class Controller {
      * @return [type]
      */
     public function model($modelName){
-    $realModel = 'Model\\' . str_replace('/', '\\', $modelName);
+        $realModel = 'Model\\' . str_replace('/', '\\', $modelName);
 
-    if(!class_exists($realModel)) {
-        return false;
-    } else {
-        return new $realModel();
-    }
+        if(!class_exists($realModel)) {
+            return false;
+        } else {
+            return new $realModel();
+        }
     }
 
     /**
