@@ -10,7 +10,6 @@ return array(
         'localhost' => array(
             'db_type'=>'mysql',
             'db_host' => '10.160.4.140',
-            //'db_host' => '127.0.0.1',
             'db_user' => 'admin',
             'db_pwd' => 'adm*753951',
             'db_port' => 3306,
@@ -19,7 +18,6 @@ return array(
         'localhost_wsdl' => array(
             'db_type'=>'mysql',
             'db_host' => '10.160.4.140',
-            //'db_host' => '127.0.0.1',
             'db_user' => 'wsdl',
             'db_pwd' => 'ws*753951',
             'db_port' => 3306,
