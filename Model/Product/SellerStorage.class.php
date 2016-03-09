@@ -1373,7 +1373,7 @@ class SellerStorage extends Model{
             //有恢复数据的时候，写日志
             $logData         = ['ac' => 'recoverStorage'];
             $logData['data'] = [$orderId, $recoverNum];
-            $logData['rs']   = $mark;
+            $logData['rs']   = $recoverNum;
             $this->_log($logData, 'get');
         }
 
@@ -1426,7 +1426,7 @@ class SellerStorage extends Model{
             $page  = "{$page},{$size}"; 
 
             if($search !== '') {
-                $where .= " AND (member.dname like('%{$search}%') OR member.account like('%{$search}%'))";
+                $where .= " AND (member.dname like('%{$search}%') OR member.account like('%{$search}%') OR member.mobile like('%{$search}%'))";
             }
 
             $totalNum = $this->table($table)->join($join)->where($where)->count();
@@ -1446,7 +1446,7 @@ class SellerStorage extends Model{
             );
 
             if($search !== '') {
-                $where['_string'] = " (member.dname like '%{$search}%')  OR ( member.account like '%{$search}%') ";
+                $where['_string'] = " member.dname like ('%{$search}%') OR member.account like ('%{$search}%') OR member.mobile like ('%{$search}%')";
             }
 
             $totalNum = $this->table($table)->join($join)->where($where)->count();
