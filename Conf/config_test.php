@@ -43,8 +43,8 @@ return array(
         'slave'   => array(//slave db
             'db_type'=>'mysql',
             'db_host'=>'127.0.0.1',//内网ip：10.51.26.214
-            'db_user' => 'mainS',
-            'db_pwd' => 'su*7645901',
+            'db_user' => 'peter',
+            'db_pwd' => 'peter@12301HAHA',
             'db_port' => 3308,
             'db_name' => 'myuu',
         ),
@@ -53,7 +53,7 @@ return array(
         'main'=> array(
             'db_host'=>'127.0.0.1',
             'db_port'=> 6379,
-            'db_pwd' => 'myPft!12301!&',
+            'db_pwd' => 'pft666',
         ),
     ),
 
