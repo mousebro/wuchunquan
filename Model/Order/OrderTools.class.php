@@ -64,6 +64,7 @@ class OrderTools extends Model {
 	public function cancelOutOfDateOrder($orderid, \SoapClient $soap_cli) {
 		$res = $soap_cli->Order_Change_Pro($orderid, 0, -1, 1, 1);
 		if ($res != 100) return $res;
+		
 		$remote_con = new Model('remote_1');
 		$seat = $remote_con->table('pft_roundseat_dyn')
 				->where(array('ordernum' => $orderid, 'status' => 2))
@@ -76,11 +77,11 @@ class OrderTools extends Model {
 			}
 			$seat_ids = rtrim($seat_ids, ',');
 			//如果是场馆订单，则需要执行释放座位的动作
-			$this->releaseSeat($seat_ids, $remote_con);
+			$this->_releaseSeat($seat_ids, $remote_con);
 			//todo:log it
 		}
 
-		$this->cancelNotify($orderid);	//释放订单通知(todo://钩子系统)
+		$this->_cancelNotify($orderid);	//释放订单通知(todo://钩子系统)
 		return $res;
 	}
 
@@ -91,7 +92,7 @@ class OrderTools extends Model {
 	 * @return mixed
 	 * @author  wengbin
 	 */
-	private function releaseSeat($seat_ids, $remote_con) {
+	private function _releaseSeat($seat_ids, $remote_con) {
 		$where['id'] = array('in', $seat_ids);
 		$update = array(
 			'status' => 4,
@@ -106,7 +107,7 @@ class OrderTools extends Model {
 	 * @return [type]           [description]
 	 * @author  wengbin
 	 */
-	private function cancelNotify($orderid) {
+	private function _cancelNotify($orderid) {
 
 		//todo
 		
