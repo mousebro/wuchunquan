@@ -19,6 +19,16 @@ class OnlineTrade extends Model
     const CHANNEL_UNIONPAY  = 2;//银联支付
     const CHANNEL_XUNPAY    = 3;//环迅支付
 
+    const PAY_TYPE_MONEY    = 0;//账户余额支付
+    const PAY_TYPE_ALIPAY   = 1;//支付宝支付
+    const PAY_TYPE_CREDIT   = 2;//授信支付
+    const PAY_TYPE_SELFBUY  = 3;//自供自销
+    const PAY_TYPE_SPOT     = 4;//景区到付
+    const PAY_TYPE_WEPAY    = 5;//微信支付
+    const PAY_TYPE_UNION    = 7;//银联支付
+    const PAY_TYPE_XUNPAY   = 8;//环迅支付
+
+
     /**
      * 添加支付交易日志
      *
