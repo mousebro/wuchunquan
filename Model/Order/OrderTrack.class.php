@@ -30,8 +30,45 @@ use Library\Model;
 
 class OrderTrack extends Model
 {
-    public function addTrack()
+    /**
+     * 新增追踪记录
+     *
+     * @param $ordernum string 订单号
+     * @param $action int 事件类型
+     * @param $tid int 门票ID
+     * @param $tnum int 本次记录票数
+     * @param $left_num int 剩余票数
+     * @param $source int 来源
+     * @param $terminal_id int 终端ID
+     * @param $branch_terminal int 分终端ID
+     * @param $id_card string 身份证
+     * @param $oper int 操作员ID
+     * @return mixed
+     */
+    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id, $branch_terminal, $id_card, $oper)
     {
+        $data = [
+            'ordernum'  => $ordernum,
+            'action'    => $action,
+            'tid'       => $tid,
+            'tnum'      => $tnum,
+            'left_num'  => $left_num,
+            'source'    => $source,
+            'terminal'  => $terminal_id,
+            'branchTerminal'=> $branch_terminal,
+            'id_card'   => $id_card,
+            'insertTime'   => date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']),
+            'oper_member'=> $oper
+        ];
+        return $this->Table('pft_order_track')->data($data)->add();
+    }
 
+    public function getLog($ordernum)
+    {
+        $where[':ordernum'] = ':ordernum';
+        return $this->Table('pft_order_track')
+            ->where($where)
+            ->bind(':ordernum',$ordernum)
+            ->select();
     }
 }
