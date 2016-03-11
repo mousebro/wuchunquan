@@ -45,14 +45,14 @@ class OrderTools extends Model {
 				'uu_ss_order.status' => 0,
 				'detail.pay_status' => 2, 
 				'land.terminal_type' => array('neq', 0),
-				'uu_ss_order.ordertime' => array('gt', '2016-3-10 00:00:00')
-			))
+				'uu_ss_order.ordertime' => array('gt', '2016-3-10 00:00:00')))
 			->field('uu_ss_order.*,detail.*')
 			->order($order)
 			->limit($limit)
 			->select();
 		return $result;
 	}
+
 
 	/**
 	 * 取消超时未支付的订单
@@ -64,7 +64,7 @@ class OrderTools extends Model {
 	public function cancelOutOfDateOrder($orderid, \SoapClient $soap_cli) {
 		$res = $soap_cli->Order_Change_Pro($orderid, 0, -1, 1, 1);
 		if ($res != 100) return $res;
-		
+
 		$remote_con = new Model('remote_1');
 		$seat = $remote_con->table('pft_roundseat_dyn')
 				->where(array('ordernum' => $orderid, 'status' => 2))
