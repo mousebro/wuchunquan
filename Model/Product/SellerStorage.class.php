@@ -82,16 +82,16 @@ class SellerStorage extends Model{
             return 0;
         }
 
-        if($date !== false) {
-            $tmp = strtotime($date);
-            if(!$tmp) {
-                $date = date('Ymd');
-            } else {
-                $date = date('Ymd', $tmp);
-            }
-        } else {
-            $date = date('Ymd');
-        }
+        // if($date !== false) {
+        //     $tmp = strtotime($date);
+        //     if(!$tmp) {
+        //         $date = date('Ymd');
+        //     } else {
+        //         $date = date('Ymd', $tmp);
+        //     }
+        // } else {
+        //     $date = date('Ymd');
+        // }
 
         //判断分销商所在的层级，如果不是一级分销商的话，就不能设置
         $level = $this->getResellerLevel($pid, $memberId);
@@ -100,12 +100,14 @@ class SellerStorage extends Model{
         }
 
         //判断上级设置库存的模式
-        $publicInfo = $this->getAvailablePublic($applyDid, $pid, $date, $attr);
-        if($publicInfo && $publicInfo['mode'] == 1) {
-             return 1;
-        } else {
-            return 0;
-        }
+        // $publicInfo = $this->getAvailablePublic($applyDid, $pid, $date, $attr);
+        // if($publicInfo && $publicInfo['mode'] == 1) {
+        //      return 1;
+        // } else {
+        //     return 0;
+        // }
+
+        return 1;
     }
 
     /**
@@ -2413,7 +2415,7 @@ class SellerStorage extends Model{
                 $setNum = intval($publicTmp['set_num']);
 
                 //判断该配置是否生效
-                $tmp = $this->_isSettingAvailable($pid, $setterUid, $date, $setNum);
+                $tmp = $this->isSettingAvailable($pid, $setterUid, $date, $setNum);
                 if(!$tmp) {
                     return false;
                 }
@@ -2449,7 +2451,7 @@ class SellerStorage extends Model{
                 $setNum = intval($publicTmp['set_num']);
 
                 //判断该配置是否生效
-                $tmp = $this->_isSettingAvailable($pid, $setterUid, $date, $setNum);
+                $tmp = $this->isSettingAvailable($pid, $setterUid, $date, $setNum);
 
                 if(!$tmp) {
                     return false;
@@ -2488,7 +2490,7 @@ class SellerStorage extends Model{
      * @param  $setNum 给下级分销商设置的固定库存总和
      * @return bool
      */
-    private function _isSettingAvailable($pid, $setterId, $date, $setNum, $attr = false) {
+    public function isSettingAvailable($pid, $setterId, $date, $setNum, $attr = false) {
         if(!$pid || !$setterId || !$date) {
             return false;
         }
