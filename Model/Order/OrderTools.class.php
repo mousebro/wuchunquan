@@ -29,7 +29,22 @@ class OrderTools extends Model {
 		return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
 	}
 
+	/**
+	 * 获取订单的分销详情
+	 *
+	 * @param int $orderid
+	 * @param int $limit
+	 * @return mixed
+	 * @author fangli
+	 */
+	public function getOrderDetail($orderid,$limit=1){
+		if($limit==1){
+			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->find();
+		}else{
+			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->select();
+		}
 
+	}
 	/**
 	 * 获取超过支付时限而未支付的订单
 	 * @param  int 	   $limit  条数
