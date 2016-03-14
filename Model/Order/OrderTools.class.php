@@ -8,7 +8,6 @@ use Library\Model;
 
 class OrderTools extends Model {
 
-	
 	/**
 	 * 获取订单信息
 	 * @param  int  	$orderid  订单id
@@ -29,7 +28,6 @@ class OrderTools extends Model {
 		return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
 	}
 
-
 	/**
 	 * 获取超过支付时限而未支付的订单
 	 * @param  int 	   $limit  条数
@@ -44,8 +42,7 @@ class OrderTools extends Model {
 			->where(array(
 				'uu_ss_order.status' => 0,
 				'detail.pay_status' => 2, 
-				'land.terminal_type' => array('neq', 0),
-				'uu_ss_order.ordertime' => array('gt', '2016-3-10 00:00:00')))
+				'land.terminal_type' => array('neq', 0),))
 			->field('uu_ss_order.*,detail.*')
 			->order($order)
 			->limit($limit)
@@ -109,7 +106,7 @@ class OrderTools extends Model {
 	 */
 	private function _cancelNotify($orderid) {
 
-		//todo
+		//todo,,
 		
 	}
 }
