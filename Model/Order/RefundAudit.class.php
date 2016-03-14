@@ -13,8 +13,8 @@ class RefundAudit extends Model
 {
     private $_refundAuditTable = 'uu_order_terminal_change';
     private $_orderTable       = 'uu_ss_order';
-
     private $_landTable        = 'uu_land';
+    private $_ticketTable      = 'uu_jq_ticket';
 
     /**
      * 添加订单变更审核记录
@@ -141,6 +141,20 @@ class RefundAudit extends Model
         //        $this->test();
         return $result;
     }
+    //获取门票信息
+    public function getTicketInfo($tid){
+        $table = "{$this->_ticketTable} AS t";
+        $join = "left join {$this->_landTable} AS l ON l.id=t.landid";
+        $where = ["t.id" => $tid];
+        $field = array(
+            "t.*",
+            "l.p_type"
+        );
+        $result = $this->table($table)->where($where)->join($join)->field($field)->find();
+        return $result;
+    }
+
+    //todo：判断订单是否是套票
     //打印sql语句
     private function test(){
         $str = $this -> getLastSql();
