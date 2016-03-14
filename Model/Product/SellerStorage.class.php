@@ -1427,7 +1427,7 @@ class SellerStorage extends Model{
         //判断是不是产品的直接供应商
         if($setterUid == $applyDid) {
             //从直销表获取数据
-            $field = "member.dname, member.id, member.account";
+            $field = "member.dname, member.id, member.account, member.mobile";
             $table = "{$this->_salesTable} sales";
             $where = "`aid`={$setterUid} AND (`pids`='A' OR FIND_IN_SET('{$pid}', `pids`))";
             $join  = "left join {$this->_memberTable} as member on member.id = sales.fid";
