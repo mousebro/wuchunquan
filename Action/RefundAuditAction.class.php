@@ -10,7 +10,7 @@ use Library\Controller;
 use Model\Order\OrderTools;
 use Model\Order\RefundAudit;
 
-class RefundAuditAction extends Controller
+class RefundAuditAction extends BaseAction
 {
     const MODIFY_CODE = 2;
     const CANCEL_CODE = 3;
@@ -109,6 +109,7 @@ class RefundAuditAction extends Controller
         $orderNum,
         $targetTnum,
         $modifyType,
+    $operatorID,
         $requestTime
     ) {
         $refundModel = new RefundAudit();
@@ -120,7 +121,7 @@ class RefundAuditAction extends Controller
             $this->apiReturn(240);//订单正在审核
         }
         $addSuccess = $refundModel->addRefundAudit($orderNum, $targetTnum,
-            $modifyType, $requestTime);
+            $modifyType, $operatorID,$requestTime);
         if ( ! $addSuccess) {
             $this->apiReturn(241);//数据添加失败
         } else {
@@ -128,7 +129,63 @@ class RefundAuditAction extends Controller
         }
     }
 
-
+    public function operate_audit($auditID,$auditResult,$auditNote,$orderNum,$operatorID,$auditTnum){
+        if($auditID == 0){
+            $this->apiReturn(205);
+        }
+        if($auditResult == 0){
+            $this->apiReturn(250);
+        }
+        if($auditNote == ''){
+            $this->apiReturn(251);
+        }
+        if($auditTnum==0){
+            $this->postCancelRequest($orderNum);
+        }else{
+            $this->postModifyRequest($orderNum,$auditTnum);
+        }
+        $refundModel = new RefundAudit();
+        $result = $refundModel->updateAudit($auditID,$auditResult,$auditNote,$orderNum,$operatorID);
+        if($result){
+            $this->apiReturn(200);
+        }else{
+            $this->apiReturn(241);
+        }
+    }
+    //向订单取消接口请求
+    public function postCancelRequest($orderNum){
+        $url = 'http://localhost/new/d/call/handle.php';
+        $data = array(
+          'from' => 'order_cancel',
+          'ordernum' => $orderNum,
+        );
+        $rawCancelResult = $this->curlPost($url,$data);
+        if($cancelResult = json_decode($rawCancelResult)){
+            if($cancelResult['outcome'] == 1){
+                return;
+            }else{
+                $this->apiReturn(251,'修改失败 '. $cancelResult['msg']);
+            }
+        }
+    }
+    //向订单修改接口请求
+    public function postModifyRequest($orderNum,$tnum){
+        $url = 'http://localhost/new/d/call/handle.php';
+        $data = array(
+            'from' => 'order_alter',
+            'tids' => array(
+                $orderNum=>$tnum
+            ),
+        );
+        $rawCancelResult = $this->curlPost($url,$data);
+        if($cancelResult = json_decode($rawCancelResult)){
+            if($cancelResult['outcome'] == 1){
+                return;
+            }else{
+                $this->apiReturn(251,'取消失败 '. $cancelResult['msg']);
+            }
+        }
+    }
     /**
      * 检查订单使用状态
      *
@@ -204,7 +261,7 @@ class RefundAuditAction extends Controller
     {
         $msgList = array(
             100 => '无需退票审核',
-            200 => '成功发起退款审核',
+            200 => '操作成功',
             201 => '缺少传入参数',
             202 => '订单号缺失或格式错误',
             203 => '操作人ID缺失或格式错误',
@@ -220,7 +277,10 @@ class RefundAuditAction extends Controller
             221 => '余票不足',
             230 => '中间分销商不允许取消订单',
             240 => '订单已在审核中，请您耐心等待',
-            241 => '数据添加失败,请联系管网站管理员',
+            241 => '数据更新失败,请联系管网站管理员',
+            250 => '请选择审核结果',
+            251 => '备注信息不可为空',
+            252 => '退票审核时取消失败‘',
         );
         if ( !$msg && array_key_exists($code, $msgList)) {
             $msg = $msgList[$code];
