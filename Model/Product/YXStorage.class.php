@@ -7,34 +7,23 @@
  */
 namespace Model\Product;
 use Library\Model;
+use Model\Member\Reseller;
 
-class SellerStorage extends Model{
-    private $_dbConf        = null;
-    private $_db            = null;
+class YXStorage extends Model{
     private $_storageTable  = 'pft_yx_storage';
     private $_areaTable     = 'pft_roundzone';
     private $_roundTable    = 'pft_round';
     private $_dynTable      = 'pft_roundseat_dyn'; 
-    private $_relationTable = 'pft_member_relationship';
-    private $_memberTable   = 'pft_member';
     private $_seatsTable    = 'pft_roundseat';
 
     //可以使用印象分销库存功能的供应商
     //43517--印象， 4971, 94, 1000026, 6970--测试账号
     private  static $_legalProviderArr = array( 4971, 94, 1000026, 6970);
 
-    public function __construct($type = 'remote_1') {
-        //获取当前路径
-        $basePath = dirname(dirname(__FILE__));
-
-        $classFile   = $basePath . '/module/common/Db.class.php';
-        $configFile  = $basePath . '/module/common/db.conf.php'; 
-
-        include_once $classFile;
-        $this->dbConf = include $configFile;// 服务器配置信息
-
-        //默认是使用主站数据库
-        $this->_getDb($type);
+    //初始化数据库
+    public function __construct() {
+        //默认连接演出库
+        parent::__construct('remote_1');
     }
 
     /**
@@ -179,36 +168,13 @@ class SellerStorage extends Model{
      *
      * @param $providerId 供应商ID
      */
-    public function getResullerList($providerId, $roundId, $area) {
-        if(!$providerId || !$roundId || !$area) {
+    public function getResellerList($providerId) {
+        if(!$providerId) {
             return array();
         }
 
-        $getSql = "SELECT  relation.son_id,  member.dname, member.account  FROM `{$this->_relationTable}` relation left join `{$this->_memberTable}` as member on relation.son_id=member.id  WHERE `parent_id` = ? and `son_id_type`=? and relation.`status`=? and member.status<3 and member.id>1 and length(member.account)<11 limit 0,100 ";
-        $data   = array($providerId, 0, 0);
-
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        //如果分销商里面已经包含了自己，就先将那个数据去除
-        foreach($res as $key => $item) {
-            if($item['son_id'] == $providerId) { 
-                unset($res[$key]);
-            }
-        }
-
-        //将供应商加入到列表里面去
-        $memberSql  = "SELECT  `dname`, `account`  FROM `{$this->_memberTable}` WHERE `id` = ?;";
-        $data       = array($providerId);
-        $stmt       = $this->_db->prepare($memberSql);
-        $stmt->execute($data);
-        $memberInfo = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if($memberInfo) {
-            $memberInfo['son_id'] = $providerId;
-            array_unshift($res, $memberInfo);
-        }
+        $resellerModel = new Reseller();
+        $res = $resellerModel->getResellerList($providerId);
 
         return $res;
     }
@@ -318,32 +284,4 @@ class SellerStorage extends Model{
         }
     }
 
-
-    /**
-     * 获取数据库pdo句柄
-     *
-     * @param $type 连接的是哪个数据库
-     *        localhost = 主站数据库
-     *        remote_1  = 印象场次的那个库
-     * 
-     */
-    private function _getDb($type = 'localhost'){
-        //先关闭连接
-        if($this->_db) {
-            $this->shutdown();
-        }
-
-        \PFT\Db::Conf($this->dbConf[$type]);
-        $this->_db = \PFT\Db::Connect();
-
-        return $this->_db;
-    }
-
-    /**
-     * 关闭数据库
-     * 
-     */
-    public function shutdown() {
-        \PFT\Db::Close();
-    }
 }
