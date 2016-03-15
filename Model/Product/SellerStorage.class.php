@@ -2345,7 +2345,7 @@ class SellerStorage extends Model{
 
         //现在可售卖数量
         $leftNums = intval($maxStorage - $usedFixed);
-    
+
         return $leftNums;
     }
 
@@ -2398,17 +2398,22 @@ class SellerStorage extends Model{
 
             //需要使用的固定库存
             $useupFixedNum = $maxFixed - $usedFixed;
-            $fixdRes = $this->_useFixed($pid, $setterUid, $resellerUid, $date, $useupFixedNum, $attr);
 
-            if(!$fixdRes) {
-                return false;
+            if($useupFixedNum > 0) {
+                $fixdRes = $this->_useFixed($pid, $setterUid, $resellerUid, $date, $useupFixedNum, $attr);
+
+                if(!$fixdRes) {
+                    return false;
+                }
             }
 
-            //需要使用的动态库存
-            $dynamicRes = $this->_useDynamic($pid, $setterUid, $resellerUid, $date, $needNum, $attr);
+            if($needNum > 0) {
+                //需要使用的动态库存
+                $dynamicRes = $this->_useDynamic($pid, $setterUid, $resellerUid, $date, $needNum, $attr);
 
-            if(!$dynamicRes) {
-                return false;
+                if(!$dynamicRes) {
+                    return false;
+                }
             }
 
             //记录使用数量
@@ -2793,7 +2798,7 @@ class SellerStorage extends Model{
         } else {
             //更新记录
             $data = array(
-                'dynamic_num_used' => $usedNum,
+                'dynamic_num_used' => array('exp', "dynamic_num_used+{$usedNum}") ,
                 'update_time'      => time()
             );
 
@@ -2877,7 +2882,7 @@ class SellerStorage extends Model{
         );
 
         $res = $this->table($this->_logTable)->add($data);
-
+        
         return $res === false ? false : true;
     }
 
