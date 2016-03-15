@@ -38,6 +38,34 @@ class SellerStorage extends Model{
     }
 
     /**
+     * 是否用户库存管理权限
+     * @author dwer
+     * @date   2016-03-15
+     *
+     * @param  $dtype 用户的类型
+     * @param  $authStr 权限序列
+     * @return
+     */
+    public static function haveStorageAuth($dtype, $authStr) {
+        $storageType = 'resellerStorage';
+        if($dtype == 0) {
+            //供应商本来就有权限
+            return true;
+        } else if($dtype == 6) {
+            //员工账号,判断权限
+            $authStr = strval($authStr);
+            $authArr = explode(',', $authStr);
+            if(in_array($storageType, $authArr)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    /**
      *  产品是否开启分销库存功能
      * @author dwer
      * @date   2016-03-06
