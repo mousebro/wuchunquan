@@ -135,6 +135,7 @@ class OrderTools extends Model {
 	 */
 	public function getPackageSubOrder($orderNum){
 		$table = 'uu_order_addon';
+		$join =
 		$where = ['pack_order' => $orderNum,];
 		$field = ['orderid'];
 		$result = $this->table($table)->where($where)->field($field)->select();

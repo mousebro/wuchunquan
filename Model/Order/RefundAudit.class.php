@@ -30,8 +30,9 @@ class RefundAudit extends Model
         $orderNum,
         $targetTnum,
         $modifyType = null,
-    $operatorID,
-        $requestTime = 0
+        $operatorID,
+        $requestTime = 0,
+    $callTnum
     ) {
         $orderInfo = $this->getOrderInfoForAudit($orderNum);
         if ( ! is_array($orderInfo)) {
@@ -58,8 +59,11 @@ class RefundAudit extends Model
             'fxid'=>$operatorID, //字段含义不详
         ];
         $lastInsertId = $this->table($table)->data($data)->add();
-
-        return $lastInsertId;
+        if($callTnum) {
+            return array($targetTnum,$orderInfo['tnum']);
+        }else{
+            return $lastInsertId;
+        }
     }
 
     /**
@@ -81,6 +85,7 @@ class RefundAudit extends Model
             'o.tid',
             'o.status',
             'l.terminal',
+            'o.tnum',
         ];
         $result = $this->table($table)
                        ->where($where)

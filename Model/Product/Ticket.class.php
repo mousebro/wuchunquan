@@ -18,4 +18,18 @@ class Ticket extends Model {
 	public function getTicketInfoById($id) {
 		return $this->find($id);
 	}
+
+	public function getPackageInfoByTid($tid){
+		$table = 'uu_jq_ticket AS t';
+		$join = 'join uu_land AS l ON l.id=t.landid';
+		$where = ['t.id' => $tid];
+		$field = 'l.attribute';
+		$jsonRes = $this->table($table)->join($join)->where($where)->field($field)->find();
+		if($jsonRes){
+			$result = json_decode($jsonRes);
+		}else{
+			$result=false;
+		}
+		return $result;
+	}
 }
