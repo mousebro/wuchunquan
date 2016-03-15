@@ -38,6 +38,34 @@ class SellerStorage extends Model{
     }
 
     /**
+     * 是否用户库存管理权限
+     * @author dwer
+     * @date   2016-03-15
+     *
+     * @param  $dtype 用户的类型
+     * @param  $authStr 权限序列
+     * @return
+     */
+    public static function haveStorageAuth($dtype, $authStr) {
+        $storageType = 'resellerStorage';
+        if($dtype == 0) {
+            //供应商本来就有权限
+            return true;
+        } else if($dtype == 6) {
+            //员工账号,判断权限
+            $authStr = strval($authStr);
+            $authArr = explode(',', $authStr);
+            if(in_array($storageType, $authArr)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    /**
      *  产品是否开启分销库存功能
      * @author dwer
      * @date   2016-03-06
@@ -1302,6 +1330,116 @@ class SellerStorage extends Model{
     }
 
     /**
+     * 修改订单数量
+     * @author dwer
+     * @date   2016-03-14
+     *
+     * @param  $orderId 订单ID
+     * @param  $cancedNum 需要退掉的数量
+     * @return
+     */
+    public function changeStorage($orderId, $cancedNum) {
+        $cancedNum = intval($cancedNum);
+        $orderId   = (string)$orderId;
+        if(!$orderId || $cancedNum <= 0) {
+            return false;
+        }
+
+        //获取基础信息
+        $baseData = $this->_getBaseDate($orderId);
+        if(!$baseData) {
+            return false;
+        }
+
+        $pid         = $baseData['pid'];
+        $setterUid   = $baseData['setterUid'];
+        $resellerUid = $baseData['resellerUid'];
+        $date        = $baseData['date'];
+        $attr        = $baseData['attr'];
+
+        //开启事务
+        $this->startTrans();
+
+        //直接从历史库存中获取消耗的数量
+        $logList = $this->table($this->_logTable)->where(array('order_num' => $orderId))->select();
+
+        $recoverNum = 0;
+        foreach($logList as $item) {
+            //判断是不是已经恢复过了
+            if($item['recover_time'] > 0) {
+                //已经恢复过，就不能进行修改了
+                continue;
+            }
+
+            $resReseller = $item['reseller_id'];
+            $resSetter   = $item['setter_id'];
+
+            $fixedNum        = intval($item['fixed_num']);
+            $dynamicNum      = intval($item['dynamic_num']);
+
+            $logFixedNum   = 0;
+            $logDynamicNum = 0;
+
+            //计算从哪里恢复库存
+            if($dynamicNum >= $cancedNum) {
+                //动态库存就够了
+                $logDynamicNum = $cancedNum;
+            } else {
+                $logDynamicNum = $dynamicNum;
+                $logFixedNum   = $cancedNum - $dynamicNum;
+                $logFixedNum   = $logFixedNum > $fixedNum ? $fixedNum : $logFixedNum;
+            }
+
+            //计算剩余的的动态库存是固定库存
+            $leftDynamicNum = $dynamicNum - $logDynamicNum;
+            $leftFixedNum   = $fixedNum - $logFixedNum;
+
+            //恢复固定库存
+            if($logFixedNum > 0) {
+                $tmpFixed = $this->_recoverFixed($pid, $resSetter, $resReseller, $date, $logFixedNum, $attr);
+                
+                if(!$tmpFixed) {
+                    $this->rollback();
+                    return false;
+                }
+            }
+
+            //恢复动态库存
+            if($logDynamicNum > 0) {
+                $tmpDynamic = $this->_recoverDynamic($pid, $resSetter, $resReseller, $date, $logDynamicNum, $attr);
+
+                if(!$tmpDynamic) {
+                    $this->rollback();
+                    return false;
+                }
+            }
+
+            //修改这条记录剩余的数据
+            $res = $this->_changeLog($item['id'], $leftFixedNum, $leftDynamicNum);
+            if(!$res) {
+                $this->rollback();
+                return false;
+            }
+
+            $recoverNum += 1;
+        }
+
+        if($recoverNum >=1) {
+            //有恢复数据的时候，写日志
+            $logData         = ['ac' => 'changeStorage'];
+            $logData['data'] = [$orderId, $cancedNum, $recoverNum];
+            $logData['rs']   = $recoverNum;
+            $this->_log($logData, 'get');
+        }
+
+           //提交事务
+        $this->commit();
+
+        //返回
+        return true;
+    }
+
+    /**
      * 退单恢复分销商的可用库存
      * 
      * @param orderId 订单ID
@@ -2235,7 +2373,7 @@ class SellerStorage extends Model{
 
         //现在可售卖数量
         $leftNums = intval($maxStorage - $usedFixed);
-    
+
         return $leftNums;
     }
 
@@ -2288,17 +2426,22 @@ class SellerStorage extends Model{
 
             //需要使用的固定库存
             $useupFixedNum = $maxFixed - $usedFixed;
-            $fixdRes = $this->_useFixed($pid, $setterUid, $resellerUid, $date, $useupFixedNum, $attr);
 
-            if(!$fixdRes) {
-                return false;
+            if($useupFixedNum > 0) {
+                $fixdRes = $this->_useFixed($pid, $setterUid, $resellerUid, $date, $useupFixedNum, $attr);
+
+                if(!$fixdRes) {
+                    return false;
+                }
             }
 
-            //需要使用的动态库存
-            $dynamicRes = $this->_useDynamic($pid, $setterUid, $resellerUid, $date, $needNum, $attr);
+            if($needNum > 0) {
+                //需要使用的动态库存
+                $dynamicRes = $this->_useDynamic($pid, $setterUid, $resellerUid, $date, $needNum, $attr);
 
-            if(!$dynamicRes) {
-                return false;
+                if(!$dynamicRes) {
+                    return false;
+                }
             }
 
             //记录使用数量
@@ -2683,7 +2826,7 @@ class SellerStorage extends Model{
         } else {
             //更新记录
             $data = array(
-                'dynamic_num_used' => $usedNum,
+                'dynamic_num_used' => array('exp', "dynamic_num_used+{$usedNum}") ,
                 'update_time'      => time()
             );
 
@@ -2767,6 +2910,33 @@ class SellerStorage extends Model{
         );
 
         $res = $this->table($this->_logTable)->add($data);
+        
+        return $res === false ? false : true;
+    }
+
+    /**
+     * 修改库存使用量
+     *
+     * @param id 记录ID
+     * @param fixedNum 固定库存使用量
+     * @param dynamicNum 动态库存使用量
+     */
+    private function _changeLog($id, $fixedNum, $dynamicNum) {
+        $fixedNum = intval($fixedNum);
+        $dynamicNum = intval($dynamicNum);
+
+        if($fixedNum < 1 && $dynamicNum < 1) {
+            return true;
+        }
+
+        $where = array('id' => $id);
+        $data  = array(
+            'fixed_num'   => $fixedNum,
+            'dynamic_num' => $dynamicNum,
+            'update_time' => time()
+        );
+
+        $res = $this->table($this->_logTable)->where($where)->save($data);
 
         return $res === false ? false : true;
     }
