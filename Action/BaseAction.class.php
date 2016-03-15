@@ -14,7 +14,7 @@ class BaseAction extends Controller
     {
         $USER = \session();
         if (empty($USER) || ($USER['sid'] == '')) {
-            $this->responseError(201, '用户未登录');
+            $this->errorReturn(201, '用户未登录','');
         } else {
             return $USER;
         }

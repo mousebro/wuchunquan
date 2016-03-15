@@ -29,16 +29,17 @@ class MemberRelationship extends Model
      */
     public function getDistributor($search = '')
     {
-        $table = "$this->_memberRealtionTable AS mr";
-        $join  = "LEFT JOIN {$this->_memberTable} AS m ON m.id=mr.son_id";
+        $table = "{$this->_memberTable} AS m";
+        $join  = "LEFT JOIN {$this->_memberRealtionTable} AS mr ON m.id=mr.son_id";
         $where = array(
             'mr.parent_id'   => $this->memberID,
             'mr.son_id_type' => 0,
             'mr.status'      => 0,
         );
         if ( ! empty($search)) {
-            if ( ! intval($search)) {
-                $where['m.account'] = $search;
+            if (intval($search)) {
+//                $where['m.account'] = intval($search);
+                $where['m.account'] = array("like", "%{$search}%");
             } else {
                 $where['m.dname'] = array("like", "%{$search}%");
             }
@@ -59,7 +60,7 @@ class MemberRelationship extends Model
                        ->field($field)
                        ->order($order)
                        ->select();
-
+//        $this->test();
         return $result;
     }
 
@@ -84,7 +85,14 @@ class MemberRelationship extends Model
                        ->field($field)
                        ->find();
         $result = $result ? true : false;
+//        $this->test();
+//        var_dump($result);
+//        exit;
         return $result;
+    }
+    private function test(){
+        $str = $this -> getLastSql();
+        print_r($str);
     }
 
 }
