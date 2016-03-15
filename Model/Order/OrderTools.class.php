@@ -41,7 +41,8 @@ class OrderTools extends Model {
 				left join uu_land land on uu_ss_order.lid=land.id")
 			->where(array(
 				'uu_ss_order.status' => 0,
-				'detail.pay_status' => 2, 
+				'detail.pay_status' => 2,
+				'land.id' => array('neq', 5322),
 				'land.terminal_type' => array('neq', 0),))
 			->field('uu_ss_order.*,detail.*')
 			->order($order)
