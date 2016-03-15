@@ -37,8 +37,8 @@ class OrderTools extends Model {
 	 * @return mixed
 	 * @author fangli
 	 */
-	public function getOrderDetail($orderid,$limit=1){
-		if($limit==1){
+	public function getOrderDetail($orderid,$limit=null){
+		if($limit==null){
 			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->find();
 		}else{
 			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->select();
@@ -67,7 +67,6 @@ class OrderTools extends Model {
 			->select();
 		return $result;
 	}
-
 
 	/**
 	 * 取消超时未支付的订单
@@ -127,4 +126,42 @@ class OrderTools extends Model {
 		//todo
 		
 	}
+
+	/**
+	 * 获取套票主票的子票信息
+	 * @param $orderNum
+	 *
+	 * @return mixed
+	 */
+	public function getPackageSubOrder($orderNum){
+		$table = 'uu_order_addon';
+		$where = ['pack_order' => $orderNum,];
+		$field = ['orderid'];
+		$result = $this->table($table)->where($where)->field($field)->select();
+//		print_r($result);
+//		exit;
+//		$this->test();
+		return $result;
+	}
+
+	/**
+	 * 获取联票所有子票订单号
+	 * @param $orderNum
+	 *
+	 * @return mixed
+	 */
+	public function getLinkSubOrder($orderNum){
+		$table = 'uu_order_fx_details';
+		$where = array(
+			'concat_id' => $orderNum,
+		);
+		$field = ['orderid'];
+		$result = $this->table($table)->where($where)->field($field)->select();
+		return $result;
+	}
+	private function test(){
+		$str = $this->getLastSql();
+		var_dump($str);
+	}
+
 }
