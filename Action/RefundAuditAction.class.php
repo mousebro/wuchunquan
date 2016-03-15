@@ -21,7 +21,7 @@ class RefundAuditAction extends BaseAction
      * @param int $orderNum
      * @param int $targetTnum
      * @param int $operatorID
-     * @param int $loop         联票订单循环调用次数
+     * @param int $loop 联票订单循环调用次数
      *
      * @return int
      */
@@ -160,29 +160,31 @@ class RefundAuditAction extends BaseAction
      *
      * @param $orderNum
      * @param $targetTnum
-     * @param $modifyType
+     * @param $operatorID
      * @param $requestTime
+     *
+     * @return int
      */
     public function addRefundAudit(
         $orderNum,
         $targetTnum,
         $operatorID,
-        $requestTime
+        $requestTime,
+    $loop = 0
     ) {
         $refundModel = new RefundAudit();
-        $modifyType = $targetTnum == 0 ? self::CANCEL_CODE : self::MODIFY_CODE;
-        $underAudit = $refundModel->underAudit($orderNum, $modifyType);
+        $modifyType  = $targetTnum == 0 ? self::CANCEL_CODE : self::MODIFY_CODE;
+        $underAudit  = $refundModel->underAudit($orderNum, $modifyType);
         if ($underAudit) {
             return (240);//订单正在审核
         }
         //不判断订单类型，先添加对应订单的退票审核记录
-        $callTnum = 1; //返回原始门票数和变更后门票数
-        $addSuccess = $refundModel->addRefundAudit($orderNum, $targetTnum,
-            $modifyType, $operatorID, $requestTime,$callTnum);
-        if ( ! $addSuccess || !is_array($addSuccess)) {
+        $callTnum   = $loop===0 ? true : false; //返回原始门票数和变更后门票数
+        $addResult = $refundModel->addRefundAudit($orderNum, $targetTnum,
+            $modifyType, $operatorID, $requestTime, $callTnum);
+        if (!$addResult) {
             return (241);//数据添加失败
         }
-
         //获取订单扩展信息
         $orderModel  = new OrderTools();
         $orderExtend = $orderModel->getOrderAddonInfo($orderNum);
@@ -196,19 +198,17 @@ class RefundAuditAction extends BaseAction
             }//套票信息出错
             foreach ($subOrders as $subOrder) {
                 $subOrderNum = $subOrder['orderid'];
-
-                $result      = $this->addRefundAudit($subOrderNum,$targetTnum, $operatorID,1);
-                if ($result == 200) {//套票中有任一子票是需要退票审核的，则该套票都是需要审核的
-                    continue;
+                if($targetTnum != 0){
+                    $subOrderInfo = $orderModel->getOrderInfo($subOrderNum);
+                    $subOrderTnum = $subOrderInfo['tnum'];
+                    $targetSubOrderTnum = floor($subOrderTnum * ($targetTnum / $addResult[1]));
+                }else{
+                    $targetSubOrderTnum = 0;
                 }
+                $result = $this->addRefundAudit($subOrderNum, $targetSubOrderTnum,$operatorID, 0, 1);
             }
         }
-
-
-
-
-
-
+        return 200;//数据添加成功
 
     }
 

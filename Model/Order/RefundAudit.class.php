@@ -26,14 +26,8 @@ class RefundAudit extends Model
      *
      * @return int $lastInsertId
      */
-    public function addRefundAudit(
-        $orderNum,
-        $targetTnum,
-        $modifyType = null,
-        $operatorID,
-        $requestTime = 0,
-    $callTnum
-    ) {
+    public function addRefundAudit($orderNum,$targetTnum,$modifyType = null,$operatorID,$requestTime = 0, $callTnum)
+    {
         $orderInfo = $this->getOrderInfoForAudit($orderNum);
         if ( ! is_array($orderInfo)) {
             return false;
@@ -45,6 +39,7 @@ class RefundAudit extends Model
                 $modifyType = ($targetTnum == 0) ? 3 : 2;
             }
         }
+        $dstatus = ($orderInfo['refund_audit']==0 && strtoupper($orderInfo['p_type'])!= 'F') ? 1 : 0; //如果门票本身不需要退款审核时，则自动设置为同意退票（用于套票）
         $table        = $this->_refundAuditTable;
         $data         = [
             'ordernum' => $orderInfo['ordernum'],
@@ -53,11 +48,16 @@ class RefundAudit extends Model
             'lid'      => $orderInfo['lid'],
             'tid'      => $orderInfo['tid'],
             'tnum'     => $targetTnum,
-            'dstatus'  => 0, /*状态0未操作1同意2拒绝*/
-            'stime'    => ($requestTime) ? $requestTime : time(),
+            'dstatus'  => $dstatus, /*状态0未操作1同意2拒绝*/
+            'stime'    => ($requestTime) ? $requestTime : date('Y-m-d H:i:s'),
             'stype'    => $modifyType,
             'fxid'=>$operatorID, //字段含义不详
         ];
+        if($dstatus==1){
+            $data['reason'] = '系统自动审核';
+            $data['dadmin'] = 1;
+            $data['dtime'] = date('Y-m-d H:i:s');
+        }
         $lastInsertId = $this->table($table)->data($data)->add();
         if($callTnum) {
             return array($targetTnum,$orderInfo['tnum']);
@@ -77,22 +77,25 @@ class RefundAudit extends Model
     {
         $table  = "{$this->_orderTable} AS o";
         $where  = ['o.ordernum' => $orderNum];
-        $join   = "{$this->_landTable} AS l ON o.lid=l.id";
-        $field  = [
+        $join   = array(
+            "join {$this->_landTable} AS l ON o.lid=l.id",
+            "join {$this->_ticketTable} AS t ON o.tid=t.id");
+        $field  = array(
             'o.ordernum',
             'o.salerid',
             'o.lid',
             'o.tid',
             'o.status',
             'l.terminal',
+            'l.p_type',
             'o.tnum',
-        ];
+            't.refund_audit',
+        );
         $result = $this->table($table)
                        ->where($where)
                        ->join($join)
                        ->field($field)
                        ->find();
-
         return $result;
     }
 
@@ -146,18 +149,18 @@ class RefundAudit extends Model
         //        $this->test();
         return $result;
     }
-    //获取门票信息
-    public function getTicketInfo($tid){
-        $table = "{$this->_ticketTable} AS t";
-        $join = "left join {$this->_landTable} AS l ON l.id=t.landid";
-        $where = ["t.id" => $tid];
-        $field = array(
-            "t.*",
-            "l.p_type"
-        );
-        $result = $this->table($table)->where($where)->join($join)->field($field)->find();
-        return $result;
-    }
+//    //获取门票信息
+//    public function getTicketInfo($tid){
+//        $table = "{$this->_ticketTable} AS t";
+//        $join = "left join {$this->_landTable} AS l ON l.id=t.landid";
+//        $where = ["t.id" => $tid];
+//        $field = array(
+//            "t.*",
+//            "l.p_type"
+//        );
+//        $result = $this->table($table)->where($where)->join($join)->field($field)->find();
+//        return $result;
+//    }
 
     //todo：判断订单是否是套票
     //打印sql语句
