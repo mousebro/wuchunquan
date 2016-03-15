@@ -1312,6 +1312,7 @@ class SellerStorage extends Model{
      */
     public function changeStorage($orderId, $cancedNum) {
         $cancedNum = intval($cancedNum);
+        $orderId   = (string)$orderId;
         if(!$orderId || $cancedNum <= 0) {
             return false;
         }
@@ -1356,7 +1357,7 @@ class SellerStorage extends Model{
                 //动态库存就够了
                 $logDynamicNum = $cancedNum;
             } else {
-                $logDynamicNum = $cancedNum;
+                $logDynamicNum = $dynamicNum;
                 $logFixedNum   = $cancedNum - $dynamicNum;
                 $logFixedNum   = $logFixedNum > $fixedNum ? $fixedNum : $logFixedNum;
             }
@@ -1397,8 +1398,8 @@ class SellerStorage extends Model{
 
         if($recoverNum >=1) {
             //有恢复数据的时候，写日志
-            $logData         = ['ac' => 'recoverStorage'];
-            $logData['data'] = [$orderId, $recoverNum];
+            $logData         = ['ac' => 'changeStorage'];
+            $logData['data'] = [$orderId, $cancedNum, $recoverNum];
             $logData['rs']   = $recoverNum;
             $this->_log($logData, 'get');
         }
