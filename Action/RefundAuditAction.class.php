@@ -212,27 +212,17 @@ class RefundAuditAction extends BaseAction
 
     }
 
-    public function operate_audit(
-        $auditID,
-        $auditResult,
-        $auditNote,
-        $orderNum,
-        $operatorID,
-        $auditTnum
+    public function update_audit(
+        $auditID,$auditResult,$auditNote,$orderNum,$operatorID,$auditTnum
     ) {
         if ($auditID == 0) {
-            return (205);
+            return (205); //订单信息不全
         }
         if ($auditResult == 0) {
-            return (250);
+            return (250); //请选择审核结果
         }
         if ($auditNote == '') {
-            return (251);
-        }
-        if ($auditTnum == 0) {
-            $this->postCancelRequest($orderNum);
-        } else {
-            $this->postModifyRequest($orderNum, $auditTnum);
+            return (251);//备注信息不可为空
         }
         $refundModel = new RefundAudit();
         $result      = $refundModel->updateAudit($auditID, $auditResult,
@@ -240,45 +230,7 @@ class RefundAuditAction extends BaseAction
         if ($result) {
             return (200);
         } else {
-            return (241);
-        }
-    }
-
-    //向订单取消接口请求
-    public function postCancelRequest($orderNum)
-    {
-        $url             = 'http://localhost/new/d/call/handle.php';
-        $data            = array(
-            'from'     => 'order_cancel',
-            'ordernum' => $orderNum,
-        );
-        $rawCancelResult = $this->curlPost($url, $data);
-        if ($cancelResult = json_decode($rawCancelResult)) {
-            if ($cancelResult['outcome'] == 1) {
-                return 200;
-            } else {
-                return (251); //修改失败,'修改失败 '. $cancelResult['msg']
-            }
-        }
-    }
-
-    //向订单修改接口请求
-    public function postModifyRequest($orderNum, $tnum)
-    {
-        $url             = 'http://localhost/new/d/call/handle.php';
-        $data            = array(
-            'from' => 'order_alter',
-            'tids' => array(
-                $orderNum => $tnum,
-            ),
-        );
-        $rawCancelResult = $this->curlPost($url, $data);
-        if ($cancelResult = json_decode($rawCancelResult)) {
-            if ($cancelResult['outcome'] == 1) {
-                return 200;
-            } else {
-                return (251); //,'取消失败 '. $cancelResult['msg']
-            }
+            return (241);//数据更新失败,请联系管网站管理员
         }
     }
 
@@ -313,7 +265,7 @@ class RefundAuditAction extends BaseAction
                 }
                 break;
             case 3:
-                return (213);
+                return (213);//订单已取消:不可再取消或修改
                 break;
             case 5:
                 return (214);//订单已被终端撤改:不可取消或修改
@@ -358,6 +310,7 @@ class RefundAuditAction extends BaseAction
 //返回接口数据
     public function apiReturn($code, $msg = '')
     {
+        $code = intval($code);
         $msgList = array(
             100 => '无需退票审核',
             200 => '操作成功',
@@ -380,7 +333,7 @@ class RefundAuditAction extends BaseAction
             241 => '数据更新失败,请联系管网站管理员',
             250 => '请选择审核结果',
             251 => '备注信息不可为空',
-            252 => '退票审核时取消失败',
+            252 => '审核时操作失败',
         );
         if ( ! $msg && array_key_exists($code, $msgList)) {
             $msg = $msgList[$code];
