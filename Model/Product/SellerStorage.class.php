@@ -2431,9 +2431,10 @@ class SellerStorage extends Model{
         $tmp         = $this->getUsedStorage($pid, $setterUid, $resellerUid, $date, $attr);
         $usedFixed   = $tmp['fixed'];
 
-        //库存量不足
-        if( (($maxFixed + $maxDynamic) - $usedFixed ) < $buyNum ) {
-            return false;
+        //库存量如果不足，就使用掉足的量
+        $leftNum = ($maxFixed + $maxDynamic) - $usedFixed;
+        if( $leftNum < $buyNum ) {
+            $buyNum = $leftNum;
         }
 
         //记录使用来源表
