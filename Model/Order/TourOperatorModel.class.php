@@ -11,8 +11,6 @@ use Library\Model;
 class TourOperatorModel extends Model
 {
     private $_memberTable = 'pft_member';
-    private $_localSoap;
-    private $_localSoapConfig;
 
     /**
      * 判断用户是否可以给员工配置计调下单 - 暂时只对云顶账号开放
