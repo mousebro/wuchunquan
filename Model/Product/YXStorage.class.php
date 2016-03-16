@@ -152,13 +152,12 @@ class YXStorage extends Model{
      * 获取分区
      */
     public function getAreaList($venusId) {
-        $getSql = "SELECT * FROM `{$this->_areaTable}` WHERE `venue_id`=? limit 0, 100";
-        $data   = array($venusId);
+        if(!$venusId) {
+            return array();
+        }
 
-
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $where = array('venue_id' => $venusId);
+        $res = $this->table($this->_areaTable)->where($where)->page('1,100')->select();
 
         return $res;
     }
