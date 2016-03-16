@@ -2019,6 +2019,37 @@ class SellerStorage extends Model{
     }
 
     /**
+     *  获取已经使用掉的未分配库存
+     * @author dwer
+     * @date   2016-02-28
+     *
+     * @param  [type] $pid 产品ID
+     * @param  [type] $setterId 上级供应商ID
+     * @param  [type] $date 日期
+     * @param  boolean $attr
+     * @return [type]
+     */
+    public function getUsedFixed($pid, $setterId, $date, $attr = false) {
+        $where = array(
+            'pid'          => $pid,
+            'setter_uid'   => $setterId,
+            'reseller_uid' => $setterId,
+            'date'         => $date
+        );
+
+        if($attr) {
+            $where['special_attr'] = $attr;
+        }
+
+        $res = $this->table($this->_usedTable)->field('fixed_num_used')->where($where)->find();
+        if($res) {
+            return intval($res['fixed_num_used']);
+        } else {
+            return 0;
+        }
+    }
+
+    /**
      * 获取分销商可用的公共配置
      * 如果指定日期有配置存，就使用这个库存，否则使用默认的配置
      * 
