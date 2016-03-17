@@ -100,7 +100,7 @@ class RefundAudit extends Model
     }
 
     /**
-     * 查询订单是否处于退款审核状态
+     * 查询订单是否处于退款审核状态: 单个订单同一种变更类型只允许提交一次请求
      *
      * @param int $orderNum
      * @param int $modifyType
@@ -112,7 +112,7 @@ class RefundAudit extends Model
         $table  = $this->_refundAuditTable;
         $where  = array(
             'ordernum' => $orderNum,
-            'dstatus' => 0,
+//            'dstatus' => 0,
             'stype'   => $modifyType,
         );
         $field  = ['id'];
@@ -149,19 +149,6 @@ class RefundAudit extends Model
         //        $this->test();
         return $result;
     }
-//    //获取门票信息
-//    public function getTicketInfo($tid){
-//        $table = "{$this->_ticketTable} AS t";
-//        $join = "left join {$this->_landTable} AS l ON l.id=t.landid";
-//        $where = ["t.id" => $tid];
-//        $field = array(
-//            "t.*",
-//            "l.p_type"
-//        );
-//        $result = $this->table($table)->where($where)->join($join)->field($field)->find();
-//        return $result;
-//    }
-
     //todo：判断订单是否是套票
     //打印sql语句
     private function test(){

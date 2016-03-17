@@ -170,7 +170,7 @@ class RefundAuditAction extends BaseAction
         $targetTnum,
         $operatorID,
         $requestTime,
-    $loop = 0
+        $loop = 0
     ) {
         $refundModel = new RefundAudit();
         $modifyType  = $targetTnum == 0 ? self::CANCEL_CODE : self::MODIFY_CODE;
@@ -179,10 +179,10 @@ class RefundAuditAction extends BaseAction
             return (240);//订单正在审核
         }
         //不判断订单类型，先添加对应订单的退票审核记录
-        $callTnum   = $loop===0 ? true : false; //返回原始门票数和变更后门票数
+        $callTnum  = $loop === 0 ? true : false; //返回原始门票数和变更后门票数
         $addResult = $refundModel->addRefundAudit($orderNum, $targetTnum,
             $modifyType, $operatorID, $requestTime, $callTnum);
-        if (!$addResult) {
+        if ( ! $addResult) {
             return (241);//数据添加失败
         }
         //获取订单扩展信息
@@ -198,22 +198,30 @@ class RefundAuditAction extends BaseAction
             }//套票信息出错
             foreach ($subOrders as $subOrder) {
                 $subOrderNum = $subOrder['orderid'];
-                if($targetTnum != 0){
-                    $subOrderInfo = $orderModel->getOrderInfo($subOrderNum);
-                    $subOrderTnum = $subOrderInfo['tnum'];
-                    $targetSubOrderTnum = floor($subOrderTnum * ($targetTnum / $addResult[1]));
-                }else{
+                if ($targetTnum != 0) {
+                    $subOrderInfo       = $orderModel->getOrderInfo($subOrderNum);
+                    $subOrderTnum       = $subOrderInfo['tnum'];
+                    $targetSubOrderTnum = floor($subOrderTnum * ($targetTnum
+                                                                 / $addResult[1]));
+                } else {
                     $targetSubOrderTnum = 0;
                 }
-                $result = $this->addRefundAudit($subOrderNum, $targetSubOrderTnum,$operatorID, 0, 1);
+                $result = $this->addRefundAudit($subOrderNum,
+                    $targetSubOrderTnum, $operatorID, 0, 1);
             }
         }
+
         return 200;//数据添加成功
 
     }
 
     public function update_audit(
-        $auditID,$auditResult,$auditNote,$orderNum,$operatorID,$auditTnum
+        $auditID,
+        $auditResult,
+        $auditNote,
+        $orderNum,
+        $operatorID,
+        $auditTnum
     ) {
         if ($auditID == 0) {
             return (205); //订单信息不全
@@ -308,9 +316,9 @@ class RefundAuditAction extends BaseAction
     }
 
 //返回接口数据
-    public function apiReturn($code, $msg = '')
+    public function apiReturn($code, $data = [], $msg = '')
     {
-        $code = intval($code);
+        $code    = intval($code);
         $msgList = array(
             100 => '无需退票审核',
             200 => '操作成功',
@@ -338,10 +346,13 @@ class RefundAuditAction extends BaseAction
         if ( ! $msg && array_key_exists($code, $msgList)) {
             $msg = $msgList[$code];
         }
-        if ($msg) {
-            exit(json_encode(array("code" => $code, "msg" => $msg)));
-        } else {
-            exit(json_encode(array("code" => $code)));
+        if ( ! $msg) {
+            $msg = '';
         }
+        exit(json_encode(array(
+            "code" => $code,
+            "data" => $data,
+            "msg"  => $msg
+        )));
     }
 }
