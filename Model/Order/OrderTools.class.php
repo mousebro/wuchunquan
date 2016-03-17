@@ -28,6 +28,25 @@ class OrderTools extends Model {
 		return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
 	}
 
+<<<<<<< HEAD
+=======
+	/**
+	 * 获取订单的分销详情
+	 *
+	 * @param int $orderid
+	 * @param int $limit
+	 * @return mixed
+	 * @author fangli
+	 */
+	public function getOrderDetail($orderid,$limit=null){
+		if($limit==null){
+			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->find();
+		}else{
+			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->select();
+		}
+
+	}
+>>>>>>> 05cc6e140ab42ef4f13880b581e52df433b725ab
 	/**
 	 * 获取超过支付时限而未支付的订单
 	 * @param  int 	   $limit  条数
@@ -50,7 +69,6 @@ class OrderTools extends Model {
 			->select();
 		return $result;
 	}
-
 
 	/**
 	 * 取消超时未支付的订单
@@ -110,4 +128,43 @@ class OrderTools extends Model {
 		//todo,,
 		
 	}
+
+	/**
+	 * 获取套票主票的子票信息
+	 * @param $orderNum
+	 *
+	 * @return mixed
+	 */
+	public function getPackageSubOrder($orderNum){
+		$table = 'uu_order_addon';
+		$join =
+		$where = ['pack_order' => $orderNum,];
+		$field = ['orderid'];
+		$result = $this->table($table)->where($where)->field($field)->select();
+//		print_r($result);
+//		exit;
+//		$this->test();
+		return $result;
+	}
+
+	/**
+	 * 获取联票所有子票订单号
+	 * @param $orderNum
+	 *
+	 * @return mixed
+	 */
+	public function getLinkSubOrder($orderNum){
+		$table = 'uu_order_fx_details';
+		$where = array(
+			'concat_id' => $orderNum,
+		);
+		$field = ['orderid'];
+		$result = $this->table($table)->where($where)->field($field)->select();
+		return $result;
+	}
+	private function test(){
+		$str = $this->getLastSql();
+		var_dump($str);
+	}
+
 }
