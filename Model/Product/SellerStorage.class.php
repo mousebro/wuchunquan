@@ -184,6 +184,81 @@ class SellerStorage extends Model{
     }
 
     /**
+     *  移除分销商，顺便移除给该分销商配置分销库存
+     * @author dwer
+     * @date   2016-03-17
+     *
+     * @param  $resellerId 分销商ID
+     * @param  $pid 产品ID
+     * @param  $setterId 供应商ID
+     * @return
+     */
+    public function removeReseller($resellerId, $pid = false, $setterId = false, $attr = false) {
+        if(!$resellerId) {
+            return false;
+        }
+
+        if($attr !== false) {
+            $attr = strval($attr);
+        }
+
+        if($pid !== false) {
+            if(!$pid) {
+                return false;
+            }
+        }
+
+        if($setterId !== false) {
+            if(!$setterId) {
+                return false;
+            }
+        }
+
+        //获取已经配置好的数据
+        $nowDate = date('Ymd');
+        $where   = array(
+            'reseller_uid' => $resellerId
+        );
+        $where['_string'] = "date=0 OR date >= {$nowDate}";
+
+        if($pid) {
+            $where['pid'] = $pid;
+        }
+
+        if($setterId) {
+            $where['setter_uid'] = $setterId;
+        }
+
+        //最多就365天的数据
+        $page = '1,365';
+        $field = 'date,pid,setter_uid';
+        $order = "date asc";
+
+        $list = $this->table($this->_fixedTable)->where($where)->field($field)->order($order)->page($page)->select();
+
+        $mark = true;
+        $this->startTrans();
+
+        foreach($list as $item) {
+            //清除数据
+            $res = $this->_removeRsellerDateSetting($item['pid'], $item['setter_uid'], $resellerId, $item['date'], $attr);
+
+            if($res === false) {
+                $mark = false;
+            }
+        }
+
+        //返回结果
+        if($mark) {
+            $this->commit();
+            return true;
+        } else {
+            $this->rollback();
+            return false;
+        }
+    }
+
+    /**
      * 获取产品信息
      * @author dwer
      * @date   2016-03-08
@@ -2175,6 +2250,63 @@ class SellerStorage extends Model{
         }
     }
 
+    /**
+     * 删除某个日期下面的分销商库存配置
+     * @author dwer
+     * @date   2016-03-17
+     *
+     * @param  $pid 产品ID
+     * @param  $setterId 上级供应商
+     * @param  $resellerId 分销商ID
+     * @param  $date 具体日期 20151023 或是 0 = 默认配置
+     * @return
+     */
+    private function _removeRsellerDateSetting($pid, $setterId, $resellerId, $date, $attr = false) {
+        //获取这天的固定库存配置
+        $where = array(
+            'pid'          => $pid, 
+            'setter_uid'   => $setterId, 
+            'reseller_uid' => $resellerId, 
+            'date'         => $date, 
+        );
+
+        if($attr) {
+            $where['special_attr'] = $attr;
+        }
+
+        $res = $this->table($this->_fixedTable)->field('fixed_num')->where($where)->find();
+        if(!$res) {
+            return true;
+        }
+
+        $fixedNum = intval($res['fixed_num']);
+
+        if($fixedNum > 0) {
+            //将public表中的set_num扣除
+            $publicWhere = $where;
+            unset($publicWhere['reseller_uid']);
+
+            $data = array(
+                'update_time' => time(),
+                'set_num'     => array('exp', "set_num-{$fixedNum}")
+            );
+
+            $res = $this->table($this->_publicTable)->where($publicWhere)->save($data);
+
+            if($res === false) {
+                return false;
+            }
+        }
+
+        //将这条固定库存的记录删除
+        $res = $this->table($this->_fixedTable)->where($where)->delete();
+
+        if($res === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
 
     /**
      * 删除待复制日期的数据
