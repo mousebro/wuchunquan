@@ -25,13 +25,16 @@ class TourOperatorModel extends Model
         $where     = array(
             "id" => $memberId,
         );
-        $field     = "dtype";
+        $field     = array(
+            "dtype",
+            "account"
+        );
         $resultSet = $this->table($table)
                           ->where($where)
                           ->field($field)
                           ->find();
-        $auth      = ($resultSet['dtype'] == 0) ? true : false;
-
+        $auth      = ($resultSet['dtype'] == 0 && $resultSet['account']) ? true : false;
+//        $this->test();
         return $auth;
     }
 
@@ -47,10 +50,19 @@ class TourOperatorModel extends Model
     public function hasTourOPAuth($supplierId, $memberId, $dtype)
     {
         $supplierHasGrantAuth = $this->hasTourOPGrantAuth($supplierId);
-        $asStaff              = ($dtype == 6);
-        $isGranted            = $this->isGrantedOPAuth($memberId);
-        $auth                 = ($supplierHasGrantAuth && $asStaff
-                                 && $isGranted);
+
+        switch ($dtype) {
+            case 0:
+                $isGranted = true;
+                break;
+            case 6:
+                $isGranted = $this->isGrantedOPAuth($memberId);
+                break;
+            default:
+                $isGranted = false;
+                break;
+        }
+        $auth = ($supplierHasGrantAuth && $isGranted);
 
         return $auth;
     }
@@ -84,9 +96,9 @@ class TourOperatorModel extends Model
      *
      * @return string
      */
-    private function test()
-    {
-        $str = $this->getLastSql();
-        print_r($str . PHP_EOL);
-    }
+//    private function test()
+//    {
+//        $str = $this->getLastSql();
+//        print_r($str . PHP_EOL);
+//    }
 }

@@ -45,8 +45,7 @@ class TourOperatorAction extends BaseAction
             return false;
         }
         $operatorModel = new TourOperatorModel();
-        $auth          = $operatorModel->hasTourOPAuth($supplierId, $memberId,
-            $idType);
+        $auth          = $operatorModel->hasTourOPAuth($supplierId, $memberId, $idType);
 
         return $auth;
     }
