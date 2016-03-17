@@ -11,7 +11,7 @@ use Model\Order\TourOperatorModel;
 class TourOperatorAction extends BaseAction
 {
     /**
-     * 判断用户是否可以给员工配置计调下单 - 暂时只对云顶账号开放
+     * 判断用户是否可以给员工配置计调下单 -任一供应商
      * @param $memberId
      *
      * @return bool
@@ -29,7 +29,7 @@ class TourOperatorAction extends BaseAction
     }
 
     /**
-     * 判断用户是否具有计调下单权限 - 暂时只对云顶账号开放
+     * 判断用户是否具有计调下单权限 - 必须是员工账号
      * @param $supplierId
      * @param $memberId
      * @param $idType

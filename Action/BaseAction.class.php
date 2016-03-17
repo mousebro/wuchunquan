@@ -31,7 +31,7 @@ class BaseAction extends Controller
             if (!empty($errorHandler) && function_exists($errorHandler)) {
                 call_user_func($errorHandler);
             }else{
-               print_r($data);
+                $this->ajaxReturn(200, $data, $msg);
                exit;
             }
         }
@@ -48,8 +48,10 @@ class BaseAction extends Controller
         } else {
             if (!empty($errorHandler) && function_exists($errorHandler)) {
                 call_user_func($errorHandler);
-            }else{
+            }elseif($code==201){
                 $this->redirectPage('home.html',$time,$msg);
+            }else{
+                $this->ajaxReturn($code, '', $msg);
             }
         }
         exit;

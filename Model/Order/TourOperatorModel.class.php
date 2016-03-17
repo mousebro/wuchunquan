@@ -13,7 +13,7 @@ class TourOperatorModel extends Model
     private $_memberTable = 'pft_member';
 
     /**
-     * 判断用户是否可以给员工配置计调下单 - 暂时只对云顶账号开放
+     * 判断用户是否可以给员工配置计调下单 - 暂时对所有供应商开放 2016-3-17
      *
      * @param int $memberId
      *
@@ -25,12 +25,12 @@ class TourOperatorModel extends Model
         $where     = array(
             "id" => $memberId,
         );
-        $field     = "group_id";
+        $field     = "dtype";
         $resultSet = $this->table($table)
                           ->where($where)
                           ->field($field)
                           ->find();
-        $auth      = ($resultSet['group_id'] == 4) ? true : false;
+        $auth      = ($resultSet['dtype'] == 0) ? true : false;
 
         return $auth;
     }
