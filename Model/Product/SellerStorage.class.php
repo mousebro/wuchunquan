@@ -2140,7 +2140,6 @@ class SellerStorage extends Model{
     public function getUsedFixed($pid, $setterId, $date, $attr = false) {
         $where = array(
             'pid'          => $pid,
-            'setter_uid'   => $setterId,
             'reseller_uid' => $setterId,
             'date'         => $date
         );
@@ -2149,9 +2148,9 @@ class SellerStorage extends Model{
             $where['special_attr'] = $attr;
         }
 
-        $res = $this->table($this->_usedTable)->field('fixed_num_used')->where($where)->find();
+        $res = $this->table($this->_usedTable)->where($where)->sum('fixed_num_used');
         if($res) {
-            return intval($res['fixed_num_used']);
+            return intval($res);
         } else {
             return 0;
         }
