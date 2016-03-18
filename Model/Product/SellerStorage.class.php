@@ -241,7 +241,7 @@ class SellerStorage extends Model{
 
         foreach($list as $item) {
             //清除数据
-            $res = $this->_removeRsellerDateSetting($item['pid'], $item['setter_uid'], $resellerId, $item['date'], $attr);
+            $res = $this->_removeRsellerSetting($item['pid'], $item['setter_uid'], $resellerId, $item['date'], $attr);
 
             if($res === false) {
                 $mark = false;
@@ -250,6 +250,38 @@ class SellerStorage extends Model{
 
         //返回结果
         if($mark) {
+            $this->commit();
+            return true;
+        } else {
+            $this->rollback();
+            return false;
+        }
+    }
+
+    /**
+     * 删除供应商设置的库存配置
+     * @author dwer
+     * @date   2016-03-17
+     *
+     * @param  $resellerId 分销商ID
+     * @param  $pid 产品ID
+     * @param  $setterId 供应商ID
+     * @return
+     */
+    public function removeSetter($pid, $setterId, $attr = false) {
+        if(!$pid || !$setterId) {
+            return false;
+        }
+
+        if($attr !== false) {
+            $attr = strval($attr);
+        }
+
+        $this->startTrans();
+
+        $res = $this->_removeSetterSetting($pid, $setterId, $attr);
+
+        if($res) {
             $this->commit();
             return true;
         } else {
@@ -2261,7 +2293,7 @@ class SellerStorage extends Model{
      * @param  $date 具体日期 20151023 或是 0 = 默认配置
      * @return
      */
-    private function _removeRsellerDateSetting($pid, $setterId, $resellerId, $date, $attr = false) {
+    private function _removeRsellerSetting($pid, $setterId, $resellerId, $date, $attr = false) {
         //获取这天的固定库存配置
         $where = array(
             'pid'          => $pid, 
@@ -2299,6 +2331,46 @@ class SellerStorage extends Model{
         }
 
         //将这条固定库存的记录删除
+        $res = $this->table($this->_fixedTable)->where($where)->delete();
+
+        if($res === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * 删除供应商设置的库存配置
+     * @author dwer
+     * @date   2016-03-17
+     *
+     * @param  $pid 产品ID
+     * @param  $setterId 上级供应商
+     * @return
+     */
+    private function _removeSetterSetting($pid, $setterId, $attr = false) {
+        //获取这天的固定库存配置
+        $where = array(
+            'pid'          => $pid,
+            'setter_uid'   => $setterId,
+        );
+
+        $nowDate = date('Ymd');
+        $where['_string'] = "date=0 OR date >= {$nowDate}";
+
+        if($attr) {
+            $where['special_attr'] = $attr;
+        }
+
+        //删除公共配置
+        $res = $this->table($this->_publicTable)->where($where)->delete();
+
+        if($res === false) {
+            return false;
+        }
+
+        //删除固定库存配置
         $res = $this->table($this->_fixedTable)->where($where)->delete();
 
         if($res === false) {
