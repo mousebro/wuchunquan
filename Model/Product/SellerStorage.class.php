@@ -1674,7 +1674,7 @@ class SellerStorage extends Model{
             //从直销表获取数据
             $field = "member.dname, member.id, member.account, member.mobile";
             $table = "{$this->_salesTable} sales";
-            $where = "`aid`={$setterUid} AND (`pids`='A' OR FIND_IN_SET('{$pid}', `pids`))";
+            $where = "sales.`status`=0 AND `aid`={$setterUid} AND (`pids`='A' OR FIND_IN_SET('{$pid}', `pids`))";
             $join  = "left join {$this->_memberTable} as member on member.id = sales.fid";
             $page  = "{$page},{$size}"; 
 
@@ -1710,6 +1710,7 @@ class SellerStorage extends Model{
 
         //获取分销商数组
         $resellerArr = array();
+        $memberList = is_array($memberList) ? $memberList : array();
         foreach($memberList as $item) {
             $resellerArr[] = $item['id'];
         }
