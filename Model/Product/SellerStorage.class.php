@@ -99,9 +99,14 @@ class SellerStorage extends Model{
      * @param  string $date 日期 - 2016-10-23
      * @return int 0=不显示，1=显示
      */
-    public function isShowSetting($pid, $memberId, $date = false, $attr = false) {
+    public function isShowSetting($pid, $memberId, $setterId, $date = false, $attr = false) {
         $applyDid = $this->getApplyDid($pid);
         if(!$applyDid || !$memberId) {
+            return 0;
+        }
+
+        //只有一级分销商才能配置分销库存
+        if($applyDid != $setterId) {
             return 0;
         }
 
