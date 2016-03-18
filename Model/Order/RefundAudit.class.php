@@ -13,22 +13,25 @@ class RefundAudit extends Model
 {
     private $_refundAuditTable = 'uu_order_terminal_change';
     private $_orderTable = 'uu_ss_order';
+    private $_orderAppendixTable = 'uu_order_addon';
     private $_landTable = 'uu_land';
     private $_ticketTable = 'uu_jq_ticket';
+    private $_orderDetailTable = 'uu_order_fx_details';
 
     /**
-     * 添加订单变更审核记录
-     *
-     * @param int $orderNum    平台订单号
-     * @param int $terminal    终端号
-     * @param int $salerid     景区6位编号
-     * @param int $lid         景区id
-     * @param int $tid         门票id
-     * @param int $targetTnum  修改后票数
-     * @param int $modifyType  修改类型 0-撤改 1-撤销 2-修改 3-取消
-     * @param int $operatorID  退票发起人
-     * @param int $dstatus     退票审核状态 0-未处理 1-同意 2-拒绝
-     * @param int $requestTime 申请时间
+     * @param int    $orderNum 平台订单号
+     * @param int    $terminal 终端号
+     * @param int    $salerid 景区6位编号
+     * @param int    $lid 景区id
+     * @param int    $tid 门票id
+     * @param int    $modifyType 修改类型 0-撤改 1-撤销 2-修改 3-取消
+     * @param int    $targetTnum 变更后票数
+     * @param int    $requesterID 退票发起人
+     * @param int    $dstatus 退票审核状态 0-未处理 1-同意 2-拒绝 3-等待第三方自动审核
+     * @param int    $requestTime 申请时间
+     * @param string $auditNote 审核备注
+     * @param int    $auditorID 审核人
+     * @param int    $auditTime 审核时间
      *
      * @return mixed
      */
@@ -38,11 +41,14 @@ class RefundAudit extends Model
         $salerid,
         $lid,
         $tid,
-        $targetTnum,
         $modifyType,
-        $operatorID,
+        $targetTnum,
+        $requesterID,
         $dstatus = 0,
-        $requestTime = 0
+        $requestTime = 0,
+        $auditNote='',
+        $auditorID=0,
+        $auditTime=0
     ) {
         $table = $this->_refundAuditTable;
         $data  = [
@@ -51,13 +57,15 @@ class RefundAudit extends Model
             'salerid'  => $salerid,
             'lid'      => $lid,
             'tid'      => $tid,
+            'stype'    => $modifyType,
             'tnum'     => $targetTnum,
             'dstatus'  => $dstatus,        /*状态0未操作1同意2拒绝*/
             'stime'    => ($requestTime) ? $requestTime : date('Y-m-d H:i:s'),
-            'stype'    => $modifyType,
-            'fxid'     => $operatorID, //申请发起人
+            'fxid'     => $requesterID, //申请发起人
         ];
-
+        if($auditTime) $data['dtime']=$auditTime;
+        if($auditNote) $data['reason']=$auditNote;
+        if($auditorID) $data['dadmin']=$auditorID;
         return $this->table($table)->data($data)->add();
     }
 
@@ -74,18 +82,23 @@ class RefundAudit extends Model
         $where = ['o.ordernum' => $orderNum];
         $join  = array(
             "join {$this->_landTable} AS l ON o.lid=l.id",
-            //            "join {$this->_ticketTable} AS t ON o.tid=t.id"
+            "join {$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
+            "join {$this->_ticketTable} AS t ON o.tid=t.id",
+            "join {$this->_orderDetailTable} AS od ON o.ordernum=od.orderid",
         );
         $field = array(
             'o.salerid',
             'o.lid',
             'o.tid',
             'l.terminal',
+            'oa.ifpack',
+            'o.tnum',
+            't.mdetails',
             //            'o.ordernum',
             //            'o.status',
             //            'l.p_type',
-            //            'o.tnum',
-            //            't.refund_audit',
+            't.refund_audit',
+            'od.concat_id'
         );
 
         return $this->table($table)
@@ -103,7 +116,7 @@ class RefundAudit extends Model
      *
      * @return int
      */
-    public function isUnderAudit($orderNum, $modifyType)
+    public function isUnderAudit($orderNum)
     {
         $table  = $this->_refundAuditTable;
         $where  = array(
