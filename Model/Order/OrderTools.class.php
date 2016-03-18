@@ -28,8 +28,6 @@ class OrderTools extends Model {
 		return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
 	}
 
-<<<<<<< HEAD
-=======
 	/**
 	 * 获取订单的分销详情
 	 *
@@ -46,7 +44,7 @@ class OrderTools extends Model {
 		}
 
 	}
->>>>>>> 05cc6e140ab42ef4f13880b581e52df433b725ab
+
 	/**
 	 * 获取超过支付时限而未支付的订单
 	 * @param  int 	   $limit  条数
