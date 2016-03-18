@@ -8,10 +8,9 @@ use Library\Model;
 
 class OrderTools extends Model {
 
-    
     /**
      * 获取订单信息
-     * @param  int      $orderid  订单id
+     * @param  int  	$orderid  订单id
      * @return array    [description]
      * @author  wengbin
      */
@@ -22,30 +21,29 @@ class OrderTools extends Model {
     /**
      * 获取订单的额外信息
      * @param  int $orderid 订单id
-     * @return array 
+     * @return array
      * @author  wengbin
      */
     public function getOrderAddonInfo($orderid) {
         return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
     }
 
-
     /**
      * 获取超过支付时限而未支付的订单
-     * @param  int        $limit  条数
+     * @param  int 	   $limit  条数
      * @param  string  $order  排序
      * @return array   $result 结果集
      * @author  wengbin
      */
     public function getOutOfDateOrders($limit = 10, $order = 'uu_ss_order.id asc') {
         $result = $this->table('uu_ss_order')->join("
-                left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid 
-                left join uu_land land on uu_ss_order.lid=land.id")
+				left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid
+				left join uu_land land on uu_ss_order.lid=land.id")
             ->where(array(
                 'uu_ss_order.status' => 0,
-                'detail.pay_status' => 2, 
-                'land.terminal_type' => array('neq', 0),
-                'uu_ss_order.ordertime' => array('gt', '2016-3-10 00:00:00')))
+                'detail.pay_status' => 2,
+                'land.id' => array('neq', 5322),
+                'land.terminal_type' => array('neq', 0),))
             ->field('uu_ss_order.*,detail.*')
             ->order($order)
             ->limit($limit)
@@ -67,9 +65,9 @@ class OrderTools extends Model {
 
         $remote_con = new Model('remote_1');
         $seat = $remote_con->table('pft_roundseat_dyn')
-                ->where(array('ordernum' => $orderid, 'status' => 2))
-                ->field('id')    
-                ->select();
+            ->where(array('ordernum' => $orderid, 'status' => 2))
+            ->field('id')
+            ->select();
         if ($seat) {
             $seat_ids = '';
             foreach ($seat as $item) {
@@ -81,13 +79,13 @@ class OrderTools extends Model {
             //todo:log it
         }
 
-        $this->_cancelNotify($orderid);    //释放订单通知(todo://钩子系统)
+        $this->_cancelNotify($orderid);	//释放订单通知(todo://钩子系统)
         return $res;
     }
 
     /**
      * 释放锁定的座位
-     * @param  string         $seat_id  pft_roundseat_dyn表id集合
+     * @param  string 		$seat_id  pft_roundseat_dyn表id集合
      * @param  object   $model对象   [description]
      * @return mixed
      * @author  wengbin
@@ -109,7 +107,7 @@ class OrderTools extends Model {
      */
     private function _cancelNotify($orderid) {
 
-        //todo
-        
+        //todo,,
+
     }
 }

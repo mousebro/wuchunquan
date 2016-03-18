@@ -116,4 +116,18 @@ class OnlineTrade extends Model
         $tid = intval($tid);
         return $this->table('uu_jq_ticket')->where("id=$tid")->field("Mpath,Mdetails")->find();
     }
+
+    public function secondRequest($tid, $ordern, $mid)
+    {
+        $tid = intval($tid);
+        $mData = $this->table('uu_jq_ticket')->where("id=$tid")->field("Mpath,Mdetails")->find();
+        if($mData['Mpath']){
+            $relation_info_req = http_build_query(array(
+                'Action'  => 'Relation_after_pay',
+                'Ordern'  => $ordern,
+                'Fid'     => (int)$mid,
+            ));
+            file_get_contents($mData['Mpath'].'?'.$relation_info_req);
+        }
+    }
 }
