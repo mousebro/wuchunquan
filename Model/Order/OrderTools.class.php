@@ -37,13 +37,9 @@ class OrderTools extends Model {
 	 * @return mixed
 	 * @author fangli
 	 */
-	public function getOrderDetail($orderid,$limit=null){
-		if($limit==null){
-			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->find();
-		}else{
-			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->select();
-		}
+	public function getOrderDetail($orderid){
 
+			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->find();
 	}
 	/**
 	 * 获取超过支付时限而未支付的订单
@@ -135,14 +131,9 @@ class OrderTools extends Model {
 	 */
 	public function getPackageSubOrder($orderNum){
 		$table = 'uu_order_addon';
-		$join =
 		$where = ['pack_order' => $orderNum,];
 		$field = ['orderid'];
-		$result = $this->table($table)->where($where)->field($field)->select();
-//		print_r($result);
-//		exit;
-//		$this->test();
-		return $result;
+		return $this->table($table)->where($where)->field($field)->select();
 	}
 
 	/**

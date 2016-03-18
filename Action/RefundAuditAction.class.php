@@ -9,6 +9,7 @@ namespace Action;
 use Library\Controller;
 use Model\Order\OrderTools;
 use Model\Order\RefundAudit;
+use Model\Product\Ticket;
 
 class RefundAuditAction extends BaseAction
 {
@@ -19,18 +20,17 @@ class RefundAuditAction extends BaseAction
      * 判断订单是否需要退票审核
      *
      * @param int $orderNum
-     * @param int $targetTnum
+     * @param int $modifyType
      * @param int $operatorID
-     * @param int $loop 联票订单循环调用次数
      *
      * @return int
      */
     public function checkRefundAudit(
         $orderNum,
-        $targetTnum,
-        $operatorID,
-        $loop = 0
+        $modifyType,
+        $operatorID
     ) {
+        $auditNeeded = 100; //100-默认不需要退票审核
 
         //检测传入参数
         $orderNum = intval(trim($orderNum));
@@ -42,117 +42,102 @@ class RefundAuditAction extends BaseAction
         if ( ! $operatorID) {
             return (203);//操作人ID缺失或格式错误
         }
-        //判断修改类型
-        $targetTnum = intval($targetTnum);
-        $modifyType = ($targetTnum == 0) ? self::CANCEL_CODE
-            : self::MODIFY_CODE;
-
-        //获取订单扩展信息
-        $orderModel  = new OrderTools();
-        $orderExtend = $orderModel->getOrderAddonInfo($orderNum);
-        if ( ! $orderExtend || ! is_array($orderExtend)) {
-            return (205);//订单信息不全
-        }
-
-        //判断套票是否需要退票审核
-        if ($orderExtend['ifpack'] == 1) {//套票主票
-            $subOrders = $orderModel->getPackageSubOrder($orderNum);
-            if ( ! $subOrders || ! is_array($subOrders)) {
-                return (207);
-            }//套票信息出错
-            foreach ($subOrders as $subOrder) {
-                $subOrderNum = $subOrder['orderid'];
-                $result      = $this->checkRefundAudit($subOrderNum,
-                    $targetTnum, $operatorID);
-//                print_r($result);
-                if ($result == 200) {//套票中有任一子票是需要退票审核的，则该套票都是需要审核的
-                    return (200);
-                }
-            }
-        }
 
         //获取订单信息
-        $orderInfo = $orderModel->getOrderInfo($orderNum);
+        $orderModel = new OrderTools();
+        $orderInfo  = $orderModel->getOrderInfo($orderNum);
         if ( ! $orderInfo) {
             return (204); //订单号不存在
         }
 
+        //获取票类信息
+        $tid         = $orderInfo['tid'];
+        $ticketModel = new Ticket();
+        $ticketInfo  = $ticketModel->getTicketInfoById($tid);
+        if ( ! $ticketInfo) {
+            return (206); //对应门票不存在
+        }
         //获取订单支付信息
         $orderDetail = $orderModel->getOrderDetail($orderNum, 1);
         if ( ! $orderDetail || ! is_array($orderDetail)) {
             return (205);//订单信息不全
         }
-        //判断联票是否需要退票审核
-        if ($loop === 0 && $orderDetail['concat_id']) {
-            $subOrders = $orderModel->getLinkSubOrder($orderNum);
-            foreach ($subOrders as $subOrder) {
-                if ($subOrder != $orderNum) {
-                    $result = $this->checkRefundAudit($subOrder['orderid'],
-                        $targetTnum, $operatorID, 1);
-                    if ($result == 200) {
-                        return $result;
+        //获取订单扩展信息
+        $orderExtend = $orderModel->getOrderAddonInfo($orderNum);
+        if ( ! $orderExtend || ! is_array($orderExtend)) {
+            return (205);//订单信息不全
+        }
+
+        //对需要退款的订单，需判断是否满足订单变更条件
+        if ($ticketInfo['refund_audit'] != 0) {
+            $auditNeeded = 200;//需要退票审核
+
+            //检查订单使用状态
+            $result = $this->checkUseStatus($orderInfo['status'], $modifyType,
+                $ticketInfo['apply_did'], $orderInfo['aid']);
+            if ($result != 200) {
+                return $result;
+            }
+
+            //检查订单支付状态
+            $result = $this->checkPayStatus($orderInfo['paymode'],
+                $orderDetail['pay_status']);
+            if ($result != 200) {
+                return $result;
+            }
+
+            //检查取消的发起者是否是末级分销商
+            //套票子票的审核判断不考虑发起人，因其依赖于主票属性，套票子票并不能单独取消，
+            if ($orderDetail['aids'] && $orderExtend['ifpack'] != 2) {
+                $aids = explode(',', $orderDetail['aids']);
+                if ($modifyType == self::CANCEL_CODE) {
+                    if ($operatorID != current($aids)
+                        && $operatorID != end($aids)
+                    ) {
+                        return (230);//中间分销商不允许取消订单
+                    }
+                } else {
+                    if ($operatorID != end($aids)) {
+                        return (231);//只有末级分销商可以修改订单
+                    }
+                }
+            }
+        } else {
+            //对无需退款审核的订单需要作联票和套票判断
+            //判断套票是否需要退票审核
+            if ($orderExtend['ifpack'] == 1) {//套票主票
+                $subOrders = $orderModel->getPackageSubOrder($orderNum);
+                if ( ! $subOrders || ! is_array($subOrders)) {
+                    return (207);
+                }//套票信息出错
+                foreach ($subOrders as $subOrder) {
+                    $auditNeeded = $this->checkRefundAudit($subOrder['orderid'],
+                        $modifyType, $operatorID);
+                    if ($auditNeeded == 200) {//套票中有任一子票需要退票审核，则该套票需要审核
+                        break;
                     }
                 }
             }
 
-        }
-
-        //获取票类信息
-        $tid         = $orderInfo['tid'];
-        $ticketModel = new \Model\Product\Ticket();
-        $ticketInfo  = $ticketModel->getTicketInfoById($tid);
-        if ( ! $ticketInfo) {
-            return (206); //对应门票不存在
-        }
-
-        //判断对应票类是否需要退票审核
-        if ($ticketInfo['refund_audit'] == 0) {
-            return (100);//无需退票审核
-        }
-
-        //检查订单使用状态
-        $result = $this->checkUseStatus($orderInfo['status'], $modifyType,
-            $ticketInfo['apply_did'], $orderInfo['aid']);
-        if ($result != 200) {
-            return $result;
-        }
-
-        //检查订单支付状态
-        $result = $this->checkPayStatus($orderInfo['paymode'],
-            $orderDetail['pay_status']);
-        if ($result != 200) {
-            return $result;
-        }
-
-        //检查订单票数
-        //todo：需要确定分批验证的剩余票数是哪个字段
-        $ticketRemain = $orderInfo['tnum'];
-        if ($ticketRemain < $targetTnum) {
-            return (221); //剩余票数不足:余票不足:当前剩余{$ticketRemain}张门票
-        } elseif ($ticketRemain == $targetTnum) {
-            return (222); //剩余票数与目标票数相等
-        }
-
-        if ($orderExtend['ifpack'] == 2) { //套票子票不判断发起人，以主票为准
-            return 200;
-        }
-        //todo:检查取消的发起者是否是末级分销商
-        if ($orderDetail['aids']) {
-            $aids = explode(',', $orderDetail['aids']);
-            if ($modifyType == self::CANCEL_CODE) {
-                if ($operatorID != current($aids)
-                    && $operatorID != end($aids)
-                ) {
-                    return (230);//中间分销商不允许取消订单
-                }
-            } else {
-                if ($operatorID != end($aids)) {
-                    return (231);//只有末级分销商可以修改订单
+            //取消联票主票的时候，要判断对应子票是否需要退票审核
+            if ($orderNum == $orderDetail['concat_id']
+                && $modifyType == self::CANCEL_CODE
+            ) {
+                $subOrders = $orderModel->getLinkSubOrder($orderNum);
+                foreach ($subOrders as $subOrder) {
+                    if ($subOrder['orderid'] != $orderNum) {
+                        $auditNeeded
+                            = $this->checkRefundAudit($subOrder['orderid'],
+                            $modifyType, $operatorID);
+                        if ($auditNeeded == 200) {
+                            break;
+                        }
+                    }
                 }
             }
         }
 
-        return 200;
+        return $auditNeeded;
     }
 
     /**
@@ -174,7 +159,7 @@ class RefundAuditAction extends BaseAction
     ) {
         $refundModel = new RefundAudit();
         $modifyType  = $targetTnum == 0 ? self::CANCEL_CODE : self::MODIFY_CODE;
-        $underAudit  = $refundModel->underAudit($orderNum, $modifyType);
+        $underAudit  = $refundModel->isUnderAudit($orderNum, $modifyType);
         if ($underAudit) {
             return (240);//订单正在审核
         }
@@ -352,7 +337,7 @@ class RefundAuditAction extends BaseAction
         exit(json_encode(array(
             "code" => $code,
             "data" => $data,
-            "msg"  => $msg
+            "msg"  => $msg,
         )));
     }
 }

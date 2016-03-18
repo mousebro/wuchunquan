@@ -16,7 +16,7 @@ use Library\Model;
 //CREATE TABLE `pft_order_track` (
 //  `id` int(10) NOT NULL AUTO_INCREMENT,
 //  `ordernum` varchar(20) NOT NULL,/*订单号*/
-//`action` tinyint(1) unsigned not null default 0,/*事件类型 0 验证 1 取消 2 出票 3支付 4验证 5撤销 6撤改*/
+//`action` tinyint(1) unsigned not null default 0,/*事件类型 0 验证 1 取消 2 出票 3支付 4验证 5撤销 6撤改 7提交审核 8操作审核  */
 //  `tid` int(10) unsigned not null,/*本次操作票类*/
 //  `tnum` int(10) unsigned not null,/*本次操作门票张数*/
 //  `left_num` int(10) unsigned not null,/*剩余门票张数*/
