@@ -47,7 +47,7 @@ class Controller {
         );
 
         header('Content-type:text/json');
-        $res = json_encode($data);
+        $res = json_encode($data, JSON_UNESCAPED_UNICODE);
         echo $res;
         exit();
     }
