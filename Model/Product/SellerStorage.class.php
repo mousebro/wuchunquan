@@ -2708,8 +2708,14 @@ class SellerStorage extends Model{
     private function _getLastResellers($memberId, $pid, $setterId, $date, $attr = false) {
         //如果是自销的就直接返回
         if($memberId == $setterId) {
-            //直接返回
-            return array(array('first' => $memberId, 'second' => $setterId));
+            //判断有没有设置分销库存
+            $publicInfo = $this->getAvailablePublic($setterId, $pid, $date);
+            if(!$publicInfo) {
+                return false;
+            } else {
+                //直接返回
+                return array(array('first' => $memberId, 'second' => $setterId));
+            }
         }
 
         //判断是不是直接找供应商购买
