@@ -1418,9 +1418,8 @@ class SellerStorage extends Model{
             $resSetter   = $item['second'];
 
             //供应链上的分销商的都要扣除
-            $res = $this->_useupStorage($orderId, $pid, $resSetter, $resReseller, $date, $buyNum, $attr);
-
-            if(!$res) {
+            $re = $this->_useupStorage($orderId, $pid, $resSetter, $resReseller, $date, $buyNum, $attr);
+            if(!$re) {
                 $mark = false;
                 break;
             }
