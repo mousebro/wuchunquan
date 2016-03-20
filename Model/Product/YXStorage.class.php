@@ -10,7 +10,12 @@ use Library\Model;
 use Model\Member\Reseller;
 
 class YXStorage extends Model{
-    private $_storageTable  = 'pft_yx_storage';
+    private $_storageTable        = 'pft_yx_storage';
+    private $_defaultStorageTable = 'pft_yx_storage_default';
+
+    private $_infoTable        = 'pft_yx_info';
+    private $_defaultInfoTable = 'pft_yx_info_default';
+
     private $_areaTable     = 'pft_roundzone';
     private $_roundTable    = 'pft_round';
     private $_dynTable      = 'pft_roundseat_dyn'; 
@@ -41,6 +46,56 @@ class YXStorage extends Model{
     }
 
     /**
+     * 获取分区的默认配置信息 
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param  $areaId 分区ID
+     * @return
+     */
+    public function getDefaultInfo($areaId) {
+        if(!$areaId) {
+            return false;
+        }
+
+        $where = array('area_id' => $areaId);
+
+        $info = $this->table($this->_defaultInfoTable)->find();
+        if($info) {
+            return $info;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 获取分区的配置信息 
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param  $areaId 分区ID
+     * @param  $roundId 场次ID
+     * @return
+     */
+    public function getInfo($areaId, $roundId) {
+        if(!$areaId || !$roundId) {
+            return false;
+        }
+
+        $where = array(
+            'area_id'  => $areaId,
+            'round_id' => $roundId
+        );
+
+        $info = $this->table($this->_infoTable)->find();
+        if($info) {
+            return $info;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * 获取分销商在某个场次、分区的情况下可以分销的设置数量
      *
      * @param $resellerId 分销商 - 25501
@@ -56,94 +111,190 @@ class YXStorage extends Model{
             return false;
         }
 
-        $getSql = "SELECT `total_num` FROM `{$this->_storageTable}` WHERE `reseller_id`=? and `round_id`=? and `area_id`=?;";
-        $data = array($resellerId, $roundId, $area);
+        $field = 'total_num';
+        $where = array(
+            'reseller_id' => $resellerId,
+            'round_id'    => $roundId,
+            'area_id'     => $area,
+        );
 
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        if($res && isset($res[0])) {
-            return intval($res[0]['total_num']);
+        $info = $this->table($this->_storageTable)->field($field)->where($where)->find();
+
+        if($info) {
+            return intval($info['total_num']);
         } else {
-            return 0;
+            return -1;
         }
     }
 
     /**
-     * 获取某个场次、分区的情况下所有已经设置的分销商库存
+     * 获取分销商默认的分销配置数量
      *
-     * @param $roundId 场次 - 199944
+     * @param $resellerId 分销商 - 25501
      * @param $area 分区 - 33
      *
      * @return 返回 bool/number 如果参数错误返回false，否则返回数量
      * 
      */
-    public function allSetNumber( $roundId, $area) {
+    public function totalDefaultNumber($resellerId, $roundId, $area) {
         //参数判断
-        if(!$roundId || !$area) {
+        if(!$resellerId || !$area) { 
             return false;
         }
 
-        $getSql = "SELECT sum(`total_num`) as num  FROM `{$this->_storageTable}` WHERE `round_id`=? and `area_id`=?;";
-        $data = array($roundId, $area);
+        $field = 'total_num';
+        $where = array(
+            'reseller_id' => $resellerId,
+            'area_id'     => $area,
+        );
 
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetch(PDO::FETCH_ASSOC);
+        $info = $this->table($this->_defaultStorageTable)->field($field)->where($where)->find();
 
-        if($res && isset($res['num'])) {
-            return $res['num'];
+        if($info) {
+            return intval($info['total_num']);
+        } else {
+            return -1;
+        }
+    }
+
+
+    /**
+     * 获取某个场次、分区的情况下所有已经设置的分销商库存
+     *
+     * @param $roundId 场次 - 199944
+     * @param $areaId 分区 - 33
+     *
+     * @return 返回 bool/number 如果参数错误返回false，否则返回数量
+     * 
+     */
+    public function allSetNumber( $roundId, $areaId) {
+        //参数判断
+        if(!$roundId || !$areaId) {
+            return false;
+        }
+
+        $info = $this->getInfo($areaId, $roundId);
+
+        if($info) {
+            return $info['reserve_num'];
         } else {
             return 0;
         }
     }
 
     /**
-     * 给分销商设置数量
-     * 
+     * 给分销商设置分销库存  
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param   $roundId 场次ID
+     * @param   $areaId 分区ID
+     * @param   $setData 设置数组 [分销商ID => 保留库存数量]
+     * @param   $status 状态：1=开启，0=关闭
      */
-    public function setNum($resellerId, $roundId, $area, $num) {
-        //获取数据
-        $getSql = "SELECT `id` FROM `{$this->_storageTable}` WHERE `reseller_id`=? and `round_id`=? and `area_id`=?;";
-        $data = array($resellerId, $roundId, $area);
-
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        if($res) {
-            //更新数据
-            $updateSql = "UPDATE `{$this->_storageTable}` SET `total_num`=?, `update_time`=? WHERE  `reseller_id`=? and `round_id`=? and `area_id`=?;";
-            $data = array($num,  time(), $resellerId, $roundId, $area);
-
-            $stmt = $this->_db->prepare($updateSql);
-            $back  = $stmt->execute($data);
-        } else {
-            //新增
-            $sql = "INSERT INTO `{$this->_storageTable}` (`reseller_id`, `round_id`, `area_id`, `total_num`, `update_time`) VALUES (?, ?, ?, ?, ?);";
-            $data = array($resellerId, $roundId, $area, $num, time());
-
-            $stmt = $this->_db->prepare($sql);
-            $back  = $stmt->execute($data);
+    public function setResellerStorage($roundId, $areaId, $setData, $status = 0) {
+        if(!$roundId || !$areaId || !is_array($setData)) {
+            return false;
         }
 
-        if($back) {
-            return true;
-        } else {
+        //计算数据
+        $reserveNum = 0;
+        foreach($setData as $resellerId => $storage) {
+            if($storage >= 0) {
+                $reserveNum += $storage;
+            }
+        }
+
+        $mark = true;
+        $this->startTrans();
+
+        foreach($setData as $resellerId => $storage) {
+
+            $res = $this->_setNum($roundId, $areaId, $resellerId, $storage);
+
+            if(!$res) {
+                $mark = false;
+                break;
+            }
+        }
+
+        if(!$mark) {
+            $this->rollback();
             return false;
+        }
+
+        $res = $this->_setInfo($roundId, $areaId, $reserveNum, $status);
+        if(!$res) {
+            $this->rollback();
+            return false;
+        } else {
+            $this->commit();
+            return true;
         }
     }
 
     /**
+     * 给分销商设置分销库存  
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param   $areaId 分区ID
+     * @param   $setData 设置数组 [分销商ID => 保留库存数量]
+     * @param   $status 状态：1=开启，0=关闭
+     */
+    public function setDefaultResellerStorage($areaId, $setData, $status = 0) {
+        if(!$areaId || !is_array($setData)) {
+            return false;
+        }
+
+        //计算数据
+        $reserveNum = 0;
+        foreach($setData as $resellerId => $storage) {
+            if($storage >= 0) {
+                $reserveNum += $storage;
+            }
+        }
+
+        $mark = true;
+        $this->startTrans();
+
+        foreach($setData as $resellerId => $storage) {
+
+            $res = $this->_setDefaultNum($areaId, $resellerId, $storage);
+
+            if(!$res) {
+                $mark = false;
+                break;
+            }
+        }
+
+        if(!$mark) {
+            $this->rollback();
+            return false;
+        }
+
+        $res = $this->_setDefaultInfo($areaId, $reserveNum, $status);
+        if(!$res) {
+            $this->rollback();
+            return false;
+        } else {
+            $this->commit();
+            return true;
+        }
+    }
+
+
+    /**
      * 获取场次
      */
-    public function getRoundList($venusId, $date) {
-        $getSql = "SELECT `id`,`round_name` FROM `{$this->_roundTable}` WHERE `venus_id`=? and `use_date`=? limit 0,100";
-        $data = array($venusId, $date);
-
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function getRoundList($venusId, $date, $page = 1, $size = 100) {
+        $field = 'id, round_name';
+        $where = array(
+            'venus_id' => $venusId,
+            'use_date' => $date
+        );
+        $page = "{$page},{$size}";
+        $res = $this->table($this->_roundTable)->field($field)->where($where)->page($page)->select();
 
         return $res;
     }
@@ -176,6 +327,19 @@ class YXStorage extends Model{
         $res = $resellerModel->getResellerList($providerId);
 
         return $res;
+    }
+
+    /**
+     * 获取默认的总结信息
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param  $venusId 场馆ID
+     * @param  $areaId 分区ID
+     * @return
+     */
+    public function getDefaultSummary($venusId, $areaId) {
+
     }
 
     /**
@@ -269,17 +433,183 @@ class YXStorage extends Model{
             return false;
         }
 
-        $getSql = "SELECT count(id) as sales FROM `{$this->_dynTable}` WHERE `round_id`=? and `zone_id`=? and `opid`=? and status in (2, 3)";
-        $data = array($roundId, $areaId, $resellerId);
+        $where = array(
+            'zone_id'  => $resellerId,
+            'round_id' => $roundId,
+            'opid'     => $areaId,
+            'status'   => array('in', '2, 3')
+        );
 
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $sales = $this->table($this->_dynTable)->where($where)->count();
 
-        if(isset($res[0])) {
-            return $res[0]['sales']; 
+        return $sales;
+    }
+
+
+    /**
+     * 设置保留库存
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param   $roundId 场次ID
+     * @param   $areaId 分区ID
+     * @param  $resellerId 分销商ID
+     * @param  $storage 保留库存
+     */
+    private function _setNum($roundId, $areaId, $resellerId, $storage) {
+        $where = array(
+            'round_id'    => $roundId,
+            'area_id'     => $areaId
+            'reseller_id' => $resellerId
+        );
+
+        $field = 'id';
+        $tmp = $this->table($this->_storageTable)->field($field)->where($where)->find();
+
+        if($tmp) {
+            $data = array(
+                'total_num'   => $storage,
+                'update_time' => time()
+            );
+
+            $res = $this->table($this->_storageTable)->where($where)->save($data);
         } else {
-            return 0;
+            $newData = $where;
+            $newData['total_num'] = $storage;
+            $newData['update_time'] = time();
+
+            $res = $this->table($this->_storageTable)->add($newData);
+        }
+
+        if($res === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     *  
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param  $roundId 场次ID
+     * @param  $areaId 分区ID
+     * @param  $reserveNum 分销商保留库存总和
+     * @param  $status 状态
+     */
+    private function _setInfo($roundId, $areaId, $reserveNum, $status){
+        $where = array(
+            'round_id'    => $roundId,
+            'area_id'     => $areaId
+        );
+
+        $field = 'id';
+        $tmp = $this->table($this->_infoTable)->field($field)->where($where)->find();
+
+        if($tmp) {
+            $data = array(
+                'reserve_num' => $reserveNum,
+                'status'      => $status,
+                'update_time' => time()
+            );
+
+            $res = $this->table($this->_infoTable)->where($where)->save($data);
+        } else {
+            $newData = $where;
+            $newData['total_num']   = $storage;
+            $newData['status']      = $status;
+            $newData['update_time'] = time();
+
+            $res = $this->table($this->_infoTable)->add($newData);
+        }
+
+        if($res === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+        /**
+     * 设置默认的库存信息
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param  $roundId 场次ID
+     * @param  $areaId 分区ID
+     * @param  $reserveNum 分销商保留库存总和
+     * @param  $status 状态
+     */
+    private function _setDefaultInfo($areaId, $reserveNum, $status){
+        $where = array(
+            'area_id'     => $areaId
+        );
+
+        $field = 'id';
+        $tmp = $this->table($this->_defaultInfoTable)->field($field)->where($where)->find();
+
+        if($tmp) {
+            $data = array(
+                'reserve_num' => $reserveNum,
+                'status'      => $status,
+                'update_time' => time()
+            );
+
+            $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
+        } else {
+            $newData = $where;
+            $newData['total_num']   = $storage;
+            $newData['status']      = $status;
+            $newData['update_time'] = time();
+
+            $res = $this->table($this->_defaultInfoTable)->add($newData);
+        }
+
+        if($res === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * 设置默认保留库存
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param   $areaId 分区ID
+     * @param  $resellerId 分销商ID
+     * @param  $storage 保留库存
+     */
+    private function _setDefaultNum($areaId, $resellerId, $storage) {
+        $where = array(
+            'area_id'     => $areaId
+            'reseller_id' => $resellerId
+        );
+
+        $field = 'id';
+        $tmp = $this->table($this->_defaultStorageTable)->field($field)->where($where)->find();
+
+        if($tmp) {
+            $data = array(
+                'total_num'   => $storage,
+                'update_time' => time()
+            );
+
+            $res = $this->table($this->_defaultStorageTable)->where($where)->save($data);
+        } else {
+            $newData = $where;
+            $newData['total_num'] = $storage;
+            $newData['update_time'] = time();
+
+            $res = $this->table($this->_defaultStorageTable)->add($newData);
+        }
+
+        if($res === false) {
+            return false;
+        } else {
+            return true;
         }
     }
 
