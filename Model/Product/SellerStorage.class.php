@@ -253,6 +253,12 @@ class SellerStorage extends Model{
             }
         }
 
+        //写日志
+        $logData         = ['ac' => 'removeReseller'];
+        $logData['data'] = [$resellerId, $pid , $setterId ];
+        $logData['rs']   = $mark;
+        $this->_log($logData, 'get');
+
         //返回结果
         if($mark) {
             $this->commit();
@@ -285,6 +291,12 @@ class SellerStorage extends Model{
         $this->startTrans();
 
         $res = $this->_removeSetterSetting($pid, $setterId, $attr);
+
+        //写日志
+        $logData         = ['ac' => 'removeSetter'];
+        $logData['data'] = [$pid , $setterId ];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'get');
 
         if($res) {
             $this->commit();
