@@ -1207,12 +1207,13 @@ class SellerStorage extends Model{
      * @param resellerArr 需要获取的分销商的ID数组
      *           array('1101', '2203', '444322')
      * @param date 日期 - 20161023
+     * @param level 层级：1：一级分销商，2：二级分销商
      * @param attr 产品属性，这边可能是场次
      *
      * @return 返回固定库存数组
      *  
      */
-    public function getUsedStorageArr($pid, $setterUid, $resellerArr, $date, $attr = false) {
+    public function getUsedStorageArr($pid, $setterUid, $resellerArr, $date, $level, $attr = false) {
 
          if(!$resellerArr || (!is_array($resellerArr) || !$date)) {
              return array();
@@ -1246,7 +1247,19 @@ class SellerStorage extends Model{
          //处理数据
          $res = array();
          foreach($tmp as $item) {
-             $res[$item['reseller_uid']] = $item;
+            //如果是一级分销商，还需要获取配置后，自己购买的数量
+            if($level === 1) {
+                $tmpWhere = $where;
+                $tmpWhere['setter_uid'] = $item['reseller_uid'];
+                $selfUsed = $this->table($this->_usedTable)->where($where)->field($field)->find();
+
+                if($selfUsed) {
+                    $item['fixed_num_used']     += $selfUsed['fixed_num_used'];
+                    $item['dynamic_num_used']   += $selfUsed['dynamic_num_used'];
+                }
+            }
+
+            $res[$item['reseller_uid']] = $item;
          }
 
          return $res;
@@ -1684,6 +1697,7 @@ class SellerStorage extends Model{
 
         //总的记录数
         $totalNum = 0;
+        $level = 1;
 
         //判断是不是产品的直接供应商
         if($setterUid == $applyDid) {
@@ -1701,6 +1715,9 @@ class SellerStorage extends Model{
             $totalNum = $this->table($table)->join($join)->where($where)->count();
 
             $memberList = $this->table($table)->field($field)->join($join)->where($where)->page($page)->select();
+
+            //记录哪级分销商
+            $level = 1;
         } else {
             //如果是分销产品的话，从产品分销表获取下级分销商
             $field = "member.dname, member.id, member.account";
@@ -1722,6 +1739,9 @@ class SellerStorage extends Model{
 
             //分页获取相应的分销商
             $memberList = $this->table($table)->field($field)->where($where)->page($page)->join($join)->select();
+
+            //记录哪级分销商
+            $level = 2;
         }
 
         //获取分销商数组
@@ -1740,7 +1760,7 @@ class SellerStorage extends Model{
         }
 
         //获取分销库存使用量
-        $usedStorageArr = $this->getUsedStorageArr($pid, $setterUid, $resellerArr, $date, $attr);
+        $usedStorageArr = $this->getUsedStorageArr($pid, $setterUid, $resellerArr, $date, $level, $attr);
 
         //获取库存设置值
         foreach($memberList as &$item) {
