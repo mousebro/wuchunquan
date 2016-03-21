@@ -19,19 +19,19 @@ class RefundAudit extends Model
     private $_orderDetailTable = 'uu_order_fx_details';
 
     /**
-     * @param int    $orderNum 平台订单号
-     * @param int    $terminal 终端号
-     * @param int    $salerid 景区6位编号
-     * @param int    $lid 景区id
-     * @param int    $tid 门票id
-     * @param int    $modifyType 修改类型 0-撤改 1-撤销 2-修改 3-取消
-     * @param int    $targetTnum 变更后票数
-     * @param int    $requesterID 退票发起人
-     * @param int    $dstatus 退票审核状态 0-未处理 1-同意 2-拒绝 3-等待第三方自动审核
+     * @param int    $orderNum    平台订单号
+     * @param int    $terminal    终端号
+     * @param int    $salerid     景区6位编号
+     * @param int    $lid         景区id
+     * @param int    $tid         门票id
+     * @param int    $modifyType  修改类型 0-撤改 1-撤销 2-修改 3-取消
+     * @param int    $targetTnum  变更后票数
+     * @param int    $operatorID  退票发起人
+     * @param int    $dstatus     退票审核状态 0-未处理 1-同意 2-拒绝 3-等待第三方自动审核
      * @param int    $requestTime 申请时间
-     * @param string $auditNote 审核备注
-     * @param int    $auditorID 审核人
-     * @param int    $auditTime 审核时间
+     * @param string $auditNote   审核备注
+     * @param int    $auditorID   审核人
+     * @param int    $auditTime   审核时间
      *
      * @return mixed
      */
@@ -43,7 +43,7 @@ class RefundAudit extends Model
         $tid,
         $modifyType,
         $targetTnum,
-        $requesterID,
+        $operatorID,
         $dstatus = 0,
         $requestTime = 0,
         $auditNote='',
@@ -61,7 +61,7 @@ class RefundAudit extends Model
             'tnum'     => $targetTnum,
             'dstatus'  => $dstatus,        /*状态0未操作1同意2拒绝*/
             'stime'    => ($requestTime) ? $requestTime : date('Y-m-d H:i:s'),
-            'fxid'     => $requesterID, //申请发起人
+            'fxid'     => $operatorID, //申请发起人
         ];
         if($auditTime) $data['dtime']=$auditTime;
         if($auditNote) $data['reason']=$auditNote;
