@@ -115,30 +115,11 @@ class SellerStorage extends Model{
             return 0;
         }
 
-        // if($date !== false) {
-        //     $tmp = strtotime($date);
-        //     if(!$tmp) {
-        //         $date = date('Ymd');
-        //     } else {
-        //         $date = date('Ymd', $tmp);
-        //     }
-        // } else {
-        //     $date = date('Ymd');
-        // }
-
         //判断分销商所在的层级，如果不是一级分销商的话，就不能设置
         $level = $this->getResellerLevel($pid, $memberId);
         if($level !== 2) {
             return 0;
         }
-
-        //判断上级设置库存的模式
-        // $publicInfo = $this->getAvailablePublic($applyDid, $pid, $date, $attr);
-        // if($publicInfo && $publicInfo['mode'] == 1) {
-        //      return 1;
-        // } else {
-        //     return 0;
-        // }
 
         return 1;
     }
@@ -2155,16 +2136,17 @@ class SellerStorage extends Model{
      * @author dwer
      * @date   2016-02-28
      *
-     * @param  [type] $pid 产品ID
-     * @param  [type] $setterId 上级供应商ID
-     * @param  [type] $date 日期
-     * @param  boolean $attr
-     * @return [type]
+     * @param  $pid 产品ID
+     * @param  $setterId 上级供应商ID
+     * @param  $date 日期
+     * @param  $attr
+     * @return
      */
     public function getUsedFixed($pid, $setterId, $date, $attr = false) {
         $where = array(
             'pid'          => $pid,
             'reseller_uid' => $setterId,
+            'setter_uid'   => $setterId,
             'date'         => $date
         );
 
@@ -2172,9 +2154,9 @@ class SellerStorage extends Model{
             $where['special_attr'] = $attr;
         }
 
-        $res = $this->table($this->_usedTable)->where($where)->sum('fixed_num_used');
+        $res = $this->table($this->_usedTable)->field('fixed_num_used')->where($where)->find();
         if($res) {
-            return intval($res);
+            return intval($res['fixed_num_used']);
         } else {
             return 0;
         }
@@ -2719,7 +2701,7 @@ class SellerStorage extends Model{
     }
 
     /**
-     * 消耗分销商的可用库存
+     * 消耗分销商的可用库存 - 默认消耗在固定库存里面
      * 
      * @param pid 产品ID
      * @param setterUid 供应商ID或是上级分销商ID
