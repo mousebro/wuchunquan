@@ -8,7 +8,14 @@ use Library\Model;
 
 class Ticket extends Model {
 
-	protected $tableName = 'uu_jq_ticket';
+    const __TICKET_TABLE__ = 'uu_jq_ticket';    //门票信息表
+    const __PRODUCT_TABLE__ = 'uu_products';    //产品信息表
+    const __LAND_TABLE__ = 'uu_land';   //景区信息表
+
+    const __SALE_LIST_TABLE__ = 'pft_product_sale_list';    //一手供应商产品表
+    const __EVOLUTE_TABLE__ = 'pft_p_apply_evolute';    //转分销产品表
+
+    const __PRODUCT_PRICE_TABLE__ = 'uu_product_price';   //产品价格表
 
 	/**
 	 * 根据票类id获取票类信息
@@ -16,6 +23,156 @@ class Ticket extends Model {
 	 * @return array   
 	 */
 	public function getTicketInfoById($id) {
-		return $this->find($id);
+		return $this->table(self::__TICKET_TABLE__)->find($id);
 	}
+
+    public function getSaleProducts($memberid) {
+        $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
+
+        if (!$sale_list) return array();
+
+        $sale_pid_arr = $sale_aid_arr = array();
+        foreach ($sale_list as $item) {
+            $sale_pid_arr[$item['aid']] = explode(',', $item['pids']);
+            $sale_aid_arr[] = $item['aid'];
+        }
+        // var_dump($sale_pid_arr);die;
+        $where = array(
+            'p.p_status' => 0,
+            'p.apply_limit' => 1,
+            'l.status' => 1,
+            'p.apply_did' => array('in', implode(',', $sale_aid_arr))
+        );
+
+        $data = $this->getProductsDetailInfo($where);
+
+        $result = array();
+        foreach ($data as $item) {
+            $pid_arr = $sale_pid_arr[$item['apply_did']];
+            if (is_array($pid_arr) && ($pid_arr[0] == 'A' || in_array($item['pid'], $pid_arr))) {
+                $item['apply_sid'] = $memberid;
+                $item['sapply_sid'] = $item['apply_did'];
+                $result[] = $item;
+            }
+        }
+        return $result;
+    }
+
+    public function getSaleDisProducts($memberid) {
+        $where = array(
+            'fid' => $memberid,
+            'sid' => array('exp', ' <> sourceid'),
+            'sourceid' => array('neq', $memberid),
+            'active' => 1
+        );
+
+        $sale_list = $this->table(self::__EVOLUTE_TABLE__)->where($where)->select();
+
+        if (!$sale_list) return array();
+
+        $pid_arr = $tmp = array();
+        foreach ($sale_list as $item) {
+            $pid_arr[] = $item['pid'];
+            $tmp[$item['pid']] = $item; 
+        }
+
+        $where = array(
+            'p.p_status' => 0,
+            'p.apply_limit' => 1,
+            'l.status' => 1,
+            'p.id' => array('in', implode(',', $pid_arr))
+        );
+        $data = $this->getProductsDetailInfo($where);
+
+        $result = array();
+        foreach ($data as $item) {
+            $item['apply_sid'] = $tmp[$item['id']]['sid'];
+            $item['sapply_sid'] = $tmp[$item['id']]['sourceid'];
+            $result[] = $item;
+        }
+        
+        return $result;
+    }
+
+    protected function getProductsDetailInfo($where) {
+        return $this->table(self::__PRODUCT_TABLE__)
+            ->join('p left join '.self::__LAND_TABLE__.' l on p.contact_id=l.id 
+                left join uu_jq_ticket t on p.id=t.pid')
+            ->field('p.p_type,p.p_name,p.salerid,t.title,t.landid,t.pid,l.title,l.area,l.address,l.px,l.apply_did,l.imgpath')
+            ->where($where)
+            ->select();
+    }
+
+
+    /**
+     * 获取门票零售价
+     * @param  [type] $id   [description]
+     * @param  string $date [description]
+     * @return [type]       [description]
+     */
+    public function getRetailPrice($pid, $date = '') {
+        $date = $date ?: date('Y-m-d', time());
+        //日历模式
+        $retail_price = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => $pid, 'start_date' => $date, 'ptype' => 1, 'status' => 0])
+                    ->getField('l_price');
+
+        if (!$retail_price) {
+            //时间段模式
+            $price_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                ->where(['pid' => $pid, 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
+                ->field('l_price,start_date,end_date')
+                ->find();
+
+            if (!$price_info) return false;
+            
+            $start_time = strtotime($price_info['start_date']);
+            $end_time   = strtotime($price_info['end_date']);
+            $cur_time   = strtotime($date);
+            if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                $retail_price = $price_info['l_price'];
+            } else {
+                return false;
+            }
+        }
+
+        return $retail_price / 100;
+    }
+
+
+    public function getMuchRetailPrice($pid_arr, $date = '') {
+        $date = $date ?: date('Y-m-d', time());
+        $result = $find_pid = array();
+        //日历模式
+        $retail_price = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => array('in', implode(',', $pid_arr)), 'start_date' => $date, 'ptype' => 1, 'status' => 0])
+                    ->field('pid,l_price')->select();
+        
+        if ($retail_price) {
+            foreach ($retail_price as $item) {
+                $find_pid[] = $item['pid'];
+                $result[$item['pid']] = $item['l_price'] / 100;
+            }
+        }
+        $pid_arr = array_diff($pid_arr, $find_pid);
+
+        if ($pid_arr) {
+            //时间段模式
+            $price_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
+                ->field('pid,l_price,start_date,end_date')
+                ->select();
+            if (!$price_info) return false;
+
+            foreach ($price_info as $item) {
+                $start_time = strtotime($item['start_date']);
+                $end_time   = strtotime($item['end_date']);
+                $cur_time   = strtotime($date);
+                if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                    $result[$item['pid']] = $item['l_price'] / 100;
+                }
+            }
+        }
+        return $result;
+    }
 }
