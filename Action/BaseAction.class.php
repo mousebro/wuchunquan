@@ -122,27 +122,27 @@ class BaseAction extends Controller
     /**
      * 测试时记录日志
      */
-//    public static function writeLog($word, $file)
-//    {
-//        $rootpath = '/var/www/html/log/site/';
-//        $filepath = $rootpath . $file . '.txt';
-//        if (is_array($word)) {
-//            $word = implode('|', $word);
-//        }
-//        $word = date("Y-m-d H:i:s") . "|" . $word . ".";
-//        if (file_exists($filepath)) {
-//            $maxsize = 1024 * 1024 * 10;
-//            $filesize = filesize($filepath);
-//            $tmp = explode(".", $filepath);
-//            $filetype = end($tmp);
-//            $filename = substr($filepath, 0, strpos($filepath, '.'));
-//            if ($filesize > $maxsize)
-//                rename($filepath, $filename . '_' . date('YmdHis') . '.' . $filetype);
-//        }
-//        $fp = fopen($filepath, "a");
-//        flock($fp, LOCK_EX);
-//        fwrite($fp, $word . "\n");
-//        flock($fp, LOCK_UN);
-//        fclose($fp);
-//    }
+    public static function writeLog($word, $file)
+    {
+        $rootpath = '/var/www/html/log/site';
+        $filepath = $rootpath . $file . '.txt';
+        if (is_array($word)) {
+            $word = implode('|', $word);
+        }
+        $word = date("Y-m-d H:i:s") . "|" . $word . ".";
+        if (file_exists($filepath)) {
+            $maxsize = 1024 * 1024 * 10;
+            $filesize = filesize($filepath);
+            $tmp = explode(".", $filepath);
+            $filetype = end($tmp);
+            $filename = substr($filepath, 0, strpos($filepath, '.'));
+            if ($filesize > $maxsize)
+                rename($filepath, $filename . '_' . date('YmdHis') . '.' . $filetype);
+        }
+        $fp = fopen($filepath, "a");
+        flock($fp, LOCK_EX);
+        fwrite($fp, $word . "\n");
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
 }

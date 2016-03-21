@@ -151,6 +151,7 @@ class RefundAuditAction extends BaseAction
         $requestTime = 0
     ) {
         //1 获取订单信息
+//        $this->writeLog(array($orderNum, $targetTicketNum,$operatorID),'refund_0321');
         $addResult = false;
         $refundModel = new RefundAudit();
         $modifyType  = $targetTicketNum == 0 ? self::CANCEL_CODE : self::MODIFY_CODE;
@@ -158,16 +159,12 @@ class RefundAuditAction extends BaseAction
         if ($underAudit) {
             return (240);//订单正在审核
         }
-
         $orderInfo = $refundModel->getOrderInfoForAudit($orderNum);
         if ( ! $orderInfo || ! is_array($orderInfo)) {
             return (205);//订单信息不全
         }
-
-        $operateStatus = 0; //需要第三方平台审核的操作状态默认为4
-        if ($orderInfo['mdetails']) {
-            $operateStatus = 4;
-        }
+        $auditorID = current(explode(',',$orderInfo['aids']));
+        $operateStatus = $orderInfo['mdetails'] ? 4 : 0; //需要第三方平台审核的操作状态默认为4
         $orderModel = new orderTools();
 
         //2 添加审核记录
@@ -181,7 +178,8 @@ class RefundAuditAction extends BaseAction
                 $modifyType,
                 $targetTicketNum,
                 $operatorID,
-                $operateStatus
+                $operateStatus,
+                $auditorID
             );
 
             $subOrders = $orderModel->getPackageSubOrder($orderNum);
@@ -237,9 +235,9 @@ class RefundAuditAction extends BaseAction
                     $targetTicketNum,
                     $operatorID,
                     1,
+                    1,
                     date('Y-m-d H:i:s'),
                     '系统自动审核',
-                    1,
                     date('Y-m-d H:i:s')
                 );
             } else {
@@ -252,7 +250,8 @@ class RefundAuditAction extends BaseAction
                     $modifyType,
                     $targetTicketNum,
                     $operatorID,
-                    $operateStatus
+                    $operateStatus,
+                    $auditorID
                 );
             }
         }

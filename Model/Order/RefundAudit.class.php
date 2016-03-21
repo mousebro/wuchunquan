@@ -45,9 +45,9 @@ class RefundAudit extends Model
         $targetTnum,
         $operatorID,
         $dstatus = 0,
+        $auditorID=0,
         $requestTime = 0,
         $auditNote='',
-        $auditorID=0,
         $auditTime=0
     ) {
         $table = $this->_refundAuditTable;
@@ -62,10 +62,10 @@ class RefundAudit extends Model
             'dstatus'  => $dstatus,        /*状态0未操作1同意2拒绝*/
             'stime'    => ($requestTime) ? $requestTime : date('Y-m-d H:i:s'),
             'fxid'     => $operatorID, //申请发起人
+            'dadmin'=> $auditorID
         ];
         if($auditTime) $data['dtime']=$auditTime;
         if($auditNote) $data['reason']=$auditNote;
-        if($auditorID) $data['dadmin']=$auditorID;
         return $this->table($table)->data($data)->add();
     }
 
@@ -98,7 +98,8 @@ class RefundAudit extends Model
             //            'o.status',
             //            'l.p_type',
             't.refund_audit',
-            'od.concat_id'
+            'od.concat_id',
+            'od.aids'
         );
 
         return $this->table($table)
@@ -167,5 +168,14 @@ class RefundAudit extends Model
 
         return $result;
     }
-
+    /**
+     * 测试用：打印调用的sql语句
+     *
+     * @return string
+     */
+    private function test()
+    {
+        $str = $this->getLastSql();
+        print_r($str . PHP_EOL);
+    }
 }
