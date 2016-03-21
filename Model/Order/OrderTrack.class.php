@@ -62,6 +62,7 @@ class OrderTrack extends Model
             5=>'验证',
             6=>'撤销',
             7=>'撤改',
+            8=>'重打印',
         ];
     }
     /**
