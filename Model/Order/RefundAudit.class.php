@@ -168,6 +168,18 @@ class RefundAudit extends Model
 
         return $result;
     }
+
+    /**
+     * 获取对应退款审核记录
+     * @param $auditID
+     *
+     * @return mixed
+     */
+    public function getAuditByID($auditID){
+        $where = ['id'=>$auditID];
+        $table = $this->_refundAuditTable;
+        return $this->table($table)->where($where)->find();
+    }
     /**
      * 测试用：打印调用的sql语句
      *
