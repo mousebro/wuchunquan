@@ -216,4 +216,18 @@ class Ticket extends Model {
         }
         return $result;
     }
+
+    /**
+     * 获取产品门市价
+     * @param  [type] $id  pid/tid
+     * @return [type]      [description]
+     */
+    public function getMarketPrice($id, $type = 'tid') {
+        if ($type != 'tid') {
+            $where = array('pid' => $id);
+        } else {
+            $where = array('id' => $id);
+        }
+        return $this->table(self::__TICKET_TABLE__)->where($where)->getField('tprice');
+    }
 }
