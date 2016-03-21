@@ -1251,7 +1251,7 @@ class SellerStorage extends Model{
             if($level === 1) {
                 $tmpWhere = $where;
                 $tmpWhere['setter_uid'] = $item['reseller_uid'];
-                $selfUsed = $this->table($this->_usedTable)->where($where)->field($field)->find();
+                $selfUsed = $this->table($this->_usedTable)->where($tmpWhere)->field($field)->find();
 
                 if($selfUsed) {
                     $item['fixed_num_used']     += $selfUsed['fixed_num_used'];
