@@ -19,6 +19,7 @@ class Ticket extends Model {
 
 	/**
 	 * 根据票类id获取票类信息
+     * @author wengbin 
 	 * @param  int $id 票类id
 	 * @return array   
 	 */
@@ -26,6 +27,26 @@ class Ticket extends Model {
 		return $this->table(self::__TICKET_TABLE__)->find($id);
 	}
 
+    public function getPackageInfoByTid($tid){
+        $table = 'uu_jq_ticket AS t';
+        $join = 'join uu_land AS l ON l.id=t.landid';
+        $where = ['t.id' => $tid];
+        $field = 'l.attribute';
+        $jsonRes = $this->table($table)->join($join)->where($where)->field($field)->find();
+        if($jsonRes){
+            $result = json_decode($jsonRes);
+        }else{
+            $result=false;
+        }
+        return $result;
+    }
+
+    /**
+     * 获取自供应可出售产品
+     * @author wengbin 
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
     public function getSaleProducts($memberid) {
         $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
 
@@ -58,6 +79,12 @@ class Ticket extends Model {
         return $result;
     }
 
+    /**
+     * 获取转分销可出售产品
+     * @author wengbin 
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
     public function getSaleDisProducts($memberid) {
         $where = array(
             'fid' => $memberid,
@@ -94,6 +121,12 @@ class Ticket extends Model {
         return $result;
     }
 
+    /**
+     * 获取产品详细信息
+     * @author wengbin 
+     * @param  [type] $where [description]
+     * @return [type]        [description]
+     */
     protected function getProductsDetailInfo($where) {
         return $this->table(self::__PRODUCT_TABLE__)
             ->join('p left join '.self::__LAND_TABLE__.' l on p.contact_id=l.id 
@@ -106,6 +139,7 @@ class Ticket extends Model {
 
     /**
      * 获取门票零售价
+     * @author wengbin 
      * @param  [type] $id   [description]
      * @param  string $date [description]
      * @return [type]       [description]
@@ -140,6 +174,13 @@ class Ticket extends Model {
     }
 
 
+    /**
+     * 一次性获取多产品零售价
+     * @author wengbin 
+     * @param  [type] $pid_arr array(1,2)
+     * @param  string $date    日期
+     * @return [type]          array(1 => 0.01, 2 => 0.02)
+     */
     public function getMuchRetailPrice($pid_arr, $date = '') {
         $date = $date ?: date('Y-m-d', time());
         $result = $find_pid = array();

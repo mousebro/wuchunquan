@@ -5,8 +5,15 @@ use Model\Demo\Bar;
 ini_set('display_errors', 'On');
 
 include_once dirname(__FILE__) . '/../../init.php';
+$redis = \Library\Cache\RedisCache::Connect();
+$redis->set('foo','bar',180);
+echo $redis->get('foo');
 
+exit;
 $online = new \Model\TradeRecord\OnlineTrade();
+
+print_r(C('redis')['main']);
+exit;
 $orderid = 'test_'.time();
 $res = $online->addLog($orderid, 100, 'test','test',1);
 var_dump($res);
