@@ -345,81 +345,15 @@ class YXStorage extends Model{
     /**
      * 获取总结信息
      */
-    public function getSummary($venusId, $roundId, $area) {
-        $seatSql   = "SELECT id,seat_status from `{$this->_seatsTable}` where venue_id=? AND `zone_id`=?";
-        $stmt_seat = $this->_db->prepare($seatSql);
-        $data      = array($venusId, $area);
-        $stmt_seat->execute($data);
+    public function getSummary($venusId, $roundId, $areaId) {
+        //获取总座位数和预留座位数
+        $where = array(
+            ''
+        );
 
-        //统计数据
-        $seatData = array();
-        $totalNum = 0;
-        $repeatNum = 0;
+        //获取销售数据
+        $saled = $this->getResellerNums($roundId, $areaId, $resellerId);
 
-        while($tmp=$stmt_seat->fetch(PDO::FETCH_ASSOC)) {
-            $seatData[$tmp['id']] = $tmp;
-
-            if ($tmp['seat_status']==0) {
-                $totalNum += 1;
-            }
-        }
-
-        $dynSql = "SELECT seat_id, zone_id, status FROM `{$this->_dynTable}` WHERE round_id=? AND `zone_id`=?";
-        $data      = array($roundId, $area);
-        $stmt_seat = $this->_db->prepare($dynSql);
-        $stmt_seat->execute($data);
-        while($s = $stmt_seat->fetch(\PDO::FETCH_ASSOC)) {
-            if ($s['status']==4 ) {
-                if ($seatData[$s['seat_id']]['seat_status']!=0) {
-                    //若场馆座位不可售，场次座位设置成可售，那么总库存增加
-                    $totalNum += 1;
-                }
-            } elseif ($s['status']==5) {
-                //场次座位不可售，场馆座位可售，那么总库存应该减少
-                if ($seatData[$s['seat_id']]['seat_status']!=5) {
-                    $totalNum -= 1;
-                }
-            } elseif ($s['status']!=4) {
-                if($seatData[$s['seat_id']]['seat_status']!=0) {
-                    $totalNum += 1;
-                }
-            }
-
-
-            if($s['status'] == 1) {
-                //如果场次预留的座位和场馆不可售的座位重合了，记录这个数据
-                if($seatData[$s['seat_id']]['seat_status'] == 5) {
-                    //重复的座位
-                    $repeatNum += 1;
-                }   
-            }
-        }
-
-        //获取已经占用的数量
-        $getSql = "SELECT COUNT(id) AS saled FROM `{$this->_dynTable}` WHERE `round_id`=? AND `status` in (2,3) AND `zone_id`=?";
-        $data = array($roundId, $area);
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        if(isset($res[0])) {
-            $saled = $res[0]['saled'];
-        } else {
-            $saled = 0;
-        }
-
-        //获取预留的座位
-        $getSql = "SELECT COUNT(id) AS reserve FROM `{$this->_dynTable}` WHERE `round_id`=? AND `status`=? AND `zone_id`=?";
-        $data = array($roundId, 1, $area);
-        $stmt = $this->_db->prepare($getSql);
-        $stmt->execute($data);
-        $res  = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        if(isset($res[0])) {
-            $reserve = $res[0]['reserve'];
-        } else {
-            $reserve = 0;
-        }
 
         //返回
         return array('total' => $totalNum, 'saled' => $saled, 'reserve' => $reserve, 'repeat' => $repeatNum);
@@ -434,13 +368,14 @@ class YXStorage extends Model{
         }
 
         $where = array(
-            'zone_id'  => $resellerId,
+            'zone_id'  => $areaId,
             'round_id' => $roundId,
-            'opid'     => $areaId,
+            'opid'     => $resellerId,
             'status'   => array('in', '2, 3')
         );
 
         $sales = $this->table($this->_dynTable)->where($where)->count();
+        $sales = $sales === false ? 0 : $sales;
 
         return $sales;
     }
