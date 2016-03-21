@@ -1426,11 +1426,18 @@ class SellerStorage extends Model{
 
         //按供应链扣除相应的库存
         foreach($res as $item) {
-            $resReseller = $item['first']; 
+            $resReseller = $item['first'];
             $resSetter   = $item['second'];
+            $selfUse     = isset($item['self_use']) ? true : false;
 
-            //供应链上的分销商的都要扣除
-            $re = $this->_useupStorage($orderId, $pid, $resSetter, $resReseller, $date, $buyNum, $attr);
+            if($selfUse) {
+                //一级分销商还没有给下级分销配置的时候，也要记录自己使用量
+                $re = $this->_useupSelfStorage($orderId, $pid, $resSetter, $resReseller, $date, $buyNum, $attr);
+            } else {
+                //供应链上的分销商的都要扣除
+                $re = $this->_useupStorage($orderId, $pid, $resSetter, $resReseller, $date, $buyNum, $attr);
+            }
+
             if(!$re) {
                 $mark = false;
                 break;
@@ -2646,7 +2653,7 @@ class SellerStorage extends Model{
         //判断库存是否充足
         $tmp = $this->getMaxStorage($pid, $setterUid, $resellerUid, $date, $attr);
         $maxFixed     = $tmp['max_fixed'];
-        $maxDynamic = $tmp['max_dynamic'];
+        $maxDynamic   = $tmp['max_dynamic'];
 
         //获取用户已经使用的库存
         $tmp         = $this->getUsedStorage($pid, $setterUid, $resellerUid, $date, $attr);
@@ -2712,6 +2719,39 @@ class SellerStorage extends Model{
     }
 
     /**
+     * 消耗分销商的可用库存
+     * 
+     * @param pid 产品ID
+     * @param setterUid 供应商ID或是上级分销商ID
+     * @param resellerUid 分销商ID
+     * @param date 日期 - 20161023
+     * @param buyNum 需要购买的数量
+     * @param attr 产品属性，这边可能是场次
+     *
+     * @return bool
+     *   
+     */
+    private function _useupSelfStorage($orderId, $pid, $setterUid, $resellerUid, $date, $buyNum, $attr = false) {
+        //记录使用来源表
+        $logFixedNum   = $buyNum;
+        $logDynamicNum = 0;
+
+        //足够的情况
+        $res = $this->_useFixed($pid, $setterUid, $resellerUid, $date, $buyNum, $attr);
+        if(!$res) {
+            return false;
+        }
+
+        //记录库存的使用记录
+        $logRes = $this->_useLog($orderId, $setterUid, $resellerUid, $logFixedNum, $logDynamicNum);
+        if(!$logRes) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
      * 根据购买用户、商品、分销商ID获取有设置分销商库存的分销商
      *
      * @param  memberId 购买用户ID
@@ -2755,7 +2795,10 @@ class SellerStorage extends Model{
                             array('first' => $memberId, 'second' => $setterId), //使用供应商的库存
                         );
                     } else {
-                        return array(array('first' => $memberId, 'second' => $setterId));
+                        return array(
+                            array('first' => $memberId, 'second' => $setterId),
+                            array('first' => $memberId, 'second' => $memberId, 'self_use' => true) //一级分销商还没有给下级分销配置的时候，也要记录自己使用量
+                        );
                     }
 
                 } else {
