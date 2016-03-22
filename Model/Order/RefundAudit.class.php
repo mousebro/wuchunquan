@@ -17,6 +17,8 @@ class RefundAudit extends Model
     private $_landTable = 'uu_land';
     private $_ticketTable = 'uu_jq_ticket';
     private $_orderDetailTable = 'uu_order_fx_details';
+    private $_memberTable = 'pft_member';
+    private $_orderSynchronizeTable = 'order_status_synchronize';
 
     /**
      * @param int    $orderNum    平台订单号
@@ -221,6 +223,7 @@ class RefundAudit extends Model
         $join  = array(
             "$this->_landTable AS l ON l.id=a.lid",
             "$this->_orderDetailTable AS od ON od.orderid=a.ordernum",
+            "$this->_memberTable AS m ON m.id=l.apply_did"
         );
         $where = array("l.status" => array('lt', 3));
         //根据传入参数确定查询条件
@@ -257,6 +260,8 @@ class RefundAudit extends Model
                 'a.*',
                 'l.title AS ltitle',
                 'l.apply_did',
+                'od.concat_id',
+                'm.dcodeURL'
             );
             $order  = array(
                 'dstatus ASC',
@@ -270,8 +275,7 @@ class RefundAudit extends Model
                            ->limit($limit)
                            ->order($order)
                            ->select();
-            $this->test();
-
+//            $this->test();
             return $result;
         }
     }
