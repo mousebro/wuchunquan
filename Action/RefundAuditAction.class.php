@@ -20,6 +20,7 @@ class RefundAuditAction extends BaseAction
     const UNDEFINED_SOURCE_IN_TRACK    = 18;     //订单追踪表中表示未定义的请求来源
     const APPLY_AUDIT_CODE_IN_TRACK    = 9;      //订单追踪表中表示发起退款审核
     const OPERATE_AUDIT_IN_TRACK_TABLE = 10;     //订单追踪表中表示退款审核已处理
+    private $noticeURL = 'http://localhost/module/api/RefundNotice.php';
 
     /**
      * 判断订单是否需要退票审核
@@ -464,6 +465,7 @@ class RefundAuditAction extends BaseAction
             250 => '请选择审核结果',
             251 => '备注信息不可为空',
             252 => '审核时操作失败',
+            253 => '未知错误',
         );
         if ( ! $msg && array_key_exists($code, $msgList)) {
             $msg = $msgList[$code];
@@ -476,5 +478,28 @@ class RefundAuditAction extends BaseAction
             "data" => $data,
             "msg"  => $msg,
         )));
+    }
+
+    /**
+     * @param int $action
+     * @param int $ordernum
+     * @param int $targetTicketNum
+     * @param int $auditResult 审核结果
+     * @return int
+     */
+    public function noticeAuditResult($action,$ordernum,$targetTicketNum,$auditResult){
+        $data = array(
+          'action' => $action,
+          'ordernum' => $ordernum,
+          'tnum' =>$targetTicketNum,
+          'dstatus' => $auditResult,
+        );
+        $url = $this->noticeURL;
+        $result = $this->raw_post($url,$data);
+        if($result){
+            return 200;
+        }else{
+            return 252;
+        }
     }
 }
