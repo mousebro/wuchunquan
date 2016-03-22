@@ -102,7 +102,7 @@ class OrderTrack extends Model
 
     public function getLog($ordernum)
     {
-        $where[':ordernum'] = ':ordernum';
+        $where['ordernum'] = ':ordernum';
         return $this->Table('pft_order_track')
             ->where($where)
             ->bind(':ordernum',$ordernum)
