@@ -49,6 +49,9 @@ class OrderTrack extends Model
             13=>'PC-银联',
             14=>'手机-银联',
             15=>'PC-环迅',
+            16=>'内部接口',
+            17=>'外部接口',
+            18=>'undefined',
         ];
     }
     public static function getActionList()

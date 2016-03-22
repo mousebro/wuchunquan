@@ -30,15 +30,14 @@ class OrderTools extends Model {
 
 	/**
 	 * 获取订单的分销详情
+	 * @param $orderID
 	 *
-	 * @param int $orderid
-	 * @param int $limit
 	 * @return mixed
 	 * @author fangli
 	 */
-	public function getOrderDetail($orderid){
+	public function getOrderDetail($orderID){
 
-			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderid])->find();
+			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderID])->find();
 	}
 
 	/**

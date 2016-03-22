@@ -45,10 +45,10 @@ class RefundAudit extends Model
         $targetTnum,
         $operatorID,
         $dstatus = 0,
-        $auditorID=0,
+        $auditorID = 0,
         $requestTime = 0,
-        $auditNote='',
-        $auditTime=0
+        $auditNote = '',
+        $auditTime = 0
     ) {
         $table = $this->_refundAuditTable;
         $data  = [
@@ -62,10 +62,15 @@ class RefundAudit extends Model
             'dstatus'  => $dstatus,        /*状态0未操作1同意2拒绝*/
             'stime'    => ($requestTime) ? $requestTime : date('Y-m-d H:i:s'),
             'fxid'     => $operatorID, //申请发起人
-            'dadmin'=> $auditorID
+            'dadmin'   => $auditorID,
         ];
-        if($auditTime) $data['dtime']=$auditTime;
-        if($auditNote) $data['reason']=$auditNote;
+        if ($auditTime) {
+            $data['dtime'] = $auditTime;
+        }
+        if ($auditNote) {
+            $data['reason'] = $auditNote;
+        }
+
         return $this->table($table)->data($data)->add();
     }
 
@@ -99,7 +104,7 @@ class RefundAudit extends Model
             //            'l.p_type',
             't.refund_audit',
             'od.concat_id',
-            'od.aids'
+            'od.aids',
         );
 
         return $this->table($table)
@@ -150,36 +155,127 @@ class RefundAudit extends Model
         $auditNote,
         $orderNum,
         $operatorID,
-    $auditTime=0
+        $auditTime = 0
     ) {
-        $table  = $this->_refundAuditTable;
-        $where  = array(
+        $table     = $this->_refundAuditTable;
+        $where     = array(
             'id'       => $auditID,
             'ordernum' => $orderNum,
         );
         $auditTime = ($auditTime) ? $auditTime : date('Y-m-d H:i:s');
-        $data   = array(
+        $data      = array(
             'dstatus' => $auditResult,
             'reason'  => $auditNote,
             'dadmin'  => $operatorID,
             'dtime'   => $auditTime,
         );
-        $result = $this->table($table)->where($where)->data($data)->save();
+        $result    = $this->table($table)->where($where)->data($data)->save();
 
         return $result;
     }
 
     /**
      * 获取对应退款审核记录
+     *
      * @param $auditID
      *
      * @return mixed
      */
-    public function getAuditByID($auditID){
-        $where = ['id'=>$auditID];
+    public function getAuditByID($auditID)
+    {
+        $where = ['id' => $auditID];
         $table = $this->_refundAuditTable;
+
         return $this->table($table)->where($where)->find();
     }
+
+    /**
+     * 获取退款审核列表-先处理供应商的
+     *
+     * @param null $memberID
+     * @param null $landTitle
+     * @param null $noticeType
+     * @param null $applyTime
+     * @param null $auditStatus
+     * @param      $auditTime
+     * @param bool $getTotalPage
+     * @param bool $memberType 1-管理员 2-供应商 3-分销商
+     * @param int  $page
+     * @param int  $limit
+     *
+     * @return mixed
+     */
+    public function getAuditList(
+        $memberID = null,
+        $landTitle = null,
+        $noticeType = null,
+        $applyTime = null,
+        $auditStatus = null,
+        $auditTime,
+        $getTotalPage = false,
+        $page = 1,
+        $limit = 10
+    ) {
+
+        $table = "$this->_refundAuditTable AS a";
+        $join  = array(
+            "$this->_landTable AS l ON l.id=a.lid",
+            "$this->_orderDetailTable AS od ON od.orderid=a.ordernum",
+        );
+        $where = array("l.status" => array('lt', 3));
+        //根据传入参数确定查询条件
+        if ($memberID != 1) {
+            $where['_string'] = "l.apply_did={$memberID} OR a.fxid={$memberID}";
+        }
+        if ($landTitle) {
+            $where['l.title'] = array("like", "%{$landTitle}%");
+        }
+        if ($noticeType !== null) {
+            $where['a.stype'] = $noticeType;
+        }
+        if ($applyTime) {
+            $where['a.stime'] = $applyTime;
+        }
+        if ($auditTime) {
+            $where['a.dtime'] = $auditTime;
+        }
+        if ($auditStatus != null) {
+            $where['a.dstatus'] = $auditStatus;
+        }
+        //获取记录总数
+        if ($getTotalPage) {
+            $field = array("count(*)");
+
+            return $this->table($table)
+                        ->join($join)
+                        ->where($where)
+                        ->field($field)
+                        ->find();
+        } else {
+            //查询记录详情
+            $field  = array(
+                'a.*',
+                'l.title AS ltitle',
+                'l.apply_did',
+            );
+            $order  = array(
+                'dstatus ASC',
+                'stime DESC',
+            );
+            $result = $this->table($table)
+                           ->join($join)
+                           ->where($where)
+                           ->field($field)
+                           ->page($page)
+                           ->limit($limit)
+                           ->order($order)
+                           ->select();
+            $this->test();
+
+            return $result;
+        }
+    }
+
     /**
      * 测试用：打印调用的sql语句
      *
