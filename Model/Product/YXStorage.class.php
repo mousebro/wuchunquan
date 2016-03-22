@@ -538,7 +538,7 @@ class YXStorage extends Model{
         $where = array(
             'venue_id'    => $venusId,
             'zone_id'     => $areaId,
-            'seat_status' => array('neq', 1)
+            'seat_status' => array('neq', 5)
         );
 
         $allSeats = $this->table($this->_seatsTable)->where($where)->count();
@@ -565,7 +565,7 @@ class YXStorage extends Model{
      * 获取分销商的销售量
      */
     public function getResellerNums($roundId, $areaId, $resellerId = false) {
-        if(!$roundId || !$areaId || !$resellerId) {
+        if(!$roundId || !$areaId) {
             return false;
         }
 
@@ -880,7 +880,7 @@ class YXStorage extends Model{
     private function _setNum($roundId, $areaId, $resellerId, $storage) {
         $where = array(
             'round_id'    => $roundId,
-            'area_id'     => $areaId
+            'area_id'     => $areaId,
             'reseller_id' => $resellerId
         );
 
@@ -963,7 +963,7 @@ class YXStorage extends Model{
      * @param  $reserveNum 分销商保留库存总和
      * @param  $status 状态
      */
-    private function _setDefaultInfo($areaId, $reserveNum, $status){
+    private function _setDefaultInfo($areaId, $reserveNum, $status) {
         $where = array(
             'area_id'     => $areaId
         );
@@ -981,7 +981,7 @@ class YXStorage extends Model{
             $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
         } else {
             $newData = $where;
-            $newData['total_num']   = $storage;
+            $newData['reserve_num'] = $reserveNum;
             $newData['status']      = $status;
             $newData['update_time'] = time();
 
@@ -1006,7 +1006,7 @@ class YXStorage extends Model{
      */
     private function _setDefaultNum($areaId, $resellerId, $storage) {
         $where = array(
-            'area_id'     => $areaId
+            'area_id'     => $areaId,
             'reseller_id' => $resellerId
         );
 
