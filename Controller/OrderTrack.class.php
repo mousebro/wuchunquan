@@ -23,7 +23,7 @@ class OrderTrack extends Controller
 
     private function verify($ordernum, $token)
     {
-        if (md5(strrev($ordernum . self::KEY))!=$token)
+        if (md5(strrev($ordernum))!=$token)
             $this->apiReturn(203,[], 'Auth Error');
     }
     public function write()
