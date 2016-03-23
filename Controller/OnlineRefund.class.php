@@ -4,6 +4,7 @@
  * User: chenguangpeng
  * Date: 3/22-022
  * Time: 17:47
+ * http://open.12301.test/pft_api.php?c=OnlineRefund&a=wx
  */
 namespace Controller;
 define('BASE_PAY_DIR', '/var/www/html/alipay');
@@ -21,28 +22,34 @@ use WeChat\Pay2\Refund_pub;
 class OnlineRefund extends Controller
 {
     const UNION_MCH_ID  = 802350173720081;
-
+    private $data;
     public function __construct()
     {
         $this->req_log = BASE_LOG_DIR . '/refund/req_'.date('ymd').'.log';
         $this->err_log = BASE_LOG_DIR . '/refund/err_'.date('ymd').'.log';
         $this->ok_log  = BASE_LOG_DIR . '/refund/ok_'.date('ymd') .'.log';
-        $auth = I('get.auth');
-        $comp = md5(md5(I('get.ordernum').md5(strrev(I('get.ordernum')))));
+        Api::Log(json_encode($_POST), $this->req_log);
+        $auth = I('post.auth');
+        $comp = md5(md5(I('post.ordernum').md5(strrev(I('post.ordernum')))));
         if (empty( $auth ) || $auth!=$comp) {
-            LogRefund('身份验证失败',LOG_NAME);
+            Api::Log('身份验证失败',$this->err_log);
             exit("身份验证失败");
         }
-        $this->log_id = I("get.log_id");
+        $this->log_id = I("post.log_id");
         if (!$this->log_id) exit("退款记录ID不能为空");
         $this->model  = new \Model\TradeRecord\OnlineRefund();
-        $this->data  = $this->model->GetRefundLog($this->log_id);
-        if (!$this->data) exit("退款记录不存在");
+        $data  = $this->model->GetRefundLog($this->log_id);
+        if (!$data) exit("退款记录不存在");
+        $this->data  = (object)$data;
+        $pay_mode = I("post.pay_mode");
+        if ($pay_mode==5) $this->wx();
+        elseif($pay_mode==7) $this->union();
+        else exit('Unknow');
     }
 
     public function wx()
     {
-        $appid      = $this->data->appid;
+        $appid      = $this->data->appid ? $this->data->appid : PFT_WECHAT_APPID;
         $WePayConf = include BASE_WX_DIR . '/pay/wepay/WxPayPubHelper/WePay.conf.php';
         define('SSLCERT_PATH',$WePayConf[$appid]['sslcert_path']);
         define('SSLKEY_PATH', $WePayConf[$appid]['sslkey_path']);
@@ -50,10 +57,6 @@ class OnlineRefund extends Controller
         if (!$this->data->ordernum) {
             Api::Log('订单号为空', $this->err_log);
             Api::Response('订单号为空', Api::badRequestCode);
-        }
-        if (!$this->data->total_money || !is_numeric($this->data->total_money)) {
-            Api::Log('支付总金额不能为空且必须为数字', $this->err_log);
-            Api::Response('支付总金额不能为空且必须为数字', Api::badRequestCode);
         }
         if (!$this->data->refund_money || !is_numeric($this->data->refund_money)) {
             Api::Log('退款金额不能为空且必须为数字', $this->err_log);
@@ -67,7 +70,7 @@ class OnlineRefund extends Controller
         $refund_fee   = $this->data->refund_money;
         $out_refund_no = "$out_trade_no".time();//商户退款单号，商户自定义，此处仅作举例
         //总金额需与订单号out_trade_no对应，demo中的所有订单的总金额为1分
-        $total_fee  = $this->data->total_money;
+        $total_fee  = $this->data->refund_money;
         $trade_no   = $this->data->trade_no;
         $refund = new Refund_pub($uappid, $mchid, $key, $app_secret);
         //设置必填参数
@@ -88,7 +91,8 @@ class OnlineRefund extends Controller
         }
         //调用结果
         $refundResult = $refund->getResult();
-        Api::Log(json_encode($refundResult), RET_LOG);
+        //var_dump($refundResult);
+        Api::Log(json_encode($refundResult), $this->req_log);
         //商户根据实际情况设置相应的处理流程,此处仅作举例
         if ($refundResult["return_code"] == "FAIL") {
             Api::Log("通信出错：{$refundResult['return_msg']}", $this->ok_log);
@@ -114,7 +118,7 @@ class OnlineRefund extends Controller
         $params = array(
             'version'       => '5.0.0',        //版本号
             'encoding'      => 'utf-8',        //编码方式
-            'certId'        => getSignCertId (),    //证书ID
+            'certId'        => getSignCertId($SDK_SIGN_CERT_PATH),    //证书ID
             'signMethod'    => '01',        //签名方法
             'txnType'       => '04',        //交易类型
             'txnSubType'    => '00',        //交易子类
@@ -125,11 +129,11 @@ class OnlineRefund extends Controller
             'merId'         => self::UNION_MCH_ID,    //商户代码，请修改为自己的商户号
             'origQryId'     => $this->data->trade_no,  //原消费的queryId，可以从查询接口或者通知接口中获取
             'txnTime'       => date('YmdHis', $_SERVER['REQUEST_TIME']),    //订单发送时间，重新产生，不同于原消费
-            'txnAmt'        => $this->data->total_fee,    //交易金额，退货总金额需要小于等于原消费
+            'txnAmt'        => $this->data->refund_money,    //交易金额，退货总金额需要小于等于原消费
             'backUrl'       => 'http://pay.12301.cc/union/BackReceive_Refund.php',//后台通知地址
             'reqReserved'   =>' 透传信息', //请求方保留域，透传字段，查询、通知、对账文件中均会原样出现
         );
-        sign($params);
+        sign($params, $SDK_SIGN_CERT_PATH);
         Api::Log(json_encode($params), $union_log_req);
         $result = sendHttpRequest ($params, SDK_BACK_TRANS_URL);
         //返回结果展示
