@@ -19,8 +19,7 @@ class Land extends Model
      * @date 2016-03-03 09:05:39
      * @return int
      */
-    public  function getTerminalId()
-    {
+    public  function getTerminalId() {
         return $this->table('pft_terminal_id')->add(['id'=>'null']);
     }
 
@@ -29,7 +28,7 @@ class Land extends Model
      * @author dwer
      * @date   2016-03-23
      *
-     * @param  $pid
+     * @param  $pid 产品ID
      * @return
      */
     public function getExtFromPid($pid, $field = false){
@@ -47,5 +46,18 @@ class Land extends Model
         } else {
             return $extInfo;
         }
+    }
+
+    public function getLandInfo($lid, $field = '*') {
+        return $this->table('uu_land')->field($field)->find($lid);
+    }
+
+    /**
+     * 获取产品所属的景区id
+     * @param  [type] $pid [description]
+     * @return [type]      [description]
+     */
+    public function getLandIdByPid($pid) {
+        return $this->table('uu_products')->where(['id' => $pid])->getField('contact_id');
     }
 }
