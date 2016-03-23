@@ -23,4 +23,17 @@ class Land extends Model
     {
         return $this->table('pft_terminal_id')->add(['id'=>'null']);
     }
+
+    public function getLandInfo($lid, $field = '*') {
+        return $this->table('uu_land')->field($field)->find($lid);
+    }
+
+    /**
+     * 获取产品所属的景区id
+     * @param  [type] $pid [description]
+     * @return [type]      [description]
+     */
+    public function getLandIdByPid($pid) {
+        return $this->table('uu_products')->where(['id' => $pid])->getField('contact_id');
+    }
 }

@@ -47,34 +47,42 @@ class Ticket extends Model {
      * @param  [type] $memberid [description]
      * @return [type]           [description]
      */
-    public function getSaleProducts($memberid) {
-        $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
+    public function getSaleProducts($memberid, $option = array()) {
+        // $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
 
-        if (!$sale_list) return array();
+        // if (!$sale_list) return array();
 
-        $sale_pid_arr = $sale_aid_arr = array();
-        foreach ($sale_list as $item) {
-            $sale_pid_arr[$item['aid']] = explode(',', $item['pids']);
-            $sale_aid_arr[] = $item['aid'];
-        }
+        // $sale_pid_arr = $sale_aid_arr = array();
+        // foreach ($sale_list as $item) {
+        //     if ($memberid == $item['aid']) {
+        //         $sale_pid_arr[$item['aid']] = array('A');
+        //     } else {
+        //         $sale_pid_arr[$item['aid']] = explode(',', $item['pids']);
+        //     }
+        //     $sale_aid_arr[] = $item['aid'];
+        // }
         // var_dump($sale_pid_arr);die;
         $where = array(
             'p.p_status' => 0,
             'p.apply_limit' => 1,
             'l.status' => 1,
-            'p.apply_did' => array('in', implode(',', $sale_aid_arr))
+            'p.apply_did' => $memberid
         );
+
+        if ($option) {
+            $where = array_merge($where, $option);
+        }
 
         $data = $this->getProductsDetailInfo($where);
 
         $result = array();
         foreach ($data as $item) {
-            $pid_arr = $sale_pid_arr[$item['apply_did']];
-            if (is_array($pid_arr) && ($pid_arr[0] == 'A' || in_array($item['pid'], $pid_arr))) {
+            // $pid_arr = $sale_pid_arr[$item['apply_did']];
+            // if (is_array($pid_arr) && ($pid_arr[0] == 'A' || in_array($item['pid'], $pid_arr))) {
                 $item['apply_sid'] = $memberid;
                 $item['sapply_sid'] = $item['apply_did'];
                 $result[] = $item;
-            }
+            // }
         }
         return $result;
     }
@@ -85,10 +93,10 @@ class Ticket extends Model {
      * @param  [type] $memberid [description]
      * @return [type]           [description]
      */
-    public function getSaleDisProducts($memberid) {
+    public function getSaleDisProducts($memberid, $option = array()) {
         $where = array(
             'fid' => $memberid,
-            'sid' => array('exp', ' <> sourceid'),
+            // 'sid' => array('exp', ' <> sourceid'),
             'sourceid' => array('neq', $memberid),
             'status' => 0,
             'active' => 1
@@ -110,6 +118,11 @@ class Ticket extends Model {
             'l.status' => 1,
             'p.id' => array('in', implode(',', $pid_arr))
         );
+
+        if ($option) {
+            $where = array_merge($where, $option);
+        }
+
         $data = $this->getProductsDetailInfo($where);
 
         $result = array();
@@ -132,7 +145,7 @@ class Ticket extends Model {
         return $this->table(self::__PRODUCT_TABLE__)
             ->join('p left join '.self::__LAND_TABLE__.' l on p.contact_id=l.id 
                 left join uu_jq_ticket t on p.id=t.pid')
-            ->field('p.p_type,p.p_name,p.salerid,t.title,t.landid,t.pid,l.title,l.area,l.address,l.px,l.apply_did,l.imgpath')
+            ->field('p.id,p.p_type,p.p_name,p.salerid,t.title,t.id as tid,t.landid,t.pid,l.title,l.area,l.address,l.px,l.apply_did,l.imgpath')
             ->where($where)
             ->select();
     }
@@ -230,5 +243,14 @@ class Ticket extends Model {
             $where = array('id' => $id);
         }
         return $this->table(self::__TICKET_TABLE__)->where($where)->getField('tprice');
+    }
+
+    /**
+     * 判断是否是自供应产品
+     * @return boolean [description]
+     */
+    public function isSelfApplyProduct($memberid, $pid) {
+        $find = $this->table(self::__PRODUCT_TABLE__)->where(array('id' => $pid, 'apply_did' => $memberid))->find();
+        return $find ? true : false;
     }
 }
