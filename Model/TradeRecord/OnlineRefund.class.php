@@ -60,13 +60,17 @@ class OnlineRefund extends Model
     {
         $trade_log = $this->GetTradeLog($ordernum);
         if (!$trade_log) return false;
+        $appid = '';
         //TODO::需要记录微信支付的appid
-        if (!$trade_log['seller_email']) {
-            $appid = PFT_WECHAT_APPID;
-        } else {
-            $obj  = json_decode($trade_log['seller_email']);
-            $appid = $obj->sub_appid;
+        if ($trade_log['sourceT']==1) {
+            if (!$trade_log['seller_email']) {
+                $appid = PFT_WECHAT_APPID;
+            } else {
+                $obj  = json_decode($trade_log['seller_email']);
+                $appid = $obj->sub_appid;
+            }
         }
+
         $data = [
             'aid'           => $aid,
             'ordernum'      => $ordernum,
@@ -81,7 +85,9 @@ class OnlineRefund extends Model
             'handler_time'  => $handler_time,
             'appid'         => $appid,
         ];
-        return $this->Table('pft_order_refund')->data($data)->add();
+        $id = $this->Table('pft_order_refund')->data($data)->add();
+        if ($id) return $id;
+        return $this->getDbError();
     }
 
     /**
