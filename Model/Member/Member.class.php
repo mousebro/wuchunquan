@@ -32,4 +32,19 @@ class Member extends Model
         return $member ?: false;
     }
 
+    /**
+     * 重置用户密码
+     * @param  [type] $memberid     [description]
+     * @param  [type] $new_password [description]
+     * @return [type]               [description]
+     */
+    public function resetPassword($memberid, $new_password) {
+        $data = array(
+            'id' => $memberid,
+            'password' => md5(md5($new_password))
+        );
+        $affect_rows = $this->table(self::__MEMBER_TABLE__)->save($data);
+        return $affect_rows ? true : false;
+    }
+
 }
