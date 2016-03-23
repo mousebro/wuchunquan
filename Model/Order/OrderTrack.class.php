@@ -83,22 +83,24 @@ class OrderTrack extends Model
      * @param $branch_terminal int 分终端ID
      * @param $id_card string 身份证
      * @param $oper int 操作员ID
+     * @param $salerid int 景区6位ID
      * @return mixed
      */
-    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id, $branch_terminal, $id_card, $oper)
+    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id, $branch_terminal, $id_card, $oper,$salerid=0)
     {
         $data = [
-            'ordernum'  => $ordernum,
-            'action'    => $action,
-            'tid'       => $tid,
-            'tnum'      => $tnum,
-            'left_num'  => $left_num,
-            'source'    => $source,
-            'terminal'  => $terminal_id,
-            'branchTerminal'=> $branch_terminal,
-            'id_card'   => $id_card,
-            'insertTime'   => date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']),
-            'oper_member'=> $oper
+            'ordernum'       => $ordernum,
+            'action'         => $action,
+            'tid'            => $tid,
+            'tnum'           => $tnum,
+            'left_num'       => $left_num,
+            'source'         => $source,
+            'terminal'       => $terminal_id,
+            'branchTerminal' => $branch_terminal,
+            'id_card'        => $id_card,
+            'SalerID'        => $salerid,
+            'insertTime'     => date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']),
+            'oper_member'    => $oper,
         ];
         $last = $this->Table('pft_order_track')->data($data)->add();
         echo $this->getDbError();

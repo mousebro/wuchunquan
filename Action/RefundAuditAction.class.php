@@ -330,22 +330,25 @@ class RefundAuditAction extends BaseAction
         $refundModel = new RefundAudit();
         $auditInfo   = $refundModel->getOrderInfoForAudit($orderNum);
         $trackModel  = new OrderTrack();
+        $ticketRemain = ($auditResult==1) ? $auditTnum : $auditInfo['tnum'];
         $trackModel->addTrack(
             $orderNum,
             self::OPERATE_AUDIT_IN_TRACK_TABLE,
             $auditInfo['tid'],
             $auditInfo['tnum'],
-            $auditTnum,
+            $ticketRemain,
             self::INNER_SOURCE_IN_TRACK,
             $auditInfo['terminal'],
             0,
-            0,
-            $operatorID);
+            $auditInfo['personid'],
+            $operatorID,
+            $auditInfo['salerid']
+            );
         if ($auditID == 0) {
             return (205); //订单信息不全
         }
-        if ($auditResult == 0) {
-            return (250); //请选择审核结果
+        if (!in_array($auditResult,[1,2])) {
+            return (250); //审核结果只能是同意或拒绝
         }
         if ($auditNote == '') {
             return (251);//备注信息不可为空
@@ -463,7 +466,7 @@ class RefundAuditAction extends BaseAction
             230 => '中间分销商不允许取消订单',
             240 => '订单已在审核中，请您耐心等待',
             241 => '数据更新失败,请联系管网站管理员',
-            250 => '请选择审核结果',
+            250 => '审核结果只能是同意或拒绝',
             251 => '备注信息不可为空',
             252 => '审核时操作失败',
             253 => '未知错误',

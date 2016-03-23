@@ -97,6 +97,7 @@ class RefundAudit extends Model
             'o.salerid',
             'o.lid',
             'o.tid',
+            'o.personid',
             'l.terminal',
             'oa.ifpack',
             'o.tnum',
@@ -289,5 +290,16 @@ class RefundAudit extends Model
     {
         $str = $this->getLastSql();
         print_r($str . PHP_EOL);
+    }
+
+    public function areUnderAudit(array $orders){
+        $table = $this->_refundAuditTable;
+        $where['ordernum'] = array('in',$orders);
+        $where['dstatus']=0;
+        $field = array(
+          "id",
+          "ordernum",
+        );
+        return $this->table($table)->where($where)->field($field)->select();
     }
 }
