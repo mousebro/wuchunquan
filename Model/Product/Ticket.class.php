@@ -90,6 +90,7 @@ class Ticket extends Model {
             'fid' => $memberid,
             'sid' => array('exp', ' <> sourceid'),
             'sourceid' => array('neq', $memberid),
+            'status' => 0,
             'active' => 1
         );
 
