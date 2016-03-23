@@ -23,4 +23,29 @@ class Land extends Model
     {
         return $this->table('pft_terminal_id')->add(['id'=>'null']);
     }
+
+    /**
+     * 根据产品ID获取产品扩展信息
+     * @author dwer
+     * @date   2016-03-23
+     *
+     * @param  $pid
+     * @return
+     */
+    public function getExtFromPid($pid, $field = false){
+        if(!$pid) {
+            return false;
+        }
+
+        if(!$field) {
+            $field = '*';
+        }
+
+        $extInfo = $this->table($this->_landExtTable)->where(['pid' => $pid])->field($field)->find();
+        if(!$extInfo) {
+            return false;
+        } else {
+            return $extInfo;
+        }
+    }
 }
