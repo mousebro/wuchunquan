@@ -28,11 +28,11 @@ class OnlineRefund extends Controller
         $this->req_log = BASE_LOG_DIR . '/refund/req_'.date('ymd').'.log';
         $this->err_log = BASE_LOG_DIR . '/refund/err_'.date('ymd').'.log';
         $this->ok_log  = BASE_LOG_DIR . '/refund/ok_'.date('ymd') .'.log';
-        Api::Log(json_encode($_GET), $this->req_log);
+        Api::Log(json_encode($_POST), $this->req_log);
         $auth = I('post.auth');
         $comp = md5(md5(I('post.ordernum').md5(strrev(I('post.ordernum')))));
         if (empty( $auth ) || $auth!=$comp) {
-            LogRefund('身份验证失败',LOG_NAME);
+            Api::Log('身份验证失败',$this->err_log);
             exit("身份验证失败");
         }
         $this->log_id = I("post.log_id");
@@ -49,9 +49,7 @@ class OnlineRefund extends Controller
 
     public function wx()
     {
-        $appid      = $this->data->appid;
-        print_r($this->data);
-        //exit;
+        $appid      = $this->data->appid ? $this->data->appid : PFT_WECHAT_APPID;
         $WePayConf = include BASE_WX_DIR . '/pay/wepay/WxPayPubHelper/WePay.conf.php';
         define('SSLCERT_PATH',$WePayConf[$appid]['sslcert_path']);
         define('SSLKEY_PATH', $WePayConf[$appid]['sslkey_path']);
