@@ -22,7 +22,7 @@ class YXStorage extends Model{
     private $_roundTable     = 'pft_round';
     private $_dynTable       = 'pft_roundseat_dyn'; 
     private $_seatsTable     = 'pft_roundseat';
-    private $_roundSeatTable = 'pft_round_zoneseats';  
+    private $_roundSeatTable = 'pft_round_zoneseats';
 
     //可以使用印象分销库存功能的供应商
     //43517--印象， 4971, 94, 1000026, 6970--测试账号
