@@ -16,10 +16,6 @@ class OrderTrack extends Controller
     {
         $this->model = new \Model\Order\OrderTrack();
     }
-    public function test()
-    {
-        echo 'hi';
-    }
 
     private function verify($ordernum, $token)
     {
