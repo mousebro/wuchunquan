@@ -232,6 +232,49 @@ class Ticket extends Model {
     }
 
     /**
+     * 一次性获取多产品零售价
+     * @author wengbin 
+     * @param  [type] $pid_arr array(1,2)
+     * @param  string $date    日期
+     * @return [type]          array(1 => 0.01, 2 => 0.02)
+     */
+    public function getMuchStorage($pid_arr, $date = '') {
+        $date = $date ?: date('Y-m-d', time());
+        $result = $find_pid = array();
+        //日历模式
+        $storage = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => array('in', implode(',', $pid_arr)), 'start_date' => $date, 'ptype' => 1, 'status' => 0])
+                    ->field('pid,storage')->select();
+        
+        if ($storage) {
+            foreach ($storage as $item) {
+                $find_pid[] = $item['pid'];
+                $result[$item['pid']] = $item['storage'] / 100;
+            }
+        }
+        $pid_arr = array_diff($pid_arr, $find_pid);
+
+        if ($pid_arr) {
+            //时间段模式
+            $storage_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
+                ->field('pid,storage,start_date,end_date')
+                ->select();
+            if (!$storage_info) return false;
+
+            foreach ($storage_info as $item) {
+                $start_time = strtotime($item['start_date']);
+                $end_time   = strtotime($item['end_date']);
+                $cur_time   = strtotime($date);
+                if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                    $result[$item['pid']] = $item['storage'];
+                }
+            }
+        }
+        return $result;
+    }
+
+    /**
      * 获取产品门市价
      * @param  [type] $id  pid/tid
      * @return [type]      [description]
