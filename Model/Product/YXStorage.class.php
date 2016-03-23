@@ -8,6 +8,7 @@
 namespace Model\Product;
 use Library\Model;
 use Model\Member\Reseller;
+use Model\Porduct\Land;
 
 class YXStorage extends Model{
     private $_storageTable        = 'pft_yx_storage';
@@ -23,6 +24,7 @@ class YXStorage extends Model{
     private $_dynTable       = 'pft_roundseat_dyn'; 
     private $_seatsTable     = 'pft_roundseat';
     private $_roundSeatTable = 'pft_round_zoneseats';
+    private $_venusTable     = 'pft_venues';
 
     //可以使用印象分销库存功能的供应商
     //43517--印象， 4971, 94, 1000026, 6970--测试账号
@@ -290,16 +292,37 @@ class YXStorage extends Model{
      * @author dwer
      * @date   2016-03-23
      *
-     * @param  $areaId 分区ID
+     * @param  $setterId 供应商ID
      * @param  $resellerId 分销商ID
+     * @param  $pid 产品ID
      * @return
      */
-    public function removeReseller($areaId, $resellerId) {
-        
+    public function removeReseller($setterId, $resellerId, $pid = false) {
+        if(!$setterId || !$resellerId) {
+            return false;
+        }
+
+        //由产品ID获取分区ID
+        $areaId = false;
+        if($pid) {
+            $landModel = new Land();
+            $extInfo = $landModel->getExtFromPid($pid, 'zone_id');
+            if($extInfo) {
+                $areaId = $extInfo['zone_id'];
+            }
+        }
+
+        $res = $this->_removeResellerData($setterId, $resellerId, $areaId);
+
+        if($res) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
-     * 获取分区的默认配置信息 
+     * 获取分区的默认配置信息
      * @author dwer
      * @date   2016-03-20
      *
@@ -444,8 +467,9 @@ class YXStorage extends Model{
      * @param   $areaId 分区ID
      * @param   $setData 设置数组 [分销商ID => 保留库存数量]
      * @param   $status 状态：1=开启，0=关闭
+     * @param   $setterId 供应商ID
      */
-    public function setResellerStorage($roundId, $areaId, $setData, $status, $useDate) {
+    public function setResellerStorage($roundId, $areaId, $setData, $status, $useDate, $setterId) {
         if(!$roundId || !$areaId || !is_array($setData)) {
             return false;
         }
@@ -463,7 +487,7 @@ class YXStorage extends Model{
 
         foreach($setData as $resellerId => $storage) {
 
-            $res = $this->_setNum($roundId, $areaId, $resellerId, $storage);
+            $res = $this->_setNum($roundId, $areaId, $resellerId, $storage, $setterId);
 
             if(!$res) {
                 $mark = false;
@@ -476,7 +500,7 @@ class YXStorage extends Model{
             return false;
         }
 
-        $res = $this->_setInfo($roundId, $areaId, $reserveNum, $status, $useDate);
+        $res = $this->_setInfo($roundId, $areaId, $reserveNum, $status, $useDate, $setterId);
         if(!$res) {
             $this->rollback();
             return false;
@@ -494,8 +518,9 @@ class YXStorage extends Model{
      * @param   $areaId 分区ID
      * @param   $setData 设置数组 [分销商ID => 保留库存数量]
      * @param   $status 状态：1=开启，0=关闭
+     * @param   $setterId 供应商ID
      */
-    public function setDefaultResellerStorage($areaId, $setData, $status = 0) {
+    public function setDefaultResellerStorage($areaId, $setData, $status, $setterId) {
         if(!$areaId || !is_array($setData)) {
             return false;
         }
@@ -513,7 +538,7 @@ class YXStorage extends Model{
 
         foreach($setData as $resellerId => $storage) {
 
-            $res = $this->_setDefaultNum($areaId, $resellerId, $storage);
+            $res = $this->_setDefaultNum($areaId, $resellerId, $storage, $setterId);
 
             if(!$res) {
                 $mark = false;
@@ -526,7 +551,7 @@ class YXStorage extends Model{
             return false;
         }
 
-        $res = $this->_setDefaultInfo($areaId, $reserveNum, $status);
+        $res = $this->_setDefaultInfo($areaId, $reserveNum, $status, $setterId);
         if(!$res) {
             $this->rollback();
             return false;
@@ -535,7 +560,6 @@ class YXStorage extends Model{
             return true;
         }
     }
-
 
     /**
      * 获取场次
@@ -567,6 +591,25 @@ class YXStorage extends Model{
         $field = 'lid,venus_id,opid,status,use_date';
 
         $info = $this->table($this->_roundTable)->where($where)->field($field)->find();
+
+        return $info;
+    }
+
+    /**
+     * 获取场次的详细信息
+     * @author dwer
+     * @date   2016-03-22
+     *
+     * @param  $roundId 场次ID
+     * @return [type]
+     */
+    public function getVenusInfo($venusId) {
+        $where = array(
+            'id' => $venusId
+        );
+        $field = 'venue_name,apply_did,total_seats,status';
+
+        $info = $this->table($this->_venusTable)->where($where)->field($field)->find();
 
         return $info;
     }
@@ -780,9 +823,10 @@ class YXStorage extends Model{
      *
      * @param  $roundId 场次ID
      * @param  $areaId 分区ID
+     * @param  $setterId 供应商ID
      * @param  $status 状态
      */
-    public function setInfo($roundId, $areaId, $status){
+    public function setInfo($roundId, $areaId, $setterId, $status){
         $where = array(
             'round_id'    => $roundId,
             'area_id'     => $areaId
@@ -801,6 +845,7 @@ class YXStorage extends Model{
         } else {
             $newData = $where;
             $newData['status']      = $status;
+            $newData['setter_id']   = $setterId;
             $newData['update_time'] = time();
 
             $res = $this->table($this->_infoTable)->add($newData);
@@ -831,6 +876,118 @@ class YXStorage extends Model{
         } else {
             return 0;
         }
+    }
+
+    /**
+     * 清除分销商的配置数据
+     * @author dwer
+     * @date   2016-03-23
+     *
+     * @param  $setterId 供应商ID
+     * @param  $resellerId 分销商ID
+     * @param  $date 开始删除的日期
+     * @param  $areaId 分区ID
+     * @return 
+     */
+    private function _removeResellerData($setterId, $resellerId, $date, $areaId = false) {
+        //删除默认的配置数据
+        $res = $this->_removeDefaultData($setterId, $resellerId, $areaId = false);
+
+        //删除具体配置的数据
+
+
+    }
+
+    /**
+     * 删除默认配置的数据
+     * @author dwer
+     * @date   2016-03-23
+     *
+     * @param  $setterId 供应商ID
+     * @param  $resellerId 分销商ID
+     * @param  $areaId 分区ID
+     * @return
+     */
+    private function _removeDefaultData($setterId, $resellerId, $areaId = false) {
+        $where = array(
+            'reseller_id' => $resellerId,
+            'setter_id'   => $setterId
+        );
+
+        if($areaId) {
+            $where['area_id'] = $areaId;
+        }
+        $page  = '1,100'; 
+        $field = 'total_num,id,area_id';
+
+        $deleteIds = [];
+        $mark = true;
+
+        $list = $this->table($this->_defaultStorageTable)->where($where)->field($field)->page($page)->select();
+
+        //如果没有数据的话
+        if(!$list) {
+            return true;
+        }
+
+        foreach($list as $item) {
+            if($item['total_num'] > 0) {
+                $res = $this->_changeDefaultStorage($setterId, $item['area_id'], $item['total_num']);
+
+                if(!$res) {
+                    $mark = false;
+                    break;
+                }
+            }
+
+            $deleteIds[] = $item['id'];
+        }
+
+        if(!$mark) {
+            $this->rollback();
+            return false;
+        }
+
+        //批量删除数据
+        $where = [
+            'id' => ['in', $deleteIds]
+        ];
+        $res = $this->table($this->_defaultStorageTable)->where($where)->delete();
+
+        if($res !== false) {
+            $this->commit();
+            return true;
+        } else {
+            $this->rollback();
+            return false;
+        }
+    }
+
+    /**
+     * 修改分销商保留库存总和
+     * @author dwer
+     * @date   2016-03-23
+     *
+     * @param  $setterId
+     * @param  $areaId
+     * @param  $num
+     * @return
+     */
+    private function _changeDefaultStorage($setterId, $areaId, $num) {
+        $num = intval($num);
+        $where = array(
+            'area_id'   => $areaId,
+            'setter_id' => $setterId
+        );
+
+        $data = [
+            'reserve_num' => ['exp', "reserve_num-{$num}"],
+            'update_time' => time()
+        ];
+
+        $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
+
+        return $res === false ? false : true;
     }
 
     /**
@@ -971,8 +1128,9 @@ class YXStorage extends Model{
      * @param   $areaId 分区ID
      * @param  $resellerId 分销商ID
      * @param  $storage 保留库存
+     * @param  $setterId 供应商ID
      */
-    private function _setNum($roundId, $areaId, $resellerId, $storage) {
+    private function _setNum($roundId, $areaId, $resellerId, $storage, $setterId) {
         $where = array(
             'round_id'    => $roundId,
             'area_id'     => $areaId,
@@ -993,6 +1151,7 @@ class YXStorage extends Model{
             $newData = $where;
             $newData['total_num'] = $storage;
             $newData['update_time'] = time();
+            $newData['setter_id'] = $setterId;
 
             $res = $this->table($this->_storageTable)->add($newData);
         }
@@ -1013,8 +1172,9 @@ class YXStorage extends Model{
      * @param  $areaId 分区ID
      * @param  $reserveNum 分销商保留库存总和
      * @param  $status 状态
+     * @param  $setterId 供应商ID
      */
-    private function _setInfo($roundId, $areaId, $reserveNum, $status, $useDate){
+    private function _setInfo($roundId, $areaId, $reserveNum, $status, $useDate, $setterId){
         $where = array(
             'round_id'    => $roundId,
             'area_id'     => $areaId
@@ -1036,7 +1196,8 @@ class YXStorage extends Model{
             $newData['reserve_num'] = $reserveNum;
             $newData['status']      = $status;
             $newData['update_time'] = time();
-            $newData['use_date']    = $useDate; 
+            $newData['use_date']    = $useDate;
+            $newData['setter_id']   = $setterId; 
 
             $res = $this->table($this->_infoTable)->add($newData);
         }
@@ -1057,8 +1218,9 @@ class YXStorage extends Model{
      * @param  $areaId 分区ID
      * @param  $reserveNum 分销商保留库存总和
      * @param  $status 状态
+     * @param  $setterId 供应商ID
      */
-    private function _setDefaultInfo($areaId, $reserveNum, $status) {
+    private function _setDefaultInfo($areaId, $reserveNum, $status, $setterId) {
         $where = array(
             'area_id'     => $areaId
         );
@@ -1079,6 +1241,7 @@ class YXStorage extends Model{
             $newData['reserve_num'] = $reserveNum;
             $newData['status']      = $status;
             $newData['update_time'] = time();
+            $newData['setter_id']   = $setterId;
 
             $res = $this->table($this->_defaultInfoTable)->add($newData);
         }
@@ -1098,8 +1261,9 @@ class YXStorage extends Model{
      * @param   $areaId 分区ID
      * @param  $resellerId 分销商ID
      * @param  $storage 保留库存
+     * @param  $setterId 供应商ID
      */
-    private function _setDefaultNum($areaId, $resellerId, $storage) {
+    private function _setDefaultNum($areaId, $resellerId, $storage, $setterId) {
         $where = array(
             'area_id'     => $areaId,
             'reseller_id' => $resellerId
@@ -1119,6 +1283,7 @@ class YXStorage extends Model{
             $newData = $where;
             $newData['total_num'] = $storage;
             $newData['update_time'] = time();
+            $newData['setter_id'] = $setterId;
 
             $res = $this->table($this->_defaultStorageTable)->add($newData);
         }
