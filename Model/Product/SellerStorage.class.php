@@ -708,8 +708,6 @@ class SellerStorage extends Model{
             'date'       => $date,
         );
 
-        $field = 'sum(fixed_num) as nums';
-
         if($attr) {
             $where['special_attr'] = $attr;
         }
@@ -727,9 +725,10 @@ class SellerStorage extends Model{
             $where['reseller_uid'] = array('not in', $arr);
         }
 
-        $res = $this->table($this->_fixedTable)->field($field)->where($where)->find();
+        $res = $this->table($this->_fixedTable)->where($where)->sum('fixed_num');
+
         if($res) {
-            return $res['nums'];
+            return intval($res);
         } else {
             return 0;
         }
