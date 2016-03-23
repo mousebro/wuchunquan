@@ -312,7 +312,9 @@ class YXStorage extends Model{
             }
         }
 
-        $res = $this->_removeResellerData($setterId, $resellerId, $areaId);
+        //清除今天以及之后的数据
+        $nowDate = date('Ymd');
+        $res = $this->_removeResellerData($setterId, $resellerId, $nowDate, $areaId);
 
         if($res) {
             return true;
@@ -487,7 +489,7 @@ class YXStorage extends Model{
 
         foreach($setData as $resellerId => $storage) {
 
-            $res = $this->_setNum($roundId, $areaId, $resellerId, $storage, $setterId);
+            $res = $this->_setNum($roundId, $areaId, $resellerId, $storage, $useDate, $setterId);
 
             if(!$res) {
                 $mark = false;
@@ -891,11 +893,18 @@ class YXStorage extends Model{
      */
     private function _removeResellerData($setterId, $resellerId, $date, $areaId = false) {
         //删除默认的配置数据
-        $res = $this->_removeDefaultData($setterId, $resellerId, $areaId = false);
+        $res = $this->_removeDefaultData($setterId, $resellerId, $areaId);
+        if(!$res) {
+            return false;
+        }
 
         //删除具体配置的数据
-
-
+        $res = $this->_removeRoundData($setterId, $resellerId, $date, $areaId);
+        if($res) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -964,7 +973,7 @@ class YXStorage extends Model{
     }
 
     /**
-     * 修改分销商保留库存总和
+     * 修改分销商保留库存总和 - 默认配置
      * @author dwer
      * @date   2016-03-23
      *
@@ -988,6 +997,101 @@ class YXStorage extends Model{
         $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
 
         return $res === false ? false : true;
+    }
+
+    /**
+     * 修改分销商保留库存总和 - 场次配置
+     * @author dwer
+     * @date   2016-03-23
+     *
+     * @param  $setterId
+     * @param  $areaId
+     * @param  $num
+     * @return
+     */
+    private function _changeRoundStorage($setterId, $round, $areaId, $num) {
+        $num = intval($num);
+        $where = array(
+            'area_id'   => $areaId,
+            'setter_id' => $setterId,
+            'round_id'  => $roundId
+        );
+
+        $data = [
+            'reserve_num' => ['exp', "reserve_num-{$num}"],
+            'update_time' => time()
+        ];
+
+        $res = $this->table($this->_infoTable)->where($where)->save($data);
+
+        return $res === false ? false : true;
+    }
+
+    /**
+     * 清除具体场次的数据
+     * @author dwer
+     * @date   2016-03-23
+     *
+     * @param  $setterId
+     * @param  $resellerId
+     * @param  $date
+     * @param  $areaId
+     * @return
+     */
+    private function _removeRoundData($setterId, $resellerId, $date, $areaId = false) {
+        $where = array(
+            'reseller_id' => $resellerId,
+            'setter_id'   => $setterId
+            'use_date'    => ['gt', $date]
+        );
+
+        if($areaId) {
+            $where['area_id'] = $areaId;
+        }
+        $page  = '1,365'; 
+        $field = 'total_num,id,area_id,round_id';
+
+        $deleteIds = [];
+        $mark = true;
+
+        $list = $this->table($this->_storageTable)->where($where)->field($field)->page($page)->select();
+
+        //如果没有数据的话
+        if(!$list) {
+            return true;
+        }
+
+        foreach($list as $item) {
+            if($item['total_num'] > 0) {
+                $res = $this->_changeRoundStorage($setterId, $item['round_id'], $item['area_id'], $item['total_num']);
+
+                if(!$res) {
+                    $mark = false;
+                    break;
+                }
+            }
+
+            $deleteIds[] = $item['id'];
+        }
+
+        if(!$mark) {
+            $this->rollback();
+            return false;
+        }
+
+        //批量删除数据
+        $where = [
+            'id' => ['in', $deleteIds]
+        ];
+        $res = $this->table($this->_storageTable)->where($where)->delete();
+
+        if($res !== false) {
+            $this->commit();
+            return true;
+        } else {
+            $this->rollback();
+            return false;
+        }
     }
 
     /**
@@ -1128,9 +1232,10 @@ class YXStorage extends Model{
      * @param   $areaId 分区ID
      * @param  $resellerId 分销商ID
      * @param  $storage 保留库存
+     * @param  $useDate 使用日期
      * @param  $setterId 供应商ID
      */
-    private function _setNum($roundId, $areaId, $resellerId, $storage, $setterId) {
+    private function _setNum($roundId, $areaId, $resellerId, $storage, $useDate, $setterId) {
         $where = array(
             'round_id'    => $roundId,
             'area_id'     => $areaId,
@@ -1152,6 +1257,7 @@ class YXStorage extends Model{
             $newData['total_num'] = $storage;
             $newData['update_time'] = time();
             $newData['setter_id'] = $setterId;
+            $newData['use_date'] = $useDate;
 
             $res = $this->table($this->_storageTable)->add($newData);
         }
