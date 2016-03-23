@@ -182,7 +182,49 @@ class YXStorage extends Model{
      * @return
      */
     public function recoverStorage($orderNum) {
+        if(!$orderNum) {
+            return false;
+        }
 
+        $logInfo = $this->table($this->_logTable)->where(['order_num' => $orderNum])->find();
+
+        //如果没有使用未分配库存的情况下，返回成功
+        if(!$logInfo) {
+            return true;
+        }
+
+        //如果已经恢复过,就不再恢复，返回成功
+        if($logInfo['recover_time'] > 0) {
+            return true;
+        }
+
+        $num     = intval($logInfo['num']);
+        $roundId = $logInfo['round_id'];
+
+        $this->startTrans();
+
+        //减少库存使用量
+        $res = $this->_recoverUsedNum($roundId, $num);
+
+        if(!$res) {
+            $this->rollback();
+            return false;
+        }
+
+        //更新历史记录
+        $data = [
+            'recover_time' => time(),
+            'update_time'  => time()
+        ];
+        $res = $this->table($this->_logTable)->where(['id' => $logInfo['id']])->save($data);
+
+        if($res) {
+            $this->commit();
+            return true;
+        } else {
+            $this->rollback();
+            return false;
+        }
     }
 
     /**
@@ -196,11 +238,64 @@ class YXStorage extends Model{
      * @return
      */
     public function changeStorage($orderNum, $reducedNum) {
+        $reducedNum = intval($reducedNum);
+        if(!$orderNum) {
+            return false;
+        }
 
+        $logInfo = $this->table($this->_logTable)->where(['order_num' => $orderNum])->find();
+
+        //如果没有使用未分配库存的情况下，返回成功
+        if(!$logInfo) {
+            return true;
+        }
+
+        //如果已经恢复过,就不再恢复，返回成功
+        if($logInfo['recover_time'] > 0) {
+            return true;
+        }
+
+        $num     = intval($logInfo['num']);
+        $roundId = $logInfo['round_id'];
+        $leftNum = $num < $reducedNum ? $num : $reducedNum;
+
+        $this->startTrans();
+
+        //减少库存使用量
+        $res = $this->_recoverUsedNum($roundId, $leftNum);
+
+        if(!$res) {
+            $this->rollback();
+            return false;
+        }
+
+        //更新历史记录
+        $data = [
+            'num'         => ['exp', "num - {$leftNum}"],
+            'update_time' => time()
+        ];
+        $res = $this->table($this->_logTable)->where(['id' => $logInfo['id']])->save($data);
+
+        if($res) {
+            $this->commit();
+            return true;
+        } else {
+            $this->rollback();
+            return false;
+        }
     }
 
-    public function removeReseller() {
-
+    /**
+     * 删除了分销商后，清除库存配置
+     * @author dwer
+     * @date   2016-03-23
+     *
+     * @param  $areaId 分区ID
+     * @param  $resellerId 分销商ID
+     * @return
+     */
+    public function removeReseller($areaId, $resellerId) {
+        
     }
 
     /**
@@ -830,7 +925,7 @@ class YXStorage extends Model{
 
         $data = [
             'update_time' => time(),
-            'used_num' => ['exp', "used_num + {$num}"]
+            'used_num' => ['exp', "used_num - {$num}"]
         ];
 
         $res = $this->table($this->_usedTable)->where($where)->save($data);
