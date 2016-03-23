@@ -5,9 +5,23 @@ use Model\Demo\Bar;
 ini_set('display_errors', 'On');
 
 include_once dirname(__FILE__) . '/../../init.php';
-$redis = \Library\Cache\RedisCache::Connect();
-$redis->set('foo','bar',180);
-echo $redis->get('foo');
+
+$online = new \Model\TradeRecord\OnlineRefund();
+$ordernum  = 2876403;
+$id1  = $online->AddMemberLog(94, $ordernum, 1000);
+echo '$id1=',$id1,PHP_EOL;
+//$id2  = $online->GetTradeLog($ordernum);
+$id2  = $online->AddRefundLog(94, $ordernum, 1, 1000, 10, 'test');
+echo '$id2=',$id2,PHP_EOL;
+$info = (object)$online->GetRefundLog($id2);
+echo $info->appid;
+//print_r($info);
+
+$res = $online->UpdateRefundLogOk($id2);
+var_dump($res);
+//$redis = \Library\Cache\RedisCache::Connect();
+//$redis->set('foo','bar',180);
+//echo $redis->get('foo');
 
 exit;
 $online = new \Model\TradeRecord\OnlineTrade();
