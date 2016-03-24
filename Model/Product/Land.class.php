@@ -13,6 +13,8 @@ use Library\Model;
 
 class Land extends Model
 {
+    private $_landExtTable = 'uu_land_f';
+
     /**
      * 生成并获取终端ID
      * @author Guangpeng Chen

@@ -1743,9 +1743,11 @@ class SellerStorage extends Model{
             }
 
             if(isset($usedStorageArr[$tmpResllerId])) {
-                $item['selled_num'] = $usedStorageArr[$tmpResllerId]['fixed_num_used'] + $usedStorageArr[$tmpResllerId]['dynamic_num_used'];
+                $item['selled_num']       = $usedStorageArr[$tmpResllerId]['fixed_num_used'] + $usedStorageArr[$tmpResllerId]['dynamic_num_used'];
+                $item['selled_fixed_num'] = $usedStorageArr[$tmpResllerId]['fixed_num_used'];
             }else {
-                $item['selled_num'] = 0;
+                $item['selled_num']       = 0;
+                $item['selled_fixed_num'] = 0;
             }
         }
 
