@@ -49,7 +49,9 @@ class OnlineTrade extends Model
             'description'   => $description,
             'sourceT'       => $sourceT,
         ];
-        return $this->data($data)->add();
+        $id = $this->data($data)->add();
+        if ($id>0) return $id;
+        return $this->getDbError();
         //INSERT pft_alipay_rec SET out_trade_no='$out_trade_no',subject='$body',
 //        total_fee='$money',description='$body',sourceT=$sourceT
     }

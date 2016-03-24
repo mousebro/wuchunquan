@@ -42,6 +42,7 @@ class OnlineRefund extends Controller
         if (!$data) exit("退款记录不存在");
         $this->data  = (object)$data;
         $pay_mode = I("post.pay_mode");
+        if (ENV!='PRODUCTION') return 100;
         if ($pay_mode==5) $this->wx();
         elseif($pay_mode==7) $this->union();
         else exit('Unknow');
