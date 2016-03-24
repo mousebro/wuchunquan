@@ -8,7 +8,7 @@
 namespace Model\Product;
 use Library\Model;
 use Model\Member\Reseller;
-use Model\Porduct\Land;
+use Model\Product\Land;
 
 class YXStorage extends Model{
     private $_storageTable        = 'pft_yx_storage';
@@ -258,14 +258,14 @@ class YXStorage extends Model{
             return true;
         }
 
-        $num     = intval($logInfo['num']);
-        $roundId = $logInfo['round_id'];
-        $leftNum = $num < $reducedNum ? $num : $reducedNum;
+        $num        = intval($logInfo['num']);
+        $roundId    = $logInfo['round_id'];
+        $reducedNum = $num < $reducedNum ? $num : $reducedNum;
 
         $this->startTrans();
 
         //减少库存使用量
-        $res = $this->_recoverUsedNum($roundId, $leftNum);
+        $res = $this->_recoverUsedNum($roundId, $reducedNum);
 
         if(!$res) {
             $this->rollback();
@@ -274,7 +274,7 @@ class YXStorage extends Model{
 
         //更新历史记录
         $data = [
-            'num'         => ['exp', "num - {$leftNum}"],
+            'num'         => ['exp', "num - {$reducedNum}"],
             'update_time' => time()
         ];
         $res = $this->table($this->_logTable)->where(['id' => $logInfo['id']])->save($data);
@@ -978,9 +978,9 @@ class YXStorage extends Model{
      * @author dwer
      * @date   2016-03-23
      *
-     * @param  $setterId
-     * @param  $areaId
-     * @param  $num
+     * @param  $setterId 供应商ID
+     * @param  $areaId 分区ID
+     * @param  $num 减少数量
      * @return
      */
     private function _changeDefaultStorage($setterId, $areaId, $num) {
@@ -1005,12 +1005,13 @@ class YXStorage extends Model{
      * @author dwer
      * @date   2016-03-23
      *
-     * @param  $setterId
-     * @param  $areaId
-     * @param  $num
+     * @param  $setterId 供应商ID
+     * @param  $roundId 场次ID
+     * @param  $areaId 分区ID
+     * @param  $num 减少数量
      * @return
      */
-    private function _changeRoundStorage($setterId, $round, $areaId, $num) {
+    private function _changeRoundStorage($setterId, $roundId, $areaId, $num) {
         $num = intval($num);
         $where = array(
             'area_id'   => $areaId,
@@ -1033,10 +1034,10 @@ class YXStorage extends Model{
      * @author dwer
      * @date   2016-03-23
      *
-     * @param  $setterId
-     * @param  $resellerId
-     * @param  $date
-     * @param  $areaId
+     * @param  $setterId 供应商ID
+     * @param  $resellerId 分销商ID
+     * @param  $date 日期
+     * @param  $areaId 分区ID
      * @return
      */
     private function _removeRoundData($setterId, $resellerId, $date, $areaId = false) {
