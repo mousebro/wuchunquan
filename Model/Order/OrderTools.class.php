@@ -5,6 +5,7 @@
 
 namespace Model\Order;
 use Library\Model;
+use Model\Product\YXStorage;
 
 class OrderTools extends Model {
 
@@ -106,8 +107,26 @@ class OrderTools extends Model {
      * @author  wengbin
      */
     private function _cancelNotify($orderid) {
-
         //todo,,
 
+    }
+
+    /**
+     * 取消订单的时候，释放分销商库存
+     * @author dwer
+     * @date   2016-03-24
+     *
+     * @param  $orderNum 订单号
+     * @return bool
+     */
+    private function _recoverStorage($orderNum) {
+        $storageModel = new YXStorage();
+        $res = $storageModel ->recoverStorage($orderNum);
+
+        if($res) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

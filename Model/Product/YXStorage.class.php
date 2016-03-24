@@ -26,9 +26,9 @@ class YXStorage extends Model{
     private $_roundSeatTable = 'pft_round_zoneseats';
     private $_venusTable     = 'pft_venues';
 
-    //可以使用印象分销库存功能的供应商
-    //43517--印象， 4971, 94, 1000026, 6970--测试账号
-    private  static $_legalProviderArr = array( 4971, 94, 1000026, 6970);
+    //日志记录路径
+    private $_setLogPath = 'product/show_storage_set';
+    private $_getLogPath = 'product/show_storage_get';
 
     //初始化数据库
     public function __construct() {
@@ -37,16 +37,36 @@ class YXStorage extends Model{
     }
 
     /**
-     * 是不是需要使用印象分销商库存功能
+     * 是否开启了分销库存
+     * @author dwer
+     * @date   2016-03-22
      *
-     * @param $applyId 供应商ID    
+     * @param $roundId 场次 - 199944
+     * @param $areaId 分区 - 33
+     * @return
      */
-    public static function isLegalProvider($applyId) {
-        //判断账号是不是在可用数组里面
-        if(in_array($applyId, self::$_legalProviderArr)) {
-            return true;
-        } else {
+    public function isOpen($roundId, $areaId) {
+        if(!$roundId || !$areaId) {
             return false;
+        }
+
+        //获取是使用默认配置还是具体配置
+        $info = $this->getInfo($areaId, $roundId);
+
+        if(!$info) {
+            $info = $this->getDefaultInfo($areaId);
+        }
+
+        if(!$info) {
+            return false;
+        }
+
+        //判断库存判断是否开启
+        if($info['status'] == 0) {
+            //没有开启
+            return false;
+        } else {
+            return true;
         }
     }
 
@@ -96,15 +116,33 @@ class YXStorage extends Model{
         //保留的库存之和
         $reserveNum = $info['reserve_num'];
 
+        $resStorage = 0;
+
         if($sellerStorage == -1) {
             //使用未分配的库存
             $leftStorage = $this->_getLeftStorage($roundId, $areaId, $reserveNum);
 
-            return array('type' => 'dynamic', 'storage' => $leftStorage);
+            $resStorage = $leftStorage;
         } else {
-            //使用给他分配的固定库存
-            return array('type' => 'fixed', 'storage' => $sellerStorage);
+            if($sellerStorage == 0) {
+                $resStorage = 0;
+            } else {
+                //获取该分销商已经消耗了多少库存
+                $usedStorage = $this->getResellerNums($roundId, $areaId, $resellerId);
+
+                //使用给他分配的固定库存
+                $leftNums   = $sellerStorage - $usedStorage;
+                $resStorage = $leftNums < 0 ? 0 : $leftNums;
+            }
         }
+
+        //写日志
+        $logData         = ['ac' => 'getResellerStorage'];
+        $logData['data'] = [$resellerId, $roundId, $areaId];
+        $logData['rs']   = $resStorage;
+        $this->_log($logData, 'get');
+
+        return $resStorage;
     }
 
     /**
@@ -165,6 +203,13 @@ class YXStorage extends Model{
 
             //消耗未分配的库存
             $res = $this->_useStorage($orderNum, $roundId, $ticketNum);
+
+            //写日志
+            $logData         = ['ac' => 'useStorage'];
+            $logData['data'] = [$orderNum, $resellerId, $roundId, $areaId, $ticketNum];
+            $logData['rs']   = $res;
+            $this->_log($logData, 'get');
+
             if($res) {
                 return true;
             } else {
@@ -220,6 +265,12 @@ class YXStorage extends Model{
             'update_time'  => time()
         ];
         $res = $this->table($this->_logTable)->where(['id' => $logInfo['id']])->save($data);
+
+        //写日志
+        $logData         = ['ac' => 'recoverStorage'];
+        $logData['data'] = [$orderNum, $num];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'get');
 
         if($res) {
             $this->commit();
@@ -279,6 +330,12 @@ class YXStorage extends Model{
         ];
         $res = $this->table($this->_logTable)->where(['id' => $logInfo['id']])->save($data);
 
+        //写日志
+        $logData         = ['ac' => 'changeStorage'];
+        $logData['data'] = [$orderNum, $reducedNum];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'get');
+
         if($res) {
             $this->commit();
             return true;
@@ -316,6 +373,12 @@ class YXStorage extends Model{
         //清除今天以及之后的数据
         $nowDate = date('Ymd');
         $res = $this->_removeResellerData($setterId, $resellerId, $nowDate, $areaId);
+
+        //写日志
+        $logData         = ['ac' => 'removeReseller'];
+        $logData['data'] = [$setterId, $resellerId, $pid];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'get');
 
         if($res) {
             return true;
@@ -504,6 +567,13 @@ class YXStorage extends Model{
         }
 
         $res = $this->_setInfo($roundId, $areaId, $reserveNum, $status, $useDate, $setterId);
+
+        //写日志
+        $logData         = ['ac' => 'setResellerStorage'];
+        $logData['data'] = [$roundId, $areaId, $setData, $status, $useDate, $setterId];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'set');
+
         if(!$res) {
             $this->rollback();
             return false;
@@ -555,6 +625,13 @@ class YXStorage extends Model{
         }
 
         $res = $this->_setDefaultInfo($areaId, $reserveNum, $status, $setterId);
+
+        //写日志
+        $logData         = ['ac' => 'setDefaultResellerStorage'];
+        $logData['data'] = [$areaId, $setData, $status, $setterId];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'set');
+
         if(!$res) {
             $this->rollback();
             return false;
@@ -721,7 +798,7 @@ class YXStorage extends Model{
         }
 
         $sales = $this->table($this->_dynTable)->where($where)->count();
-        $sales = $sales === false ? 0 : $sales;
+        $sales = $sales === false ? 0 : intval($sales);
 
         return $sales;
     }
@@ -853,6 +930,12 @@ class YXStorage extends Model{
 
             $res = $this->table($this->_infoTable)->add($newData);
         }
+
+        //写日志
+        $logData         = ['ac' => 'setInfo'];
+        $logData['data'] = [$roundId, $areaId, $setterId, $status];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'set');
 
         if($res === false) {
             return false;
@@ -1218,7 +1301,7 @@ class YXStorage extends Model{
 
         $leftStorage = $total - $reserveNum - $used;
         if($leftStorage >= 0) {
-            return $leftStorage;
+            return intval($leftStorage);
         } else {
             return 0;
         }
@@ -1401,6 +1484,29 @@ class YXStorage extends Model{
         } else {
             return true;
         }
+    }
+    /**
+     * 模型日志
+     * @author dwer
+     * @date   2016-03-09
+     *
+     * @param  [type] $dataArr 日志数组内容
+     * @param  [type] $type 类型 get ： 获取判断日志，set ： 设置日志
+     * @return [type]
+     */
+    private function _log($dataArr, $type = 'get') {
+        if(!$dataArr) {
+            return false;
+        }
+
+        $content = json_encode($dataArr);
+        if($type == 'set') {
+            $res = pft_log($this->_setLogPath, $content);
+        } else {
+            $res = pft_log($this->_getLogPath, $content);
+        }
+
+        return $res;
     }
 
 }
