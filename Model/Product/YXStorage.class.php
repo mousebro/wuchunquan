@@ -39,7 +39,7 @@ class YXStorage extends Model{
     /**
      * 是不是需要使用印象分销商库存功能
      *
-     * @param $applyId 供应商ID
+     * @param $applyId 供应商ID    
      */
     public static function isLegalProvider($applyId) {
         //判断账号是不是在可用数组里面
@@ -70,6 +70,7 @@ class YXStorage extends Model{
 
         //获取是使用默认配置还是具体配置
         $info = $this->getInfo($areaId, $roundId);
+
         if(!$info) {
             $info = $this->getDefaultInfo($areaId);
             if(!$info) {
@@ -365,7 +366,8 @@ class YXStorage extends Model{
             'round_id' => $roundId
         );
 
-        $info = $this->table($this->_infoTable)->find();
+        $info = $this->table($this->_infoTable)->where($where)->find();
+
         if($info) {
             return $info;
         } else {
@@ -427,7 +429,6 @@ class YXStorage extends Model{
         );
 
         $info = $this->table($this->_defaultStorageTable)->field($field)->where($where)->find();
-
         if($info) {
             return intval($info['total_num']);
         } else {
@@ -1041,8 +1042,8 @@ class YXStorage extends Model{
     private function _removeRoundData($setterId, $resellerId, $date, $areaId = false) {
         $where = array(
             'reseller_id' => $resellerId,
-            'setter_id'   => $setterId
-            'use_date'    => ['gt', $date]
+            'setter_id'   => $setterId,
+            'use_date'    => ['egt', $date]
         );
 
         if($areaId) {
