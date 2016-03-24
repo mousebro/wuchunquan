@@ -30,28 +30,10 @@ class YXStorage extends Model{
     private $_setLogPath = 'product/show_storage_set';
     private $_getLogPath = 'product/show_storage_get';
 
-    //可以使用印象分销库存功能的供应商
-    //43517--印象， 4971, 94, 1000026, 6970--测试账号
-    private  static $_legalProviderArr = array( 4971, 94, 1000026, 6970);
-
     //初始化数据库
     public function __construct() {
         //默认连接演出库
         parent::__construct('remote_1');
-    }
-
-    /**
-     * 是不是需要使用印象分销商库存功能
-     *
-     * @param $applyId 供应商ID    
-     */
-    public static function isLegalProvider($applyId) {
-        //判断账号是不是在可用数组里面
-        if(in_array($applyId, self::$_legalProviderArr)) {
-            return true;
-        } else {
-            return false;
-        }
     }
 
     /**
