@@ -161,11 +161,14 @@ class RefundAudit extends Model
         $operatorID,
         $auditTime = 0
     ) {
-        $table     = $this->_refundAuditTable;
-        $where     = array(
-            'id'       => $auditID,
+        $table = $this->_refundAuditTable;
+        $where = array(
             'ordernum' => $orderNum,
+            'dstatus'  => 0,
         );
+        if ($auditID) {
+            $where['id'] = $auditID;
+        }
         $auditTime = ($auditTime) ? $auditTime : date('Y-m-d H:i:s');
         $data      = array(
             'dstatus' => $auditResult,
@@ -226,7 +229,8 @@ class RefundAudit extends Model
             "left join $this->_landTable AS l ON l.id=a.lid",
             "left join $this->_orderDetailTable AS od ON od.orderid=a.ordernum",
             "left join {$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
-            "left join $this->_memberTable AS m ON m.id=l.apply_did"
+            "left join $this->_memberTable AS m ON m.id=l.apply_did",
+            "left join $this->_ticketTable AS t ON a.tid=t.id",
         );
         $where = array("l.status" => array('lt', 3));
         //根据传入参数确定查询条件
@@ -265,7 +269,8 @@ class RefundAudit extends Model
                 'l.apply_did',
                 'od.concat_id',
                 'm.dcodeURL',
-                'oa.ifpack'
+                'oa.ifpack',
+                't.mdetails'
             );
             $order  = array(
                 'dstatus ASC',

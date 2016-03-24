@@ -363,9 +363,9 @@ class RefundAuditAction extends BaseAction
             $operatorID,
             $auditInfo['salerid']
         );
-        if ($auditID == 0) {
-            return (205); //订单信息不全
-        }
+//        if ($auditID == 0) {
+//            return (205); //订单信息不全
+//        }
         if ( ! in_array($auditResult, [1, 2])) {
             return (250); //审核结果只能是同意或拒绝
         }
