@@ -300,6 +300,9 @@ class Ticket extends Model {
                     ->select();
         $p_t_map = array();
         foreach ($tids as $item) {
+            if ($result[$item['pid']] == -1) {
+                continue;
+            }
             $p_t_map[$item['id']] = $item['pid'];
         }
         //TODO:判断是否使用分销库存
