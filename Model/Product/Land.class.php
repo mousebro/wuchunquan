@@ -13,6 +13,8 @@ use Library\Model;
 
 class Land extends Model
 {
+    private $_landExtTable = 'uu_land_f';
+
     /**
      * 生成并获取终端ID
      * @author Guangpeng Chen
@@ -48,8 +50,16 @@ class Land extends Model
         }
     }
 
-    public function getLandInfo($lid, $field = '*') {
-        return $this->table('uu_land')->field($field)->find($lid);
+    public function getLandInfo($lid, $extra = false) {
+        if ($extra) {
+           $land_info = $this->table('uu_land')
+                            ->join('land left join uu_land_f f on land.id=f.lid')
+                            ->where(array('land.id' => $lid))
+                            ->find();
+        } else {
+            $land_info = $this->table('uu_land')->find($lid);
+        }
+        return $land_info;
     }
 
     /**

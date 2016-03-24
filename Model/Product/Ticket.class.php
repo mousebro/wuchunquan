@@ -17,6 +17,9 @@ class Ticket extends Model {
 
     const __PRODUCT_PRICE_TABLE__ = 'uu_product_price';   //产品价格表
 
+    const __ORDER_TABLE__ = 'uu_ss_order';
+    const __ORDER_DETAIL_TABLE__ = 'uu_order_fx_details';
+
 	/**
 	 * 根据票类id获取票类信息
      * @author wengbin 
@@ -26,6 +29,20 @@ class Ticket extends Model {
 	public function getTicketInfoById($id) {
 		return $this->table(self::__TICKET_TABLE__)->find($id);
 	}
+
+    /**
+     * 根据productid获取票类信息
+     * @author wengbin 
+     * @param  int $id product_id
+     * @return array   
+     */
+    public function getTicketInfoByPid($pid) {
+        return $this->table(self::__TICKET_TABLE__)->where(array('pid' => $pid))->find();
+    }
+
+    public function getProductType($pid) {
+        return $this->table(self::__PRODUCT_TABLE__)->where(array('id' => $pid))->getField('p_type');
+    }
 
     public function getPackageInfoByTid($tid){
         $table = 'uu_jq_ticket AS t';
@@ -93,7 +110,7 @@ class Ticket extends Model {
      * @param  [type] $memberid [description]
      * @return [type]           [description]
      */
-    public function getSaleDisProducts($memberid, $option = array()) {
+    public function getSaleDisProducts($memberid, $option1 = array(), $option2 = array()) {
         $where = array(
             'fid' => $memberid,
             // 'sid' => array('exp', ' <> sourceid'),
@@ -101,6 +118,10 @@ class Ticket extends Model {
             'status' => 0,
             'active' => 1
         );
+
+        if ($option1) {
+            $where = array_merge($where, $option1);
+        }
 
         $sale_list = $this->table(self::__EVOLUTE_TABLE__)->where($where)->select();
 
@@ -119,8 +140,8 @@ class Ticket extends Model {
             'p.id' => array('in', implode(',', $pid_arr))
         );
 
-        if ($option) {
-            $where = array_merge($where, $option);
+        if ($option2) {
+            $where = array_merge($where, $option2);
         }
 
         $data = $this->getProductsDetailInfo($where);
@@ -232,11 +253,11 @@ class Ticket extends Model {
     }
 
     /**
-     * 一次性获取多产品零售价
+     * 一次性获取多产品的实时库存
      * @author wengbin 
      * @param  [type] $pid_arr array(1,2)
      * @param  string $date    日期
-     * @return [type]          array(1 => 0.01, 2 => 0.02)
+     * @return [type]          array(1 => 2, 2 => 3)
      */
     public function getMuchStorage($pid_arr, $date = '') {
         $date = $date ?: date('Y-m-d', time());
@@ -271,7 +292,53 @@ class Ticket extends Model {
                 }
             }
         }
+
+        //获取产品对应的tid
+        $tids = $this->table(self::__TICKET_TABLE__)
+                    ->where(array('pid' => array('in', implode(',', $pid_arr))))
+                    ->field('id,pid')
+                    ->select();
+        $p_t_map = array();
+        foreach ($tids as $item) {
+            $p_t_map[$item['id']] = $item['pid'];
+        }
+        //TODO:判断是否使用分销库存
+        //获取指定日期已使用库存
+        $use_storage = $this->getUseStorage(array_keys($p_t_map), $date);
+        $p_storage_map = array();
+        foreach ($use_storage as $item) {
+            $p_storage_map[$p_t_map[$item['tid']]] = $item['tnum'];
+        }
+
+        foreach ($result as $pid => $item) {
+            if (isset($p_storage_map[$pid])) {
+                $result[$pid] = $item - $p_storage_map[$pid];
+            }
+        }
+
         return $result;
+    }
+
+    /**
+     * 获取指定日期已使用库存
+     * @param  [type] $tid_arr [description]
+     * @param  string $date    [description]
+     * @return [type]          [description]
+     */
+    public function getUseStorage($tid_arr, $date = '') {
+        $date = $date ?: date('Y-m-d', time());
+
+        $use_storage = $this->table(self::__ORDER_TABLE__)
+            ->join(' s left join '.self::__ORDER_DETAIL_TABLE__.' fx on s.ordernum=fx.orderid')
+            ->where(array(
+                's.tid' => array('in', implode(',', $tid_arr)),
+                's.begintime' => $date,
+                'fx.pay_status' => array('lt', 2),
+                's.status' => array('in', array(0,1,6))))
+            ->field('tid,sum(s.tnum) as tnum')
+            ->select();
+
+        return $use_storage;
     }
 
     /**
