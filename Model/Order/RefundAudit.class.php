@@ -100,6 +100,7 @@ class RefundAudit extends Model
             'o.personid',
             'l.terminal',
             'oa.ifpack',
+            'oa.pack_order',
             'o.tnum',
             't.mdetails',
             //            'o.ordernum',
@@ -222,9 +223,10 @@ class RefundAudit extends Model
 
         $table = "$this->_refundAuditTable AS a";
         $join  = array(
-            "$this->_landTable AS l ON l.id=a.lid",
-            "$this->_orderDetailTable AS od ON od.orderid=a.ordernum",
-            "$this->_memberTable AS m ON m.id=l.apply_did"
+            "left join $this->_landTable AS l ON l.id=a.lid",
+            "left join $this->_orderDetailTable AS od ON od.orderid=a.ordernum",
+            "left join {$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
+            "left join $this->_memberTable AS m ON m.id=l.apply_did"
         );
         $where = array("l.status" => array('lt', 3));
         //根据传入参数确定查询条件
@@ -262,7 +264,8 @@ class RefundAudit extends Model
                 'l.title AS ltitle',
                 'l.apply_did',
                 'od.concat_id',
-                'm.dcodeURL'
+                'm.dcodeURL',
+                'oa.ifpack'
             );
             $order  = array(
                 'dstatus ASC',
