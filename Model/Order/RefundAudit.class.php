@@ -226,11 +226,11 @@ class RefundAudit extends Model
 
         $table = "$this->_refundAuditTable AS a";
         $join  = array(
-            "left join $this->_landTable AS l ON l.id=a.lid",
-            "left join $this->_orderDetailTable AS od ON od.orderid=a.ordernum",
-            "left join {$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
-            "left join $this->_memberTable AS m ON m.id=l.apply_did",
-            "left join $this->_ticketTable AS t ON a.tid=t.id",
+            "left join {$this->_landTable} AS l ON l.id=a.lid",
+            "left join {$this->_orderDetailTable} AS od ON od.orderid=a.ordernum",
+            "left join {$this->_orderAppendixTable} AS oa ON a.ordernum=oa.orderid",
+            "left join {$this->_memberTable} AS m ON m.id=l.apply_did",
+            "left join {$this->_ticketTable} AS t ON a.tid=t.id",
         );
         $where = array("l.status" => array('lt', 3));
         //根据传入参数确定查询条件
