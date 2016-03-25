@@ -66,8 +66,9 @@ class OrderTrack extends Model
             6=>'撤销',
             7=>'撤改',
             8=>'重打印',
-            9=>'提交退票申请',
-            10=>'处理退票申请'
+            9=>'离线订单下载',
+            10=>'提交退票申请',
+            11=>'处理退票申请'
         ];
     }
     /**
@@ -109,7 +110,7 @@ class OrderTrack extends Model
 
     public function getLog($ordernum)
     {
-        $where[':ordernum'] = ':ordernum';
+        $where['ordernum'] = ':ordernum';
         return $this->Table('pft_order_track')
             ->where($where)
             ->bind(':ordernum',$ordernum)

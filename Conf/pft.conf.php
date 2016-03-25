@@ -43,6 +43,7 @@ elseif (ENV=='DEVELOP') {
         define('IMAGE_URL', 'http://images.12301.test/');
         define('STATIC_URL', 'http://static.12301.cc/');
         define('MOBILE_URL', 'http://12301.test/');
+        define('OPEN_URL', 'http://open.12301.test/');
     }
     else {
         define('MOBILE_DOMAIN', 'http://wx.12301.local/');
@@ -50,8 +51,8 @@ elseif (ENV=='DEVELOP') {
         define('IMAGE_URL', 'http://images.12301.local/');
         define('STATIC_URL', 'http://static.12301.cc/');
         define('MOBILE_URL', 'http://12301.local/');
+        define('OPEN_URL', 'http://open.12301.local/');
     }
-    define('OPEN_URL', 'http://open.12301.test/');
     define('IP_INSIDE', '192.168.20.138');
     define('IP_TERMINAL', '192.168.20.138');
 }

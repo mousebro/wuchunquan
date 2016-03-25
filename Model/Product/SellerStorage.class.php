@@ -115,30 +115,11 @@ class SellerStorage extends Model{
             return 0;
         }
 
-        // if($date !== false) {
-        //     $tmp = strtotime($date);
-        //     if(!$tmp) {
-        //         $date = date('Ymd');
-        //     } else {
-        //         $date = date('Ymd', $tmp);
-        //     }
-        // } else {
-        //     $date = date('Ymd');
-        // }
-
         //判断分销商所在的层级，如果不是一级分销商的话，就不能设置
         $level = $this->getResellerLevel($pid, $memberId);
         if($level !== 2) {
             return 0;
         }
-
-        //判断上级设置库存的模式
-        // $publicInfo = $this->getAvailablePublic($applyDid, $pid, $date, $attr);
-        // if($publicInfo && $publicInfo['mode'] == 1) {
-        //      return 1;
-        // } else {
-        //     return 0;
-        // }
 
         return 1;
     }
@@ -727,8 +708,6 @@ class SellerStorage extends Model{
             'date'       => $date,
         );
 
-        $field = 'sum(fixed_num) as nums';
-
         if($attr) {
             $where['special_attr'] = $attr;
         }
@@ -746,9 +725,10 @@ class SellerStorage extends Model{
             $where['reseller_uid'] = array('not in', $arr);
         }
 
-        $res = $this->table($this->_fixedTable)->field($field)->where($where)->find();
+        $res = $this->table($this->_fixedTable)->where($where)->sum('fixed_num');
+
         if($res) {
-            return $res['nums'];
+            return intval($res);
         } else {
             return 0;
         }
@@ -1207,13 +1187,12 @@ class SellerStorage extends Model{
      * @param resellerArr 需要获取的分销商的ID数组
      *           array('1101', '2203', '444322')
      * @param date 日期 - 20161023
-     * @param level 层级：1：一级分销商，2：二级分销商
      * @param attr 产品属性，这边可能是场次
      *
      * @return 返回固定库存数组
      *  
      */
-    public function getUsedStorageArr($pid, $setterUid, $resellerArr, $date, $level, $attr = false) {
+    public function getUsedStorageArr($pid, $setterUid, $resellerArr, $date, $attr = false) {
 
          if(!$resellerArr || (!is_array($resellerArr) || !$date)) {
              return array();
@@ -1247,18 +1226,6 @@ class SellerStorage extends Model{
          //处理数据
          $res = array();
          foreach($tmp as $item) {
-            //如果是一级分销商，还需要获取配置后，自己购买的数量
-            if($level === 1) {
-                $tmpWhere = $where;
-                $tmpWhere['setter_uid'] = $item['reseller_uid'];
-                $selfUsed = $this->table($this->_usedTable)->where($tmpWhere)->field($field)->find();
-
-                if($selfUsed) {
-                    $item['fixed_num_used']     += $selfUsed['fixed_num_used'];
-                    $item['dynamic_num_used']   += $selfUsed['dynamic_num_used'];
-                }
-            }
-
             $res[$item['reseller_uid']] = $item;
          }
 
@@ -1439,11 +1406,18 @@ class SellerStorage extends Model{
 
         //按供应链扣除相应的库存
         foreach($res as $item) {
-            $resReseller = $item['first']; 
+            $resReseller = $item['first'];
             $resSetter   = $item['second'];
+            $selfUse     = isset($item['self_use']) ? true : false;
 
-            //供应链上的分销商的都要扣除
-            $re = $this->_useupStorage($orderId, $pid, $resSetter, $resReseller, $date, $buyNum, $attr);
+            if($selfUse) {
+                //一级分销商还没有给下级分销配置的时候，也要记录自己使用量
+                $re = $this->_useupSelfStorage($orderId, $pid, $resSetter, $resReseller, $date, $buyNum, $attr);
+            } else {
+                //供应链上的分销商的都要扣除
+                $re = $this->_useupStorage($orderId, $pid, $resSetter, $resReseller, $date, $buyNum, $attr);
+            }
+
             if(!$re) {
                 $mark = false;
                 break;
@@ -1697,7 +1671,6 @@ class SellerStorage extends Model{
 
         //总的记录数
         $totalNum = 0;
-        $level = 1;
 
         //判断是不是产品的直接供应商
         if($setterUid == $applyDid) {
@@ -1715,9 +1688,6 @@ class SellerStorage extends Model{
             $totalNum = $this->table($table)->join($join)->where($where)->count();
 
             $memberList = $this->table($table)->field($field)->join($join)->where($where)->page($page)->select();
-
-            //记录哪级分销商
-            $level = 1;
         } else {
             //如果是分销产品的话，从产品分销表获取下级分销商
             $field = "member.dname, member.id, member.account";
@@ -1740,8 +1710,6 @@ class SellerStorage extends Model{
             //分页获取相应的分销商
             $memberList = $this->table($table)->field($field)->where($where)->page($page)->join($join)->select();
 
-            //记录哪级分销商
-            $level = 2;
         }
 
         //获取分销商数组
@@ -1760,7 +1728,7 @@ class SellerStorage extends Model{
         }
 
         //获取分销库存使用量
-        $usedStorageArr = $this->getUsedStorageArr($pid, $setterUid, $resellerArr, $date, $level, $attr);
+        $usedStorageArr = $this->getUsedStorageArr($pid, $setterUid, $resellerArr, $date, $attr);
 
         //获取库存设置值
         foreach($memberList as &$item) {
@@ -1775,9 +1743,11 @@ class SellerStorage extends Model{
             }
 
             if(isset($usedStorageArr[$tmpResllerId])) {
-                $item['selled_num'] = $usedStorageArr[$tmpResllerId]['fixed_num_used'] + $usedStorageArr[$tmpResllerId]['dynamic_num_used'];
+                $item['selled_num']       = $usedStorageArr[$tmpResllerId]['fixed_num_used'] + $usedStorageArr[$tmpResllerId]['dynamic_num_used'];
+                $item['selled_fixed_num'] = $usedStorageArr[$tmpResllerId]['fixed_num_used'];
             }else {
-                $item['selled_num'] = 0;
+                $item['selled_num']       = 0;
+                $item['selled_fixed_num'] = 0;
             }
         }
 
@@ -2167,16 +2137,17 @@ class SellerStorage extends Model{
      * @author dwer
      * @date   2016-02-28
      *
-     * @param  [type] $pid 产品ID
-     * @param  [type] $setterId 上级供应商ID
-     * @param  [type] $date 日期
-     * @param  boolean $attr
-     * @return [type]
+     * @param  $pid 产品ID
+     * @param  $setterId 上级供应商ID
+     * @param  $date 日期
+     * @param  $attr
+     * @return
      */
     public function getUsedFixed($pid, $setterId, $date, $attr = false) {
         $where = array(
             'pid'          => $pid,
             'reseller_uid' => $setterId,
+            'setter_uid'   => $setterId,
             'date'         => $date
         );
 
@@ -2184,9 +2155,9 @@ class SellerStorage extends Model{
             $where['special_attr'] = $attr;
         }
 
-        $res = $this->table($this->_usedTable)->where($where)->sum('fixed_num_used');
+        $res = $this->table($this->_usedTable)->field('fixed_num_used')->where($where)->find();
         if($res) {
-            return intval($res);
+            return intval($res['fixed_num_used']);
         } else {
             return 0;
         }
@@ -2236,9 +2207,16 @@ class SellerStorage extends Model{
      * @return int
      */
     public function getSettedDayNum($pid, $resellerId, $date, $attr = false) {
+        //通过产品ID获取供应商ID
+        $applyDid = $this->getApplyDid($pid);
+        if(!$applyDid) {
+            return 0;
+        }
+
         $where = array(
             'pid'          => $pid,
             'reseller_uid' => $resellerId,
+            'setter_uid'   => $applyDid,
             'date'         => array('in', array($date, 0))  //设定值和默认值一起返回
         );
         $order = 'date desc';
@@ -2665,7 +2643,7 @@ class SellerStorage extends Model{
         //判断库存是否充足
         $tmp = $this->getMaxStorage($pid, $setterUid, $resellerUid, $date, $attr);
         $maxFixed     = $tmp['max_fixed'];
-        $maxDynamic = $tmp['max_dynamic'];
+        $maxDynamic   = $tmp['max_dynamic'];
 
         //获取用户已经使用的库存
         $tmp         = $this->getUsedStorage($pid, $setterUid, $resellerUid, $date, $attr);
@@ -2731,6 +2709,39 @@ class SellerStorage extends Model{
     }
 
     /**
+     * 消耗分销商的可用库存 - 默认消耗在固定库存里面
+     * 
+     * @param pid 产品ID
+     * @param setterUid 供应商ID或是上级分销商ID
+     * @param resellerUid 分销商ID
+     * @param date 日期 - 20161023
+     * @param buyNum 需要购买的数量
+     * @param attr 产品属性，这边可能是场次
+     *
+     * @return bool
+     *   
+     */
+    private function _useupSelfStorage($orderId, $pid, $setterUid, $resellerUid, $date, $buyNum, $attr = false) {
+        //记录使用来源表
+        $logFixedNum   = $buyNum;
+        $logDynamicNum = 0;
+
+        //足够的情况
+        $res = $this->_useFixed($pid, $setterUid, $resellerUid, $date, $buyNum, $attr);
+        if(!$res) {
+            return false;
+        }
+
+        //记录库存的使用记录
+        $logRes = $this->_useLog($orderId, $setterUid, $resellerUid, $logFixedNum, $logDynamicNum);
+        if(!$logRes) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
      * 根据购买用户、商品、分销商ID获取有设置分销商库存的分销商
      *
      * @param  memberId 购买用户ID
@@ -2774,7 +2785,10 @@ class SellerStorage extends Model{
                             array('first' => $memberId, 'second' => $setterId), //使用供应商的库存
                         );
                     } else {
-                        return array(array('first' => $memberId, 'second' => $setterId));
+                        return array(
+                            array('first' => $memberId, 'second' => $setterId),
+                            array('first' => $memberId, 'second' => $memberId, 'self_use' => true) //一级分销商还没有给下级分销配置的时候，也要记录自己使用量
+                        );
                     }
 
                 } else {

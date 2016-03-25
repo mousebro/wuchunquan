@@ -16,14 +16,10 @@ class OrderTrack extends Controller
     {
         $this->model = new \Model\Order\OrderTrack();
     }
-    public function test()
-    {
-        echo 'hi';
-    }
 
     private function verify($ordernum, $token)
     {
-        if (md5(strrev($ordernum . self::KEY))!=$token)
+        if (md5(strrev($ordernum))!=$token)
             $this->apiReturn(203,[], 'Auth Error');
     }
     public function write()
