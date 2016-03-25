@@ -8,7 +8,6 @@ namespace Action;
 
 use Library\Controller;
 use Model\Order\OrderTools;
-use Model\Order\OrderTrack;
 use Model\Order\RefundAudit;
 use Model\Product\Ticket;
 
@@ -16,11 +15,7 @@ class RefundAuditAction extends BaseAction
 {
     const MODIFY_CODE_IN_AUDIT = 2;      //退款审核表中修改申请的stype值
     const CANCEL_CODE_IN_AUDIT = 3;      //退款审核表中取消申请的stype值
-    const INNER_SOURCE_IN_TRACK = 16;     //订单追踪表中来自内部接口的请求
-    const UNDEFINED_SOURCE_IN_TRACK = 18;     //订单追踪表中表示未定义的请求来源
-    const APPLY_AUDIT_CODE_IN_TRACK = 9;      //订单追踪表中表示发起退款审核
-    const OPERATE_AUDIT_IN_TRACK_TABLE = 10;     //订单追踪表中表示退款审核已处理
-    private $noticeURL = 'http://localhost/module/api/RefundNotice.php';
+    private $noticeURL = 'http://localhost/new/d/module/api/RefundNotice.php';
 
     /**
      * 判断订单是否需要退票审核
@@ -142,7 +137,6 @@ class RefundAuditAction extends BaseAction
      * @param int $orderNum
      * @param int $targetTicketNum
      * @param int $operatorID
-     * @param int $source 操作来源
      * @param     $requestTime
      *
      * @return int
@@ -151,7 +145,6 @@ class RefundAuditAction extends BaseAction
         $orderNum,
         $targetTicketNum,
         $operatorID,
-        $source = self::UNDEFINED_SOURCE_IN_TRACK,
         $requestTime = 0
     ) {
 
@@ -174,20 +167,6 @@ class RefundAuditAction extends BaseAction
         $auditorID     = reset(explode(',', $orderInfo['aids']));
         $operateStatus = $orderInfo['mdetails'] ? 4 : 0; //需要第三方平台审核的操作状态默认为4
 
-        //添加订单追踪记录
-        $trackModel = new OrderTrack();
-        $trackModel->addTrack(
-            $orderNum,
-            self::APPLY_AUDIT_CODE_IN_TRACK,
-            $orderInfo['tid'],
-            $orderInfo['tnum'],
-            $orderInfo['tnum'],
-            $source,
-            $orderInfo['terminal'],
-            0,
-            $orderInfo['personid'],
-            $operatorID,
-            $orderInfo['salerid']);
         //添加审核记录
         $orderModel = new orderTools();
         if ($orderInfo['ifpack'] == 1) {//套票主票
@@ -222,7 +201,6 @@ class RefundAuditAction extends BaseAction
                     $subOrder['orderid'],
                     $targetSubOrderTnum,
                     $operatorID,
-                    $source,
                     $requestTime);
                 if ($addSubOrder == 240 || $addSubOrder == 200) {
                     continue;
@@ -251,7 +229,7 @@ class RefundAuditAction extends BaseAction
             foreach ($subOrders as $subOrder) {
                 if ($subOrder['orderNum'] != $orderNum) {
                     $addSubOrder = $this->addRefundAudit($subOrder['orderid'],
-                        $targetTicketNum, $orderInfo, $source, $requestTime);
+                        $targetTicketNum, $orderInfo,$requestTime);
                     if ($addSubOrder == 240 || $addSubOrder == 200) {
                         continue;
                     } else {
@@ -292,18 +270,6 @@ class RefundAuditAction extends BaseAction
                     '系统自动审核',
                     date('Y-m-d H:i:s')
                 );
-                //添加系统自动审核的订单追踪记录
-                $trackModel->addTrack(
-                    $orderNum,
-                    self::OPERATE_AUDIT_IN_TRACK_TABLE,
-                    $orderInfo['tid'],
-                    $orderInfo['tnum'],
-                    $targetTicketNum,
-                    $source,
-                    $orderInfo['terminal'],
-                    0,
-                    0,
-                    $operatorID);
             } else {
                 $addResult = $refundModel->addRefundAudit(
                     $orderNum,
@@ -346,23 +312,6 @@ class RefundAuditAction extends BaseAction
         $operatorID,
         $auditTnum
     ) {
-        $refundModel  = new RefundAudit();
-        $auditInfo    = $refundModel->getOrderInfoForAudit($orderNum);
-        $trackModel   = new OrderTrack();
-        $ticketRemain = ($auditResult == 1) ? $auditTnum : $auditInfo['tnum'];
-        $trackModel->addTrack(
-            $orderNum,
-            self::OPERATE_AUDIT_IN_TRACK_TABLE,
-            $auditInfo['tid'],
-            $auditInfo['tnum'],
-            $ticketRemain,
-            self::INNER_SOURCE_IN_TRACK,
-            $auditInfo['terminal'],
-            0,
-            $auditInfo['personid'],
-            $operatorID,
-            $auditInfo['salerid']
-        );
 //        if ($auditID == 0) {
 //            return (205); //订单信息不全
 //        }
