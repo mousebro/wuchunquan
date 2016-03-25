@@ -274,18 +274,19 @@ class RefundAuditAction extends BaseAction
         //获取记录详情
         $refundRecords = $refundModel->getAuditList($operatorID, $landTitle, $noticeType,
             $applyTime, $auditStatus, $auditTime, false, $page, $limit);
-        var_dump($refundRecords);
-        if(count($refundRecords)>0){
-//            foreach ($refundRecords as $row) {
-//                $row['action'] = false;
-//                if (($row['apply_did'] == $operatorID ||  $operatorID == 1) && !$row['mdetails']) {
-//                    $row['action'] = true;
-//                    if($row['dcodeURL'] && in_array($row['dstatus'],[1,2])){
-//                        $row['repush'] = true;
-//                    }
-//                }
-//                $r[] = $row;
-//            }
+        if(is_array($refundRecords) && count($refundRecords)>0){
+            foreach ($refundRecords as $row) {
+                $row['action'] = false;
+                $row['repush'] = false;
+                if (($row['apply_did'] == $operatorID ||  $operatorID == 1) && !$row['mdetails']) {
+                    $row['action'] = true;
+                    if($row['dcodeURL'] && in_array($row['dstatus'],[1,2])){
+                        $row['repush'] = true;
+                    }
+                }
+                unset($row['dcodeURL']);
+                $r[] = $row;
+            }
             //获取记录总数
             $rnum  = $refundModel->getAuditList($operatorID, $landTitle, $noticeType,
                 $applyTime, $auditStatus, $auditTime, true, $page, $limit);
@@ -297,7 +298,7 @@ class RefundAuditAction extends BaseAction
             'page' => $page,
             'limit' => $limit,
             'total' => $total,
-            'audit_list' => $refundRecords,
+            'audit_list' => $r,
         );
         $this->ajaxReturn(200,$data);
     }

@@ -285,7 +285,6 @@ class RefundAudit extends Model
                            ->limit($limit)
                            ->order($order)
                            ->select();
-            $this->test();
             return $result;
         }
     }
