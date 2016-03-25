@@ -18,7 +18,6 @@ class RefundAudit extends Model
     private $_ticketTable = 'uu_jq_ticket';
     private $_orderDetailTable = 'uu_order_fx_details';
     private $_memberTable = 'pft_member';
-    private $_orderSynchronizeTable = 'order_status_synchronize';
 
     /**
      * @param int    $orderNum    平台订单号
@@ -45,7 +44,7 @@ class RefundAudit extends Model
         $tid,
         $modifyType,
         $targetTnum,
-        $operatorID,
+        $operatorID=1,
         $dstatus = 0,
         $auditorID = 0,
         $requestTime = 0,
@@ -53,6 +52,7 @@ class RefundAudit extends Model
         $auditTime = 0
     ) {
         $table = $this->_refundAuditTable;
+        $requestTime = ($requestTime) ? $requestTime : date('Y-m-d H:i:s');
         $data  = [
             'ordernum' => $orderNum,
             'terminal' => $terminal,
@@ -62,7 +62,7 @@ class RefundAudit extends Model
             'stype'    => $modifyType,
             'tnum'     => $targetTnum,
             'dstatus'  => $dstatus,        /*状态0未操作1同意2拒绝*/
-            'stime'    => ($requestTime) ? $requestTime : date('Y-m-d H:i:s'),
+            'stime'    => $requestTime,
             'fxid'     => $operatorID, //申请发起人
             'dadmin'   => $auditorID,
         ];
@@ -265,7 +265,14 @@ class RefundAudit extends Model
         } else {
             //查询记录详情
             $field  = array(
-                'a.*',
+                'a.id',
+                'a.ordernum',
+                'a.stype',
+                'a.tnum',
+                'a.dstatus',
+                'a.reason',
+                'a.stime',
+                'a.dtime',
                 'l.title AS ltitle',
                 'l.apply_did',
                 'od.concat_id',

@@ -6,7 +6,6 @@
 
 namespace Action;
 
-use Library\Controller;
 use Model\Order\OrderTools;
 use Model\Order\RefundAudit;
 use Model\Product\Ticket;
@@ -51,7 +50,7 @@ class RefundAuditAction extends BaseAction
         if ( ! $orderInfo) {
             return (204); //订单号不存在
         }
-        $orderDetail = $orderModel->getOrderDetail($orderNum, 1);
+        $orderDetail = $orderModel->getOrderDetail($orderNum);
         if ( ! $orderDetail || ! is_array($orderDetail)) {
             return (205);//订单信息不全
         }
@@ -81,6 +80,10 @@ class RefundAuditAction extends BaseAction
                 $orderDetail['pay_status']);
             if ($result != 200) {
                 return $result;
+            }
+            //自供自销的订单可自行取消
+            if($ticketInfo['apply_did'] == $operatorID && $modifyType == self::CANCEL_CODE_IN_AUDIT){
+                return 100;
             }
         } else {
             //对无需退款审核的订单需要作联票和套票判断
@@ -166,7 +169,7 @@ class RefundAuditAction extends BaseAction
         }
 
         //参数初始化
-        $requestTime = ($requestTime) ? $requestTime : date('Y-m-d H:i:s');
+        $requestTime = ($requestTime != 0) ? $requestTime : date('Y-m-d H:i:s');
         $modifyType = $targetTicketNum == 0 ? self::CANCEL_CODE_IN_AUDIT
             : self::MODIFY_CODE_IN_AUDIT;
 
@@ -178,7 +181,21 @@ class RefundAuditAction extends BaseAction
         $operateStatus = $orderInfo['mdetails'] ? 4 : 0; //需要第三方平台审核的操作状态默认为4
 
         //添加审核记录
-        if ( ! $orderInfo['refund_audit']) {
+        if($orderInfo['refund_audit'] || $orderInfo['ifpack']==1 || $orderInfo['concat_id'] == $orderNum){
+            $addResult = $refundModel->addRefundAudit(
+                $orderNum,
+                $orderInfo['terminal'],
+                $orderInfo['salerid'],
+                $orderInfo['lid'],
+                $orderInfo['tid'],
+                $modifyType,
+                $targetTicketNum,
+                $operatorID,
+                $operateStatus,
+                $auditorID,
+                $requestTime
+            );
+        }else{
             $addResult = $refundModel->addRefundAudit(
                 $orderNum,
                 $orderInfo['terminal'],
@@ -194,21 +211,8 @@ class RefundAuditAction extends BaseAction
                 '系统自动审核',
                 $requestTime
             );
-        } else {
-            $addResult = $refundModel->addRefundAudit(
-                $orderNum,
-                $orderInfo['terminal'],
-                $orderInfo['salerid'],
-                $orderInfo['lid'],
-                $orderInfo['tid'],
-                $modifyType,
-                $targetTicketNum,
-                $operatorID,
-                $operateStatus,
-                $auditorID,
-                $requestTime
-            );
         }
+
         if ( ! $addResult) {
             return (241);//数据添加失败
         }
@@ -232,8 +236,7 @@ class RefundAuditAction extends BaseAction
         $auditResult,
         $auditNote,
         $orderNum,
-        $operatorID,
-        $auditTnum
+        $operatorID
     ) {
 //        if ($auditID == 0) {
 //            return (205); //订单信息不全
@@ -285,6 +288,7 @@ class RefundAuditAction extends BaseAction
                     }
                 }
                 unset($row['dcodeURL']);
+                unset($row['mdetails']);
                 $r[] = $row;
             }
             //获取记录总数
@@ -367,8 +371,6 @@ class RefundAuditAction extends BaseAction
         $onlinePay = array(1, 5, 7, 8);
         if (in_array($payMode, $onlinePay)) {
             return (100);//在线支付订单:无需退票审核
-        } elseif ($payMode == 3) {
-            return (100);//自供自销订单:无需退票审核
         } elseif ($payMode == 4) {
             return (100);//到付订单:无需退票审核
         }
