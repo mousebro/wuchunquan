@@ -121,19 +121,20 @@ class RefundAudit extends Model
     /**
      * 查询订单是否处于退款审核状态
      *
-     * @param int $orderNum
-     * @param int $modifyType
+     * @param int $orderNum   订单号
+     * @param int $modifyType 变更类型：2-修改 3-取消
      *
      * @return int
      */
-    public function isUnderAudit($orderNum)
+    public function isUnderAudit($orderNum,$modifyType=null)
     {
         $table  = $this->_refundAuditTable;
         $where  = array(
             'ordernum' => $orderNum,
             'dstatus'  => 0,
-            //            'stype'   => $modifyType,
         );
+        if(is_numeric($modifyType))  $where['stype'] = $modifyType;
+
         $field  = ['id'];
         $result = $this->table($table)->where($where)->field($field)->find();
 
@@ -284,7 +285,7 @@ class RefundAudit extends Model
                            ->limit($limit)
                            ->order($order)
                            ->select();
-//            $this->test();
+            $this->test();
             return $result;
         }
     }
