@@ -361,6 +361,10 @@ class Ticket extends Model {
                     ->order('start_date asc')
                     ->getField('start_date');
 
+        if (strtotime($period_date) < strtotime(date('Y-m-d'))) {
+            $period_date = date('Y-m-d');
+        }
+
         if (!$daily_date && !$period_date) {
             return false;
         }
