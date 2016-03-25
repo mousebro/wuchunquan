@@ -352,23 +352,32 @@ class Ticket extends Model {
 
 
     /**
-     * 获取有设置零售价的最小的日期
+     * 获取有设置零售价的最小/最大的日期
      * @param  [type] $pid [description]
      * @return [type]      [description]
      */
-    public function getHasRetailPriceMinDate($pid) {
+    public function getHasRetailPriceDate($pid, $type = 'min') {
+        if ($type == 'min') {
+            $date_type = 'start_date';
+            $sort = 'asc';
+        } else {
+            $date_type = 'end_date';
+            $sort = 'desc';
+        }
         $daily_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
                     ->where(['pid' => $pid, 'start_date' => array('egt', date('Y-m-d')), 'ptype' => 1, 'status' => 0])
-                    ->order('start_date asc')
-                    ->getField('start_date');
+                    ->order('start_date '.$sort)
+                    ->getField($date_type);
 
         $period_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
                     ->where(['pid' => $pid, 'end_date' => array('egt', date('Y-m-d')), 'ptype' => 0, 'status' => 0])
-                    ->order('start_date asc')
-                    ->getField('start_date');
+                    ->order('start_date '.$sort)
+                    ->getField($date_type);
 
-        if (strtotime($period_date) < strtotime(date('Y-m-d'))) {
-            $period_date = date('Y-m-d');
+        if ($type == 'min') {
+            if (strtotime($period_date) < strtotime(date('Y-m-d'))) {
+                $period_date = date('Y-m-d');
+            }
         }
 
         if (!$daily_date && !$period_date) {
@@ -382,37 +391,13 @@ class Ticket extends Model {
         if ($daily_date && !$period_date) {
             return $daily_date;
         }
-        return strtotime($daily_date) > strtotime($period_date) ? $period_date : $daily_date;
-    }
 
-    /**
-     * 获取有设置零售价的最大的日期
-     * @param  [type] $pid [description]
-     * @return [type]      [description]
-     */
-    public function getHasRetailPriceMaxDate($pid) {
-        $daily_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
-                    ->where(['pid' => $pid, 'start_date' => array('egt', date('Y-m-d')), 'ptype' => 1, 'status' => 0])
-                    ->order('start_date desc')
-                    ->getField('end_date');
-
-        $period_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
-                    ->where(['pid' => $pid, 'end_date' => array('egt', date('Y-m-d')), 'ptype' => 0, 'status' => 0])
-                    ->order('start_date desc')
-                    ->getField('end_date');
-
-        if (!$daily_date && !$period_date) {
-            return false;
+        if ($type == 'min') {
+            return strtotime($daily_date) > strtotime($period_date) ? $period_date : $daily_date;
+        } else {
+            return strtotime($daily_date) > strtotime($period_date) ? $daily_date : $period_date;
         }
-
-        if (!$daily_date && $period_date) {
-            return $period_date;
-        }
-
-        if ($daily_date && !$period_date) {
-            return $daily_date;
-        }
-        return strtotime($daily_date) > strtotime($period_date) ? $daily_date : $period_date;
+        
     }
 
     /**
