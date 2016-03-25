@@ -43,8 +43,10 @@ class OnlineRefund extends Controller
         $this->data  = (object)$data;
         $pay_mode = I("post.pay_mode");
         if (ENV!='PRODUCTION') $res = ['code'=>200];
-        elseif ($pay_mode==5) $res = $this->wx();
-        elseif($pay_mode==7) $res = $this->union();
+        else {
+            if ($pay_mode==5) $res = $this->wx();
+            elseif($pay_mode==7) $res = $this->union();
+        }
         if ($res['code']==200) {
             $this->model->UpdateRefundLogOk($this->log_id);
             $this->model->AddMemberLog(
@@ -110,7 +112,6 @@ class OnlineRefund extends Controller
         }
         elseif($refundResult["return_code"] == 'SUCCESS') {
             Api::Log("退款成功:退款记录ID[{$this->log_id}],订单号[{$out_trade_no}],总金额[{$total_fee}],退款金额[{$refund_fee}]", $this->ok_log);
-            $this->model->UpdateRefundLogOk($this->log_id);
             return ['code'=>200, 'msg'=>'退款成功'];
 
         }
