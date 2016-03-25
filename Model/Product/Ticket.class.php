@@ -344,6 +344,67 @@ class Ticket extends Model {
         return $use_storage;
     }
 
+
+    /**
+     * 获取有设置零售价的最小的日期
+     * @param  [type] $pid [description]
+     * @return [type]      [description]
+     */
+    public function getHasRetailPriceMinDate($pid) {
+        $daily_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => $pid, 'start_date' => array('egt', date('Y-m-d')), 'ptype' => 1, 'status' => 0])
+                    ->order('start_date asc')
+                    ->getField('start_date');
+
+        $period_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => $pid, 'end_date' => array('egt', date('Y-m-d')), 'ptype' => 0, 'status' => 0])
+                    ->order('start_date asc')
+                    ->getField('start_date');
+
+        if (!$daily_date && !$period_date) {
+            return false;
+        }
+
+        if (!$daily_date && $period_date) {
+            return $period_date;
+        }
+
+        if ($daily_date && !$period_date) {
+            return $daily_date;
+        }
+        return strtotime($daily_date) > strtotime($period_date) ? $period_date : $daily_date;
+    }
+
+    /**
+     * 获取有设置零售价的最小的日期
+     * @param  [type] $pid [description]
+     * @return [type]      [description]
+     */
+    public function getHasRetailPriceMaxDate($pid) {
+        $daily_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => $pid, 'start_date' => array('egt', date('Y-m-d')), 'ptype' => 1, 'status' => 0])
+                    ->order('start_date desc')
+                    ->getField('end_date');
+
+        $period_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => $pid, 'end_date' => array('egt', date('Y-m-d')), 'ptype' => 0, 'status' => 0])
+                    ->order('start_date desc')
+                    ->getField('end_date');
+
+        if (!$daily_date && !$period_date) {
+            return false;
+        }
+
+        if (!$daily_date && $period_date) {
+            return $period_date;
+        }
+
+        if ($daily_date && !$period_date) {
+            return $daily_date;
+        }
+        return strtotime($daily_date) > strtotime($period_date) ? $daily_date : $period_date;
+    }
+
     /**
      * 获取产品门市价
      * @param  [type] $id  pid/tid
