@@ -356,7 +356,7 @@ class Ticket extends Model {
      * @param  [type] $pid [description]
      * @return [type]      [description]
      */
-    public function getHasRetailPriceDate($pid, $type = 'min') {
+    public function getHasRetailPriceMinDate($pid) {
         $daily_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
                     ->where(['pid' => $pid, 'start_date' => array('egt', date('Y-m-d')), 'ptype' => 1, 'status' => 0])
                     ->order('start_date asc')
