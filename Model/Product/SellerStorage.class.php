@@ -1743,9 +1743,11 @@ class SellerStorage extends Model{
             }
 
             if(isset($usedStorageArr[$tmpResllerId])) {
-                $item['selled_num'] = $usedStorageArr[$tmpResllerId]['fixed_num_used'] + $usedStorageArr[$tmpResllerId]['dynamic_num_used'];
+                $item['selled_num']       = $usedStorageArr[$tmpResllerId]['fixed_num_used'] + $usedStorageArr[$tmpResllerId]['dynamic_num_used'];
+                $item['selled_fixed_num'] = $usedStorageArr[$tmpResllerId]['fixed_num_used'];
             }else {
-                $item['selled_num'] = 0;
+                $item['selled_num']       = 0;
+                $item['selled_fixed_num'] = 0;
             }
         }
 
@@ -2205,9 +2207,16 @@ class SellerStorage extends Model{
      * @return int
      */
     public function getSettedDayNum($pid, $resellerId, $date, $attr = false) {
+        //通过产品ID获取供应商ID
+        $applyDid = $this->getApplyDid($pid);
+        if(!$applyDid) {
+            return 0;
+        }
+
         $where = array(
             'pid'          => $pid,
             'reseller_uid' => $resellerId,
+            'setter_uid'   => $applyDid,
             'date'         => array('in', array($date, 0))  //设定值和默认值一起返回
         );
         $order = 'date desc';
