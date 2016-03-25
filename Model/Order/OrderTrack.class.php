@@ -91,7 +91,7 @@ class OrderTrack extends Model
      * @param $salerid int 景区6位ID
      * @return mixed
      */
-    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0, $branch_terminal=0, $id_card='', $oper,$salerid=0)
+    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0, $branch_terminal=0, $id_card='', $oper=0,$salerid=0)
     {
         $data = [
             'ordernum'       => $ordernum,
