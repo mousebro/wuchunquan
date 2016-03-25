@@ -30,6 +30,9 @@ use Library\Model;
 
 class OrderTrack extends Model
 {
+    const ORDER_CREATE       = 0;
+    const ORDER_MODIFY       = 1;
+    const SOURCE_INSIDE_SOAP = 16;
     public static function getSourceList()
     {
         return [
