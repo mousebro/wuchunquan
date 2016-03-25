@@ -12,58 +12,68 @@ use Library\Model;
 class RefundAudit extends Model
 {
     private $_refundAuditTable = 'uu_order_terminal_change';
-    private $_orderTable       = 'uu_ss_order';
-    private $_landTable        = 'uu_land';
-    private $_ticketTable      = 'uu_jq_ticket';
+    private $_orderTable = 'uu_ss_order';
+    private $_orderAppendixTable = 'uu_order_addon';
+    private $_landTable = 'uu_land';
+    private $_ticketTable = 'uu_jq_ticket';
+    private $_orderDetailTable = 'uu_order_fx_details';
+    private $_memberTable = 'pft_member';
+    private $_orderSynchronizeTable = 'order_status_synchronize';
 
     /**
-     * 添加订单变更审核记录
+     * @param int    $orderNum    平台订单号
+     * @param int    $terminal    终端号
+     * @param int    $salerid     景区6位编号
+     * @param int    $lid         景区id
+     * @param int    $tid         门票id
+     * @param int    $modifyType  修改类型 0-撤改 1-撤销 2-修改 3-取消
+     * @param int    $targetTnum  变更后票数
+     * @param int    $operatorID  退票发起人
+     * @param int    $dstatus     退票审核状态 0-未处理 1-同意 2-拒绝 3-等待第三方自动审核
+     * @param int    $requestTime 申请时间
+     * @param string $auditNote   审核备注
+     * @param int    $auditorID   审核人
+     * @param int    $auditTime   审核时间
      *
-     * @param int $orderNum   平台订单号
-     * @param int $targetTnum 修改后票数
-     * @param int $modifyType 修改类型 0-撤改 1-撤销 2-修改 3-取消
-     * @param int $requestTime
-     *
-     * @return int $lastInsertId
+     * @return mixed
      */
-    public function addRefundAudit($orderNum,$targetTnum,$modifyType = null,$operatorID,$requestTime = 0, $callTnum)
-    {
-        $orderInfo = $this->getOrderInfoForAudit($orderNum);
-        if ( ! is_array($orderInfo)) {
-            return false;
-        }
-        if ($modifyType === null) {
-            if ($orderInfo['status'] == 1) {
-                $modifyType = ($targetTnum == 0) ? 1 : 0;
-            } else {
-                $modifyType = ($targetTnum == 0) ? 3 : 2;
-            }
-        }
-        $dstatus = ($orderInfo['refund_audit']==0 && strtoupper($orderInfo['p_type'])!= 'F') ? 1 : 0; //如果门票本身不需要退款审核时，则自动设置为同意退票（用于套票）
-        $table        = $this->_refundAuditTable;
-        $data         = [
-            'ordernum' => $orderInfo['ordernum'],
-            'terminal' => $orderInfo['terminal'],
-            'salerid'  => $orderInfo['salerid'],
-            'lid'      => $orderInfo['lid'],
-            'tid'      => $orderInfo['tid'],
-            'tnum'     => $targetTnum,
-            'dstatus'  => $dstatus, /*状态0未操作1同意2拒绝*/
-            'stime'    => ($requestTime) ? $requestTime : date('Y-m-d H:i:s'),
+    public function addRefundAudit(
+        $orderNum,
+        $terminal,
+        $salerid,
+        $lid,
+        $tid,
+        $modifyType,
+        $targetTnum,
+        $operatorID,
+        $dstatus = 0,
+        $auditorID = 0,
+        $requestTime = 0,
+        $auditNote = '',
+        $auditTime = 0
+    ) {
+        $table = $this->_refundAuditTable;
+        $data  = [
+            'ordernum' => $orderNum,
+            'terminal' => $terminal,
+            'salerid'  => $salerid,
+            'lid'      => $lid,
+            'tid'      => $tid,
             'stype'    => $modifyType,
-            'fxid'=>$operatorID, //字段含义不详
+            'tnum'     => $targetTnum,
+            'dstatus'  => $dstatus,        /*状态0未操作1同意2拒绝*/
+            'stime'    => ($requestTime) ? $requestTime : date('Y-m-d H:i:s'),
+            'fxid'     => $operatorID, //申请发起人
+            'dadmin'   => $auditorID,
         ];
-        if($dstatus==1){
-            $data['reason'] = '系统自动审核';
-            $data['dadmin'] = 1;
-            $data['dtime'] = date('Y-m-d H:i:s');
+        if ($auditTime) {
+            $data['dtime'] = $auditTime;
         }
-        $lastInsertId = $this->table($table)->data($data)->add();
-        if($callTnum) {
-            return array($targetTnum,$orderInfo['tnum']);
-        }else{
-            return $lastInsertId;
+        if ($auditNote) {
+            $data['reason'] = $auditNote;
         }
+
+        return $this->table($table)->data($data)->add();
     }
 
     /**
@@ -75,28 +85,37 @@ class RefundAudit extends Model
      */
     public function getOrderInfoForAudit($orderNum)
     {
-        $table  = "{$this->_orderTable} AS o";
-        $where  = ['o.ordernum' => $orderNum];
-        $join   = array(
+        $table = "{$this->_orderTable} AS o";
+        $where = ['o.ordernum' => $orderNum];
+        $join  = array(
             "join {$this->_landTable} AS l ON o.lid=l.id",
-            "join {$this->_ticketTable} AS t ON o.tid=t.id");
-        $field  = array(
-            'o.ordernum',
+            "join {$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
+            "join {$this->_ticketTable} AS t ON o.tid=t.id",
+            "join {$this->_orderDetailTable} AS od ON o.ordernum=od.orderid",
+        );
+        $field = array(
             'o.salerid',
             'o.lid',
             'o.tid',
-            'o.status',
+            'o.personid',
             'l.terminal',
-            'l.p_type',
+            'oa.ifpack',
+            'oa.pack_order',
             'o.tnum',
+            't.mdetails',
+            //            'o.ordernum',
+            //            'o.status',
+            //            'l.p_type',
             't.refund_audit',
+            'od.concat_id',
+            'od.aids',
         );
-        $result = $this->table($table)
-                       ->where($where)
-                       ->join($join)
-                       ->field($field)
-                       ->find();
-        return $result;
+
+        return $this->table($table)
+                    ->where($where)
+                    ->join($join)
+                    ->field($field)
+                    ->find();
     }
 
     /**
@@ -107,65 +126,188 @@ class RefundAudit extends Model
      *
      * @return int
      */
-    public function underAudit($orderNum, $modifyType)
+    public function isUnderAudit($orderNum)
     {
         $table  = $this->_refundAuditTable;
         $where  = array(
             'ordernum' => $orderNum,
-            'dstatus' => 0,
-            'stype'   => $modifyType,
+            'dstatus'  => 0,
+            //            'stype'   => $modifyType,
         );
         $field  = ['id'];
         $result = $this->table($table)->where($where)->field($field)->find();
-//        $this->test();
+
         return $result;
     }
+
 
     /**
      * 更新退款审核结果
      *
-     * @param $auditID
-     * @param $auditResult
-     * @param $auditNote
-     * @param $orderNum
-     * @param $operatorID
+     * @param     $auditID
+     * @param     $auditResult
+     * @param     $auditNote
+     * @param     $orderNum
+     * @param     $operatorID
+     * @param int $auditTime
      *
      * @return bool
      */
-    public function updateAudit($auditID, $auditResult, $auditNote, $orderNum, $operatorID)
-    {
-        $table = $this -> _refundAuditTable;
+    public function updateAudit(
+        $auditID,
+        $auditResult,
+        $auditNote,
+        $orderNum,
+        $operatorID,
+        $auditTime = 0
+    ) {
+        $table = $this->_refundAuditTable;
         $where = array(
-          'id'=>$auditID,
-          'ordernum' => $orderNum,
+            'ordernum' => $orderNum,
+            'dstatus'  => 0,
         );
-        $data = array(
-          'dstatus' => $auditResult,
-          'reason' => $auditNote,
-          'dadmin' => $operatorID,
-          'dtime' => date('Y-m-d H:i:s'),
+        if ($auditID) {
+            $where['id'] = $auditID;
+        }
+        $auditTime = ($auditTime) ? $auditTime : date('Y-m-d H:i:s');
+        $data      = array(
+            'dstatus' => $auditResult,
+            'reason'  => $auditNote,
+            'dadmin'  => $operatorID,
+            'dtime'   => $auditTime,
         );
-        $result = $this->table($table)->where($where)->data($data)->save();
-        //        $this->test();
+        $result    = $this->table($table)->where($where)->data($data)->save();
+
         return $result;
     }
-//    //获取门票信息
-//    public function getTicketInfo($tid){
-//        $table = "{$this->_ticketTable} AS t";
-//        $join = "left join {$this->_landTable} AS l ON l.id=t.landid";
-//        $where = ["t.id" => $tid];
-//        $field = array(
-//            "t.*",
-//            "l.p_type"
-//        );
-//        $result = $this->table($table)->where($where)->join($join)->field($field)->find();
-//        return $result;
-//    }
 
-    //todo：判断订单是否是套票
-    //打印sql语句
-    private function test(){
-        $str = $this -> getLastSql();
-        print_r($str);
+    /**
+     * 获取对应退款审核记录
+     *
+     * @param $auditID
+     *
+     * @return mixed
+     */
+    public function getAuditByID($auditID)
+    {
+        $where = ['id' => $auditID];
+        $table = $this->_refundAuditTable;
+
+        return $this->table($table)->where($where)->find();
+    }
+
+    /**
+     * 获取退款审核列表-先处理供应商的
+     *
+     * @param null $memberID
+     * @param null $landTitle
+     * @param null $noticeType
+     * @param null $applyTime
+     * @param null $auditStatus
+     * @param      $auditTime
+     * @param bool $getTotalPage
+     * @param bool $memberType 1-管理员 2-供应商 3-分销商
+     * @param int  $page
+     * @param int  $limit
+     *
+     * @return mixed
+     */
+    public function getAuditList(
+        $memberID = null,
+        $landTitle = null,
+        $noticeType = null,
+        $applyTime = null,
+        $auditStatus = null,
+        $auditTime,
+        $getTotalPage = false,
+        $page = 1,
+        $limit = 10
+    ) {
+
+        $table = "$this->_refundAuditTable AS a";
+        $join  = array(
+            "left join {$this->_landTable} AS l ON l.id=a.lid",
+            "left join {$this->_orderDetailTable} AS od ON od.orderid=a.ordernum",
+            "left join {$this->_orderAppendixTable} AS oa ON a.ordernum=oa.orderid",
+            "left join {$this->_memberTable} AS m ON m.id=l.apply_did",
+            "left join {$this->_ticketTable} AS t ON a.tid=t.id",
+        );
+        $where = array("l.status" => array('lt', 3));
+        //根据传入参数确定查询条件
+        if ($memberID != 1) {
+            $where['_string'] = "l.apply_did={$memberID} OR a.fxid={$memberID}";
+        }
+        if ($landTitle) {
+            $where['l.title'] = array("like", "%{$landTitle}%");
+        }
+        if ($noticeType !== null) {
+            $where['a.stype'] = $noticeType;
+        }
+        if ($applyTime) {
+            $where['a.stime'] = $applyTime;
+        }
+        if ($auditTime) {
+            $where['a.dtime'] = $auditTime;
+        }
+        if ($auditStatus != null) {
+            $where['a.dstatus'] = $auditStatus;
+        }
+        //获取记录总数
+        if ($getTotalPage) {
+            $field = array("count(*)");
+
+            return $this->table($table)
+                        ->join($join)
+                        ->where($where)
+                        ->field($field)
+                        ->find();
+        } else {
+            //查询记录详情
+            $field  = array(
+                'a.*',
+                'l.title AS ltitle',
+                'l.apply_did',
+                'od.concat_id',
+                'm.dcodeURL',
+                'oa.ifpack',
+                't.mdetails'
+            );
+            $order  = array(
+                'dstatus ASC',
+                'stime DESC',
+            );
+            $result = $this->table($table)
+                           ->join($join)
+                           ->where($where)
+                           ->field($field)
+                           ->page($page)
+                           ->limit($limit)
+                           ->order($order)
+                           ->select();
+//            $this->test();
+            return $result;
+        }
+    }
+
+    /**
+     * 测试用：打印调用的sql语句
+     *
+     * @return string
+     */
+    private function test()
+    {
+        $str = $this->getLastSql();
+        print_r($str . PHP_EOL);
+    }
+
+    public function areUnderAudit(array $orders){
+        $table = $this->_refundAuditTable;
+        $where['ordernum'] = array('in',$orders);
+        $where['dstatus']=0;
+        $field = array(
+          "id",
+          "ordernum",
+        );
+        return $this->table($table)->where($where)->field($field)->select();
     }
 }

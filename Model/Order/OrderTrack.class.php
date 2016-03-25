@@ -16,7 +16,7 @@ use Library\Model;
 //CREATE TABLE `pft_order_track` (
 //  `id` int(10) NOT NULL AUTO_INCREMENT,
 //  `ordernum` varchar(20) NOT NULL,/*订单号*/
-//`action` tinyint(1) unsigned not null default 0,/*事件类型 0 验证 1 取消 2 出票 3支付 4验证 5撤销 6撤改*/
+//`action` tinyint(1) unsigned not null default 0,/*事件类型 0 验证 1 取消 2 出票 3支付 4验证 5撤销 6撤改 7提交审核 8操作审核  */
 //  `tid` int(10) unsigned not null,/*本次操作票类*/
 //  `tnum` int(10) unsigned not null,/*本次操作门票张数*/
 //  `left_num` int(10) unsigned not null,/*剩余门票张数*/
@@ -30,6 +30,11 @@ use Library\Model;
 
 class OrderTrack extends Model
 {
+    const ORDER_CREATE       = 0;
+    const ORDER_MODIFY       = 1;
+    const ORDER_PAY          = 4;
+
+    const SOURCE_INSIDE_SOAP = 16;
     public static function getSourceList()
     {
         return [
@@ -49,6 +54,9 @@ class OrderTrack extends Model
             13=>'PC-银联',
             14=>'手机-银联',
             15=>'PC-环迅',
+            16=>'内部接口',
+            17=>'外部接口',
+            18=>'undefined',
         ];
     }
     public static function getActionList()
@@ -63,6 +71,8 @@ class OrderTrack extends Model
             6=>'撤销',
             7=>'撤改',
             8=>'重打印',
+            9=>'提交退票申请',
+            10=>'处理退票申请'
         ];
     }
     /**
@@ -78,22 +88,24 @@ class OrderTrack extends Model
      * @param $branch_terminal int 分终端ID
      * @param $id_card string 身份证
      * @param $oper int 操作员ID
+     * @param $salerid int 景区6位ID
      * @return mixed
      */
-    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id, $branch_terminal, $id_card, $oper)
+    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0, $branch_terminal=0, $id_card='', $oper,$salerid=0)
     {
         $data = [
-            'ordernum'  => $ordernum,
-            'action'    => $action,
-            'tid'       => $tid,
-            'tnum'      => $tnum,
-            'left_num'  => $left_num,
-            'source'    => $source,
-            'terminal'  => $terminal_id,
-            'branchTerminal'=> $branch_terminal,
-            'id_card'   => $id_card,
-            'insertTime'   => date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']),
-            'oper_member'=> $oper
+            'ordernum'       => $ordernum,
+            'action'         => $action,
+            'tid'            => $tid,
+            'tnum'           => $tnum,
+            'left_num'       => $left_num,
+            'source'         => $source,
+            'terminal'       => $terminal_id,
+            'branchTerminal' => $branch_terminal,
+            'id_card'        => $id_card,
+            'SalerID'        => $salerid,
+            'insertTime'     => date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']),
+            'oper_member'    => $oper,
         ];
         $last = $this->Table('pft_order_track')->data($data)->add();
         echo $this->getDbError();
