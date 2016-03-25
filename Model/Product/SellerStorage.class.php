@@ -2775,22 +2775,28 @@ class SellerStorage extends Model{
             $pids = $res['pids'];
             $tmp = explode(',', $pids);
             if(in_array($pid, $tmp) || $pids == 'A') {
-                if($this->_isSetStorage($memberId, $setterId, $pid, $date, $attr)) {
+                $setStorageInfo = $this->_isSetStorage($memberId, $setterId, $pid, $date, $attr);
+                if($setStorageInfo) {
+                    //返回的值
+                    $sellerArr = array(
+                                    array('first' => $memberId, 'second' => $setterId),
+                                    array('first' => $memberId, 'second' => $memberId, 'self_use' => true) //一级分销商还没有给下级分销配置的时候，也要记录自己使用量
+                                );
 
-                    //如果一级分销商有设置分销库存，所以自己就只能使用未分配库存或是动态库存
-                    $publicInfo = $this->getAvailablePublic($memberId, $pid, $date, $attr);
-                    if($publicInfo) {
-                        return array(
-                            array('first' => $memberId, 'second' => $memberId), //使用未分配库存或是动态库存
-                            array('first' => $memberId, 'second' => $setterId), //使用供应商的库存
-                        );
-                    } else {
-                        return array(
-                            array('first' => $memberId, 'second' => $setterId),
-                            array('first' => $memberId, 'second' => $memberId, 'self_use' => true) //一级分销商还没有给下级分销配置的时候，也要记录自己使用量
-                        );
+                    //如果上级设置了共享库存，那么一级分销商配置的库存就失效了
+                    if($setStorageInfo['mode'] == 1) {
+                        //如果一级分销商有设置分销库存，所以自己就只能使用未分配库存或是动态库存
+                        $publicInfo = $this->getAvailablePublic($memberId, $pid, $date, $attr);
+                        if($publicInfo) {
+                            $sellerArr = array(
+                                array('first' => $memberId, 'second' => $memberId), //使用未分配库存或是动态库存
+                                array('first' => $memberId, 'second' => $setterId), //使用供应商的库存
+                            );
+                        }
                     }
 
+                    //返回
+                    return $sellerArr;
                 } else {
                     return false;
                 }
@@ -2859,14 +2865,14 @@ class SellerStorage extends Model{
             //对具体日期有配置库存
             if($publicTmp['mode'] == 2) {
                 //如果是动态库存模式
-                return true;
+                return $publicTmp;
             } else {
                 //如果是固定库存模式，还要查看是否有设置固定库存
                 $fixedInfo = $this->getFixedInfo($pid, $setterUid, $resellerUid, $date, $attr);
 
                 if($fixedInfo) {
                     //有设置固定库存
-                    return true;
+                    return $publicTmp;
                 } else {
                     //没有设置固定库存
                     return false;
@@ -2895,14 +2901,14 @@ class SellerStorage extends Model{
 
             if($publicTmp['mode'] == 2) {
                 //如果是动态库存模式
-                return true;
+                return $publicTmp;
             } else {
                 //如果是固定库存模式，还要查看是否有设置固定库存
                 $fixedInfo = $this->getFixedInfo($pid, $setterUid, $resellerUid, 0, $attr);
 
                 if($fixedInfo) {
                     //有设置固定库存
-                    return true;
+                    return $publicTmp;
                 } else {
                     //没有设置固定库存
                     return false;
