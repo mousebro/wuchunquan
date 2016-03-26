@@ -21,7 +21,10 @@ class OnlineTrade extends Controller
 
     public function Summary()
     {
-        $data = $this->model->Summary();
-        print_r($data);
+        $tm = strtotime('2016-03-25');
+        $bt = date('Y-m-d 00:00:00', $tm);
+        $et = date('Y-m-d 23:59:59', $tm);
+        $data = $this->model->Summary($bt, $et);
     }
+
 }
