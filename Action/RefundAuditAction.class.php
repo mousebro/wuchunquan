@@ -158,6 +158,7 @@ class RefundAuditAction extends BaseAction
         $orderNum,
         $targetTicketNum,
         $operatorID,
+    $source=18,
         $requestTime = 0
     ) {
         //查询是否存在审核记录
@@ -324,9 +325,6 @@ class RefundAuditAction extends BaseAction
         $orderNum,
         $operatorID
     ) {
-//        if ($auditID == 0) {
-//            return (205); //订单信息不全
-//        }
         if ( ! in_array($auditResult, [1, 2])) {
             return (250); //审核结果只能是同意或拒绝
         }
@@ -356,15 +354,15 @@ class RefundAuditAction extends BaseAction
      * @param $limit
      */
     public function getAuditList(
-        $operatorID,
-        $landTitle,
-        $noticeType,
-        $applyTime,
-        $auditStatus,
-        $auditTime,
-        $orderNum,
-        $page,
-        $limit
+        $operatorID=null,
+        $landTitle=null,
+        $noticeType=null,
+        $applyTime=null,
+        $auditStatus=null,
+        $auditTime=null,
+        $orderNum=null,
+        $page=1,
+        $limit=20
     ) {
         //参数初始化
         $r           = array();

@@ -212,7 +212,7 @@ class RefundAudit extends Model
      * @return mixed
      */
     public function getAuditList(
-        $memberID = null,
+        $memberID,
         $landTitle = null,
         $noticeType = null,
         $applyTime = null,
@@ -221,7 +221,7 @@ class RefundAudit extends Model
         $orderNum = null,
         $getTotalPage = false,
         $page = 1,
-        $limit = 10
+        $limit = 20
     ) {
 
         $table = "$this->_refundAuditTable AS a";
@@ -237,23 +237,24 @@ class RefundAudit extends Model
         if ($memberID != 1) {
             $where['_string'] = "l.apply_did={$memberID} OR a.fxid={$memberID}";
         }
-        if ($landTitle) {
-            $where['l.title'] = array("like", "%{$landTitle}%");
-        }
-        if ($noticeType !== null) {
-            $where['a.stype'] = $noticeType;
-        }
-        if ($applyTime) {
-            $where['a.stime'] = $applyTime;
-        }
-        if ($auditTime) {
-            $where['a.dtime'] = $auditTime;
-        }
-        if ($auditStatus != null) {
-            $where['a.dstatus'] = $auditStatus;
-        }
         if($orderNum){
             $where['a.ordernum'] = $orderNum;
+        }else{
+            if ($landTitle) {
+                $where['l.title'] = array("like", "%{$landTitle}%");
+            }
+            if ($noticeType !== null) {
+                $where['a.stype'] = $noticeType;
+            }
+            if ($applyTime) {
+                $where['a.stime'] = $applyTime;
+            }
+            if ($auditTime) {
+                $where['a.dtime'] = $auditTime;
+            }
+            if ($auditStatus != null) {
+                $where['a.dstatus'] = $auditStatus;
+            }
         }
         //获取记录总数
         if ($getTotalPage) {
