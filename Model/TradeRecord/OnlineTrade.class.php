@@ -19,6 +19,16 @@ class OnlineTrade extends Model
     const CHANNEL_UNIONPAY  = 2;//银联支付
     const CHANNEL_XUNPAY    = 3;//环迅支付
 
+    const PAY_TYPE_MONEY    = 0;//账户余额支付
+    const PAY_TYPE_ALIPAY   = 1;//支付宝支付
+    const PAY_TYPE_CREDIT   = 2;//授信支付
+    const PAY_TYPE_SELFBUY  = 3;//自供自销
+    const PAY_TYPE_SPOT     = 4;//景区到付
+    const PAY_TYPE_WEPAY    = 5;//微信支付
+    const PAY_TYPE_UNION    = 7;//银联支付
+    const PAY_TYPE_XUNPAY   = 8;//环迅支付
+
+
     /**
      * 添加支付交易日志
      *
@@ -39,7 +49,9 @@ class OnlineTrade extends Model
             'description'   => $description,
             'sourceT'       => $sourceT,
         ];
-        return $this->data($data)->add();
+        $id = $this->data($data)->add();
+        if ($id>0) return $id;
+        return $this->getDbError();
         //INSERT pft_alipay_rec SET out_trade_no='$out_trade_no',subject='$body',
 //        total_fee='$money',description='$body',sourceT=$sourceT
     }
@@ -105,5 +117,40 @@ class OnlineTrade extends Model
     {
         $tid = intval($tid);
         return $this->table('uu_jq_ticket')->where("id=$tid")->field("Mpath,Mdetails")->find();
+    }
+
+    public function secondRequest($tid, $ordern, $mid)
+    {
+        $tid = intval($tid);
+        $mData = $this->table('uu_jq_ticket')->where("id=$tid")->field("Mpath,Mdetails")->find();
+        if($mData['Mpath']){
+            $relation_info_req = http_build_query(array(
+                'Action'  => 'Relation_after_pay',
+                'Ordern'  => $ordern,
+                'Fid'     => (int)$mid,
+            ));
+            file_get_contents($mData['Mpath'].'?'.$relation_info_req);
+        }
+    }
+
+    /**
+     * 订单汇总
+     *
+     * @param string $bt
+     * @param string $et
+     * @return mixed
+     */
+    public function Summary($bt='', $et='')
+    {
+        $bt = empty($bt) ? date('Y-m-d 00:00:00') : $bt;
+        $et = empty($et) ? date('Y-m-d 23:59:59') : $et;
+        $data = $this->table('pft_alipay_rec')
+            ->where(['status'=>1, 'dtime'=>[array('gt',$bt),array('lt',$et)]])
+            ->field('sourceT,SUM(total_fee) AS total_fee')
+            ->group('sourceT')
+            ->select();
+
+        //echo $this->getDbError();
+        return $data;
     }
 }
