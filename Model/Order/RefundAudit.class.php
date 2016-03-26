@@ -198,8 +198,7 @@ class RefundAudit extends Model
     }
 
     /**
-     * 获取退款审核列表-先处理供应商的
-     *
+     * 获取退款审核列表
      * @param null $memberID
      * @param null $landTitle
      * @param null $noticeType
@@ -207,7 +206,6 @@ class RefundAudit extends Model
      * @param null $auditStatus
      * @param      $auditTime
      * @param bool $getTotalPage
-     * @param bool $memberType 1-管理员 2-供应商 3-分销商
      * @param int  $page
      * @param int  $limit
      *
@@ -219,7 +217,8 @@ class RefundAudit extends Model
         $noticeType = null,
         $applyTime = null,
         $auditStatus = null,
-        $auditTime,
+        $auditTime = null,
+        $orderNum = null,
         $getTotalPage = false,
         $page = 1,
         $limit = 10
@@ -252,6 +251,9 @@ class RefundAudit extends Model
         }
         if ($auditStatus != null) {
             $where['a.dstatus'] = $auditStatus;
+        }
+        if($orderNum){
+            $where['a.ordernum'] = $orderNum;
         }
         //获取记录总数
         if ($getTotalPage) {
