@@ -149,7 +149,7 @@ class OrderTools extends Model {
 	 *
 	 * @return mixed
 	 */
-	public function getPackageSubOrder($orderNum){
+	public function getPackSubOrder($orderNum){
 		$table = 'uu_order_addon';
 		$where = ['pack_order' => $orderNum,];
 		$field = ['orderid'];

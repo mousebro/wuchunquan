@@ -141,43 +141,48 @@ class RefundAudit extends Model
         return $result;
     }
 
-
     /**
-     * 更新退款审核结果
+     *  更新退款审核结果
      *
-     * @param     $auditID
-     * @param     $auditResult
-     * @param     $auditNote
-     * @param     $orderNum
-     * @param     $operatorID
-     * @param int $auditTime
+     * @param int $orderNum    订单号
+     * @param int $auditResult 审核结果 1-同意 2-决绝
+     * @param int $auditNote   审核意见
+     * @param int $operatorID  审核人
+     * @param int $auditID     审核记录ID
+     * @param int $auditTime   审核时间
      *
      * @return bool
      */
     public function updateAudit(
-        $auditID,
+        $orderNum,
         $auditResult,
         $auditNote,
-        $orderNum,
         $operatorID,
-        $auditTime = 0
+        $auditTime = 0,
+        $auditID = 0
     ) {
         $table = $this->_refundAuditTable;
-        $where = array(
-            'ordernum' => $orderNum,
-            'dstatus'  => 0,
-        );
+        //审核记录ID和订单至少要传入一个才能更新 订单号优先
         if ($auditID) {
             $where['id'] = $auditID;
+        } elseif ($orderNum) {
+            $where = array(
+                'ordernum' => $orderNum,
+                'dstatus'  => 0,
+            );
+        } else {
+            return false;
         }
+
         $auditTime = ($auditTime) ? $auditTime : date('Y-m-d H:i:s');
-        $data      = array(
+
+        $data   = array(
             'dstatus' => $auditResult,
             'reason'  => $auditNote,
             'dadmin'  => $operatorID,
             'dtime'   => $auditTime,
         );
-        $result    = $this->table($table)->where($where)->data($data)->save();
+        $result = $this->table($table)->where($where)->data($data)->save();
 
         return $result;
     }
@@ -199,12 +204,14 @@ class RefundAudit extends Model
 
     /**
      * 获取退款审核列表
-     * @param null $memberID
+     *
+     * @param      $memberID
      * @param null $landTitle
      * @param null $noticeType
      * @param null $applyTime
      * @param null $auditStatus
-     * @param      $auditTime
+     * @param null $auditTime
+     * @param null $orderNum
      * @param bool $getTotalPage
      * @param int  $page
      * @param int  $limit
