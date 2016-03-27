@@ -90,6 +90,57 @@ class SellerStorage extends Model{
     }
 
     /**
+     * 获取设置的最大的分销库存的值
+     * @author dwer
+     * @date   2016-03-27
+     *
+     * @param  $pid 产品ID
+     * @param  $date 日期 
+     * @return
+     */
+    public function getSetMaxStorage($pid, $date) {
+        if(!$pid) {
+            return false;
+        }
+        $pid = intval($pid);
+
+        //日期处理
+        $tmp = strtotime($date);
+        if(!$tmp) {
+            return false;
+        }
+        $date = date('Ymd', $tmp);
+
+        $info = $this->table($this->_infoTable)->where(['id' => $pid])->field('status')->find();
+        if(!$info || $info['status'] == 0) {
+            return false;
+        }
+
+        $field = 'total_num';
+        $where = [
+            'pid'   => $pid,
+            'level' => 1,
+            'date'  => $date
+        ];
+
+        $publicInfo = $this->table($this->_publicTable)->where($where)->field($field)->find();
+        if(!$publicInfo) {
+            //获取默认配置
+            $date = 0; 
+            $publicInfo = $this->table($this->_publicTable)->where($where)->field($field)->find();
+        }
+
+        if(!$publicInfo) {
+            return false;
+        }
+
+        $totalNum = intval($publicInfo['total_num']);
+        $totalNum = $totalNum >= 0 ? $totalNum : 0;
+
+        return $totalNum;
+    }
+
+    /**
      * 分销商是否可以显示配置按钮
      * @author dwer
      * @date   2016-03-06
@@ -2178,7 +2229,7 @@ class SellerStorage extends Model{
      */
     public function getAvailablePublic($setterUid, $pid, $date, $attr = false) {
         $where = array(
-            'pid'          => $pid,
+            'pid'          => $pid, 
             'setter_uid'   => $setterUid,
             'date'         => array('in', array($date, 0))  //设定值和默认值一起返回
         );
