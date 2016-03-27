@@ -150,12 +150,12 @@ class OnlineTrade extends Model
         $bt = empty($bt) ? date('Y-m-d 00:00:00', strtotime('- 1 days')) : $bt;
         $et = empty($et) ? date('Y-m-d 23:59:59', strtotime('- 1 days')) : $et;
         $date = substr($bt, 0, 10);
-        $data = $this->table('pft_alipay_rec')
+        $data = $this->db(0)->table('pft_alipay_rec')
             ->where(['status'=>1, 'dtime'=>[array('gt',$bt),array('lt',$et)]])
             ->field("sourceT as pay_channel,SUM(total_fee * 100) AS total_money , '$date' as created_date")
             ->group('sourceT')
             ->select();
-        $details = $this->table('pft_alipay_rec')
+        $details = $this->db(0)->table('pft_alipay_rec')
             ->where(['status'=>1, 'dtime'=>[array('gt',$bt),array('lt',$et)]])
             ->field("sourceT as pay_channel,total_fee * 100 AS pay_money, dtime as created_time, trade_no,out_trade_no AS ordernum")
             ->order('dtime desc')

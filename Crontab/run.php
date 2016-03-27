@@ -5,6 +5,7 @@
  * Date: 16/3/26
  * Time: 22:33
  */
+if (PHP_SAPI !='cli') exit('error');
 if ($argc==1) {
     echo str_pad("*", 50, "*"), PHP_EOL;
     echo str_pad("*", 19, " ")," HELP TIPS ",str_pad("*", 20, " ", STR_PAD_LEFT), PHP_EOL;
