@@ -21,18 +21,20 @@ class RefundAudit extends Controller
      * 判断订单是否需要退票审核
      *
      * @param int $orderNum
-     * @param int $modifyType
+     * @param int $targetTnum
      * @param int $operatorID
+     * @param int $circle 循环调用次数
      *
      * @return int
      */
     public function checkRefundAudit(
         $orderNum,
-        $modifyType,
-        $operatorID = 1
+        $targetTnum = 0,
+        $operatorID = 1,
+        $circle=0
     ) {
         $auditNeeded = 100; //100-默认不需要退票审核
-
+        $modifyType = $targetTnum== 0 ? 3 : 2;
         //检测传入参数
         $orderNum = intval(trim($orderNum));
         if ( ! $orderNum) {
@@ -98,7 +100,7 @@ class RefundAudit extends Controller
                     foreach ($subOrders as $subOrder) {
                         $auditNeeded
                             = $this->checkRefundAudit($subOrder['orderid'],
-                            $modifyType, $operatorID);
+                            $targetTnum, $operatorID);
                         if ($auditNeeded == 200) {//套票中有任一子票需要退票审核，则该套票需要审核
                             break;
                         }
@@ -113,34 +115,24 @@ class RefundAudit extends Controller
                 }
             }
             //取消联票的情况 取消联票主票时，对应子票也都要取消；
-            if ($orderDetail['concat_id']
+            if ($circle==0 && $orderDetail['concat_id']
                 && $modifyType == self::CANCEL_CODE_IN_AUDIT
             ) {
-                if ($orderNum == $orderDetail['concat_id']) {
-                    //取消联票主票的时候，要判断对应子票是否需要退票审核
-                    $subOrders = $orderModel->getLinkSubOrder($orderNum);
-                    foreach ($subOrders as $subOrder) {
-                        if ($subOrder['orderid'] != $orderNum) {
-                            $auditNeeded
-                                = $this->checkRefundAudit($subOrder['orderid'],
-                                $modifyType, $operatorID);
-                            if ($auditNeeded == 200) {
-                                break;
-                            }
+                //取消联票时候，要判断其他子票是否需要退票审核
+                $mainOrder = $orderDetail['concat_id'];
+                $subOrders = $orderModel->getLinkSubOrder($mainOrder);
+                foreach ($subOrders as $subOrder) {
+                    if ($subOrder['orderid'] != $orderNum) {
+                        $auditNeeded
+                            = $this->checkRefundAudit($subOrder['orderid'],
+                            $targetTnum, $operatorID,1);
+                        if ($auditNeeded == 200) {
+                            break;
                         }
-                    }
-                } else {
-                    //取消子票的时候，如果主票处于退票审核状态，那么子票也需要审核
-                    $mainOrderIsUnderAudit
-                        = $refundModel->isUnderAudit($orderDetail['concat_id'],
-                        self::CANCEL_CODE_IN_AUDIT);
-                    if ($mainOrderIsUnderAudit) {
-                        $auditNeeded = 200;
                     }
                 }
             }
         }
-
         return $auditNeeded;
     }
 
@@ -228,23 +220,23 @@ class RefundAudit extends Controller
                     return $addSubOrder;
                 }
             }
-        } elseif ($orderInfo['concat_id'] == $orderNum
-                  && $modifyType == self::CANCEL_CODE_IN_AUDIT
-        ) {
-            //联票主票取消时所有子票都一并取消
-            $subOrders = $orderModel->getLinkSubOrder($orderNum);
-            foreach ($subOrders as $subOrder) {
-                if ($subOrder['orderNum'] != $orderNum) {
-                    $addSubOrder = $this->addRefundAudit($subOrder['orderid'],
-                        $targetTicketNum, $orderInfo, $requestTime);
-                    if ($addSubOrder == 240 || $addSubOrder == 200) {
-                        continue;
-                    } else {
-                        return $addSubOrder;
-                    }
-                }
-            }
         }
+//        if ($orderInfo['concat_id']&& $modifyType == self::CANCEL_CODE_IN_AUDIT
+//        ) {
+//            //取消联票时，有任一子票需要退票是审核则所有子票都要添加到退票审核表
+//            $subOrders = $orderModel->getLinkSubOrder($orderNum);
+//            foreach ($subOrders as $subOrder) {
+//                if ($subOrder['orderNum'] != $orderNum) {
+//                    $addSubOrder = $this->addRefundAudit($subOrder['orderid'],
+//                        $targetTicketNum, $orderInfo, $requestTime);
+//                    if ($addSubOrder == 240 || $addSubOrder == 200) {
+//                        continue;
+//                    } else {
+//                        return $addSubOrder;
+//                    }
+//                }
+//            }
+//        }
 
         if ( ! $addResult) {
             return (241);//数据添加失败

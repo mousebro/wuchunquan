@@ -263,8 +263,8 @@ class RefundAuditModel extends Model
             "l.status" => array('lt', 3),
             "_complex" => array(
                 array(
-                    't.refund_audit'=>1,
-//                    't.refund_audit'=>array('in',array(0,1)), //测试时使用
+//                    't.refund_audit'=>1,
+                    't.refund_audit'=>array('in',array(0,1)), //测试时使用
                     'oa.ifpack'=>1,
                     'od.concat_id'=>array('neq',0), //TODO:联票显示逻辑上未验证
                     '_logic'=>'or',
