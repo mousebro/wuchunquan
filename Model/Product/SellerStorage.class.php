@@ -2673,6 +2673,7 @@ class SellerStorage extends Model{
 
         //现在可售卖数量
         $leftNums = intval($maxStorage - $usedFixed);
+        $leftNums = $leftNums < 0 ? 0 : $leftNums;
 
         return $leftNums;
     }
