@@ -31,10 +31,10 @@ class OnlineRefund extends Controller
         Api::Log(json_encode($_POST), $this->req_log);
         $auth = I('post.auth');
         $comp = md5(md5(I('post.ordernum').md5(strrev(I('post.ordernum')))));
-        if (empty( $auth ) || $auth!=$comp) {
-            Api::Log('身份验证失败',$this->err_log);
-            exit("身份验证失败");
-        }
+        //if (empty( $auth ) || $auth!=$comp) {
+        //    Api::Log('身份验证失败',$this->err_log);
+        //    exit("身份验证失败");
+        //}
         $this->log_id = I("post.log_id");
         if (!$this->log_id) exit("退款记录ID不能为空");
         $this->model  = new \Model\TradeRecord\OnlineRefund();
@@ -43,17 +43,21 @@ class OnlineRefund extends Controller
         $this->data  = (object)$data;
         $pay_mode = I("post.pay_mode");
         if (ENV!='PRODUCTION') $res = ['code'=>200];
-        elseif ($pay_mode==5) $res = $this->wx();
-        elseif($pay_mode==7) $res = $this->union();
+        else {
+            if ($pay_mode==5) $res = $this->wx();
+            elseif($pay_mode==7) $res = $this->union();
+        }
         if ($res['code']==200) {
             $this->model->UpdateRefundLogOk($this->log_id);
-            $this->model->AddMemberLog(
-                $this->data->fid,
-                $this->data->ordernum,
-                $this->data->refund_money,
-                0,
-                1
-                );
+            //print_r( $this->data);
+            //$res = $this->model->AddMemberLog(
+            //    $this->data->fid,
+            //    $this->data->ordernum,
+            //    $this->data->refund_money,
+            //    0,
+            //    1
+            //    );
+            //var_dump($res);
         }
     }
 
@@ -110,7 +114,6 @@ class OnlineRefund extends Controller
         }
         elseif($refundResult["return_code"] == 'SUCCESS') {
             Api::Log("退款成功:退款记录ID[{$this->log_id}],订单号[{$out_trade_no}],总金额[{$total_fee}],退款金额[{$refund_fee}]", $this->ok_log);
-            $this->model->UpdateRefundLogOk($this->log_id);
             return ['code'=>200, 'msg'=>'退款成功'];
 
         }

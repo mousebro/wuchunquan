@@ -132,4 +132,39 @@ class OnlineTrade extends Model
             file_get_contents($mData['Mpath'].'?'.$relation_info_req);
         }
     }
+
+    private function change_db()
+    {
+        $dbConf = C('db');
+        $this->db(1, $dbConf['summary'], true);
+    }
+    /**
+     * 订单汇总
+     *
+     * @param string $bt
+     * @param string $et
+     * @return mixed
+     */
+    public function Summary($bt='', $et='')
+    {
+        $bt = empty($bt) ? date('Y-m-d 00:00:00', strtotime('- 1 days')) : $bt;
+        $et = empty($et) ? date('Y-m-d 23:59:59', strtotime('- 1 days')) : $et;
+        $date = substr($bt, 0, 10);
+        $data = $this->db(0)->table('pft_alipay_rec')
+            ->where(['status'=>1, 'dtime'=>[array('gt',$bt),array('lt',$et)]])
+            ->field("sourceT as pay_channel,SUM(total_fee * 100) AS total_money , '$date' as created_date")
+            ->group('sourceT')
+            ->select();
+        $details = $this->db(0)->table('pft_alipay_rec')
+            ->where(['status'=>1, 'dtime'=>[array('gt',$bt),array('lt',$et)]])
+            ->field("sourceT as pay_channel,total_fee * 100 AS pay_money, dtime as created_time, trade_no,out_trade_no AS ordernum")
+            ->order('dtime desc')
+            ->select();
+        echo $this->getDbError();
+        $this->change_db();
+        $this->db(1)->table('pft_online_trade_summary')->addAll($data);
+        $this->db(1)->table('pft_online_trade')->addAll($details);
+        echo $this->getDbError();
+        return $data;
+    }
 }
