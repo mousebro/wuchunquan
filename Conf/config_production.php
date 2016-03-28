@@ -48,6 +48,14 @@ return array(
             'db_port' => 3306,
             'db_name' => 'myuu',
         ),
+        'summary'   => array(//统计数据库
+            'db_type'   => 'mysql',
+            'db_host'   => '127.0.0.1',
+            'db_user'   => 'summary',
+            'db_pwd'    => 'su*7645901',
+            'db_port'   => 3306,
+            'db_name'   => 'summary',
+        ),
     ),
     'redis'=>array(
         'main'=> array(

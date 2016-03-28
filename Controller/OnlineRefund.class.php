@@ -31,10 +31,10 @@ class OnlineRefund extends Controller
         Api::Log(json_encode($_POST), $this->req_log);
         $auth = I('post.auth');
         $comp = md5(md5(I('post.ordernum').md5(strrev(I('post.ordernum')))));
-        if (empty( $auth ) || $auth!=$comp) {
-            Api::Log('身份验证失败',$this->err_log);
-            exit("身份验证失败");
-        }
+        //if (empty( $auth ) || $auth!=$comp) {
+        //    Api::Log('身份验证失败',$this->err_log);
+        //    exit("身份验证失败");
+        //}
         $this->log_id = I("post.log_id");
         if (!$this->log_id) exit("退款记录ID不能为空");
         $this->model  = new \Model\TradeRecord\OnlineRefund();
@@ -49,13 +49,15 @@ class OnlineRefund extends Controller
         }
         if ($res['code']==200) {
             $this->model->UpdateRefundLogOk($this->log_id);
-            $this->model->AddMemberLog(
-                $this->data->fid,
-                $this->data->ordernum,
-                $this->data->refund_money,
-                0,
-                1
-                );
+            //print_r( $this->data);
+            //$res = $this->model->AddMemberLog(
+            //    $this->data->fid,
+            //    $this->data->ordernum,
+            //    $this->data->refund_money,
+            //    0,
+            //    1
+            //    );
+            //var_dump($res);
         }
     }
 

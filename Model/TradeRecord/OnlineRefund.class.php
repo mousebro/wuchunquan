@@ -51,7 +51,9 @@ class OnlineRefund extends Model
             'daction'   => $daction,
             'dtype'     => $dtype,
         ];
-        return $this->Table('pft_member_alipay')->data($data)->add();
+        $res = $this->Table('pft_member_alipay')->data($data)->add();
+        if ($res>0) return $res;
+        return $this->getDbError();
     }
 
     public function AddRefundLog($aid, $ordernum, $tnum, $TotalFee, $FeeCost,$subject,
