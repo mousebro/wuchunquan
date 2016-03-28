@@ -280,9 +280,7 @@ class RefundAudit extends Controller
         }
 
         $updateResult = $refundModel->updateAudit($orderNumber,$auditResult,$auditNote, $operatorID, $auditTime,$auditID);
-        if(!$updateResult)
-            return 241;//数据更新失败,请联系管网站管理员
-
+        $result = $updateResult ? 200 : 241;
         //套票处理
         if ($orderInfo['ifpack'] == 2) { //套票子票
             $updateMainOrderFlag = false;
@@ -330,7 +328,7 @@ class RefundAudit extends Controller
         }
         elseif($orderInfo['ifpack'] == 1) return 255;
 
-        return $updateResult; //操作成功
+        return $result; //操作成功
     }
 
     public function updateAuditAndNoticeOTA(

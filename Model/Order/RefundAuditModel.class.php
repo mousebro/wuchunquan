@@ -266,9 +266,17 @@ class RefundAuditModel extends Model
 //                    't.refund_audit'=>1,
                     't.refund_audit'=>array('in',array(0,1)), //测试时使用
                     'oa.ifpack'=>1,
-                    'od.concat_id'=>array('neq',0), //TODO:联票显示逻辑上未验证
+//                    'od.concat_id'=>array('neq',0), //TODO:联票显示逻辑上未验证
                     '_logic'=>'or',
                 ),
+                array(
+                    array(
+                        "od.concat_id" => array(0,array('exp','=od.orderid'),'or'),
+                        "a.stype"=>3
+                    ),
+                    "a.stype"=>array("in",[0,1,2]),
+                    '_logic'=>'or',
+                )
             )
         );
         //根据传入参数确定查询条件
@@ -345,8 +353,8 @@ class RefundAuditModel extends Model
                 't.mdetails',
             );
             $order  = array(
-                'dstatus ASC',
                 'stime DESC',
+                'dstatus ASC',
             );
             $map = $this->table($table)
                            ->join($join)
@@ -360,7 +368,7 @@ class RefundAuditModel extends Model
             }else{
                 $result = $map->select();
             }
-//            $this->test();
+            $this->test();
             return $result;
         }
     }
