@@ -111,7 +111,7 @@ class SellerStorage extends Model{
         }
         $date = date('Ymd', $tmp);
 
-        $info = $this->table($this->_infoTable)->where(['id' => $pid])->field('status')->find();
+        $info = $this->table($this->_infoTable)->where(['pid' => $pid])->field('status')->find();
         if(!$info || $info['status'] == 0) {
             return false;
         }
