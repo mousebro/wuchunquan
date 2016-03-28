@@ -9,7 +9,7 @@ namespace Model\Order;
 
 use Library\Model;
 
-class RefundAudit extends Model
+class RefundAuditModel extends Model
 {
     private $_refundAuditTable = 'uu_order_terminal_change';
     private $_orderTable = 'uu_ss_order';
@@ -28,7 +28,7 @@ class RefundAudit extends Model
      * @param int    $modifyType  修改类型 0-撤改 1-撤销 2-修改 3-取消
      * @param int    $targetTnum  变更后票数
      * @param int    $operatorID  退票发起人
-     * @param int    $dstatus     退票审核状态 0-未处理 1-同意 2-拒绝 3-等待第三方自动审核
+     * @param int    $auditStatus 退票审核状态 0-未处理 1-同意 2-拒绝 3-等待第三方自动审核
      * @param int    $requestTime 申请时间
      * @param string $auditNote   审核备注
      * @param int    $auditorID   审核人
@@ -45,7 +45,7 @@ class RefundAudit extends Model
         $modifyType,
         $targetTnum,
         $operatorID=1,
-        $dstatus = 0,
+        $auditStatus = 0,
         $auditorID = 0,
         $requestTime = 0,
         $auditNote = '',
@@ -61,7 +61,7 @@ class RefundAudit extends Model
             'tid'      => $tid,
             'stype'    => $modifyType,
             'tnum'     => $targetTnum,
-            'dstatus'  => $dstatus,        /*状态0未操作1同意2拒绝*/
+            'dstatus'  => $auditStatus,        /*状态0未操作1同意2拒绝*/
             'stime'    => $requestTime,
             'fxid'     => $operatorID, //申请发起人
             'dadmin'   => $auditorID,
@@ -142,6 +142,26 @@ class RefundAudit extends Model
     }
 
     /**
+     * 检查套票主票是否有未审核通过的子票订单
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function hasUnauditedPackSubOrders($orderNum){
+        $table = "{$this->_refundAuditTable} AS a";
+        $join = array(
+            "LEFT JOIN {$this->_orderAppendixTable} AS oa ON a.ordernum=oa.orderid",
+            "JOIN {$this->_ticketTable} AS t ON a.tid=t.id",
+        );
+        $where = array(
+          "t.refund_audit" => 1,
+          "a.dstatus"=>0,
+          "oa.pack_order"=>$orderNum,
+        );
+        return $this->table($table)->join($join)->where($where)->find();
+
+    }
+    /**
      *  更新退款审核结果
      *
      * @param int $orderNum    订单号
@@ -157,7 +177,7 @@ class RefundAudit extends Model
         $orderNum,
         $auditResult,
         $auditNote,
-        $operatorID,
+        $operatorID = 1,
         $auditTime = 0,
         $auditID = 0
     ) {
@@ -239,11 +259,44 @@ class RefundAudit extends Model
             "left join {$this->_memberTable} AS m ON m.id=l.apply_did",
             "left join {$this->_ticketTable} AS t ON a.tid=t.id",
         );
-        $where = array("l.status" => array('lt', 3));
+        $where = array(
+            "l.status" => array('lt', 3),
+            "_complex" => array(
+                array(
+                    't.refund_audit'=>1,
+//                    't.refund_audit'=>array('in',array(0,1)), //测试时使用
+                    'oa.ifpack'=>1,
+                    'od.concat_id'=>array('neq',0), //TODO:联票显示逻辑上未验证
+                    '_logic'=>'or',
+                ),
+            )
+        );
         //根据传入参数确定查询条件
+        //2016-3-27 供应商能看到套票子票，分销商能看到套票主票
+        //2016-3-28 修改撤销撤改记录的显示
         if ($memberID != 1) {
-            $where['_string'] = "l.apply_did={$memberID} OR a.fxid={$memberID}";
+            $where['_complex'][] = array(
+                array(
+                    'l.apply_did' => $memberID,
+                    array(
+                        array(
+                            'oa.ifpack'=>array('in',array(0,2)),
+                            'a.stype'=>array('in',array(2,3)),
+                        ),
+                        array(
+                            'a.stype'=>array('in',array(0,1)),
+                        ),
+                        '_logic'=>'or',
+                    ),
+                ),
+                array(
+                    'a.fxid'=>$memberID,
+                    'oa.ifpack'=>array('in',array(0,1)),
+                ),
+                '_logic'=>'or',
+            );
         }
+
         if($orderNum){
             $where['a.ordernum'] = $orderNum;
         }else{
@@ -288,20 +341,26 @@ class RefundAudit extends Model
                 'od.concat_id',
                 'm.dcodeURL',
                 'oa.ifpack',
-                't.mdetails'
+                'oa.pack_order',
+                't.mdetails',
             );
             $order  = array(
                 'dstatus ASC',
                 'stime DESC',
             );
-            $result = $this->table($table)
+            $map = $this->table($table)
                            ->join($join)
                            ->where($where)
                            ->field($field)
                            ->page($page)
                            ->limit($limit)
-                           ->order($order)
-                           ->select();
+                           ->order($order);
+            if($limit==1){
+                $result = $map->find();
+            }else{
+                $result = $map->select();
+            }
+//            $this->test();
             return $result;
         }
     }
