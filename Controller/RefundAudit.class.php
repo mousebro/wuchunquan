@@ -583,4 +583,30 @@ class RefundAudit extends Controller
             return 252;
         }
     }
+    /**
+     * 返回json格式的数据
+     *
+     * @param mixed $code
+     * @param string $data
+     * @param string $msg
+     * @param string $type
+     * @param int $json_option
+     *
+     * @return string
+     */
+    public function ajaxReturn(
+        $code,
+        $data = '',
+        $msg = '',
+        $type = 'JSON',
+        $json_option = 0
+    ) {
+        $return = array(
+            'code' => $code,
+            'data' => $data,
+            'msg'  => $msg,
+        );
+
+        parent::ajaxReturn($return, $type, $json_option);
+    }
 }
