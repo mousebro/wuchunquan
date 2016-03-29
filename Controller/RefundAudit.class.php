@@ -630,10 +630,15 @@ class RefundAudit extends Controller
         $targetTicketNum,
         $auditResult
     ) {
+        if(!is_numeric($targetTicketNum)){
+            $refundModel = new RefundAuditModel();
+            $auditInfo = $refundModel->getAuditedTnum($ordernum);
+            $targetTicketNum = $auditInfo['tnum'];
+        }
         $data   = array(
             'action'   => $action,
             'ordernum' => $ordernum,
-            'tnum'     => $targetTicketNum,
+            'num'     => $targetTicketNum,
             'dstatus'  => $auditResult,
         );
         $url    = $this->noticeURL;
@@ -707,7 +712,7 @@ class RefundAudit extends Controller
         } else {
             $operateTicketNum = 0;
         }
-
+        $person_id = is_numeric($orderInfo['person_id']) ? $orderInfo['person_id'] : 0;
         $trackModel->addTrack(
             $orderNum,
             $action, //拒绝退票审核
@@ -717,7 +722,7 @@ class RefundAudit extends Controller
             $source,
             $orderInfo['terminal'],
             $orderInfo['terminal'],
-            $orderInfo['person_id'],
+            $person_id ,
             $operatorID,
             $orderInfo['salerid']
         );

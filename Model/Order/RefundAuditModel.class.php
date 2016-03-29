@@ -236,6 +236,23 @@ class RefundAuditModel extends Model
         $order = 'id desc';
         return $this->table($table)->where($where)->field($field)->order($order)->find();
     }
+
+    /**
+     * 获取拒绝票数
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function getAuditedTnum($orderNum){
+        $table = $this->_refundAuditTable;
+        $where=array(
+            'ordernum' => $orderNum,
+            'dstatus'  => array('in',array(1,2)),
+            );
+        $filed = 'tnum';
+        $order = 'dtime desc';
+        return $this->table($table)->where($where)->field($filed)->order($order)->find();
+    }
     /**
      * 获取退款审核列表
      *
