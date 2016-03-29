@@ -368,7 +368,7 @@ class RefundAuditModel extends Model
             }else{
                 $result = $map->select();
             }
-            $this->test();
+//            $this->test();
             return $result;
         }
     }
