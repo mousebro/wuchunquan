@@ -40,6 +40,11 @@ class Ticket extends Model {
         return $this->table(self::__TICKET_TABLE__)->where(array('pid' => $pid))->find();
     }
 
+    /**
+     * 获取产品类型
+     * @param  int $pid productID
+     * @return [type]      [description]
+     */
     public function getProductType($pid) {
         return $this->table(self::__PRODUCT_TABLE__)->where(array('id' => $pid))->getField('p_type');
     }
@@ -61,8 +66,9 @@ class Ticket extends Model {
     /**
      * 获取自供应可出售产品
      * @author wengbin 
-     * @param  [type] $memberid [description]
-     * @return [type]           [description]
+     * @param  int      $memberid [description]
+     * @param  array    额外筛选条件
+     * @return array
      */
     public function getSaleProducts($memberid, $option = array()) {
         // $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
@@ -175,8 +181,8 @@ class Ticket extends Model {
     /**
      * 获取门票零售价
      * @author wengbin 
-     * @param  [type] $id   [description]
-     * @param  string $date [description]
+     * @param  [type] $pid   productID
+     * @param  string $date 日期,2016-03-26
      * @return [type]       [description]
      */
     public function getRetailPrice($pid, $date = '') {
@@ -270,7 +276,7 @@ class Ticket extends Model {
         if ($storage) {
             foreach ($storage as $item) {
                 $find_pid[] = $item['pid'];
-                $result[$item['pid']] = $item['storage'] / 100;
+                $result[$item['pid']] = $item['storage'];
             }
         }
         $pid_arr = array_diff($pid_arr, $find_pid);
@@ -342,6 +348,56 @@ class Ticket extends Model {
             ->select();
 
         return $use_storage;
+    }
+
+
+    /**
+     * 获取有设置零售价的最小/最大的日期
+     * @param  [type] $pid [description]
+     * @return [type]      [description]
+     */
+    public function getHasRetailPriceDate($pid, $type = 'min') {
+        if ($type == 'min') {
+            $date_type = 'start_date';
+            $sort = 'asc';
+        } else {
+            $date_type = 'end_date';
+            $sort = 'desc';
+        }
+        $daily_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => $pid, 'start_date' => array('egt', date('Y-m-d')), 'ptype' => 1, 'status' => 0])
+                    ->order('start_date '.$sort)
+                    ->getField($date_type);
+
+        $period_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
+                    ->where(['pid' => $pid, 'end_date' => array('egt', date('Y-m-d')), 'ptype' => 0, 'status' => 0])
+                    ->order('start_date '.$sort)
+                    ->getField($date_type);
+
+        if ($type == 'min') {
+            if (strtotime($period_date) < strtotime(date('Y-m-d'))) {
+                $period_date = date('Y-m-d');
+            }
+        }
+
+        if (!$daily_date && !$period_date) {
+            return false;
+        }
+
+        if (!$daily_date && $period_date) {
+            return $period_date;
+        }
+
+        if ($daily_date && !$period_date) {
+            return $daily_date;
+        }
+
+        if ($type == 'min') {
+            return strtotime($daily_date) > strtotime($period_date) ? $period_date : $daily_date;
+        } else {
+            return strtotime($daily_date) > strtotime($period_date) ? $daily_date : $period_date;
+        }
+        
     }
 
     /**

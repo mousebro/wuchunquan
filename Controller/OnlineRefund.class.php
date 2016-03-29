@@ -31,10 +31,10 @@ class OnlineRefund extends Controller
         Api::Log(json_encode($_POST), $this->req_log);
         $auth = I('post.auth');
         $comp = md5(md5(I('post.ordernum').md5(strrev(I('post.ordernum')))));
-        if (empty( $auth ) || $auth!=$comp) {
-            Api::Log('身份验证失败',$this->err_log);
-            exit("身份验证失败");
-        }
+        //if (empty( $auth ) || $auth!=$comp) {
+        //    Api::Log('身份验证失败',$this->err_log);
+        //    exit("身份验证失败");
+        //}
         $this->log_id = I("post.log_id");
         if (!$this->log_id) exit("退款记录ID不能为空");
         $this->model  = new \Model\TradeRecord\OnlineRefund();
@@ -42,9 +42,23 @@ class OnlineRefund extends Controller
         if (!$data) exit("退款记录不存在");
         $this->data  = (object)$data;
         $pay_mode = I("post.pay_mode");
-        if ($pay_mode==5) $this->wx();
-        elseif($pay_mode==7) $this->union();
-        else exit('Unknow');
+        if (ENV!='PRODUCTION') $res = ['code'=>200];
+        else {
+            if ($pay_mode==5) $res = $this->wx();
+            elseif($pay_mode==7) $res = $this->union();
+        }
+        if ($res['code']==200) {
+            $this->model->UpdateRefundLogOk($this->log_id);
+            //print_r( $this->data);
+            //$res = $this->model->AddMemberLog(
+            //    $this->data->fid,
+            //    $this->data->ordernum,
+            //    $this->data->refund_money,
+            //    0,
+            //    1
+            //    );
+            //var_dump($res);
+        }
     }
 
     public function wx()
@@ -96,16 +110,16 @@ class OnlineRefund extends Controller
         //商户根据实际情况设置相应的处理流程,此处仅作举例
         if ($refundResult["return_code"] == "FAIL") {
             Api::Log("通信出错：{$refundResult['return_msg']}", $this->ok_log);
-            Api::Response("通信出错：".$refundResult['return_msg'], Api::badRequestCode);
+            return ['code'=>400, 'msg'=>"通信出错,原因:{$refundResult['return_msg']}"];
         }
         elseif($refundResult["return_code"] == 'SUCCESS') {
             Api::Log("退款成功:退款记录ID[{$this->log_id}],订单号[{$out_trade_no}],总金额[{$total_fee}],退款金额[{$refund_fee}]", $this->ok_log);
-            $this->model->UpdateRefundLogOk($this->log_id);
-            Api::Response("退款成功", Api::okCode);
+            return ['code'=>200, 'msg'=>'退款成功'];
+
         }
         else{
             Api::Log(json_encode($refundResult), $this->err_log);
-            Api::Response("退款失败,原因:{$refundResult['err_code_des']}", Api::badRequestCode);
+            return ['code'=>400, 'msg'=>"退款失败,原因:{$refundResult['err_code_des']}"];
         }
     }
     public function union()
@@ -140,15 +154,15 @@ class OnlineRefund extends Controller
         $refundResult = coverStringToArray($result);
         if(!verify($refundResult)){
             Api::Log("退款失败,原因:返回验证失败", $union_log_err);
-            Api::Response("退款失败,原因返回验证失败", Api::badRequestCode);
+            return ['code'=>400, 'msg'=>'退款失败,原因:验证失败'];
         }
         if($refundResult['respMsg']=='成功[0000000]') {
             Api::Log("退款成功:退款记录ID[{$this->log_id}],订单号[{$this->data->ordernum}],总金额[{$this->data->total_fee}],退款金额[{$this->data->refund_fee}]", $union_log_ok);
-            Api::Response("退款成功", Api::okCode);
+            return ['code'=>200, 'msg'=>'退款成功'];
         }
        else{
            Api::Log("退款失败,原因:".json_encode($refundResult), $union_log_err);
-           Api::Response("退款失败,原因:{$refundResult['respMsg']}", Api::badRequestCode);
+           return ['code'=>400, 'msg'=>'退款失败,原因:'.$refundResult['respMsg']];
        }
     }
 }

@@ -50,14 +50,15 @@ class Land extends Model
         }
     }
 
-    public function getLandInfo($lid, $extra = false) {
+    public function getLandInfo($lid, $extra = false, $field = '*') {
         if ($extra) {
            $land_info = $this->table('uu_land')
                             ->join('land left join uu_land_f f on land.id=f.lid')
                             ->where(array('land.id' => $lid))
+                            ->field($field)
                             ->find();
         } else {
-            $land_info = $this->table('uu_land')->find($lid);
+            $land_info = $this->table('uu_land')->field($field)->find($lid);
         }
         return $land_info;
     }

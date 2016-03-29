@@ -26,8 +26,9 @@ class SellerStorage extends Model{
 
     private $_memberTable   = 'pft_member';
 
-    private $_setLogPath = 'product/seller_storage_set';
-    private $_getLogPath = 'product/seller_storage_get';
+    private $_setLogPath = 'product/seller_storage/set';
+    private $_getLogPath = 'product/seller_storage/get';
+    private $_exLogPath  = 'product/seller_storage/ex';
 
     /**
      * 初始化函数
@@ -87,6 +88,57 @@ class SellerStorage extends Model{
         } else {
             return false;
         }
+    }
+
+    /**
+     * 获取设置的最大的分销库存的值
+     * @author dwer
+     * @date   2016-03-27
+     *
+     * @param  $pid 产品ID
+     * @param  $date 日期 
+     * @return
+     */
+    public function getSetMaxStorage($pid, $date) {
+        if(!$pid) {
+            return false;
+        }
+        $pid = intval($pid);
+
+        //日期处理
+        $tmp = strtotime($date);
+        if(!$tmp) {
+            return false;
+        }
+        $date = date('Ymd', $tmp);
+
+        $info = $this->table($this->_infoTable)->where(['pid' => $pid])->field('status')->find();
+        if(!$info || $info['status'] == 0) {
+            return false;
+        }
+
+        $field = 'total_num';
+        $where = [
+            'pid'   => $pid,
+            'level' => 1,
+            'date'  => $date
+        ];
+
+        $publicInfo = $this->table($this->_publicTable)->where($where)->field($field)->find();
+        if(!$publicInfo) {
+            //获取默认配置
+            $date = 0; 
+            $publicInfo = $this->table($this->_publicTable)->where($where)->field($field)->find();
+        }
+
+        if(!$publicInfo) {
+            return false;
+        }
+
+        $totalNum = intval($publicInfo['total_num']);
+        $totalNum = $totalNum >= 0 ? $totalNum : 0;
+
+        return $totalNum;
     }
 
     /**
@@ -1055,8 +1107,10 @@ class SellerStorage extends Model{
     public function getMaxStorage($pid, $setterUid, $resellerUid, $date, $attr = false) {
         //获取共用配置
         $publicInfo = $this->getAvailablePublic($setterUid, $pid, $date, $attr);
+
+        $maxStorageArr = array('max_fixed' => 0, 'max_dynamic' => 0);
         if(!$publicInfo) {
-            return array('max_fixed' => 0, 'max_dynamic' => 0);
+            return $maxStorageArr;
         }
 
         if($setterUid == $resellerUid) {
@@ -1077,7 +1131,7 @@ class SellerStorage extends Model{
                     $availableFixed = intval($publicInfo['total_num']) - intval($publicInfo['set_num']);
                 }
 
-                return array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
+                $maxStorageArr = array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
             } else {
                 //有设置分销库存的一级分销商
                 $totalNum = $this->getSettedDayNum($pid, $resellerUid, $date, $attr);
@@ -1095,7 +1149,7 @@ class SellerStorage extends Model{
                     $availableFixed = intval($totalNum) - intval($publicInfo['set_num']);
                 }
 
-                return array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
+                $maxStorageArr = array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
             }
         } else {
             if($publicInfo['mode'] == 2) {
@@ -1125,22 +1179,33 @@ class SellerStorage extends Model{
                 $leftLimit = $useLimit - intval($usedLog['dynamic']);
 
                 //返回
-                $resDynamic = min($leftDynamic, $leftLimit);
-                return array('max_fixed' => $fixedNum, 'max_dynamic' => $resDynamic);
+                $resDynamic    = min($leftDynamic, $leftLimit);
+                $maxStorageArr = array('max_fixed' => $fixedNum, 'max_dynamic' => $resDynamic);
             } else {
                 //固定库存模式
                 $res = $this->getFixedInfo($pid, $setterUid, $resellerUid, $publicInfo['date'], $attr);
 
                 if(!$publicInfo) {
-                    return array('max_fixed' => 0, 'max_dynamic' => 0);
+                    $maxStorageArr = array('max_fixed' => 0, 'max_dynamic' => 0);
                 } else {
                     //直接返回固定库存
                     $fixedNum = intval($res['fixed_num']);
 
-                    return array('max_fixed' => $fixedNum, 'max_dynamic' => 0);
+                    $maxStorageArr = array('max_fixed' => $fixedNum, 'max_dynamic' => 0);
                 }
             }
         }
+
+        //记录每次查询的动态库存的值
+        if($maxStorageArr['max_dynamic'] > 0) {
+            $logData         = ['ac' => 'getMaxDynamic'];
+            $logData['data'] = array($pid, $setterUid, $date, $attr, $maxStorageArr['max_dynamic']);
+            $logData['rs']   = 1;
+            $this->_log($logData, 'ex');
+        }
+
+        //返回数据
+        return $maxStorageArr;
     }
 
     /**
@@ -2178,7 +2243,7 @@ class SellerStorage extends Model{
      */
     public function getAvailablePublic($setterUid, $pid, $date, $attr = false) {
         $where = array(
-            'pid'          => $pid,
+            'pid'          => $pid, 
             'setter_uid'   => $setterUid,
             'date'         => array('in', array($date, 0))  //设定值和默认值一起返回
         );
@@ -2622,6 +2687,7 @@ class SellerStorage extends Model{
 
         //现在可售卖数量
         $leftNums = intval($maxStorage - $usedFixed);
+        $leftNums = $leftNums < 0 ? 0 : $leftNums;
 
         return $leftNums;
     }
@@ -2652,6 +2718,12 @@ class SellerStorage extends Model{
         //库存量如果不足，就使用掉足的量
         $leftNum = ($maxFixed + $maxDynamic) - $usedFixed;
         if( $leftNum < $buyNum ) {
+            //将异常情况写入日志
+            $logData         = ['ac' => 'exception_use_storage'];
+            $logData['data'] = array($orderId, $pid, $setterUid, $resellerUid, $date, $buyNum, $attr, '#', $leftNum);
+            $logData['rs']   = 1;
+            $this->_log($logData, 'ex');
+
             $buyNum = $leftNum;
         }
 
@@ -2775,22 +2847,28 @@ class SellerStorage extends Model{
             $pids = $res['pids'];
             $tmp = explode(',', $pids);
             if(in_array($pid, $tmp) || $pids == 'A') {
-                if($this->_isSetStorage($memberId, $setterId, $pid, $date, $attr)) {
+                $setStorageInfo = $this->_isSetStorage($memberId, $setterId, $pid, $date, $attr);
+                if($setStorageInfo) {
+                    //返回的值
+                    $sellerArr = array(
+                                    array('first' => $memberId, 'second' => $setterId),
+                                    array('first' => $memberId, 'second' => $memberId, 'self_use' => true) //一级分销商还没有给下级分销配置的时候，也要记录自己使用量
+                                );
 
-                    //如果一级分销商有设置分销库存，所以自己就只能使用未分配库存或是动态库存
-                    $publicInfo = $this->getAvailablePublic($memberId, $pid, $date, $attr);
-                    if($publicInfo) {
-                        return array(
-                            array('first' => $memberId, 'second' => $memberId), //使用未分配库存或是动态库存
-                            array('first' => $memberId, 'second' => $setterId), //使用供应商的库存
-                        );
-                    } else {
-                        return array(
-                            array('first' => $memberId, 'second' => $setterId),
-                            array('first' => $memberId, 'second' => $memberId, 'self_use' => true) //一级分销商还没有给下级分销配置的时候，也要记录自己使用量
-                        );
+                    //如果上级设置了共享库存，那么一级分销商配置的库存就失效了
+                    if($setStorageInfo['mode'] == 1) {
+                        //如果一级分销商有设置分销库存，所以自己就只能使用未分配库存或是动态库存
+                        $publicInfo = $this->getAvailablePublic($memberId, $pid, $date, $attr);
+                        if($publicInfo) {
+                            $sellerArr = array(
+                                array('first' => $memberId, 'second' => $memberId), //使用未分配库存或是动态库存
+                                array('first' => $memberId, 'second' => $setterId), //使用供应商的库存
+                            );
+                        }
                     }
 
+                    //返回
+                    return $sellerArr;
                 } else {
                     return false;
                 }
@@ -2859,14 +2937,14 @@ class SellerStorage extends Model{
             //对具体日期有配置库存
             if($publicTmp['mode'] == 2) {
                 //如果是动态库存模式
-                return true;
+                return $publicTmp;
             } else {
                 //如果是固定库存模式，还要查看是否有设置固定库存
                 $fixedInfo = $this->getFixedInfo($pid, $setterUid, $resellerUid, $date, $attr);
 
                 if($fixedInfo) {
                     //有设置固定库存
-                    return true;
+                    return $publicTmp;
                 } else {
                     //没有设置固定库存
                     return false;
@@ -2895,14 +2973,14 @@ class SellerStorage extends Model{
 
             if($publicTmp['mode'] == 2) {
                 //如果是动态库存模式
-                return true;
+                return $publicTmp;
             } else {
                 //如果是固定库存模式，还要查看是否有设置固定库存
                 $fixedInfo = $this->getFixedInfo($pid, $setterUid, $resellerUid, 0, $attr);
 
                 if($fixedInfo) {
                     //有设置固定库存
-                    return true;
+                    return $publicTmp;
                 } else {
                     //没有设置固定库存
                     return false;
@@ -3023,6 +3101,12 @@ class SellerStorage extends Model{
             'update_time'     => time()
         );
         $res = $this->table($this->_dynamicTable)->where($dynamicWhere)->save($data);
+
+        //记录恢复的共享库存
+        $logData         = ['ac' => '_recoverDynamic'];
+        $logData['data'] = array($pid, $setterUid, $date, $attr, $dynamicNum);
+        $logData['rs']   = $res;
+        $this->_log($logData, 'ex');
 
         return $res === false ? false : true;
     }
@@ -3172,6 +3256,12 @@ class SellerStorage extends Model{
             $dynamicRes = $this->table($this->_dynamicTable)->add($newData);
         }
 
+        //记录使用的共享库存
+        $logData         = ['ac' => '_takeofDynamic'];
+        $logData['data'] = array($pid, $setterId, $date, $attr, $usedNum);
+        $logData['rs']   = $dynamicRes;
+        $this->_log($logData, 'ex');
+
         return $dynamicRes === false ? false : true;
     }
 
@@ -3250,8 +3340,10 @@ class SellerStorage extends Model{
         $content = json_encode($dataArr);
         if($type == 'set') {
             $res = pft_log($this->_setLogPath, $content);
-        } else {
+        } elseif($type == 'get') {
             $res = pft_log($this->_getLogPath, $content);
+        } else {
+            $res = pft_log($this->_exLogPath, $content);
         }
 
         return $res;

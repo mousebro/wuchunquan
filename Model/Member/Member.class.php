@@ -18,6 +18,45 @@ class Member extends Model
         echo 'hello world';
     }
 
+    private function getLimitReferer()
+    {
+        return  array(
+            '12301.cc',
+            '16u.cc',
+            '12301.local',
+            '12301.test',
+            '12301dev.com',
+            '9117you.cn',
+            '9117you.cn',
+            );
+    }
+
+    public function login($account, $password, $chk_code='')
+    {
+        $where = [
+            'account|mobile'  =>':account',
+            'status'          =>':status',
+            //':password'=>':password',
+        ];
+        //$map['name|title'] = 'thinkphp';
+        $res = $this->table('pft_member')
+            ->getField('id,account,member_auth,dname,satus,id,password,derror,errortime,dtype')
+            ->where($where)
+            ->bind([':account'=>$account, ':status'=>[0, 3]])
+            ->find();
+        if (!$res)  return false;
+        if ($res['password']!=$password) {
+            $this->table('pft_member')
+                ->where("id={$res['id']}")
+                ->save(
+                    [
+                        'derror'    =>$res['derror']+1,
+                        'errortime' =>date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME'])
+                    ]);
+            return ['code'=>201,'msg'=>'账号或密码错误'];
+        }
+    }
+
     /**
      * 根据账号获取用户信息
      * @param  mixed $identify 字段值

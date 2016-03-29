@@ -14,6 +14,10 @@ class Dispatch
     private static function _getRequestRoute()
     {
         $controller = I('get.c');
+        if (strpos($controller, '_')!==false) {
+            list($namespace, $controller) = explode('_', $controller);
+            $controller = $namespace . '/' . $controller;
+        }
         $action     = I('get.a');
         $controller = 'Controller\\' . str_replace('/', '\\', $controller);
         return [
@@ -27,6 +31,7 @@ class Dispatch
         static $_codeAr = array();
         $_routeAr = self::_getRequestRoute();
         $key = $_routeAr['c'] . '_' . $_routeAr['a'];
+
         if (class_exists($_routeAr['c']))
             $_object = new $_routeAr['c']();
         else self::error("Controller Not Exist");
