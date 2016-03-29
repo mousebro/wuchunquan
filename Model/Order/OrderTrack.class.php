@@ -30,6 +30,11 @@ use Library\Model;
 
 class OrderTrack extends Model
 {
+    const ORDER_CREATE       = 0;
+    const ORDER_MODIFY       = 1;
+    const ORDER_PAY          = 4;
+
+    const SOURCE_INSIDE_SOAP = 16;
     public static function getSourceList()
     {
         return [
@@ -87,7 +92,7 @@ class OrderTrack extends Model
      * @param $salerid int 景区6位ID
      * @return mixed
      */
-    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id, $branch_terminal, $id_card, $oper,$salerid=0)
+    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0, $branch_terminal=0, $id_card='', $oper=0,$salerid=0)
     {
         $data = [
             'ordernum'       => $ordernum,
@@ -112,9 +117,9 @@ class OrderTrack extends Model
     {
         $where['ordernum'] = ':ordernum';
         return $this->Table('pft_order_track')
-            ->where($where)
-            ->bind(':ordernum',$ordernum)
-            ->order('id ASC')
-            ->select();
+                    ->where($where)
+                    ->bind(':ordernum',$ordernum)
+                    ->order('id ASC')
+                    ->select();
     }
 }

@@ -9,59 +9,59 @@ use Model\Product\YXStorage;
 
 class OrderTools extends Model {
 
-	/**
-	 * 获取订单信息
-	 * @param  int  	$orderid  订单id
-	 * @return array    [description]
-	 * @author  wengbin
-	 */
-	public function getOrderInfo($orderid) {
-		return $this->table('uu_ss_order')->where(array('ordernum' => $orderid))->find();
-	}
+    /**
+     * 获取订单信息
+     * @param  int  	$orderid  订单id
+     * @return array    [description]
+     * @author  wengbin
+     */
+    public function getOrderInfo($orderid) {
+        return $this->table('uu_ss_order')->where(array('ordernum' => $orderid))->find();
+    }
 
-	/**
-	 * 获取订单的额外信息
-	 * @param  int $orderid 订单id
-	 * @return array 
-	 * @author  wengbin
-	 */
-	public function getOrderAddonInfo($orderid) {
-		return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
-	}
+    /**
+     * 获取订单的额外信息
+     * @param  int $orderid 订单id
+     * @return array
+     * @author  wengbin
+     */
+    public function getOrderAddonInfo($orderid) {
+        return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
+    }
 
-	/**
-	 * 获取订单的分销详情
-	 * @param $orderID
-	 *
-	 * @return mixed
-	 * @author fangli
-	 */
-	public function getOrderDetail($orderID){
+    /**
+     * 获取订单的分销详情
+     * @param $orderID
+     *
+     * @return mixed
+     * @author fangli
+     */
+    public function getOrderDetail($orderID){
 
-			return $this->table('uu_order_fx_details')->where(['orderid'=>$orderID])->find();
-	}
+        return $this->table('uu_order_fx_details')->where(['orderid'=>$orderID])->find();
+    }
 
-	/**
-	 * 获取超过支付时限而未支付的订单
-	 * @param  int 	   $limit  条数
-	 * @param  string  $order  排序
-	 * @return array   $result 结果集
-	 * @author  wengbin
-	 */
-	public function getOutOfDateOrders($limit = 10, $order = 'uu_ss_order.id asc') {
-		$result = $this->table('uu_ss_order')->join("
-				left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid 
+    /**
+     * 获取超过支付时限而未支付的订单
+     * @param  int 	   $limit  条数
+     * @param  string  $order  排序
+     * @return array   $result 结果集
+     * @author  wengbin
+     */
+    public function getOutOfDateOrders($limit = 10, $order = 'uu_ss_order.id asc') {
+        $result = $this->table('uu_ss_order')->join("
+				left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid
 				left join uu_land land on uu_ss_order.lid=land.id")
 
-            ->where(array(
-                'uu_ss_order.status' => 0,
-                'detail.pay_status' => 2,
-                'land.id' => array('neq', 5322),
-                'land.terminal_type' => array('neq', 0),))
-            ->field('uu_ss_order.*,detail.*')
-            ->order($order)
-            ->limit($limit)
-            ->select();
+                       ->where(array(
+                           'uu_ss_order.status' => 0,
+                           'detail.pay_status' => 2,
+                           'land.id' => array('neq', 5322),
+                           'land.terminal_type' => array('neq', 0),))
+                       ->field('uu_ss_order.*,detail.*')
+                       ->order($order)
+                       ->limit($limit)
+                       ->select();
         return $result;
     }
 
@@ -79,9 +79,9 @@ class OrderTools extends Model {
 
         $remote_con = new Model('remote_1');
         $seat = $remote_con->table('pft_roundseat_dyn')
-            ->where(array('ordernum' => $orderid, 'status' => 2))
-            ->field('id')
-            ->select();
+                           ->where(array('ordernum' => $orderid, 'status' => 2))
+                           ->field('id')
+                           ->select();
         if ($seat) {
             $seat_ids = '';
             foreach ($seat as $item) {
@@ -143,40 +143,40 @@ class OrderTools extends Model {
         }
     }
 
-	/**
-	 * 获取套票主票的子票信息
-	 * @param $orderNum
-	 *
-	 * @return mixed
-	 */
-	public function getPackSubOrder($orderNum){
-		$table = 'uu_order_addon';
-		$where = ['pack_order' => $orderNum,];
-		$field = ['orderid'];
-		return $this->table($table)->where($where)->field($field)->select();
-	}
+    /**
+     * 获取套票主票的子票信息
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function getPackSubOrder($orderNum){
+        $table = 'uu_order_addon';
+        $where = ['pack_order' => $orderNum,];
+        $field = ['orderid'];
+        return $this->table($table)->where($where)->field($field)->select();
+    }
 
-	/**
-	 * 获取联票所有子票订单号
-	 * @param $orderNum
-	 *
-	 * @return mixed
-	 */
-	public function getLinkSubOrder($orderNum){
-		$table = 'uu_order_fx_details';
-		$where = array(
-			'concat_id' => $orderNum,
-		);
-		$field = ['orderid'];
-		$result = $this->table($table)->where($where)->field($field)->select();
-		return $result;
-	}
+    /**
+     * 获取联票所有子票订单号
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function getLinkSubOrder($orderNum){
+        $table = 'uu_order_fx_details';
+        $where = array(
+            'concat_id' => $orderNum,
+        );
+        $field = ['orderid'];
+        $result = $this->table($table)->where($where)->field($field)->select();
+        return $result;
+    }
 
-	/**
-	 * 打印测试语句
-	 */
-	private function test(){
-		$str = $this->getLastSql();
-		var_dump($str);
-	}
+    /**
+     * 打印测试语句
+     */
+    private function test(){
+        $str = $this->getLastSql();
+        var_dump($str);
+    }
 }
