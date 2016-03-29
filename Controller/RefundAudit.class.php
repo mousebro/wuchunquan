@@ -327,7 +327,19 @@ class RefundAudit extends Controller
                 return 243;
         }
         elseif($orderInfo['ifpack'] == 1) return 255;
-
+        //处理联票的取消申请时，所有子票都要更新审核状态
+        if ($orderInfo['concat_id']) {
+            $mainOrder = $orderInfo['concat_id'];
+            $orderModel       = new OrderTools();
+            $subOrders = $orderModel->getLinkSubOrder($mainOrder);
+            foreach ($subOrders as $subOrder) {
+                $autoUpdate = $subOrder['orderid'];
+                if($orderNumber != $autoUpdate){
+                    $refundModel->updateAudit($autoUpdate, $auditResult,
+                        $auditNote,$operatorID);
+                }
+            }
+        }
         return $result; //操作成功
     }
 
