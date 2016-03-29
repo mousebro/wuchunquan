@@ -97,6 +97,7 @@ class RefundAuditModel extends Model
             'o.salerid',
             'o.lid',
             'o.tid',
+            'o.status',
             'o.personid',
             'l.terminal',
             'oa.ifpack',
@@ -147,7 +148,7 @@ class RefundAuditModel extends Model
      *
      * @return mixed
      */
-    public function hasUnauditedPackSubOrders($orderNum){
+    public function hasUnAuditSubOrder($orderNum){
         $table = "{$this->_refundAuditTable} AS a";
         $join = array(
             "LEFT JOIN {$this->_orderAppendixTable} AS oa ON a.ordernum=oa.orderid",
@@ -222,6 +223,19 @@ class RefundAuditModel extends Model
         return $this->table($table)->where($where)->find();
     }
 
+    /**
+     * 获取部分使用订单的剩余票数
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function getRemainTicketNumber($orderNum){
+        $table = 'pft_order_track';
+        $field = 'left_tnum';
+        $where = ['ordernum'=>$orderNum];
+        $order = 'id desc';
+        return $this->table($table)->where($where)->field($field)->order($order)->find();
+    }
     /**
      * 获取退款审核列表
      *
@@ -381,16 +395,5 @@ class RefundAuditModel extends Model
     {
         $str = $this->getLastSql();
         print_r($str . PHP_EOL);
-    }
-
-    public function areUnderAudit(array $orders){
-        $table = $this->_refundAuditTable;
-        $where['ordernum'] = array('in',$orders);
-        $where['dstatus']=0;
-        $field = array(
-          "id",
-          "ordernum",
-        );
-        return $this->table($table)->where($where)->field($field)->select();
     }
 }
