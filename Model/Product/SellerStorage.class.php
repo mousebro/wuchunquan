@@ -26,8 +26,9 @@ class SellerStorage extends Model{
 
     private $_memberTable   = 'pft_member';
 
-    private $_setLogPath = 'product/seller_storage_set';
-    private $_getLogPath = 'product/seller_storage_get';
+    private $_setLogPath = 'product/seller_storage/set';
+    private $_getLogPath = 'product/seller_storage/get';
+    private $_exLogPath  = 'product/seller_storage/ex';
 
     /**
      * 初始化函数
@@ -111,7 +112,7 @@ class SellerStorage extends Model{
         }
         $date = date('Ymd', $tmp);
 
-        $info = $this->table($this->_infoTable)->where(['id' => $pid])->field('status')->find();
+        $info = $this->table($this->_infoTable)->where(['pid' => $pid])->field('status')->find();
         if(!$info || $info['status'] == 0) {
             return false;
         }
@@ -1106,8 +1107,10 @@ class SellerStorage extends Model{
     public function getMaxStorage($pid, $setterUid, $resellerUid, $date, $attr = false) {
         //获取共用配置
         $publicInfo = $this->getAvailablePublic($setterUid, $pid, $date, $attr);
+
+        $maxStorageArr = array('max_fixed' => 0, 'max_dynamic' => 0);
         if(!$publicInfo) {
-            return array('max_fixed' => 0, 'max_dynamic' => 0);
+            return $maxStorageArr;
         }
 
         if($setterUid == $resellerUid) {
@@ -1128,7 +1131,7 @@ class SellerStorage extends Model{
                     $availableFixed = intval($publicInfo['total_num']) - intval($publicInfo['set_num']);
                 }
 
-                return array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
+                $maxStorageArr = array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
             } else {
                 //有设置分销库存的一级分销商
                 $totalNum = $this->getSettedDayNum($pid, $resellerUid, $date, $attr);
@@ -1146,7 +1149,7 @@ class SellerStorage extends Model{
                     $availableFixed = intval($totalNum) - intval($publicInfo['set_num']);
                 }
 
-                return array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
+                $maxStorageArr = array('max_fixed' => $availableFixed, 'max_dynamic' => $availableDynamic);
             }
         } else {
             if($publicInfo['mode'] == 2) {
@@ -1176,22 +1179,33 @@ class SellerStorage extends Model{
                 $leftLimit = $useLimit - intval($usedLog['dynamic']);
 
                 //返回
-                $resDynamic = min($leftDynamic, $leftLimit);
-                return array('max_fixed' => $fixedNum, 'max_dynamic' => $resDynamic);
+                $resDynamic    = min($leftDynamic, $leftLimit);
+                $maxStorageArr = array('max_fixed' => $fixedNum, 'max_dynamic' => $resDynamic);
             } else {
                 //固定库存模式
                 $res = $this->getFixedInfo($pid, $setterUid, $resellerUid, $publicInfo['date'], $attr);
 
                 if(!$publicInfo) {
-                    return array('max_fixed' => 0, 'max_dynamic' => 0);
+                    $maxStorageArr = array('max_fixed' => 0, 'max_dynamic' => 0);
                 } else {
                     //直接返回固定库存
                     $fixedNum = intval($res['fixed_num']);
 
-                    return array('max_fixed' => $fixedNum, 'max_dynamic' => 0);
+                    $maxStorageArr = array('max_fixed' => $fixedNum, 'max_dynamic' => 0);
                 }
             }
         }
+
+        //记录每次查询的动态库存的值
+        if($maxStorageArr['max_dynamic'] > 0) {
+            $logData         = ['ac' => 'getMaxDynamic'];
+            $logData['data'] = array($pid, $setterUid, $date, $attr, $maxStorageArr['max_dynamic']);
+            $logData['rs']   = 1;
+            $this->_log($logData, 'ex');
+        }
+
+        //返回数据
+        return $maxStorageArr;
     }
 
     /**
@@ -2673,6 +2687,7 @@ class SellerStorage extends Model{
 
         //现在可售卖数量
         $leftNums = intval($maxStorage - $usedFixed);
+        $leftNums = $leftNums < 0 ? 0 : $leftNums;
 
         return $leftNums;
     }
@@ -2703,6 +2718,12 @@ class SellerStorage extends Model{
         //库存量如果不足，就使用掉足的量
         $leftNum = ($maxFixed + $maxDynamic) - $usedFixed;
         if( $leftNum < $buyNum ) {
+            //将异常情况写入日志
+            $logData         = ['ac' => 'exception_use_storage'];
+            $logData['data'] = array($orderId, $pid, $setterUid, $resellerUid, $date, $buyNum, $attr, '#', $leftNum);
+            $logData['rs']   = 1;
+            $this->_log($logData, 'ex');
+
             $buyNum = $leftNum;
         }
 
@@ -3081,6 +3102,12 @@ class SellerStorage extends Model{
         );
         $res = $this->table($this->_dynamicTable)->where($dynamicWhere)->save($data);
 
+        //记录恢复的共享库存
+        $logData         = ['ac' => '_recoverDynamic'];
+        $logData['data'] = array($pid, $setterUid, $date, $attr, $dynamicNum);
+        $logData['rs']   = $res;
+        $this->_log($logData, 'ex');
+
         return $res === false ? false : true;
     }
 
@@ -3229,6 +3256,12 @@ class SellerStorage extends Model{
             $dynamicRes = $this->table($this->_dynamicTable)->add($newData);
         }
 
+        //记录使用的共享库存
+        $logData         = ['ac' => '_takeofDynamic'];
+        $logData['data'] = array($pid, $setterId, $date, $attr, $usedNum);
+        $logData['rs']   = $dynamicRes;
+        $this->_log($logData, 'ex');
+
         return $dynamicRes === false ? false : true;
     }
 
@@ -3307,8 +3340,10 @@ class SellerStorage extends Model{
         $content = json_encode($dataArr);
         if($type == 'set') {
             $res = pft_log($this->_setLogPath, $content);
-        } else {
+        } elseif($type == 'get') {
             $res = pft_log($this->_getLogPath, $content);
+        } else {
+            $res = pft_log($this->_exLogPath, $content);
         }
 
         return $res;
