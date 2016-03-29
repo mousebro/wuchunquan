@@ -388,6 +388,8 @@ class RefundAudit extends Controller
         $limit = 20
     ) {
         //参数初始化
+        $limit = ($limit && is_numeric($limit)) ? $limit : 20;
+        $page = ($page && is_numeric($page)) ? $page : 1;
         $r           = array();
         $refundModel = new RefundAuditModel();;
         //获取记录详情

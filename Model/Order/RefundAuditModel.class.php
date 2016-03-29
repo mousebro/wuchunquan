@@ -250,7 +250,6 @@ class RefundAuditModel extends Model
         $page = 1,
         $limit = 20
     ) {
-
         $table = "$this->_refundAuditTable AS a";
         $join  = array(
             "left join {$this->_landTable} AS l ON l.id=a.lid",
