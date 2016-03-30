@@ -70,7 +70,7 @@ class Ticket extends Model {
      * @param  array    额外筛选条件
      * @return array
      */
-    public function getSaleProducts($memberid, $option = array()) {
+    public function getSaleProducts($memberid, $options = array()) {
         // $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
 
         // if (!$sale_list) return array();
@@ -92,21 +92,25 @@ class Ticket extends Model {
             'p.apply_did' => $memberid
         );
 
-        if ($option) {
-            $where = array_merge($where, $option);
+        if (isset($options['where'])) {
+            $where = array_merge($where, $options['where']);
+            unset($options['where']);
         }
 
-        $data = $this->getProductsDetailInfo($where);
+        $data = $this->getProductsDetailInfo($where, $options);
 
         $result = array();
-        foreach ($data as $item) {
+        if ($data) {
+            foreach ($data as $item) {
             // $pid_arr = $sale_pid_arr[$item['apply_did']];
             // if (is_array($pid_arr) && ($pid_arr[0] == 'A' || in_array($item['pid'], $pid_arr))) {
                 $item['apply_sid'] = $memberid;
                 $item['sapply_sid'] = $item['apply_did'];
                 $result[] = $item;
             // }
+            }
         }
+        
         return $result;
     }
 
@@ -168,13 +172,13 @@ class Ticket extends Model {
      * @param  [type] $where [description]
      * @return [type]        [description]
      */
-    protected function getProductsDetailInfo($where) {
+    protected function getProductsDetailInfo($where, $options = array()) {
         return $this->table(self::__PRODUCT_TABLE__)
             ->join('p left join '.self::__LAND_TABLE__.' l on p.contact_id=l.id 
                 left join uu_jq_ticket t on p.id=t.pid')
             ->field('p.id,p.p_type,p.p_name,p.salerid,t.title,t.id as tid,t.landid,t.pid,l.title,l.area,l.address,l.px,l.apply_did,l.imgpath')
             ->where($where)
-            ->select();
+            ->select($options);
     }
 
 

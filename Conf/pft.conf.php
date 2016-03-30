@@ -8,6 +8,7 @@ if (ENV=='PRODUCTION') {
     define('BASE_LOG_DIR', '/mnt/log/site');
     define('IMAGE_UPLOAD_DIR', '/databak/images/');
     define('MAIN_DOMAIN', 'http://www.12301.cc/');
+    define('PAY_DOMAIN', 'http://pay.12301.cc/');
     define('MOBILE_DOMAIN', 'http://wx.12301.cc/');
     define('IMAGE_URL', 'http://images.12301.cc/');
     define('STATIC_URL', 'http://static.12301.cc/');
@@ -23,6 +24,7 @@ elseif (ENV=='TEST') {
     define('BASE_LOG_DIR', '/data/log/site');
     define('IMAGE_UPLOAD_DIR', '/databak/images/');
     define('MAIN_DOMAIN', 'http://www.12301dev.com/');
+    define('PAY_DOMAIN', 'http://pay.12301dev.com/');
     define('MOBILE_DOMAIN', 'http://wx.12301dev.com/');
     define('IMAGE_URL', 'http://images.12301dev.com/');
     define('STATIC_URL', 'http://static.12301.cc/');
