@@ -5,7 +5,7 @@ if (ENV=='PRODUCTION') {
     define('PFT_WECHAT_APPID', 'wxd72be21f7455640d');
     define('BASE_WWW_DIR', '/var/www/html/new/d');
     define('BASE_WX_DIR', '/var/www/html/wx');
-    define('BASE_LOG_DIR', '/mnt/log/site');
+    define('BASE_LOG_DIR', '/alidata/log/site');
     define('IMAGE_UPLOAD_DIR', '/databak/images/');
     define('MAIN_DOMAIN', 'http://www.12301.cc/');
     define('PAY_DOMAIN', 'http://pay.12301.cc/');
