@@ -69,7 +69,7 @@ class RefundAudit extends Controller
         }
 
         //对需要审核的订单，需判断是否满足订单变更条件
-        if ($ticketInfo['refund_audit'] != 0) {
+        if ($ticketInfo['refund_audit'] != 0 && $orderExtend['ifpack'] != 1) {
             $auditNeeded = 200;//需要退票审核
             //检查订单使用状态
             $result = $this->checkUseStatus($orderInfo['status'], $modifyType,
