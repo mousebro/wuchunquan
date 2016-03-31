@@ -3350,6 +3350,9 @@ class SellerStorage extends Model{
             return false;
         }
 
+        $dataArr['error']   = $this->getError();
+        $dataArr['dbError'] = $this->getDbError();
+
         $content = json_encode($dataArr);
         if($type == 'set') {
             $res = pft_log($this->_setLogPath, $content);
