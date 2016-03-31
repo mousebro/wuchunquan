@@ -50,7 +50,7 @@ return array(
         ),
         'summary'   => array(//统计数据库
             'db_type'   => 'mysql',
-            'db_host'   => '127.0.0.1',
+            'db_host'   => '10.160.4.140',
             'db_user'   => 'summary',
             'db_pwd'    => 'su*7645901',
             'db_port'   => 3306,
