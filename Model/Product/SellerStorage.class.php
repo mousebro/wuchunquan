@@ -39,6 +39,18 @@ class SellerStorage extends Model{
     }
 
     /**
+     * 强制关闭数据库连接
+     * @author dwer
+     * @date   2016-03-31
+     *
+     * @return
+     */
+    public function closeLink() {
+        $this->forceShutdown();
+        return true;
+    }
+
+    /**
      * 是否用户库存管理权限
      * @author dwer
      * @date   2016-03-15

@@ -50,6 +50,24 @@ class Db {
     }
 
     /**
+     * 强制断开数据库连接
+     * @author dwer
+     * @date   2016-03-31
+     *
+     * @param  array $config 连接配置
+     * @return [type]
+     */
+    static public function forceShutdown($config = array()) {
+        $md5    =   md5(serialize($config));
+        if(isset(self::$instance[$md5])) {
+            self::$_instance      = null;
+            self::$instance[$md5] = null;
+        }
+
+        return true;
+    }
+
+    /**
      * 数据库连接参数解析
      * @static
      * @access private

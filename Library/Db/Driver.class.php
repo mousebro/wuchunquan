@@ -106,11 +106,10 @@ abstract class Driver {
 
                 $this->linkID[$linkNum] = new PDO( $config['dsn'], $config['username'], $config['password'],$this->options);
             }catch (\PDOException $e) {
-                var_dump($e);die;
                 if($autoConnection){
                     return $this->connect($autoConnection,$linkNum);
                 } else {
-                    E('数据库无法连接，请检查。'); 
+                    E('数据库无法连接，请检查。');
                 }
             }
         }
