@@ -1302,6 +1302,7 @@ class SellerStorage extends Model{
 
          //处理数据
          $res = array();
+         $tmp = $tmp ? $tmp : array();
          foreach($tmp as $item) {
             $res[$item['reseller_uid']] = $item;
          }
