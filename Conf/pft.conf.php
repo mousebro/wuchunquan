@@ -6,9 +6,9 @@ if (ENV=='PRODUCTION') {
     define('BASE_WWW_DIR', '/var/www/html/new/d');
     define('BASE_WX_DIR', '/var/www/html/wx');
     define('BASE_LOG_DIR', '/alidata/log/site');
-    define('IMAGE_UPLOAD_DIR', '/databak/images/');
-    define('MAIN_DOMAIN', 'http://www.16u.cc/');
-    define('PAY_DOMAIN', 'http://pay.16u.cc/');
+    define('IMAGE_UPLOAD_DIR', '/alidata/images/');
+    define('MAIN_DOMAIN', 'http://www.12301.cc/');
+    define('PAY_DOMAIN', 'http://pay.12301.cc/');
     define('MOBILE_DOMAIN', 'http://wx.12301.cc/');
     define('IMAGE_URL', 'http://images.12301.cc/');
     define('STATIC_URL', 'http://static.12301.cc/');
