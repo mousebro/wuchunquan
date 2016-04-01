@@ -259,9 +259,9 @@ class RefundAuditModel extends Model
      * @param      $memberID
      * @param null $landTitle
      * @param null $noticeType
-     * @param null $applyTime
+     * @param null $applyDate
      * @param null $auditStatus
-     * @param null $auditTime
+     * @param null $auditDate
      * @param null $orderNum
      * @param bool $getTotalPage
      * @param int  $page
@@ -273,9 +273,9 @@ class RefundAuditModel extends Model
         $memberID,
         $landTitle = null,
         $noticeType = null,
-        $applyTime = null,
+        $applyDate = null,
         $auditStatus = null,
-        $auditTime = null,
+        $auditDate = null,
         $orderNum = null,
         $getTotalPage = false,
         $page = 1,
@@ -293,8 +293,8 @@ class RefundAuditModel extends Model
             "l.status" => array('lt', 3),
             "_complex" => array(
                 array(
-//                    't.refund_audit'=>1,
-                    't.refund_audit'=>array('in',array(0,1)), //测试时使用
+                    't.refund_audit'=>1,
+//                    't.refund_audit'=>array('in',array(0,1)), //测试时使用
                     'oa.ifpack'=>1,
 //                    'od.concat_id'=>array('neq',0), //TODO:联票显示逻辑上未验证
                     '_logic'=>'or',
@@ -344,11 +344,17 @@ class RefundAuditModel extends Model
             if ($noticeType !== null) {
                 $where['a.stype'] = $noticeType;
             }
-            if ($applyTime) {
-                $where['a.stime'] = $applyTime;
+            if ($applyDate) {
+                $applyDate = substr($applyDate,0,10);
+                $bTime1 = $applyDate . " 00:00:00";
+                $eTime1 = $applyDate ." 23:59:59";
+                $where['a.stime'] = array('between',"{$bTime1},{$eTime1}");
             }
-            if ($auditTime) {
-                $where['a.dtime'] = $auditTime;
+            if ($auditDate) {
+                $auditDate = substr($auditDate,0,10);
+                $bTime2 = $auditDate . " 00:00:00";
+                $eTime2 = $auditDate ." 23:59:59";
+                $where['a.dtime'] = array('between',"{$bTime2},{$eTime2}");
             }
             if ($auditStatus != null) {
                 $where['a.dstatus'] = $auditStatus;
