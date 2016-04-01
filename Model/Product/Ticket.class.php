@@ -151,16 +151,18 @@ class Ticket extends Model {
         );
 
         if ($option2) {
-            $where = array_merge($where, $option2);
+            $where = array_merge($where, $option2['where']);
         }
 
         $data = $this->getProductsDetailInfo($where);
 
         $result = array();
-        foreach ($data as $item) {
-            $item['apply_sid'] = $tmp[$item['id']]['sid'];
-            $item['sapply_sid'] = $tmp[$item['id']]['sourceid'];
-            $result[] = $item;
+        if ($data) {
+            foreach ($data as $item) {
+                $item['apply_sid'] = $tmp[$item['id']]['sid'];
+                $item['sapply_sid'] = $tmp[$item['id']]['sourceid'];
+                $result[] = $item;
+            }
         }
         
         return $result;
