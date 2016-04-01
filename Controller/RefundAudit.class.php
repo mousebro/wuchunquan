@@ -73,7 +73,7 @@ class RefundAudit extends Controller
             $auditNeeded = 200;//需要退票审核
             //检查订单使用状态
             $result = $this->checkUseStatus($orderInfo['status'], $modifyType,
-                $ticketInfo['apply_did'], $orderInfo['aid']);
+                $ticketInfo['apply_did'], $operatorID);
             if ($result != 200) {
                 return $result;
             }
@@ -514,6 +514,8 @@ class RefundAudit extends Controller
                 return (210);//订单已使用:不可取消或修改
                 break;
             case 2:
+                var_dump($operatorId);
+                var_dump($ticketAid);
                 if ($modifyType == self::MODIFY_CODE) {
                     return (211);//订单已过期:不允许修改
                 } else {
