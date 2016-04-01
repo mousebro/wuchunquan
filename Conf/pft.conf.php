@@ -6,7 +6,7 @@ if (ENV=='PRODUCTION') {
     define('BASE_WWW_DIR', '/var/www/html/new/d');
     define('BASE_WX_DIR', '/var/www/html/wx');
     define('BASE_LOG_DIR', '/alidata/log/site');
-    define('IMAGE_UPLOAD_DIR', '/databak/images/');
+    define('IMAGE_UPLOAD_DIR', '/alidata/images/');
     define('MAIN_DOMAIN', 'http://www.12301.cc/');
     define('PAY_DOMAIN', 'http://pay.12301.cc/');
     define('MOBILE_DOMAIN', 'http://wx.12301.cc/');
@@ -15,7 +15,7 @@ if (ENV=='PRODUCTION') {
     define('OPEN_URL', 'http://open.12301.cc/');
     define('MOBILE_URL', 'http://12301.cc/');
     define('IP_INSIDE', '10.132.33.244');//内网IP地址
-    define('IP_TERMINAL', '121.199.25.173');//终端服务器IP
+    define('IP_TERMINAL', '121.40.69.184');//终端服务器IP
 }
 elseif (ENV=='TEST') {
     define('PFT_WECHAT_APPID', 'wxd72be21f7455640d');

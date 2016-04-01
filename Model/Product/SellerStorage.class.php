@@ -39,6 +39,18 @@ class SellerStorage extends Model{
     }
 
     /**
+     * 强制关闭数据库连接
+     * @author dwer
+     * @date   2016-03-31
+     *
+     * @return
+     */
+    public function closeLink() {
+        $this->forceShutdown();
+        return true;
+    }
+
+    /**
      * 是否用户库存管理权限
      * @author dwer
      * @date   2016-03-15
@@ -1290,6 +1302,7 @@ class SellerStorage extends Model{
 
          //处理数据
          $res = array();
+         $tmp = $tmp ? $tmp : array();
          foreach($tmp as $item) {
             $res[$item['reseller_uid']] = $item;
          }
@@ -3336,6 +3349,9 @@ class SellerStorage extends Model{
         if(!$dataArr) {
             return false;
         }
+
+        $dataArr['error']   = $this->getError();
+        $dataArr['dbError'] = $this->getDbError();
 
         $content = json_encode($dataArr);
         if($type == 'set') {
