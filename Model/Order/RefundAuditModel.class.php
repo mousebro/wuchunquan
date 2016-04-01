@@ -350,14 +350,17 @@ class RefundAuditModel extends Model
                 $eTime1 = $applyDate ." 23:59:59";
                 $where['a.stime'] = array('between',"{$bTime1},{$eTime1}");
             }
+            if ($auditStatus != null) {
+                $where['a.dstatus'] = $auditStatus;
+            }
             if ($auditDate) {
                 $auditDate = substr($auditDate,0,10);
                 $bTime2 = $auditDate . " 00:00:00";
                 $eTime2 = $auditDate ." 23:59:59";
                 $where['a.dtime'] = array('between',"{$bTime2},{$eTime2}");
-            }
-            if ($auditStatus != null) {
-                $where['a.dstatus'] = $auditStatus;
+                if($auditStatus==0){
+                    $where['a.dstatus'] = array('in',array(1,2));
+                }
             }
         }
         //获取记录总数
