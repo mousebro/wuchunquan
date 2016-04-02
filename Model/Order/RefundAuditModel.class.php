@@ -413,6 +413,39 @@ class RefundAuditModel extends Model
     }
 
     /**
+     * @param $page
+     * @param $limit
+     *
+     * @return mixed
+     */
+    public function getNoticeList(array $orderNum,$page=1,$limit=20){
+        $limit = $limit ? $limit : 20;
+        $page = $page ? $page : 1;
+        $table = "{$this->_refundAuditTable} AS a";
+        $join = array(
+            "JOIN {$this->_landTable} AS l ON a.lid=l.id",
+            "JOIN {$this->_memberTable} AS m ON m.id=a.fxid",
+        );
+        $where = array(
+            "a.dstatus" => array('in', [1,2]),
+            "m.dcodeURL"=>array('neq',''),
+            "a.ordernum"=>array('in',$orderNum));
+        $field = array(
+            'a.ordernum',
+            'a.stype',
+            'a.dtime',
+            'a.stime',
+            'a.fxid',
+            'm.dname',
+            'l.title',
+        );
+        $order = array(
+            'a.dtime desc',
+        );
+        $result = $this->table($table)->join($join)->where($where)->field($field)->order($order)->page($page)->limit($limit)->select();
+        return $result;
+    }
+    /**
      * 测试用：打印调用的sql语句
      *
      * @return string

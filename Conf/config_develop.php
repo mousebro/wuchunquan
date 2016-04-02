@@ -56,6 +56,14 @@ return array(
             'db_port'   => 3307,
             'db_name'   => 'summary',
         ),
+        'orderdata'   => array(//终端数据库
+            'db_type'   => 'mysql',
+            'db_host'   => '192.168.20.138',
+            'db_user'   => 'cat',
+            'db_pwd'    => 'cat123',
+            'db_port'   => 3307,
+            'db_name'   => 'orderdata',
+        ),
     ),
     'redis'=>array(
         'main'=> array(
