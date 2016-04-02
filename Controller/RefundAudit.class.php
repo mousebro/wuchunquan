@@ -43,48 +43,35 @@ class RefundAudit extends Controller
         if ( ! $orderNum) {
             return (202); //订单号缺失或格式错误
         }
-
         $operatorID = intval(trim($operatorID));
 
         //获取订单信息
-        $orderModel = new OrderTools();
-        $orderInfo  = $orderModel->getOrderInfo($orderNum);
-        if ( ! $orderInfo) {
+        $auditModel = new RefundAuditModel();
+        $orderInfo = $auditModel->getInfoForAuditCheck($orderNum);
+        if ( !$orderInfo || !is_array($orderInfo)) {
             return (204); //订单号不存在
         }
-        $orderDetail = $orderModel->getOrderDetail($orderNum);
-        if ( ! $orderDetail || ! is_array($orderDetail)) {
-            return (205);//订单信息不全
+        //未修改门票数量无需审核 2016-4-2 解决联票的判断bug
+        if($orderInfo['tnum']==$targetTnum){
+            return (100);
         }
-        $orderExtend = $orderModel->getOrderAddonInfo($orderNum);
-        if ( ! $orderExtend || ! is_array($orderExtend)) {
-            return (205);//订单信息不全
-        }
-        //获取票类信息
-        $tid         = $orderInfo['tid'];
-        $ticketModel = new Ticket();
-        $ticketInfo  = $ticketModel->getTicketInfoById($tid);
-        if ( ! $ticketInfo) {
-            return (206); //对应门票不存在
-        }
-
-        //对需要审核的订单，需判断是否满足订单变更条件
-        if ($ticketInfo['refund_audit'] != 0 && $orderExtend['ifpack'] != 1) {
+        //对需要审核的票类，需判断是否满足订单变更条件（对套票主票设置审核是无效的）
+        if ($orderInfo['refund_audit'] != 0 && $orderInfo['ifpack'] != 1) {
             $auditNeeded = 200;//需要退票审核
             //检查订单使用状态
             $result = $this->checkUseStatus($orderInfo['status'], $modifyType,
-                $ticketInfo['apply_did'], $operatorID);
+                $orderInfo['apply_did'], $operatorID);
             if ($result != 200) {
                 return $result;
             }
             //检查订单支付状态
             $result = $this->checkPayStatus($orderInfo['paymode'],
-                $orderDetail['pay_status']);
+                $orderInfo['pay_status']);
             if ($result != 200) {
                 return $result;
             }
             //自供自销的订单可自行取消
-            if ($ticketInfo['apply_did'] == $operatorID
+            if ($orderInfo['apply_did'] == $operatorID
                 && $modifyType == self::CANCEL_CODE
             ) {
                 return 100;
@@ -92,8 +79,9 @@ class RefundAudit extends Controller
         } else {
             //对无需退款审核的订单需要作联票和套票判断
             //判断套票是否需要退票审核
-            if ($orderExtend['ifpack']) {
-                if ($orderExtend['ifpack'] == 1) {
+            $orderModel = new OrderTools();
+            if ($orderInfo['ifpack']) {
+                if ($orderInfo['ifpack'] == 1) {
                     //套票主票
                     $subOrders = $orderModel->getPackSubOrder($orderNum);
                     if ( ! $subOrders || ! is_array($subOrders)) {
@@ -108,20 +96,19 @@ class RefundAudit extends Controller
                         }
                     }
                 } else {
-                    $refundModel = new RefundAuditModel();;
                     $mainOrderIsUnderAudit
-                        = $refundModel->isUnderAudit($orderExtend['pack_order']);
+                        = $auditModel->isUnderAudit($orderInfo['pack_order']);
                     if ($mainOrderIsUnderAudit) {
                         $auditNeeded = 200;
                     }
                 }
             }
             //取消联票的情况 取消联票主票时，对应子票也都要取消；
-            if ($circle == 0 && $orderDetail['concat_id']
+            if ($circle == 0 && $orderInfo['concat_id']
                 && $modifyType == self::CANCEL_CODE
             ) {
                 //取消联票时候，要判断其他子票是否需要退票审核
-                $mainOrder = $orderDetail['concat_id'];
+                $mainOrder = $orderInfo['concat_id'];
                 $subOrders = $orderModel->getLinkSubOrder($mainOrder);
                 foreach ($subOrders as $subOrder) {
                     if ($subOrder['orderid'] != $orderNum) {
@@ -141,7 +128,7 @@ class RefundAudit extends Controller
 
     /**
      * 添加退票审核记录：
-     * 只支持取消和修改，不支持撤销撤改
+     * 暂时只支持取消和修改，不支持撤销撤改
      *
      * @param     $orderNum
      * @param     $targetTicketNum
@@ -448,8 +435,8 @@ class RefundAudit extends Controller
         $limit = 20
     ) {
         //参数初始化
-        $limit       = ($limit && is_numeric($limit)) ? $limit : 20;
-        $page        = ($page && is_numeric($page)) ? $page : 1;
+        $limit       = ($limit && is_int($limit)) ? $limit : 20;
+        $page        = ($page && is_int($page)) ? $page : 1;
         $r           = array();
         $refundModel = new RefundAuditModel();;
         //获取记录详情
@@ -632,7 +619,7 @@ class RefundAudit extends Controller
         $targetTicketNum,
         $auditResult
     ) {
-        if(!is_numeric($targetTicketNum)){
+        if(!is_int($targetTicketNum)){
             $refundModel = new RefundAuditModel();
             $auditInfo = $refundModel->getAuditedTnum($ordernum);
             $targetTicketNum = $auditInfo['tnum'];
@@ -714,7 +701,7 @@ class RefundAudit extends Controller
         } else {
             $operateTicketNum = 0;
         }
-        $person_id = is_numeric($orderInfo['person_id']) ? $orderInfo['person_id'] : 0;
+        $person_id = $orderInfo['person_id'] ? $orderInfo['person_id'] : 0;
         $trackModel->addTrack(
             $orderNum,
             $action, //拒绝退票审核
@@ -729,4 +716,5 @@ class RefundAudit extends Controller
             $orderInfo['salerid']
         );
     }
+
 }
