@@ -179,7 +179,7 @@ class RefundAudit extends Controller
             $operatorID,
             $action,
             $auditStatus,
-            null,
+            $targetTicketNum,
             $orderInfo);
 
         //添加审核记录
@@ -699,7 +699,8 @@ class RefundAudit extends Controller
             $operateTicketNum = $remainTicketNum - $targetNum;
             $remainTicketNum  = $targetNum;
         } else {
-            $operateTicketNum = 0;
+            //2016-4-3 操作票数=被冻结票数
+            $operateTicketNum = ($targetNum ===null) ? 0 : ($remainTicketNum - $targetNum);
         }
         $person_id = $orderInfo['person_id'] ? $orderInfo['person_id'] : 0;
         $trackModel->addTrack(
@@ -717,4 +718,20 @@ class RefundAudit extends Controller
         );
     }
 
+    public function getTicketTitle($orderNum){
+        $refundModel = new RefundAuditModel();
+        $result = $refundModel->getTicketTitle($orderNum);
+        return $result;
+    }
+    public function getRequestType()
+    {
+        $r = isset($_SERVER['HTTP_X_REQUESTED_WITH'])
+            ? strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) : '';
+        if ($r == 'xmlhttprequest') {
+            $type = 'ajax';
+        } else {
+            $type = 'html';
+        }
+        return $type;
+    }
 }

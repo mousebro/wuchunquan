@@ -477,6 +477,15 @@ class RefundAuditModel extends Model
         // $this->test();
         return $result;
     }
+    //获取门票名称
+    public function getTicketTitle($orderNum){
+        $table = "{$this->_ticketTable} AS t";
+        $join = "{$this->_orderTable} AS o ON o.tid=t.id";
+        $where = ["o.ordernum"=>$orderNum];
+        $field = ["t.title"];
+        $result = $this->table($table)->join($join)->where($where)->field($field)->find();
+        return $result;
+    }
     /**
      * 测试用：打印调用的sql语句
      *
@@ -487,4 +496,5 @@ class RefundAuditModel extends Model
         $str = $this->getLastSql();
         print_r($str . PHP_EOL);
     }
+
 }
