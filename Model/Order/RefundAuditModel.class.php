@@ -477,13 +477,20 @@ class RefundAuditModel extends Model
         // $this->test();
         return $result;
     }
-    //获取门票名称
+
+    /**
+     * 获取门票名称
+     * @param $orderNum
+     *
+     * @return mixed
+     */
     public function getTicketTitle($orderNum){
         $table = "{$this->_ticketTable} AS t";
         $join = "{$this->_orderTable} AS o ON o.tid=t.id";
-        $where = ["o.ordernum"=>$orderNum];
         $field = ["t.title"];
-        $result = $this->table($table)->join($join)->where($where)->field($field)->find();
+        $result = $this->table($table)->join($join)->field($field);
+        $where["o.ordernum"] = $orderNum;
+        $result = $result->where($where)->find();
         return $result;
     }
     /**

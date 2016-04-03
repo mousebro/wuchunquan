@@ -348,14 +348,14 @@ class RefundAudit extends Controller
                     $subOrders  = $orderModel->getLinkSubOrder($mainOrder);
                     foreach ($subOrders as $subOrder) {
                         $subOrderID = $subOrder['orderid'];
-                            $result = $this->updateAudit(
-                                $refundModel,
-                                0,//ifpack
-                                $subOrderID,
-                                $auditResult,
-                                $auditNote,
-                                $operatorID
-                            );
+                        $result = $this->updateAudit(
+                            $refundModel,
+                            0,//ifpack
+                            $subOrderID,
+                            $auditResult,
+                            $auditNote,
+                            $operatorID
+                        );
                     }
                 }else{
                     $result = $this->updateAudit(
