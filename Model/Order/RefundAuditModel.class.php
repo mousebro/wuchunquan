@@ -491,6 +491,8 @@ class RefundAuditModel extends Model
         $result = $this->table($table)->join($join)->field($field);
         $where["o.ordernum"] = $orderNum;
         $result = $result->where($where)->find();
+        // print_r($result);
+        // $this->test();
         return $result;
     }
     /**
