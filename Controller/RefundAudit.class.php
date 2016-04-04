@@ -268,7 +268,8 @@ class RefundAudit extends Controller
         $auditNote,
         $operatorID,
         $auditTime,
-        $auditID = 0
+        $auditID = 0,
+        $targetTnum
     ) {
         //检查传入参数
         if ( ! in_array($auditResult, [1, 2])) {
@@ -277,11 +278,14 @@ class RefundAudit extends Controller
 
         //参数初始化
         $refundModel = new RefundAuditModel();
-        $result = 241;
+        // $result = 241;
         $orderInfo = $refundModel->getOrderInfoForAudit($orderNumber);
         if ( ! $orderInfo) {
             return 205;//订单信息不全
         }
+//        if(!$orderInfo['audit_id']){
+//            return 256; //对应审核记录不存在或已处理
+//        }
         $orderModel = new OrderTools();
         //套票的特殊处理
         switch ($orderInfo['ifpack']) {
@@ -343,7 +347,7 @@ class RefundAudit extends Controller
                 }
                 break;
             default://非套票
-                if ($orderInfo['concat_id']) {
+                if ($orderInfo['concat_id'] && $targetTnum==0) {
                     $mainOrder  = $orderInfo['concat_id'];
                     $subOrders  = $orderModel->getLinkSubOrder($mainOrder);
                     foreach ($subOrders as $subOrder) {
@@ -401,6 +405,7 @@ class RefundAudit extends Controller
         $action = self::OPERATE_AUDIT_CODE;
         $source = 16;
         $return = $refundModel -> updateAudit($orderNum,$auditResult,$auditNote,$operatorID,$auditTime,$auditID);
+//        var_dump($return);
         if($auditResult == 2){
             $this->addRefundAuditOrderTrack($orderNum, $source, $operatorID,
                 $action, $auditResult, null);
@@ -408,6 +413,7 @@ class RefundAudit extends Controller
                 $this->noticeAuditResult('reject',$orderNum,null,$auditResult);
             }
         }
+//        var_dump($return);
         $result = $return ? 200 : 241;
         return $result;
     }
@@ -567,7 +573,7 @@ class RefundAudit extends Controller
             200 => '操作成功',
             201 => '缺少传入参数',
             202 => '订单号缺失或格式错误',
-            203 => '操作人ID缺失或格式错误',
+            203 => '登陆超时，请重新登陆',
             204 => '订单号不存在',
             205 => '订单信息不全',
             206 => '对应门票不存在',
@@ -579,6 +585,7 @@ class RefundAudit extends Controller
             213 => '订单已取消:不可再取消或修改',
             214 => '订单已被终端撤改:不可取消或修改',
             215 => '订单已被终端撤销:不可取消或修改',
+            216 => '联票子票不能修改到0张',
             221 => '余票不足',
             230 => '中间分销商不允许取消订单',
             240 => '订单已在审核中，请您耐心等待',
@@ -591,6 +598,7 @@ class RefundAudit extends Controller
             253 => '未知错误',
             254 => '子票未全部通过审核，主票无法变更',
             255 => '套票主票不支持人工审核，请等待系统自动审核',
+//            256 => '退票审核不存在或已处理'
         );
         if ( ! $msg && array_key_exists($code, $msgList)) {
             $msg = $msgList[$code];
@@ -687,7 +695,7 @@ class RefundAudit extends Controller
         array $orderInfo = []
     ) {
         $refundModel = new RefundAuditModel();
-        if ( ! count($orderInfo) > 0) {
+        if ( count($orderInfo) <= 0) {
             $orderInfo = $refundModel->getOrderInfoForAudit($orderNum);
         }
 

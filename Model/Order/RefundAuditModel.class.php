@@ -86,12 +86,15 @@ class RefundAuditModel extends Model
     public function getOrderInfoForAudit($orderNum)
     {
         $table = "{$this->_orderTable} AS o";
-        $where = ['o.ordernum' => $orderNum];
+        $where = array(
+            'o.ordernum' => $orderNum,
+        );
         $join  = array(
             "join {$this->_landTable} AS l ON o.lid=l.id",
             "join {$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
             "join {$this->_ticketTable} AS t ON o.tid=t.id",
             "join {$this->_orderDetailTable} AS od ON o.ordernum=od.orderid",
+//            "left join {$this->_refundAuditTable} AS a ON a.ordernum=o.ordernum"
         );
         $field = array(
             'o.salerid',
@@ -110,13 +113,20 @@ class RefundAuditModel extends Model
             't.refund_audit',
             'od.concat_id',
             'od.aids',
+//            'a.id as audit_id',
+//            'a.tnum as audit_tnum',
+//            'a.dstatus'
         );
+//        $order = "a.id desc";
 
-        return $this->table($table)
-                    ->where($where)
-                    ->join($join)
-                    ->field($field)
-                    ->find();
+        $result = $this->table($table)
+                       ->where($where)
+                       ->join($join)
+                       ->field($field)
+//                       ->order($order)
+                       ->find();
+//        $this->test();
+        return $result;
     }
 
     /**
