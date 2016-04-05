@@ -106,8 +106,8 @@ class RefundAuditModel extends Model
             'oa.ifpack',
             'oa.pack_order',
             'o.tnum',
-//            't.mdetails',
-//            't.sourceT',
+            //            't.mdetails',
+            //            't.sourceT',
             //            'o.ordernum',
             //            'o.status',
             //            'l.p_type',
@@ -349,7 +349,7 @@ class RefundAuditModel extends Model
                         ),
                         "a.stype" => array("in", [0, 1, 2]),
                         '_logic'  => 'or'))
-        ));
+            ));
         //根据传入参数确定查询条件
         //2016-3-27 供应商能看到套票子票，分销商能看到套票主票
         //2016-3-28 修改撤销撤改记录的显示
@@ -430,7 +430,7 @@ class RefundAuditModel extends Model
                 'm.dcodeURL',
                 'oa.ifpack',
                 'oa.pack_order',
-//                't.mdetails',
+                //                't.mdetails',
                 't.sourceT'
             );
             $order = array(
