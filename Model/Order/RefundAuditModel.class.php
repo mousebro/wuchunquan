@@ -456,6 +456,34 @@ class RefundAuditModel extends Model
     }
 
     /**
+     *
+     * 查询联票中子票是否需要退票审核
+     * @param $mainOrder
+     *
+     * @return mixed
+     */
+    public function requireAuditByLinkSubOrder($mainOrder){
+        $table = "{$this->_orderTable} AS o";
+        $join = array(
+            "{$this->_orderDetailTable} AS od on od.orderid=a.ordernum",
+            "{$this->_ticketTable} AS t on t.id=o.tid",
+        );
+        $where = array(
+            "t.refund_audit" => 1,
+            "od.concat_id" => $mainOrder,
+        );
+        $field = array(
+            "o.id");
+        $result = $this
+            ->table($table)
+            ->join($join)
+            ->where($where)
+            ->field($field)
+            ->find();
+//        $this->test();
+        return $result;
+    }
+    /**
      * @param $page
      * @param $limit
      *

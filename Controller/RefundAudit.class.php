@@ -33,8 +33,7 @@ class RefundAudit extends Controller
     public function checkRefundAudit(
         $orderNum,
         $targetTnum = 0,
-        $operatorID = 1,
-        $circle = 0
+        $operatorID = 1
     ) {
         $auditNeeded = 100; //100-默认不需要退票审核
         $modifyType  = $targetTnum == 0 ? 3 : 2;
@@ -104,22 +103,13 @@ class RefundAudit extends Controller
                 }
             }
             //取消联票的情况 取消联票主票时，对应子票也都要取消；
-            if ($circle == 0 && $orderInfo['concat_id']
+            if ($orderInfo['concat_id']
                 && $modifyType == self::CANCEL_CODE
             ) {
                 //取消联票时候，要判断其他子票是否需要退票审核
                 $mainOrder = $orderInfo['concat_id'];
-                $subOrders = $orderModel->getLinkSubOrder($mainOrder);
-                foreach ($subOrders as $subOrder) {
-                    if ($subOrder['orderid'] != $orderNum) {
-                        $auditNeeded
-                            = $this->checkRefundAudit($subOrder['orderid'],
-                            $targetTnum, $operatorID, 1);
-                        if ($auditNeeded == 200) {
-                            break;
-                        }
-                    }
-                }
+                $subOrderNeedAudit = $auditModel->requireAuditByLinkSubOrder($mainOrder);
+                $auditNeeded = $subOrderNeedAudit ? 200 : 100;
             }
         }
 
