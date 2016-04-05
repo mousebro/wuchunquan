@@ -1755,7 +1755,7 @@ class SellerStorage extends Model{
             //从直销表获取数据
             $field = "member.dname, member.id, member.account, member.mobile";
             $table = "{$this->_salesTable} sales";
-            $where = "sales.`status`=0 AND `aid`={$setterUid} AND (`pids`='A' OR FIND_IN_SET('{$pid}', `pids`))";
+            $where = "sales.`status`=0 AND `aid`={$setterUid} AND sales.fid!={$setterUid} AND length(member.account)<11 AND (`pids`='A' OR FIND_IN_SET('{$pid}', `pids`))";
             $join  = "left join {$this->_memberTable} as member on member.id = sales.fid";
             $page  = "{$page},{$size}"; 
 
@@ -1772,22 +1772,16 @@ class SellerStorage extends Model{
             $table = "{$this->_evoluteTable} evolute";
             $join  = "left join {$this->_memberTable} as member on member.id = evolute.fid";
             $page  = "{$page},{$size}";
-
-            $where = array(
-                'sid'            => $setterUid,
-                'pid'            => $pid,
-                'evolute.status' => 0
-            );
+            $where = "sid={$setterUid} AND pid={$pid} AND evolute.status=0 AND evolute.fid!= {$setterUid} AND length(member.account)<11 ";
 
             if($search !== '') {
-                $where['_string'] = " member.dname like ('%{$search}%') OR member.account like ('%{$search}%') OR member.mobile like ('%{$search}%')";
+                $where .= " member.dname like ('%{$search}%') OR member.account like ('%{$search}%') OR member.mobile like ('%{$search}%')";
             }
 
             $totalNum = $this->table($table)->join($join)->where($where)->count();
 
             //分页获取相应的分销商
             $memberList = $this->table($table)->field($field)->where($where)->page($page)->join($join)->select();
-
         }
 
         //获取分销商数组
