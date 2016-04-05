@@ -455,7 +455,7 @@ class RefundAudit extends Controller
                 $row['action'] = false;
                 $row['repush'] = false;
                 if (($row['apply_did'] == $operatorID || $operatorID == 1)
-                    && ! $row['mdetails']
+                    && $row['sourceT']==0
                     && $row['ifpack'] != 1
                 ) {
                     $row['action'] = true;
@@ -464,7 +464,8 @@ class RefundAudit extends Controller
                     }
                 }
                 unset($row['dcodeURL']);
-                unset($row['mdetails']);
+//                unset($row['mdetails']);
+                unset($row['sourceT']);
                 $r[] = $row;
             }
             //获取记录总数
