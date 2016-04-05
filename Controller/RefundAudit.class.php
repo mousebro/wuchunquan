@@ -10,7 +10,6 @@ use Library\Controller;
 use Model\Order\OrderTools;
 use Model\Order\OrderTrack;
 use Model\Order\RefundAuditModel;
-use Model\Product\Ticket;
 
 class RefundAudit extends Controller
 {
@@ -263,7 +262,7 @@ class RefundAudit extends Controller
     ) {
         //检查传入参数
         if ( ! in_array($auditResult, [1, 2])) {
-            return 250; //审核结果只能是同意或拒绝
+            $this->apiReturn(250);//审核结果只能是同意或拒绝
         }
 
         //参数初始化
@@ -271,16 +270,14 @@ class RefundAudit extends Controller
         // $result = 241;
         $orderInfo = $refundModel->getOrderInfoForAudit($orderNumber);
         if ( ! $orderInfo) {
-            return 205;//订单信息不全
+            $this->apiReturn(205);//订单信息不全
         }
-//        if(!$orderInfo['audit_id']){
-//            return 256; //对应审核记录不存在或已处理
-//        }
+
         $orderModel = new OrderTools();
         //套票的特殊处理
         switch ($orderInfo['ifpack']) {
             case 1://套票主票
-                return 255; //套票主票无人工审核权限
+                $this->apiReturn(255);//套票主票无人工审核权限
             case 2://套票子票
                 //更新当前门票记录
                 $result = $this->updateAudit(
@@ -293,7 +290,7 @@ class RefundAudit extends Controller
                     $auditTime,
                     $auditID);
                 if ( ! $result) {
-                    return 241;
+                    $this->apiReturn(241);
                 }
                 $mainOrder          = $orderInfo['pack_order'];
                 $ordersAutoUpdate   = $orderModel->getPackSubOrder($mainOrder);
@@ -363,7 +360,7 @@ class RefundAudit extends Controller
                         $auditID);
                 }
         }
-        return $result; //操作成功
+        $this->apiReturn($result);//操作成功
     }
 
     /**
@@ -403,9 +400,15 @@ class RefundAudit extends Controller
                 $this->noticeAuditResult('reject',$orderNum,null,$auditResult);
             }
         }
+        $data = array(
+            'target_tnum' => $targetTnum);
 //        var_dump($return);
         $result = $return ? 200 : 241;
-        return $result;
+        if($result!=200){
+            $this->apiReturn($result);
+        }else{
+            $this->apiReturn($result,$data);
+        }
     }
     /**
      * 获取撤改审核列表数据
@@ -716,6 +719,7 @@ class RefundAudit extends Controller
             $operatorID,
             $orderInfo['salerid']
         );
+
     }
 
     public function getTicketTitle($orderNum){
