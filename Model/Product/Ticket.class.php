@@ -253,14 +253,15 @@ class Ticket extends Model {
                 ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
                 ->field('pid,l_price,start_date,end_date')
                 ->select();
-            if (!$price_info) return false;
 
-            foreach ($price_info as $item) {
-                $start_time = strtotime($item['start_date']);
-                $end_time   = strtotime($item['end_date']);
-                $cur_time   = strtotime($date);
-                if ($start_time <= $cur_time && $end_time >= $cur_time) {
-                    $result[$item['pid']] = $item['l_price'] / 100;
+            if ($price_info && is_array($price_info)) {
+                foreach ($price_info as $item) {
+                    $start_time = strtotime($item['start_date']);
+                    $end_time   = strtotime($item['end_date']);
+                    $cur_time   = strtotime($date);
+                    if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                        $result[$item['pid']] = $item['l_price'] / 100;
+                    }
                 }
             }
         }
