@@ -35,7 +35,7 @@ class RefundAudit extends Controller
         $modifyType=null
     ) {
         $auditNeeded = 100; //100-默认不需要退票审核
-        var_dump($modifyType);
+//        var_dump($modifyType);
         $modifyType = ($modifyType===null) ? ($targetTnum == 0 ? 3 : 2): $modifyType;
         //检测传入参数
         $orderNum = intval(trim($orderNum));
