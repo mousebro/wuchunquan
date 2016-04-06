@@ -465,7 +465,7 @@ class RefundAuditModel extends Model
     public function requireAuditByLinkSubOrder($mainOrder){
         $table = "{$this->_orderTable} AS o";
         $join = array(
-            "{$this->_orderDetailTable} AS od on od.orderid=a.ordernum",
+            "{$this->_orderDetailTable} AS od on od.orderid=o.ordernum",
             "{$this->_ticketTable} AS t on t.id=o.tid",
         );
         $where = array(
