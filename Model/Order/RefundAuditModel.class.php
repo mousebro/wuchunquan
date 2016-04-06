@@ -103,7 +103,7 @@ class RefundAuditModel extends Model
             'o.status',
             'o.personid',
             'l.terminal',
-            'l.apply_did',
+            'l.apply_did as aid',
             'oa.ifpack',
             'oa.pack_order',
             'o.tnum',
