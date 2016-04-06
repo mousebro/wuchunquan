@@ -25,7 +25,6 @@ class RefundAudit extends Controller
      * @param int $orderNum
      * @param int $targetTnum
      * @param int $operatorID
-     * @param int $circle 循环调用次数
      *
      * @return int
      */
