@@ -32,7 +32,8 @@ class RefundAudit extends Controller
         $orderNum,
         $targetTnum = 0,
         $operatorID = 1,
-        $modifyType=null
+        $modifyType=null,
+        $fromWeb = null
     ) {
         $auditNeeded = 100; //100-默认不需要退票审核
 //        var_dump($modifyType);
@@ -104,7 +105,7 @@ class RefundAudit extends Controller
             }
             //取消联票的情况 取消联票主票时，对应子票也都要取消；
             if ($orderInfo['concat_id']
-                && $modifyType == self::CANCEL_CODE
+                && $modifyType == self::CANCEL_CODE && $fromWeb
             ) {
                 //取消联票时候，要判断其他子票是否需要退票审核
                 $mainOrder = $orderInfo['concat_id'];
