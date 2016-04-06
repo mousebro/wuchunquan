@@ -158,7 +158,7 @@ class RefundAudit extends Controller
 
     /**
      * 添加退票审核记录：
-     * 暂时只支持取消和修改，不支持撤销撤改
+     * 只支持取消和修改，不支持撤销撤改
      *
      * @param     $orderNum
      * @param     $targetTicketNum
@@ -184,7 +184,7 @@ class RefundAudit extends Controller
 
         //参数初始化
         $auditStatus = 0; //所有未审核记录的的dstatus都为0
-        $action      = self::APPLY_AUDIT_CODE;
+        $trackAction      = self::APPLY_AUDIT_CODE;
         $requestTime = ($requestTime) ? $requestTime : date('Y-m-d H:i:s');
         $modifyType  = $targetTicketNum == 0 ? self::CANCEL_CODE
             : self::MODIFY_CODE;
@@ -198,21 +198,23 @@ class RefundAudit extends Controller
         if ($orderInfo['aids']) {
             $auditorID = reset(explode(',', $orderInfo['aids']));
         } else {
-            $auditorID = 1; //2016-3-27添加
+            $auditorID = 1; //2016-3-27添加：第三方在平台上虽是自供应，但仍需添加退票审核
         }
 
         //添加订单追踪记录
-        $this->addRefundAuditOrderTrack(
+        $addTrack = $this->addRefundAuditOrderTrack(
             $orderNum,
             $source,
             $operatorID,
-            $action,
+            $trackAction,
             $auditStatus,
             $targetTicketNum,
             $orderInfo);
+        if(!$addTrack)
+            return 244;
 
         //添加审核记录
-        $addResult = $refundModel->addRefundAudit($orderNum,
+        $addAudit = $refundModel->addRefundAudit($orderNum,
             $orderInfo['terminal'],
             $orderInfo['salerid'],
             $orderInfo['lid'],
@@ -225,7 +227,7 @@ class RefundAudit extends Controller
             $requestTime
         );
 
-        if ( ! $addResult) {
+        if ( ! $addAudit) {
             return (241);//数据添加失败
         }
 
@@ -255,7 +257,7 @@ class RefundAudit extends Controller
                     $subOrder['orderid'],
                     $source,
                     $operatorID,
-                    $action,
+                    $trackAction,
                     $auditStatus,
                     $targetSubOrderTnum);
 
@@ -623,9 +625,10 @@ class RefundAudit extends Controller
             221 => '余票不足',
             230 => '中间分销商不允许取消订单',
             240 => '订单已在审核中，请您耐心等待',
-            241 => '数据更新失败,请联系管网站管理员',
+            241 => '退票申请记录添加失败',
             242 => '联票子票无法单独取消',
             243 => '套票子票审核成功',
+            244 => '订单追踪记录添加失败',
             250 => '审核参数出错', //审核结果只能是同意或拒绝
             251 => '备注信息不可为空',
             252 => '审核时操作失败',
