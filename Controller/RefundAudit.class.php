@@ -31,10 +31,12 @@ class RefundAudit extends Controller
     public function checkRefundAudit(
         $orderNum,
         $targetTnum = 0,
-        $operatorID = 1
+        $operatorID = 1,
+        $modifyType=null
     ) {
         $auditNeeded = 100; //100-默认不需要退票审核
-        $modifyType  = $targetTnum == 0 ? 3 : 2;
+        var_dump($modifyType);
+        $modifyType = ($modifyType===null) ? ($targetTnum == 0 ? 3 : 2): $modifyType;
         //检测传入参数
         $orderNum = intval(trim($orderNum));
         if ( ! $orderNum) {
