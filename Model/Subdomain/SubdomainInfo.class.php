@@ -45,11 +45,14 @@ class SubdomainInfo extends Model {
         if ($identify == 'id') {
             return $this->table(self::__DUBDOMAIN_TABLE__)->where(['fid' => $memberid])->find();
         } elseif ($identify == 'account') {
-            $memberid = $this->table(self::__MEMBER__TABLE__)->where(['account' => $memberid])->getField('id');
-            if (!$memberid) {
-                return false;
-            }
-            return $this->table(self::__DUBDOMAIN_TABLE__)->where(['fid' => $memberid])->find();
+            $domain_info = $this->table(self::__DUBDOMAIN_TABLE__)
+                            ->where(['M_account_domain' => $memberid, 'M_domain'=> $memberid, '_logic' => 'OR'])
+                            ->find();
+            return $domain_info;
+            // if (!$memberid) {
+            //     return false;
+            // }
+            // return $this->table(self::__DUBDOMAIN_TABLE__)->where(['fid' => $memberid])->find();
         } else {
             return false;
         }
