@@ -251,20 +251,27 @@ class storage extends Controller{
     public function setListDefault() {
         $data       = $this->getParam('data');
         $areaId     = $this->getParam('area_id');
+        $venusId    = $this->getParam('venus_id');
         $status     = intval($this->getParam('status'));
         $memberId   = $this->memberId;
 
-        if(!$areaId || !$data || !in_array($status, [0, 1])) {
+        if(!$areaId || !$data || !$venusId || !$venusId || !in_array($status, [0, 1])) {
             $this->apiReturn(203, '', '参数错误');
+        }
+
+        //加载模型
+        $storageModel = $this->model('Product/YXStorage'); 
+
+        //权限验证
+        $isAuth = $storageModel->isAuth($venusId, $memberId);
+        if(!$isAuth) {
+            $this->apiReturn(205, '', '没有权限配置库存');
         }
 
         $data = @json_decode($data);
         if(!$data) {
             $this->apiReturn(203, '', '设置数据错误');
         }
-
-        //加载模型
-        $storageModel = $this->model('Product/YXStorage');
 
         //获取分区详情
         $zoneInfo = $storageModel->getZoneInfo($areaId);
@@ -337,12 +344,19 @@ class storage extends Controller{
     public function setList() {
         $data       = $this->getParam('data');
         $roundId    = $this->getParam('round_id');
+        $venusId    = $this->getParam('venus_id');
         $areaId     = $this->getParam('area_id');
         $status     = intval($this->getParam('status'));
         $memberId   = $this->memberId;
 
-        if(!$roundId || !$areaId || !$data || !in_array($status, [0, 1])) {
+        if(!$roundId || !$areaId || !$venusId || !$data || !in_array($status, [0, 1])) {
             $this->apiReturn(203, '', '参数错误');
+        }
+
+        //权限验证
+        $isAuth = $storageModel->isAuth($venusId, $memberId);
+        if(!$isAuth) {
+            $this->apiReturn(205, '', '没有权限配置库存');
         }
 
         $data = @json_decode($data);
@@ -418,9 +432,16 @@ class storage extends Controller{
     public function open() {
         $roundId = $this->getParam('round_id');
         $areaId  = $this->getParam('area_id');
+        $venusId    = $this->getParam('venus_id');
 
-        if(!$roundId || !$areaId) {
+        if(!$roundId || !$venusId || !$areaId) {
             $this->apiReturn(203, '', '参数错误');
+        }
+
+        //权限验证
+        $isAuth = $storageModel->isAuth($venusId, $memberId);
+        if(!$isAuth) {
+            $this->apiReturn(205, '', '没有权限配置库存');
         }
 
         //加载模型
@@ -464,9 +485,16 @@ class storage extends Controller{
     public function close() {
         $roundId = $this->getParam('round_id');
         $areaId  = $this->getParam('area_id');
+        $venusId = $this->getParam('venus_id');
 
-        if(!$roundId || !$areaId) {
+        if(!$roundId || !$venusId || !$areaId) {
             $this->apiReturn(203, '', '参数错误');
+        }
+
+        //权限验证
+        $isAuth = $storageModel->isAuth($venusId, $memberId);
+        if(!$isAuth) {
+            $this->apiReturn(205, '', '没有权限配置库存');
         }
 
         //加载模型
@@ -499,6 +527,8 @@ class storage extends Controller{
             $this->apiReturn(500, array(), '服务器错误');
         }
     }
+
+
 
     //测试使用
     public function test() {

@@ -37,6 +37,35 @@ class YXStorage extends Model{
     }
 
     /**
+     * 是否有权限配置
+     * @author dwer
+     * @date   2016-04-06
+     *
+     * @param $venusId
+     * @param $memberId
+     * @return bool
+     */
+    public function isAuth($venusId, $memberId) {
+        if(!$venusId || !$memberId) {
+            return false;
+        }
+
+        //查询场馆信息
+        $tmp = $this->table($this->_venusTable)->where(['id' => $venusId])->find();
+        if (!$tmp) {
+            return false;
+        }
+
+        $applyDid = $tmp['apply_did'];
+
+        if($applyDid == $memberId) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * 是否开启了分销库存
      * @author dwer
      * @date   2016-03-22
