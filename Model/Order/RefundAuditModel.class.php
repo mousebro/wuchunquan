@@ -146,7 +146,7 @@ class RefundAuditModel extends Model
             'ordernum' => $orderNum,
             'dstatus'  => 0,
         );
-        if (is_numeric($modifyType)) {
+        if ($modifyType!==null) {
             $where['stype'] = $modifyType;
         }
 

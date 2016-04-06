@@ -29,6 +29,14 @@ class RefundAudit extends Controller
         $orderNum    = I('param.ordernum'); //订单号
         $modifyType  = I('param.stype');    //修改类型
         $targetTnums = [];
+        if(!$operatorID){
+            $this->apiReturn(203);
+        }
+
+        if($modifyType != 2 && $modifyType != 3){
+            $this->apiReturn(208);
+        }
+
         //格式化订单号与修改后票数
         if ($modifyType == self::MODIFY_CODE) {
             $targetTnums = I('param.tids');     //修改后票数  [订单号]=变更后票数
@@ -46,6 +54,7 @@ class RefundAudit extends Controller
             $this->apiReturn(208);
         }
         //检验所有门票的退票审核属性，需要退票的要查出票类名称
+        $checkCode = 100;
         foreach ($targetTnums as $subOrder => $subOrderTnum) {
             $subCheckCode = $this->checkRefundAudit($subOrder,
                 $subOrderTnum, $operatorID, $modifyType);
@@ -61,11 +70,7 @@ class RefundAudit extends Controller
                 break;
             }
         }
-        $checkCode = $checkCode ? $checkCode : 100;
-        if ($checkCode == 200) {
-            $titles = implode('、', $ticketTitles);
-            $msg    = $titles . '需退票审核';
-        }
+        $msg =  ($checkCode == 200) ? (implode('、', $ticketTitles).'需退票审核') : '';
         $this->apiReturn($checkCode,[],$msg);
     }
     /**
@@ -81,11 +86,9 @@ class RefundAudit extends Controller
         $orderNum,
         $targetTnum = 0,
         $operatorID = 1,
-        $modifyType=null,
-        $fromWeb = null
+        $modifyType=null
     ) {
         $auditNeeded = 100; //100-默认不需要退票审核
-//        var_dump($modifyType);
         $modifyType = ($modifyType===null) ? ($targetTnum == 0 ? 3 : 2): $modifyType;
         //检测传入参数
         $orderNum = intval(trim($orderNum));
@@ -101,11 +104,11 @@ class RefundAudit extends Controller
             return (204); //订单号不存在
         }
         //未修改门票数量无需审核 2016-4-2 解决联票的判断bug
-        if($orderInfo['tnum']==$targetTnum){
+        if(!$orderInfo['ifpack'] && $orderInfo['tnum']==$targetTnum){
             return (100);
         }
         //对需要审核的票类，需判断是否满足订单变更条件（对套票主票设置审核是无效的）
-        if ($orderInfo['refund_audit'] != 0 && $orderInfo['ifpack'] != 1) {
+        if ($orderInfo['refund_audit'] != 0 && !$orderInfo['ifpack']) {
             $auditNeeded = 200;//需要退票审核
             //检查订单使用状态
             $result = $this->checkUseStatus($orderInfo['status'], $modifyType,
@@ -126,10 +129,8 @@ class RefundAudit extends Controller
                 return 100;
             }
         } else {
-            //对无需退款审核的订单需要作联票和套票判断
             //判断套票是否需要退票审核
             $orderModel = new OrderTools();
-            if ($orderInfo['ifpack']) {
                 if ($orderInfo['ifpack'] == 1) {
                     //套票主票
                     $subOrders = $orderModel->getPackSubOrder($orderNum);
@@ -144,14 +145,13 @@ class RefundAudit extends Controller
                             break;
                         }
                     }
-                } else {
+                } elseif ($orderInfo['ifpack'] == 2) {
                     $mainOrderIsUnderAudit
                         = $auditModel->isUnderAudit($orderInfo['pack_order']);
                     if ($mainOrderIsUnderAudit) {
                         $auditNeeded = 200;
                     }
                 }
-            }
         }
         return $auditNeeded;
     }
@@ -176,7 +176,6 @@ class RefundAudit extends Controller
         $requestTime = 0
     ) {
         //查询是否存在审核记录
-
         $refundModel = new RefundAuditModel();
         $underAudit  = $refundModel->isUnderAudit($orderNum);
         if ($underAudit) {
@@ -659,10 +658,10 @@ class RefundAudit extends Controller
     public function noticeAuditResult(
         $action,
         $ordernum,
-        $targetTicketNum,
-        $auditResult
+        $targetTicketNum=null,
+        $auditResult=null
     ) {
-        if(!is_int($targetTicketNum)){
+        if($targetTicketNum === null){
             $refundModel = new RefundAuditModel();
             $auditInfo = $refundModel->getAuditedTnum($ordernum);
             $targetTicketNum = $auditInfo['tnum'];
