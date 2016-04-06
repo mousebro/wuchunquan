@@ -19,6 +19,55 @@ class RefundAudit extends Controller
     const OPERATE_AUDIT_CODE = 11;     //订单追踪表中表示退款审核已处理
     private $noticeURL = 'http://localhost/new/d/module/api/RefundNotice.php';
 
+
+    /**
+     * 检查平台上的门票是否需要退票审核（针对联票优化独立出来)
+     */
+    public function checkRefundAuditFromWeb()
+    {
+        $operatorID  = I('session.sid');
+        $orderNum    = I('param.ordernum'); //订单号
+        $modifyType  = I('param.stype');    //修改类型
+        $targetTnums = [];
+        //格式化订单号与修改后票数
+        if ($modifyType == self::MODIFY_CODE) {
+            $targetTnums = I('param.tids');     //修改后票数  [订单号]=变更后票数
+        } elseif ($modifyType == self::CANCEL_CODE) {
+            $orderModel = new OrderTools();
+            if ($subOrders = $orderModel->getLinkSubOrder($orderNum)) {
+                foreach ($subOrders as $subOrder) {
+                    $targetTnums[$subOrder['orderid']] = 0;
+                }
+            } else {
+                $targetTnums[$orderNum] = 0;
+            }
+        }
+        if ( ! is_array($targetTnums) || count($targetTnums) == 0) {
+            $this->apiReturn(208);
+        }
+        //检验所有门票的退票审核属性，需要退票的要查出票类名称
+        foreach ($targetTnums as $subOrder => $subOrderTnum) {
+            $subCheckCode = $this->checkRefundAudit($subOrder,
+                $subOrderTnum, $operatorID, $modifyType);
+            if ($subCheckCode == 100) {
+                continue;
+            } elseif ($subCheckCode == 200) {
+                $ticketTitle    = $this->getTicketTitle($subOrder);
+                $ticketTitles[] = $ticketTitle['title'];
+                $checkCode      = $subCheckCode;
+                continue;
+            } else {
+                $checkCode = $subCheckCode;
+                break;
+            }
+        }
+        $checkCode = $checkCode ? $checkCode : 100;
+        if ($checkCode == 200) {
+            $titles = implode('、', $ticketTitles);
+            $msg    = $titles . '需退票审核';
+        }
+        $this->apiReturn($checkCode,[],$msg);
+    }
     /**
      * 判断订单是否需要退票审核
      *
@@ -103,17 +152,7 @@ class RefundAudit extends Controller
                     }
                 }
             }
-            //取消联票的情况 取消联票主票时，对应子票也都要取消；
-            if ($orderInfo['concat_id']
-                && $modifyType == self::CANCEL_CODE && $fromWeb
-            ) {
-                //取消联票时候，要判断其他子票是否需要退票审核
-                $mainOrder = $orderInfo['concat_id'];
-                $subOrderNeedAudit = $auditModel->requireAuditByLinkSubOrder($mainOrder);
-                $auditNeeded = $subOrderNeedAudit ? 200 : 100;
-            }
         }
-
         return $auditNeeded;
     }
 
