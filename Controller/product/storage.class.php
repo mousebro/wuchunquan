@@ -432,19 +432,21 @@ class storage extends Controller{
         $roundId = $this->getParam('round_id');
         $areaId  = $this->getParam('area_id');
         $venusId    = $this->getParam('venus_id');
+        $memberId   = $this->memberId;
 
         if(!$roundId || !$venusId || !$areaId) {
             $this->apiReturn(203, '', '参数错误');
         }
+
+
+        //加载模型
+        $storageModel = $this->model('Product/YXStorage');
 
         //权限验证
         $isAuth = $storageModel->isAuth($venusId, $memberId);
         if(!$isAuth) {
             $this->apiReturn(205, '', '没有权限配置库存');
         }
-
-        //加载模型
-        $storageModel = $this->model('Product/YXStorage');
 
         //获取场次信息
         $roundInfo = $storageModel->getRoundInfo($roundId);
@@ -485,19 +487,20 @@ class storage extends Controller{
         $roundId = $this->getParam('round_id');
         $areaId  = $this->getParam('area_id');
         $venusId = $this->getParam('venus_id');
+        $memberId   = $this->memberId;
 
         if(!$roundId || !$venusId || !$areaId) {
             $this->apiReturn(203, '', '参数错误');
         }
+
+        //加载模型
+        $storageModel = $this->model('Product/YXStorage');
 
         //权限验证
         $isAuth = $storageModel->isAuth($venusId, $memberId);
         if(!$isAuth) {
             $this->apiReturn(205, '', '没有权限配置库存');
         }
-
-        //加载模型
-        $storageModel = $this->model('Product/YXStorage');
 
         //获取场次信息
         $roundInfo = $storageModel->getRoundInfo($roundId);
