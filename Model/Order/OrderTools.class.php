@@ -153,7 +153,9 @@ class OrderTools extends Model {
         $table = 'uu_order_addon';
         $where = ['pack_order' => $orderNum,];
         $field = ['orderid'];
-        return $this->table($table)->where($where)->field($field)->select();
+        $result =  $this->table($table)->where($where)->field($field)->select();
+//        $this->test();
+        return $result;
     }
 
     /**

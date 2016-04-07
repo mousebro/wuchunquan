@@ -140,6 +140,7 @@ class RefundAudit extends Controller
             if ($orderInfo['ifpack'] == 1) {
                 //套票主票
                 $subOrders = $orderModel->getPackSubOrder($orderNum);
+//                echo 111;
                 if ( ! $subOrders || ! is_array($subOrders)) {
                     return (207);
                 }//套票信息出错
@@ -246,6 +247,7 @@ class RefundAudit extends Controller
         //套票主票
         if ($orderInfo['ifpack'] == 1) {
             $subOrders = $orderModel->getPackSubOrder($orderNum);
+//            echo 222;
             if ( ! $subOrders || ! is_array($subOrders)) {
                 return (207);//套票信息出错
             }
@@ -263,7 +265,7 @@ class RefundAudit extends Controller
                 //子票添加审核记录
                 $addSubOrder = $this->addRefundAudit(
                     $subOrder['orderid'], $targetSubOrderTnum, $operatorID,
-                    $source, $requestTime, $orderInfo);
+                    $source, $requestTime);
                 if ($addSubOrder == 240 || $addSubOrder == 200) {
                     continue;
                 } else {
@@ -334,6 +336,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
         if($ifpack==2){
             $mainOrder          = $orderInfo['pack_order'];
             $ordersAutoUpdate   = $orderModel->getPackSubOrder($mainOrder);
+//            echo 333;
             $ordersAutoUpdate[] = array('orderid' => $mainOrder);
             switch ($auditResult) {
                 case 1://同意退票
