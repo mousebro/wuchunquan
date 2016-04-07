@@ -344,6 +344,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
                 case 1://同意退票
                     //检查是否所有子票都通过审核
                     if ($refundModel->hasUnAuditSubOrder($mainOrder)) {
+                        $result = 243;
                         break;
                     }
                     //自动更新主票审核记录
@@ -607,7 +608,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
             221 => '余票不足',
             230 => '中间分销商不允许取消订单',
             240 => '订单已在审核中，请您耐心等待',
-            241 => '退票申请记录添加失败',
+            241 => '退票申请记录更新失败',
             242 => '联票子票无法单独取消',
             243 => '套票子票审核成功',
             244 => '订单追踪记录添加失败',
@@ -629,7 +630,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
             "code" => $code,
             "data" => $data,
             "msg"  => $msg,
-        )));
+        ),JSON_UNESCAPED_UNICODE));
     }
 
     /**
