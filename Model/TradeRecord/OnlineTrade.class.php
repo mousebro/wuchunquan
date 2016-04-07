@@ -151,17 +151,28 @@ class OnlineTrade extends Model
      */
     public function Summary($bt='', $et='')
     {
+        $seller_email = [
+            'pft12301@12301.cc',
+            'pft12301@126.com',
+            'pft_12301@12301.cc',
+            '{"appid":"wx6ebc34778c9326f6","sub_appid":"wxd72be21f7455640d"}',
+        ];
+
         $bt = empty($bt) ? date('Y-m-d 00:00:00', strtotime('- 1 days')) : $bt;
         $et = empty($et) ? date('Y-m-d 23:59:59', strtotime('- 1 days')) : $et;
+        $where = [
+            'status'=>1,
+            'dtime'=>[array('gt',$bt),array('lt',$et)],
+        ];
         $date = substr($bt, 0, 10);
         $data = $this->db(0)->table('pft_alipay_rec')
-            ->where(['status'=>1, 'dtime'=>[array('gt',$bt),array('lt',$et)]])
-            ->field("sourceT as pay_channel,SUM(total_fee * 100) AS total_money , '$date' as created_date")
-            ->group('sourceT')
+            ->where($where)
+            ->field("sourceT as pay_channel,seller_email,SUM(total_fee * 100) AS total_money , '$date' as created_date")
+            ->group('sourceT,seller_email')
             ->select();
         $details = $this->db(0)->table('pft_alipay_rec')
-            ->where(['status'=>1, 'dtime'=>[array('gt',$bt),array('lt',$et)]])
-            ->field("sourceT as pay_channel,total_fee * 100 AS pay_money, dtime as created_time, trade_no,out_trade_no AS ordernum")
+            ->where($where)
+            ->field("sourceT as pay_channel,seller_email,total_fee * 100 AS pay_money, dtime as created_time, trade_no,out_trade_no AS ordernum")
             ->order('dtime desc')
             ->select();
         echo $this->getDbError();
