@@ -187,6 +187,7 @@ class RefundAudit extends Controller
     ) {
         //查询是否存在审核记录
         $refundModel = new RefundAuditModel();
+        $orderModel = new OrderTools();
         $underAudit  = $refundModel->isUnderAudit($orderNum);
         if ($underAudit) {
             return (240);//订单正在审核
