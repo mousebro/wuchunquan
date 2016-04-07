@@ -35,6 +35,7 @@ class OrderTrack extends Model
     const ORDER_PAY          = 4;
 
     const SOURCE_INSIDE_SOAP = 16;
+    const SOURCE_OUTSIDE_SOAP = 17;
     public static function getSourceList()
     {
         return [
@@ -90,9 +91,11 @@ class OrderTrack extends Model
      * @param $id_card string 身份证
      * @param $oper int 操作员ID
      * @param $salerid int 景区6位ID
+     * @param $create_time string 时间
      * @return mixed
      */
-    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0, $branch_terminal=0, $id_card='', $oper=0,$salerid=0)
+    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0,
+                             $branch_terminal=0, $id_card='', $oper=0,$salerid=0, $create_time='')
     {
         $data = [
             'ordernum'       => $ordernum,
@@ -105,7 +108,7 @@ class OrderTrack extends Model
             'branchTerminal' => $branch_terminal,
             'id_card'        => $id_card,
             'SalerID'        => $salerid,
-            'insertTime'     => date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']),
+            'insertTime'     => empty($create_time) ? date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']) : $create_time,
             'oper_member'    => $oper,
         ];
         $last = $this->Table('pft_order_track')->data($data)->add();
