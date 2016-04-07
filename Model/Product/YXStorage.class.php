@@ -37,6 +37,35 @@ class YXStorage extends Model{
     }
 
     /**
+     * 是否有权限配置
+     * @author dwer
+     * @date   2016-04-06
+     *
+     * @param $venusId
+     * @param $memberId
+     * @return bool
+     */
+    public function isAuth($venusId, $memberId) {
+        if(!$venusId || !$memberId) {
+            return false;
+        }
+
+        //查询场馆信息
+        $tmp = $this->table($this->_venusTable)->where(['id' => $venusId])->find();
+        if (!$tmp) {
+            return false;
+        }
+
+        $applyDid = $tmp['apply_did'];
+
+        if($applyDid == $memberId) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * 是否开启了分销库存
      * @author dwer
      * @date   2016-03-22
@@ -532,10 +561,9 @@ class YXStorage extends Model{
      * @param   $roundId 场次ID
      * @param   $areaId 分区ID
      * @param   $setData 设置数组 [分销商ID => 保留库存数量]
-     * @param   $status 状态：1=开启，0=关闭
      * @param   $setterId 供应商ID
      */
-    public function setResellerStorage($roundId, $areaId, $setData, $status, $useDate, $setterId) {
+    public function setResellerStorage($roundId, $areaId, $setData, $useDate, $setterId) {
         if(!$roundId || !$areaId || !is_array($setData)) {
             return false;
         }
@@ -566,7 +594,7 @@ class YXStorage extends Model{
             return false;
         }
 
-        $res = $this->_setInfo($roundId, $areaId, $reserveNum, $status, $useDate, $setterId);
+        $res = $this->_setInfo($roundId, $areaId, $reserveNum, $useDate, $setterId);
 
         //写日志
         $logData         = ['ac' => 'setResellerStorage'];
@@ -775,6 +803,10 @@ class YXStorage extends Model{
         $saled = $this->getResellerNums($roundId, $areaId);
         $data['saled'] = $saled;
 
+        //获取已经使用掉的未分配库存
+        $usedUnallocated = $this->getUsedStorage($roundId);
+        $data['used_unallocated'] = intval($usedUnallocated);
+
         //返回
         return $data;
     }
@@ -858,7 +890,7 @@ class YXStorage extends Model{
 
         $this->startTrans();
 
-        $res = $this->_setInfo($roundId, $areaId, $defaultInfo['reserve_num'], $defaultInfo['status '], $useDate);
+        $res = $this->_setInfo($roundId, $areaId, $defaultInfo['reserve_num'], $useDate, $defaultInfo['setter_id'], $defaultInfo['status']);
         if(!$res) {
             $this->rollback();
             return false;
@@ -953,7 +985,7 @@ class YXStorage extends Model{
      * @return
      */
     public function getUsedStorage($roundId) {
-        $where = array('round' => $roundId);
+        $where = array('round_id' => $roundId);
         $field = 'used_num';
 
         $info = $this->table($this->_usedTable)->where($where)->field($field)->find();
@@ -1365,7 +1397,7 @@ class YXStorage extends Model{
      * @param  $status 状态
      * @param  $setterId 供应商ID
      */
-    private function _setInfo($roundId, $areaId, $reserveNum, $status, $useDate, $setterId){
+    private function _setInfo($roundId, $areaId, $reserveNum, $useDate, $setterId, $status = false){
         $where = array(
             'round_id'    => $roundId,
             'area_id'     => $areaId
@@ -1377,18 +1409,24 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'reserve_num' => $reserveNum,
-                'status'      => $status,
                 'update_time' => time()
             );
+
+            if(!$status !== false) {
+                $data['status'] = $status;
+            }
 
             $res = $this->table($this->_infoTable)->where($where)->save($data);
         } else {
             $newData = $where;
             $newData['reserve_num'] = $reserveNum;
-            $newData['status']      = $status;
             $newData['update_time'] = time();
             $newData['use_date']    = $useDate;
             $newData['setter_id']   = $setterId; 
+
+            if(!$status !== false) {
+                $newData['status'] = $status;
+            }
 
             $res = $this->table($this->_infoTable)->add($newData);
         }
