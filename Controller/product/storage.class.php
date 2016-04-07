@@ -346,10 +346,9 @@ class storage extends Controller{
         $roundId    = $this->getParam('round_id');
         $venusId    = $this->getParam('venus_id');
         $areaId     = $this->getParam('area_id');
-        $status     = intval($this->getParam('status'));
         $memberId   = $this->memberId;
 
-        if(!$roundId || !$areaId || !$venusId || !$data || !in_array($status, [0, 1])) {
+        if(!$roundId || !$areaId || !$venusId || !$data) {
             $this->apiReturn(203, '', '参数错误');
         }
 
@@ -414,7 +413,7 @@ class storage extends Controller{
             $this->apiReturn(204, '', '保留库存之和超过总库存');
         }
 
-        $res = $storageModel->setResellerStorage($roundId, $areaId, $resData, $status, $useDate, $setterId);
+        $res = $storageModel->setResellerStorage($roundId, $areaId, $resData, $useDate, $setterId);
         if($res) {
             $this->apiReturn(200, array());
         } else {
