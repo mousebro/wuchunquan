@@ -311,7 +311,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
         if ( ! in_array($auditResult, [1, 2])) {
             $this->apiReturn(250);//审核结果只能是同意或拒绝
         }
-
+        echo 1111;
         //参数初始化
         $refundModel = new RefundAuditModel();
         $result = 0;
@@ -329,10 +329,12 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
             $result = $this->updateAudit(
                 $refundModel, $ifpack, $orderNum, $targetTnum, $auditResult, $auditNote,
                 $operatorID, $auditTime, $auditID);
+//            var_dump($result);
             if ( ! $result) {
                 $this->apiReturn(241);
             }
         }
+//        var_dump($ifpack);
         if($ifpack==2){
             $mainOrder          = $orderInfo['pack_order'];
             $ordersAutoUpdate   = $orderModel->getPackSubOrder($mainOrder);
@@ -425,7 +427,8 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
 //        );
 //        var_dump($return);
         $result = $return ? 200 : 241;
-        $this->apiReturn($result);
+        return $result;
+//        $this->apiReturn($result);
 //        if ($result != 200) {
 //            $this->apiReturn($result);
 //        } else {
