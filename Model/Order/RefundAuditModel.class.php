@@ -131,7 +131,36 @@ class RefundAuditModel extends Model
 //        $this->test();
         return $result;
     }
-
+    public function getPackOrderInfo($orderNum){
+        $table = $this->_orderAppendixTable;
+        $where = array(
+            "orderid" =>$orderNum,
+        );
+        $field = array(
+            "pack_order",
+            "ifpack",
+        );
+        $result = $this->table($table)->where($where)->field($field)->find();
+        return $result;
+    }
+    public function getAuditInfoForAudit($orderNum,$dstatus=0){
+        $table = "$this->_refundAuditTable AS a";
+        $join = array(
+            "{$this->_orderAppendixTable} AS oa ON oa.orderid=a.ordernum",
+        ) ;
+        $where = array(
+            "a.dstatus" => $dstatus,
+            "a.orderid" => $orderNum,
+        );
+        $field = array(
+            "a.tnum as audit_tnum",
+            "oa.ifpack",
+            "oa.pack_order",
+        );
+        $order = "id desc";
+        $result = $this->table($table)->join($join)->where($where)->field($field)->order($order)->find();
+        return $result;
+    }
     /**
      * 查询订单是否处于退款审核状态
      *
@@ -270,15 +299,15 @@ class RefundAuditModel extends Model
      *
      * @return mixed
      */
-    public function getAuditedTnum($orderNum)
+    public function getAuditTargetTnum($orderNum)
     {
         $table = $this->_refundAuditTable;
         $where = array(
             'ordernum' => $orderNum,
-            'dstatus'  => array('in', array(1, 2)),
+            'dstatus'  => 0,
         );
-        $filed = 'tnum';
-        $order = 'dtime desc';
+        $filed = 'tnum as audit_tnum';
+        $order = 'id desc';
 
         return $this->table($table)
                     ->where($where)

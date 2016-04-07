@@ -89,7 +89,8 @@ class RefundAudit extends Controller
         $orderNum,
         $targetTnum = 0,
         $operatorID = 1,
-        $modifyType = null
+        $modifyType = null,
+        &$orderInfo = []
     ) {
         $auditNeeded = 100; //100-默认不需要退票审核
         $modifyType  = ($modifyType === null) ? ($targetTnum == 0 ? 3 : 2)
@@ -165,11 +166,13 @@ class RefundAudit extends Controller
      * 添加退票审核记录：
      * 只支持取消和修改，不支持撤销撤改
      *
-     * @param     $orderNum
-     * @param     $targetTicketNum
-     * @param     $operatorID
-     * @param int $source
-     * @param int $requestTime
+     * @param       $orderNum
+     * @param       $targetTicketNum
+     * @param       $operatorID
+     * @param int   $source
+     * @param int   $requestTime
+     *
+     * @param array $orderInfo
      *
      * @return int
      */
@@ -178,7 +181,8 @@ class RefundAudit extends Controller
         $targetTicketNum,
         $operatorID,
         $source = 18,
-        $requestTime = 0
+        $requestTime = 0,
+        $orderInfo = []
     ) {
         //查询是否存在审核记录
         $refundModel = new RefundAuditModel();
@@ -193,10 +197,10 @@ class RefundAudit extends Controller
         $requestTime = ($requestTime) ? $requestTime : date('Y-m-d H:i:s');
         $modifyType  = $targetTicketNum == 0 ? self::CANCEL_CODE
             : self::MODIFY_CODE;
-
-        $orderModel = new orderTools();
-        $orderInfo  = $refundModel->getOrderInfoForAudit($orderNum);
-
+        if(count($orderInfo)<=0){
+            $orderModel = new orderTools();
+            $orderInfo  = $refundModel->getOrderInfoForAudit($orderNum);
+        }
         if ( ! $orderInfo || ! is_array($orderInfo)) {
             return (205);//订单信息不全
         }
@@ -256,11 +260,8 @@ class RefundAudit extends Controller
                 }
                 //子票添加审核记录
                 $addSubOrder = $this->addRefundAudit(
-                    $subOrder['orderid'],
-                    $targetSubOrderTnum,
-                    $operatorID,
-                    $source,
-                    $requestTime);
+                    $subOrder['orderid'], $targetSubOrderTnum, $operatorID,
+                    $source, $requestTime, $orderInfo);
                 if ($addSubOrder == 240 || $addSubOrder == 200) {
                     continue;
                 } else {
@@ -271,11 +272,19 @@ class RefundAudit extends Controller
 
         return 200;//数据添加成功
     }
+public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
+    $orderInfo = [];
+    $checkAudit = $this->checkRefundAudit($ordernum,$targeTnum,$opertorID,null,$orderInfo);
+    if($checkAudit ==200){
+        $this->addRefundAudit($ordernum, $targeTnum, $opertorID, $source,0,$orderInfo);
+    }
+    return $checkAudit;
 
+}
     /**
      * 更新审核记录
      *
-     * @param $orderNumber
+     * @param $orderNum
      * @param $auditResult
      * @param $auditNote
      * @param $operatorID
@@ -286,7 +295,7 @@ class RefundAudit extends Controller
      * @return int
      */
     public function updateRefundAudit(
-        $orderNumber,
+        $orderNum,
         $auditResult,
         $auditNote,
         $operatorID,
@@ -301,99 +310,68 @@ class RefundAudit extends Controller
 
         //参数初始化
         $refundModel = new RefundAuditModel();
-        // $result = 241;
-        $orderInfo = $refundModel->getOrderInfoForAudit($orderNumber);
+        $result = 0;
+        $orderInfo = $refundModel->getPackOrderInfo($orderNum);
         if ( ! $orderInfo) {
             $this->apiReturn(205);//订单信息不全
         }
-
+//        $targetTnum = $orderInfo['audit_tnum'];
         $orderModel = new OrderTools();
-        //套票的特殊处理
-        switch ($orderInfo['ifpack']) {
-            case 1://套票主票
-                $this->apiReturn(255);//套票主票无人工审核权限
-            case 2://套票子票
-                //更新当前门票记录
-                $result = $this->updateAudit(
-                    $refundModel,
-                    2,//ifpack
-                    $orderNumber,
-                    $auditResult,
-                    $auditNote,
-                    $operatorID,
-                    $auditTime,
-                    $auditID);
-                if ( ! $result) {
-                    $this->apiReturn(241);
-                }
-                $mainOrder          = $orderInfo['pack_order'];
-                $ordersAutoUpdate   = $orderModel->getPackSubOrder($mainOrder);
-                $ordersAutoUpdate[] = array('orderid' => $mainOrder);
-                switch ($auditResult) {
-                    case 1://同意退票
-                        //检查是否所有子票都通过审核
-                        if ($refundModel->hasUnAuditSubOrder($mainOrder)) {
-                            break;
-                        }
-                        //自动更新主票审核记录
-                        foreach ($ordersAutoUpdate as $order) {
-                            if ( ! $refundModel->isUnderAudit($order['orderid'])) {
-                                continue;
-                            }
-                            $ifpack = ($order['orderid'] == $mainOrder) ? 1 : 2;
-                            $result = $this->updateAudit(
-                                $refundModel,
-                                $ifpack,
-                                $order['orderid'],
-                                $auditResult,
-                                '系统:全部子票通过退票审核',
-                                1);
-                        }
-                        break;
-                    case 2:
-                        foreach ($ordersAutoUpdate as $order) {
-                            if ( ! $refundModel->isUnderAudit($order['orderid'])) {
-                                continue;
-                            }
-                            $ifpack = ($order['orderid'] == $mainOrder) ? 1 : 2;
-                            $result = $this->updateAudit(
-                                $refundModel,
-                                $ifpack,
-                                $order['orderid'],
-                                $auditResult,
-                                '系统:部分子票的退票申请被拒绝',
-                                1);
-                        }
-                        break;
-                }
-                break;
-            default://非套票
-                if ($orderInfo['concat_id'] && $targetTnum == 0) {
-                    $mainOrder = $orderInfo['concat_id'];
-                    $subOrders = $orderModel->getLinkSubOrder($mainOrder);
-                    foreach ($subOrders as $subOrder) {
-                        $subOrderID = $subOrder['orderid'];
-                        $result     = $this->updateAudit(
-                            $refundModel,
-                            0,//ifpack
-                            $subOrderID,
-                            $auditResult,
-                            $auditNote,
-                            $operatorID
-                        );
-                    }
-                } else {
-                    $result = $this->updateAudit(
-                        $refundModel,
-                        0,
-                        $orderNumber,
-                        $auditResult,
-                        $auditNote,
-                        $operatorID,
-                        $auditTime,
-                        $auditID);
-                }
+        //套票需特殊处理
+        $ifpack = $orderInfo['ifpack'];
+        if($ifpack==1){
+            $this->apiReturn(255);//套票主票无人工审核权限
+        }else{
+            $result = $this->updateAudit(
+                $refundModel, $ifpack, $orderNum, $targetTnum, $auditResult, $auditNote,
+                $operatorID, $auditTime, $auditID);
+            if ( ! $result) {
+                $this->apiReturn(241);
+            }
         }
+        if($ifpack==2){
+            $mainOrder          = $orderInfo['pack_order'];
+            $ordersAutoUpdate   = $orderModel->getPackSubOrder($mainOrder);
+            $ordersAutoUpdate[] = array('orderid' => $mainOrder);
+            switch ($auditResult) {
+                case 1://同意退票
+                    //检查是否所有子票都通过审核
+                    if ($refundModel->hasUnAuditSubOrder($mainOrder)) {
+                        break;
+                    }
+                    //自动更新主票审核记录
+                    foreach ($ordersAutoUpdate as $order) {
+                        $subOrderNum = $order['orderid'];
+                        if ( ! $refundModel->isUnderAudit($subOrderNum)) {
+                            continue;
+                        }
+                        $ifpack = ($order['orderid'] == $mainOrder) ? 1 : 2;
+                        $subOrderInfo = $refundModel->getAuditTargetTnum($subOrderNum);
+                        $subOrderTargetNum = $subOrderInfo['audit_tnum'];
+                        $operatorID = 1;
+                        $result = $this->updateAudit(
+                            $refundModel, $ifpack,  $subOrderNum, $subOrderTargetNum,
+                            $auditResult, '系统:全部子票通过退票审核',  $operatorID);
+                    }
+                    break;
+                case 2:
+                    foreach ($ordersAutoUpdate as $order) {
+                        $subOrderNum = $order['orderid'];
+                        if ( ! $refundModel->isUnderAudit($subOrderNum)) {
+                            continue;
+                        }
+                        $ifpack = ($subOrderNum == $mainOrder) ? 1 : 2;
+                        $subOrderInfo = $refundModel->getAuditTargetTnum($subOrderNum);
+                        $subOrderTargetNum = $subOrderInfo['audit_tnum'];
+                        $operatorID = 1;
+                        $result = $this->updateAudit(
+                            $refundModel, $ifpack, $subOrderNum, $subOrderTargetNum,
+                            $auditResult, '系统:部分子票的退票申请被拒绝',  $operatorID);
+                    }
+                    break;
+            }
+        }
+        $result = $result ? $result : 252;
         $this->apiReturn($result);//操作成功
     }
 
@@ -401,6 +379,7 @@ class RefundAudit extends Controller
      * @param     $refundModel
      * @param     $ifpack
      * @param     $orderNum
+     * @param     $targetTnum
      * @param     $auditResult
      * @param     $auditNote
      * @param int $operatorID
@@ -413,6 +392,7 @@ class RefundAudit extends Controller
         $refundModel,
         $ifpack,
         $orderNum,
+        $targetTnum,
         $auditResult,
         $auditNote,
         $operatorID = 1,
@@ -427,25 +407,25 @@ class RefundAudit extends Controller
         $source = 16;
         $return = $refundModel->updateAudit($orderNum, $auditResult, $auditNote,
             $operatorID, $auditTime, $auditID);
-//        var_dump($return);
         if ($auditResult == 2) {
             $this->addRefundAuditOrderTrack($orderNum, $source, $operatorID,
-                $action, $auditResult, null);
+                $action, $auditResult, $targetTnum);
             if ($ifpack != 2) {
-                $this->noticeAuditResult('reject', $orderNum, null,
+                $this->noticeAuditResult('reject', $orderNum, $targetTnum,
                     $auditResult);
             }
         }
-        $data = array(
-            'target_tnum' => $targetTnum,
-        );
+//        $data = array(
+//            'target_tnum' => $targetTnum,
+//        );
 //        var_dump($return);
         $result = $return ? 200 : 241;
-        if ($result != 200) {
-            $this->apiReturn($result);
-        } else {
-            $this->apiReturn($result, $data);
-        }
+        $this->apiReturn($result);
+//        if ($result != 200) {
+//            $this->apiReturn($result);
+//        } else {
+//            $this->apiReturn($result, $data);
+//        }
     }
 
     /**
@@ -655,14 +635,9 @@ class RefundAudit extends Controller
     public function noticeAuditResult(
         $action,
         $ordernum,
-        $targetTicketNum = null,
+        $targetTicketNum,
         $auditResult = null
     ) {
-        if ($targetTicketNum === null) {
-            $refundModel     = new RefundAuditModel();
-            $auditInfo       = $refundModel->getAuditedTnum($ordernum);
-            $targetTicketNum = $auditInfo['tnum'];
-        }
         $data   = array(
             'action'   => $action,
             'ordernum' => $ordernum,
@@ -728,6 +703,7 @@ class RefundAudit extends Controller
         if ( ! in_array($auditStatus, [0, 1, 2])) {
             return 208;
         }
+        var_dump($orderInfo);
         $refundModel = new RefundAuditModel();
         try {
             if (count($orderInfo) <= 0) {
