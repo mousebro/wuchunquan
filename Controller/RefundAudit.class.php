@@ -703,7 +703,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
         if ( ! in_array($auditStatus, [0, 1, 2])) {
             return 208;
         }
-        var_dump($orderInfo);
+//        var_dump($orderInfo);
         $refundModel = new RefundAuditModel();
         try {
             if (count($orderInfo) <= 0) {
