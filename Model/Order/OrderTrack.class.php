@@ -33,6 +33,7 @@ class OrderTrack extends Model
     const ORDER_CREATE       = 0;
     const ORDER_MODIFY       = 1;
     const ORDER_PAY          = 4;
+    const ORDER_EXPIRE       = 12;
 
     const SOURCE_INSIDE_SOAP = 16;
     const SOURCE_OUTSIDE_SOAP = 17;
@@ -58,6 +59,7 @@ class OrderTrack extends Model
             16=>'内部接口',
             17=>'外部接口',
             18=>'undefined',
+            19=>'自运行服务',
         ];
     }
     public static function getActionList()
@@ -75,6 +77,7 @@ class OrderTrack extends Model
             9=>'离线订单下载',
             10=>'处理退票申请',
             11=>'提交退票申请',
+            12=>'过期',
         ];
     }
     /**
@@ -111,9 +114,18 @@ class OrderTrack extends Model
             'insertTime'     => empty($create_time) ? date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']) : $create_time,
             'oper_member'    => $oper,
         ];
-        $last = $this->Table('pft_order_track')->data($data)->add();
+        $last = $this->table('pft_order_track')->data($data)->add();
         echo $this->getDbError();
         return $last;
+    }
+
+    /**
+     * 订单追踪多记录插入
+     * @param $data
+     */
+    public function addTrackMulti($data)
+    {
+        $this->table('pft_order_track')->addAll($data);
     }
 
     public function getLog($ordernum)
