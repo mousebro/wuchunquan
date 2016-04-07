@@ -103,6 +103,7 @@ class RefundAudit extends Controller
         $operatorID = intval(trim($operatorID));
 
         //获取订单信息
+        $orderModel = new OrderTools();
         $auditModel = new RefundAuditModel();
         $orderInfo  = $auditModel->getInfoForAuditCheck($orderNum);
         if ( ! $orderInfo || ! is_array($orderInfo)) {
@@ -135,7 +136,7 @@ class RefundAudit extends Controller
             }
         } else {
             //判断套票是否需要退票审核
-            $orderModel = new OrderTools();
+//            $orderModel = new OrderTools();
             if ($orderInfo['ifpack'] == 1) {
                 //套票主票
                 $subOrders = $orderModel->getPackSubOrder($orderNum);
