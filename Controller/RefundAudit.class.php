@@ -311,7 +311,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
         if ( ! in_array($auditResult, [1, 2])) {
             $this->apiReturn(250);//审核结果只能是同意或拒绝
         }
-        echo 1111;
+//        echo 1111;
         //参数初始化
         $refundModel = new RefundAuditModel();
         $result = 0;
