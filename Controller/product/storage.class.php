@@ -155,11 +155,12 @@ class storage extends Controller{
 
         //处理数据
         $summary = array(
-            'total'       => $tmp['total'] + $tmp['reserve'],
-            'selled'      => $tmp['saled'],
-            'reserve'     => $tmp['reserve'],
-            'unallocated' => $unallocated,
-            'status'      => $status
+            'total'            => $tmp['total'] + $tmp['reserve'],
+            'selled'           => $tmp['saled'],
+            'reserve'          => $tmp['reserve'],
+            'unallocated'      => $unallocated,
+            'used_unallocated' => $tmp['used_unallocated'],
+            'status'           => $status
         );
 
         $data = array(
@@ -352,6 +353,9 @@ class storage extends Controller{
             $this->apiReturn(203, '', '参数错误');
         }
 
+        //加载模型
+        $storageModel = $this->model('Product/YXStorage'); 
+
         //权限验证
         $isAuth = $storageModel->isAuth($venusId, $memberId);
         if(!$isAuth) {
@@ -362,9 +366,6 @@ class storage extends Controller{
         if(!$data) {
             $this->apiReturn(203, '', '设置数据错误');
         }
-
-        //加载模型
-        $storageModel = $this->model('Product/YXStorage');
 
         //获取分区详情
         $roundInfo = $storageModel->getRoundInfo($roundId);

@@ -803,6 +803,10 @@ class YXStorage extends Model{
         $saled = $this->getResellerNums($roundId, $areaId);
         $data['saled'] = $saled;
 
+        //获取已经使用掉的未分配库存
+        $usedUnallocated = $this->getUsedStorage($roundId);
+        $data['used_unallocated'] = intval($usedUnallocated);
+
         //返回
         return $data;
     }
@@ -981,7 +985,7 @@ class YXStorage extends Model{
      * @return
      */
     public function getUsedStorage($roundId) {
-        $where = array('round' => $roundId);
+        $where = array('round_id' => $roundId);
         $field = 'used_num';
 
         $info = $this->table($this->_usedTable)->where($where)->field($field)->find();
