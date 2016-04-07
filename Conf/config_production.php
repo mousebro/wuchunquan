@@ -9,7 +9,7 @@ return array(
     'db'=> array(
         'localhost' => array(
             'db_type'=>'mysql',
-            'db_host' => '127.0.0.1',
+            'db_host' => '10.160.4.140',
             'db_user' => 'admin',
             'db_pwd' => 'adm*753951',
             'db_port' => 3306,
@@ -17,7 +17,7 @@ return array(
         ),
         'localhost_wsdl' => array(
             'db_type'=>'mysql',
-            'db_host' => '127.0.0.1',
+            'db_host' => '10.160.4.140',
             'db_user' => 'wsdl',
             'db_pwd' => 'ws*753951',
             'db_port' => 3306,
@@ -47,6 +47,14 @@ return array(
             'db_pwd' => 'su*7645901',
             'db_port' => 3306,
             'db_name' => 'myuu',
+        ),
+        'summary'   => array(//统计数据库
+            'db_type'   => 'mysql',
+            'db_host'   => '10.160.4.140',
+            'db_user'   => 'summary',
+            'db_pwd'    => 'su*7645901',
+            'db_port'   => 3306,
+            'db_name'   => 'summary',
         ),
     ),
     'redis'=>array(

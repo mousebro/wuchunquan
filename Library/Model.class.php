@@ -106,6 +106,9 @@ class Model {
         }
         $connection = $dbConfig[$defaultDb];
 
+        //数据库配置
+        $this->connection = $connection;
+
         // 数据库初始化操作
         // 获取数据库操作对象
         // 当前模型有独立的数据库连接信息
@@ -1075,6 +1078,22 @@ class Model {
         if(!empty($this->name) && $this->autoCheckFields)    $this->_checkTableInfo();
         return $this;
     }
+
+    /**
+     * 牵制关闭数据库连接
+     * @author dwer
+     * @date   2016-03-31
+     *
+     * @return
+     */
+    protected function forceShutdown() {
+        $this->db->close();
+        unset($this->db);
+
+        $res = Db::forceShutdown($this->connection);
+        return $res;
+    }
+
     // 数据库切换后回调方法
     protected function _after_db() {}
 

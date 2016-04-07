@@ -120,4 +120,50 @@ class BaseAction extends Controller
 
         parent::ajaxReturn($return, $type, $json_option);
     }
+
+    /**
+     * 测试时记录日志
+     */
+    public static function writeLog($word, $file)
+    {
+        $rootpath = '/var/www/html/log/site';
+        $filepath = $rootpath . $file . '.txt';
+        if (is_array($word)) {
+            $word = implode('|', $word);
+        }
+        $word = date("Y-m-d H:i:s") . "|" . $word . ".";
+        if (file_exists($filepath)) {
+            $maxsize = 1024 * 1024 * 10;
+            $filesize = filesize($filepath);
+            $tmp = explode(".", $filepath);
+            $filetype = end($tmp);
+            $filename = substr($filepath, 0, strpos($filepath, '.'));
+            if ($filesize > $maxsize)
+                rename($filepath, $filename . '_' . date('YmdHis') . '.' . $filetype);
+        }
+        $fp = fopen($filepath, "a");
+        flock($fp, LOCK_EX);
+        fwrite($fp, $word . "\n");
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+
+    /**
+     * 通过curl提交数据
+     * @param $url
+     * @param $data
+     *
+     * @return mixed
+     */
+    public function raw_post($url,$data){
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_URL,$url);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+        $rt=curl_exec($ch);
+        curl_close($ch);
+        return $rt;
+    }
 }

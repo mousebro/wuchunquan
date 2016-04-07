@@ -49,7 +49,9 @@ class OnlineTrade extends Model
             'description'   => $description,
             'sourceT'       => $sourceT,
         ];
-        return $this->data($data)->add();
+        $id = $this->data($data)->add();
+        if ($id>0) return $id;
+        return $this->getDbError();
         //INSERT pft_alipay_rec SET out_trade_no='$out_trade_no',subject='$body',
 //        total_fee='$money',description='$body',sourceT=$sourceT
     }
@@ -115,5 +117,69 @@ class OnlineTrade extends Model
     {
         $tid = intval($tid);
         return $this->table('uu_jq_ticket')->where("id=$tid")->field("Mpath,Mdetails")->find();
+    }
+
+    public function secondRequest($tid, $ordern, $mid)
+    {
+        $tid = intval($tid);
+        $mData = $this->table('uu_jq_ticket')->where("id=$tid")->field("Mpath,Mdetails")->find();
+        if ($mData['Mpath']) {
+            $relation_info_req = http_build_query(array(
+                'Action'  => 'Relation_after_pay',
+                'Ordern'  => $ordern,
+                'Fid'     => (int)$mid,
+            ));
+            $send_time = 0;
+            do{
+                $return = file_get_contents($mData['Mpath'].'?'.$relation_info_req);
+                ++$send_time;
+            }while(!$return && $send_time<3);
+        }
+    }
+
+    private function change_db()
+    {
+        $dbConf = C('db');
+        $this->db(1, $dbConf['summary'], true);
+    }
+    /**
+     * 订单汇总
+     *
+     * @param string $bt
+     * @param string $et
+     * @return mixed
+     */
+    public function Summary($bt='', $et='')
+    {
+        $seller_email = [
+            'pft12301@12301.cc',
+            'pft12301@126.com',
+            'pft_12301@12301.cc',
+            '{"appid":"wx6ebc34778c9326f6","sub_appid":"wxd72be21f7455640d"}',
+        ];
+
+        $bt = empty($bt) ? date('Y-m-d 00:00:00', strtotime('- 1 days')) : $bt;
+        $et = empty($et) ? date('Y-m-d 23:59:59', strtotime('- 1 days')) : $et;
+        $where = [
+            'status'=>1,
+            'dtime'=>[array('gt',$bt),array('lt',$et)],
+        ];
+        $date = substr($bt, 0, 10);
+        $data = $this->db(0)->table('pft_alipay_rec')
+            ->where($where)
+            ->field("sourceT as pay_channel,seller_email,SUM(total_fee * 100) AS total_money , '$date' as created_date")
+            ->group('sourceT,seller_email')
+            ->select();
+        $details = $this->db(0)->table('pft_alipay_rec')
+            ->where($where)
+            ->field("sourceT as pay_channel,seller_email,total_fee * 100 AS pay_money, dtime as created_time, trade_no,out_trade_no AS ordernum")
+            ->order('dtime desc')
+            ->select();
+        echo $this->getDbError();
+        $this->change_db();
+        $this->db(1)->table('pft_online_trade_summary')->addAll($data);
+        $this->db(1)->table('pft_online_trade')->addAll($details);
+        echo $this->getDbError();
+        return $data;
     }
 }

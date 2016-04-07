@@ -8,6 +8,8 @@ if (ENV=='PRODUCTION') {
     define('BASE_LOG_DIR', '/mnt/log/site');
     define('IMAGE_UPLOAD_DIR', '/databak/images/');
     define('MAIN_DOMAIN', 'http://www.12301.cc/');
+    define('PAY_DOMAIN', 'http://pay.12301.cc/');
+    define('MOBILE_DOMAIN', 'http://wx.12301.cc/');
     define('IMAGE_URL', 'http://images.12301.cc/');
     define('STATIC_URL', 'http://static.12301.cc/');
     define('OPEN_URL', 'http://open.12301.cc/');
@@ -22,6 +24,8 @@ elseif (ENV=='TEST') {
     define('BASE_LOG_DIR', '/data/log/site');
     define('IMAGE_UPLOAD_DIR', '/databak/images/');
     define('MAIN_DOMAIN', 'http://www.12301dev.com/');
+    define('PAY_DOMAIN', 'http://pay.12301dev.com/');
+    define('MOBILE_DOMAIN', 'http://wx.12301dev.com/');
     define('IMAGE_URL', 'http://images.12301dev.com/');
     define('STATIC_URL', 'http://static.12301.cc/');
     define('OPEN_URL', 'http://open.12301dev.com/');
@@ -37,17 +41,20 @@ elseif (ENV=='DEVELOP') {
     define('IMAGE_UPLOAD_DIR', '/var/www/images/');
     if (strpos($_SERVER['HTTP_HOST'], 'test')) {
         define('MAIN_DOMAIN', 'http://www.12301.test/');
+        define('MOBILE_DOMAIN', 'http://wx.12301.test/');
         define('IMAGE_URL', 'http://images.12301.test/');
-        define('STATIC_URL', 'http://static.12301.cc/');
+        define('STATIC_URL', 'http://static.12301.test/');
         define('MOBILE_URL', 'http://12301.test/');
+        define('OPEN_URL', 'http://open.12301.test/');
     }
     else {
+        define('MOBILE_DOMAIN', 'http://wx.12301.local/');
         define('MAIN_DOMAIN', 'http://www.12301.local/');
         define('IMAGE_URL', 'http://images.12301.local/');
-        define('STATIC_URL', 'http://static.12301.cc/');
+        define('STATIC_URL', 'http://static.12301.local/');
         define('MOBILE_URL', 'http://12301.local/');
+        define('OPEN_URL', 'http://open.12301.local/');
     }
-    define('OPEN_URL', 'http://open.12301.test/');
     define('IP_INSIDE', '192.168.20.138');
     define('IP_TERMINAL', '192.168.20.138');
 }
