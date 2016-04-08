@@ -146,7 +146,6 @@ class YXStorage extends Model{
         $reserveNum = $info['reserve_num'];
 
         $resStorage = 0;
-
         if($sellerStorage == -1) {
             //使用未分配的库存
             $leftStorage = $this->_getLeftStorage($roundId, $areaId, $reserveNum);
@@ -222,7 +221,8 @@ class YXStorage extends Model{
         //保留的库存之和
         $reserveNum = $info['reserve_num'];
 
-        if($reserveNum != -1) {
+        if($sellerStorage == -1) {
+            //使用未分配的库存
             $leftStorage = $this->_getLeftStorage($roundId, $areaId, $reserveNum);
 
             //如果使用量超过剩余库存
@@ -244,7 +244,6 @@ class YXStorage extends Model{
             } else {
                 return false;
             }
-
         } else {
             return true;
         }
@@ -431,12 +430,46 @@ class YXStorage extends Model{
 
         $where = array('area_id' => $areaId);
 
-        $info = $this->table($this->_defaultInfoTable)->find();
+        $info = $this->table($this->_defaultInfoTable)->where($where)->find();
         if($info) {
             return $info;
         } else {
             return false;
         }
+    }
+
+    /**
+     * 获取之前的库存配置
+     * @author dwer
+     * @date   2016-04-07
+     *
+     * @param  $roundId 场次
+     * @param  $areaId 分区
+     * @return
+     */
+    public function getOriginSetting($roundId, $areaId) {
+        if(!$roundId || !$areaId) {
+            return [];
+        }
+
+        $storageInfo    = $this->getInfo($areaId, $roundId);
+        $isUseDefault   = $storageInfo ? false : true;
+
+        $field = 'reseller_id,total_num';
+        if($isUseDefault) {
+            //获取默认的配置
+            $tmp = $this->table($this->_defaultStorageTable)->field($field)->where(['area_id' => $areaId])->select();
+        } else {
+            //获取具体的场次的配置
+            $tmp = $this->table($this->_storageTable)->field($field)->where(['area_id' => $areaId, 'round_id' => $roundId])->select();
+        }
+
+        $resArr = [];
+        foreach($tmp as $item) {
+            $resArr[$item['reseller_id']] = $item['total_num'];
+        }
+
+        return $resArr;
     }
 
     /**
@@ -1412,7 +1445,7 @@ class YXStorage extends Model{
                 'update_time' => time()
             );
 
-            if(!$status !== false) {
+            if($status !== false) {
                 $data['status'] = $status;
             }
 
@@ -1424,7 +1457,7 @@ class YXStorage extends Model{
             $newData['use_date']    = $useDate;
             $newData['setter_id']   = $setterId; 
 
-            if(!$status !== false) {
+            if($status !== false) {
                 $newData['status'] = $status;
             }
 
