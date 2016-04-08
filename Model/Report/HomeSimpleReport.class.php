@@ -10,10 +10,15 @@ use Library\Model;
 
 class HomeSimpleReport extends Model
 {
+    public function __construct($defaultDb='slave', $tablePrefix='')
+    {
+        parent::__construct($defaultDb, $tablePrefix);
+    }
+
     private function change_db()
     {
         $dbConf = C('db');
-        $this->db(1, $dbConf['slave'], true);
+        $this->db(1, $dbConf['remote_1'], true);
     }
 
     /**
@@ -34,7 +39,7 @@ class HomeSimpleReport extends Model
                 'status'=>1,
                 'dtime'=> array(array('egt',$start_date),array('elt',$end_date))
             ];
-            $data = $this->table('uu_ss_order')
+            $data = $this->db(0)->table('uu_ss_order')
                 ->where($where)
                 ->field('COUNT(*) AS cnt,SUM(tnum) AS tnum,SUM(totalmoney) as totalmoney')
                 ->find();
@@ -46,7 +51,7 @@ class HomeSimpleReport extends Model
                 'mid'       => ['neq',$aid],
                 'ddate'     => [['egt',$start_date],['elt',$end_date]],
             ];
-            $data = $this->table('pft_order_statistics')
+            $data = $this->db(1)->table('pft_order_statistics')
                 ->where($where)
                 ->field('sum(torder) as cnt,sum(tnum) as tnum,sum(money) as totalmoney')
                 ->find();
@@ -72,7 +77,9 @@ select tid,sum(torder) as torder,sum(tnum) as tnum,sum(money) as money,sum(pmode
 sum(pmode1) as pmode1,sum(pmode2) as pmode2,sum(pmode3) as pmode3
 from pft_order_statistics where $where group by tid
 SQL;
+        //echo $sql;
         $result = $this->db(1)->query($sql);
+        echo $this->getDbError();
         return $result;
     }
 
@@ -80,8 +87,7 @@ SQL;
     {
 
         $land = [];
-        //$map['"uu_jq_ticket.id']  = array('not in','1,5,8');
-        $data = $this->table('uu_jq_ticket')
+        $data = $this->db(0)->table('uu_jq_ticket')
             ->field('uu_land.id as lid,uu_jq_ticket.id as tid,areacode,uu_land.title,jtype,p_type')
             ->where(["uu_jq_ticket.id"=>["in",$tid]])
             ->join('left join uu_land ON uu_land.id=uu_jq_ticket.landid')
