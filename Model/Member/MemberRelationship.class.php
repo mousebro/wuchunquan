@@ -27,7 +27,7 @@ class MemberRelationship extends Model
      *
      * @return mixed
      */
-    public function getDistributor($search = '',$page=1,$limit=20)
+    public function getDistributor($search = '',$page=1,$limit=20,$count=false)
     {
         $page = $page ? $page : 1;
         $limit = $limit ? $limit : 20;
@@ -57,15 +57,20 @@ class MemberRelationship extends Model
             'mr.status ASC',
             'mr.id DESC',
         );
-
-        $result = $this->table($table)
-                       ->join($join)
-                       ->where($where)
-                       ->field($field)
-                       ->order($order)
-                       ->page($page)
-                       ->limit($limit)
-                       ->select();
+        if($count){
+            $field = "count(*) as total";
+            $result = $this->table($table)->join($join)->where($where)->field($field)->find();
+            $result = $result['total'];
+        }else{
+            $result = $this->table($table)
+                           ->join($join)
+                           ->where($where)
+                           ->field($field)
+                           ->order($order)
+                           ->page($page)
+                           ->limit($limit)
+                           ->select();
+        }
 //        $this->test();
         return $result;
     }
