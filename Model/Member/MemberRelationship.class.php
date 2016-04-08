@@ -27,8 +27,10 @@ class MemberRelationship extends Model
      *
      * @return mixed
      */
-    public function getDistributor($search = '')
+    public function getDistributor($search = '',$page=1,$limit=20)
     {
+        $page = $page ? $page : 1;
+        $limit = $limit ? $limit : 20;
         $table = "{$this->_memberTable} AS m";
         $join  = "LEFT JOIN {$this->_memberRealtionTable} AS mr ON m.id=mr.son_id";
         $where = array(
@@ -48,6 +50,8 @@ class MemberRelationship extends Model
             'm.id',
             'm.dname',
             'm.account',
+            'm.cname as concact',
+            'm.mobile',
         );
         $order = array(
             'mr.status ASC',
@@ -59,6 +63,8 @@ class MemberRelationship extends Model
                        ->where($where)
                        ->field($field)
                        ->order($order)
+                       ->page($page)
+                       ->limit($limit)
                        ->select();
 //        $this->test();
         return $result;
