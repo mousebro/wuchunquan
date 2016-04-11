@@ -21,13 +21,13 @@ class Order extends Controller
         $tid        = intval($_POST['tid']);
         $auth_code  = trim($_POST['auth_code']);
         if (!$tid>0  || empty($auth_code)) {
-            exit('{"code":"401"}');
+            exit('{"code":"401", "msg":"参数错误"}');
         }
         $res        = $soap->QuickOrder($tid, $auth_code);
         if ($res==100) {
-            echo '{"code":"200"}';
+            echo '{"code":"200","msg":"下单成功"}';
         } else {
-            echo '{"code":'.$res.'}';
+            echo '{"code":'.$res.',"msg":"其他错误"}';
         }
     }
 }
