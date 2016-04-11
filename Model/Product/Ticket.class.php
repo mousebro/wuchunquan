@@ -8,17 +8,17 @@ use Library\Model;
 
 class Ticket extends Model {
 
-    const __TICKET_TABLE__ = 'uu_jq_ticket';    //门票信息表
-    const __PRODUCT_TABLE__ = 'uu_products';    //产品信息表
-    const __LAND_TABLE__ = 'uu_land';   //景区信息表
+    const __TICKET_TABLE__          = 'uu_jq_ticket';    //门票信息表
+    const __PRODUCT_TABLE__         = 'uu_products';    //产品信息表
+    const __LAND_TABLE__            = 'uu_land';   //景区信息表
 
-    const __SALE_LIST_TABLE__ = 'pft_product_sale_list';    //一手供应商产品表
-    const __EVOLUTE_TABLE__ = 'pft_p_apply_evolute';    //转分销产品表
+    const __SALE_LIST_TABLE__       = 'pft_product_sale_list';    //一手供应商产品表
+    const __EVOLUTE_TABLE__         = 'pft_p_apply_evolute';    //转分销产品表
 
-    const __PRODUCT_PRICE_TABLE__ = 'uu_product_price';   //产品价格表
+    const __PRODUCT_PRICE_TABLE__   = 'uu_product_price';   //产品价格表
 
-    const __ORDER_TABLE__ = 'uu_ss_order';
-    const __ORDER_DETAIL_TABLE__ = 'uu_order_fx_details';
+    const __ORDER_TABLE__           = 'uu_ss_order';
+    const __ORDER_DETAIL_TABLE__    = 'uu_order_fx_details';
 
 	/**
 	 * 根据票类id获取票类信息
@@ -46,7 +46,10 @@ class Ticket extends Model {
      * @return [type]      [description]
      */
     public function getProductType($pid) {
-        return $this->table(self::__PRODUCT_TABLE__)->where(array('id' => $pid))->getField('p_type');
+        return $this->table(self::__PRODUCT_TABLE__)
+                    ->join('p left join uu_land l on p.contact_id=l.id')
+                    ->where(array('p.id' => $pid))
+                    ->getField('l.p_type');
     }
 
     public function getPackageInfoByTid($tid){
@@ -151,16 +154,18 @@ class Ticket extends Model {
         );
 
         if ($option2) {
-            $where = array_merge($where, $option2);
+            $where = array_merge($where, $option2['where']);
         }
 
         $data = $this->getProductsDetailInfo($where);
 
         $result = array();
-        foreach ($data as $item) {
-            $item['apply_sid'] = $tmp[$item['id']]['sid'];
-            $item['sapply_sid'] = $tmp[$item['id']]['sourceid'];
-            $result[] = $item;
+        if ($data) {
+            foreach ($data as $item) {
+                $item['apply_sid'] = $tmp[$item['id']]['sid'];
+                $item['sapply_sid'] = $tmp[$item['id']]['sourceid'];
+                $result[] = $item;
+            }
         }
         
         return $result;
@@ -248,14 +253,15 @@ class Ticket extends Model {
                 ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
                 ->field('pid,l_price,start_date,end_date')
                 ->select();
-            if (!$price_info) return false;
 
-            foreach ($price_info as $item) {
-                $start_time = strtotime($item['start_date']);
-                $end_time   = strtotime($item['end_date']);
-                $cur_time   = strtotime($date);
-                if ($start_time <= $cur_time && $end_time >= $cur_time) {
-                    $result[$item['pid']] = $item['l_price'] / 100;
+            if ($price_info && is_array($price_info)) {
+                foreach ($price_info as $item) {
+                    $start_time = strtotime($item['start_date']);
+                    $end_time   = strtotime($item['end_date']);
+                    $cur_time   = strtotime($date);
+                    if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                        $result[$item['pid']] = $item['l_price'] / 100;
+                    }
                 }
             }
         }
