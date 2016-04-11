@@ -389,7 +389,7 @@ if(!function_exists('pft_log')) {
             return false;
         }
 
-        $pathMode = in_array($pathMode, ['day', 'month', 'year']) ? $pathMode : 'day';
+        $pathMode = in_array($pathMode, array('day', 'month', 'year')) ? $pathMode : 'day';
 
         $tmpPath = BASE_LOG_DIR . '/' . $path . '/';
         $fileName = date('Y') . '.log';
