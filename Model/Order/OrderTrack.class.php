@@ -33,8 +33,11 @@ class OrderTrack extends Model
     const ORDER_CREATE       = 0;
     const ORDER_MODIFY       = 1;
     const ORDER_PAY          = 4;
+    const ORDER_VERIFIED     = 5;
+    const ORDER_EXPIRE       = 12;
 
     const SOURCE_INSIDE_SOAP = 16;
+    const SOURCE_OUTSIDE_SOAP = 17;
     public static function getSourceList()
     {
         return [
@@ -57,6 +60,7 @@ class OrderTrack extends Model
             16=>'内部接口',
             17=>'外部接口',
             18=>'undefined',
+            19=>'自运行服务',
         ];
     }
     public static function getActionList()
@@ -72,8 +76,9 @@ class OrderTrack extends Model
             7=>'撤改',
             8=>'重打印',
             9=>'离线订单下载',
-            10=>'提交退票申请',
-            11=>'处理退票申请'
+            10=>'处理退票申请',
+            11=>'提交退票申请',
+            12=>'过期',
         ];
     }
     /**
@@ -90,9 +95,11 @@ class OrderTrack extends Model
      * @param $id_card string 身份证
      * @param $oper int 操作员ID
      * @param $salerid int 景区6位ID
+     * @param $create_time string 时间
      * @return mixed
      */
-    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0, $branch_terminal=0, $id_card='', $oper=0,$salerid=0)
+    public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0,
+        $branch_terminal=0, $id_card='', $oper=0,$salerid=0, $create_time='')
     {
         $data = [
             'ordernum'       => $ordernum,
@@ -105,21 +112,30 @@ class OrderTrack extends Model
             'branchTerminal' => $branch_terminal,
             'id_card'        => $id_card,
             'SalerID'        => $salerid,
-            'insertTime'     => date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']),
+            'insertTime'     => empty($create_time) ? date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']) : $create_time,
             'oper_member'    => $oper,
         ];
-        $last = $this->Table('pft_order_track')->data($data)->add();
+        $last = $this->table('pft_order_track')->data($data)->add();
         echo $this->getDbError();
         return $last;
+    }
+
+    /**
+     * 订单追踪多记录插入
+     * @param $data
+     */
+    public function addTrackMulti($data)
+    {
+        $this->table('pft_order_track')->addAll($data);
     }
 
     public function getLog($ordernum)
     {
         $where['ordernum'] = ':ordernum';
         return $this->Table('pft_order_track')
-                    ->where($where)
-                    ->bind(':ordernum',$ordernum)
-                    ->order('id ASC')
-                    ->select();
+            ->where($where)
+            ->bind(':ordernum',$ordernum)
+            ->order('id ASC')
+            ->select();
     }
 }

@@ -6,8 +6,11 @@
 namespace Model\Order;
 use Library\Model;
 use Model\Product\YXStorage;
+use Model\Order\OrderTrack;
 
 class OrderTools extends Model {
+
+    const __ORDER_TABLE__  = 'uu_ss_order';
 
     /**
      * 获取订单信息
@@ -53,35 +56,38 @@ class OrderTools extends Model {
 				left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid
 				left join uu_land land on uu_ss_order.lid=land.id")
 
-                       ->where(array(
-                           'uu_ss_order.status' => 0,
-                           'detail.pay_status' => 2,
-                           'land.id' => array('neq', 5322),
-                           'land.terminal_type' => array('neq', 0),))
-                       ->field('uu_ss_order.*,detail.*')
-                       ->order($order)
-                       ->limit($limit)
-                       ->select();
+            ->where(array(
+                'uu_ss_order.status' => 0,
+                'detail.pay_status' => 2,
+                'land.id' => array('neq', 5322),
+                'land.terminal_type' => array('neq', 0),))
+            ->field('uu_ss_order.*,detail.*')
+            ->order($order)
+            ->limit($limit)
+            ->select();
         return $result;
     }
 
 
     /**
      * 取消超时未支付的订单
-     * @param  [type] $orderid      [description]
-     * @param  Soap   $soap_cli     [description]
+     * @param  [type] $orderid      订单号
+     * @param  Soap   $soap_cli     soap接口实例
+     * @param  int    $tid          门票id
+     * @param  int    $tum          门票数
+     * @param  int    $source       来源,详情见OrderTrack
      * @return [type]               [description]
      * @author  wengbin
      */
-    public function cancelOutOfDateOrder($orderid, \SoapClient $soap_cli) {
+    public function cancelOutOfDateOrder($orderid, \SoapClient $soap_cli, $tid, $tnum, $source) {
         $res = $soap_cli->Order_Change_Pro($orderid, 0, -1, 1, 1);
         if ($res != 100) return $res;
 
         $remote_con = new Model('remote_1');
         $seat = $remote_con->table('pft_roundseat_dyn')
-                           ->where(array('ordernum' => $orderid, 'status' => 2))
-                           ->field('id')
-                           ->select();
+            ->where(array('ordernum' => $orderid, 'status' => 2))
+            ->field('id')
+            ->select();
         if ($seat) {
             $seat_ids = '';
             foreach ($seat as $item) {
@@ -90,10 +96,10 @@ class OrderTools extends Model {
             $seat_ids = rtrim($seat_ids, ',');
             //如果是场馆订单，则需要执行释放座位的动作
             $this->_releaseSeat($seat_ids, $remote_con);
-            //todo:log it
         }
 
         $this->_cancelNotify($orderid);	//释放订单通知(todo://钩子系统)
+        $this->_cancelRecord($orderid, $tid, $tnum, $source);
         return $res;
     }
 
@@ -122,6 +128,29 @@ class OrderTools extends Model {
     private function _cancelNotify($orderid) {
         //todo,,
 
+    }
+
+    /**
+     * 订单追踪（取消）
+     * @return [type] [description]
+     */
+    private function _cancelRecord($orderid, $tid, $tnum, $source) {
+        $data = [
+            'ordernum'       => $orderid,
+            'action'         => 2,
+            'tid'            => $tid,
+            'tnum'           => $tnum,
+            'left_num'       => 0,
+            'source'         => 19,
+            'terminal'       => 0,
+            'branchTerminal' => 0,
+            'id_card'        => 0,
+            'SalerID'        => 0,
+            'insertTime'     => date('Y-m-d H:i:s'),
+            'oper_member'    => 0,
+        ];
+        $track = new OrderTrack();
+        return $track->addTrack($orderid, 2, $tid, $tnum, 0, 19);
     }
 
     /**
@@ -180,5 +209,15 @@ class OrderTools extends Model {
     private function test(){
         $str = $this->getLastSql();
         var_dump($str);
+    }
+    /**
+     * 获取某个会员所购买的订单信息
+     * @param  int      $memberid 会员id
+     * @param  array    $option   额外的查询条件
+     * @return array
+     */
+    public function getSomeOneBoughtOrders($memberid, $options = array()) {
+
+        return $this->table(self::__ORDER_TABLE__)->where(['member' => $memberid])->select($options);
     }
 }
