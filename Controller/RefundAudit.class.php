@@ -472,16 +472,20 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
             $limit);
         if (is_array($refundRecords) && count($refundRecords) > 0) {
             foreach ($refundRecords as $row) {
-                $row['action'] = false;
+                $row['action'] = 0;
                 $row['repush'] = false;
-                if (($row['apply_did'] == $operatorID || $operatorID == 1)
-                    && $row['sourceT'] == 0
-                    && $row['ifpack'] != 1
-                ) {
-                    $row['action'] = true;
-                    if ($row['dcodeURL'] && in_array($row['dstatus'], [1, 2])) {
-                        $row['repush'] = true;
+                // action -0 等待处理 -1 同意|拒绝 -2 已处理
+                if ($row['apply_did'] == $operatorID || $operatorID == 1 && $row['ifpack'] != 1){
+                    if($row['dstatus']==0){
+                        $row['action'] = 1;
+                    }else {
+                        $row['action'] = 2;
+                        if($row['sourceT']!=0 && $row['dcodeURL'] ){
+                            $row['repush'] = true;
+                        }
                     }
+                }else{
+                    $row['action'] = $row['dstatus']==0 ? 0: 2;
                 }
                 unset($row['dcodeURL']);
 //                unset($row['mdetails']);
