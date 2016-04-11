@@ -24,9 +24,9 @@ class Login
     //生成验证码方法
     public function getCode()
     {
-        $str= $this->random(4);	//随机生成的字符串
-        $width=60;	//验证码图片的宽度
-        $height=25;	//验证码图片的高度
+        $str= $this->random(4);    //随机生成的字符串
+        $width=60;    //验证码图片的宽度
+        $height=25;    //验证码图片的高度
         //Date in the past
         header("Expires:Mon,26 Jul 1997 05:00:00 GMT");
         //always modified
