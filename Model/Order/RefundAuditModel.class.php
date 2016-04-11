@@ -357,28 +357,13 @@ class RefundAuditModel extends Model
             "_complex" => array(
                 //默认只显示需要退票审核的订单
                 //如果是套票主票的话，不管是否需要退票审核都显示（分销商）
-                //如果是联票主票的话，不管是否需要退票审核都显示
+                //联票不单独处理，所有都显示 2016-4-11修正
                 array(
-                    //'t.refund_audit' => array('in', array(0, 1)), //测试时使用
-                    't.refund_audit' => 1, //门票应该是需要退票审核的，但取消的联票子票不显示
+                    't.refund_audit' => 1,
                     'oa.ifpack'      => 1,
-                    array(
-                        "od.concat_id" => array('exp', '=od.orderid'),
-                        "a.stype"      => array("in", [2,3]),
-                    ),
                     "a.stype" => array("in", [0, 1]), //撤销撤改的不受以上限制
                     '_logic'         => 'or',
                 ),
-                //申请取消的子票不显示
-                array(
-                    array(
-                        "od.concat_id" => array(
-                            0,
-                            array('exp', '=od.orderid'),
-                            'or',
-                        ),
-                        "a.stype" => array("in", [0, 1, 2]),
-                        '_logic'  => 'or'))
             ));
         //根据传入参数确定查询条件
         //2016-3-27 供应商能看到套票子票，分销商能看到套票主票
@@ -407,7 +392,11 @@ class RefundAuditModel extends Model
         }
 
         if ($orderNum) {
-            $where['a.ordernum'] = $orderNum;
+            $where['_complex'][]=array(
+                    'a.ordernum' => $orderNum,
+                    'od.concat_id'=> $orderNum,
+                    '_logic' => 'or',
+                );
         } else {
             if ($landTitle) {
                 $where['l.title'] = array("like", "%{$landTitle}%");
@@ -481,6 +470,7 @@ class RefundAuditModel extends Model
             }
 
 //            $this->test();
+//            print_r($result);
             return $result;
         }
     }
