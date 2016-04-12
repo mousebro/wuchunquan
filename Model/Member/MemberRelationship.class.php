@@ -42,6 +42,7 @@ class MemberRelationship extends Model
             'mr.ship_type'   => 0,
             'mr.status'      => 0,
             'mr.son_id'      => array('neq',$this->memberID),
+            'm.dtype'=>array('in')
         );
         if ( ! empty($search)) {
             if (intval($search)) {
