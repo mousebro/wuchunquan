@@ -153,11 +153,12 @@ class Ticket extends Model {
             'p.id' => array('in', implode(',', $pid_arr))
         );
 
-        if ($option2) {
+        if (isset($option2['where'])) {
             $where = array_merge($where, $option2['where']);
+            unset($option2['where']);
         }
 
-        $data = $this->getProductsDetailInfo($where);
+        $data = $this->getProductsDetailInfo($where, $option2);
 
         $result = array();
         if ($data) {
