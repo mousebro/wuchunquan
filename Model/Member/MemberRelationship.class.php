@@ -35,7 +35,7 @@ class MemberRelationship extends Model
         $limit = $page ? ($limit ? $limit : 20) : 9999;
         $page = $page ? $page : 1;
         $table = "{$this->_memberRealtionTable} AS mr ";
-        $join  = "inner join {$this->_memberTable} AS m ON m.id=mr.son_id ";
+        $join  = "left join {$this->_memberTable} AS m ON m.id=mr.son_id ";
         $where = array(
             'mr.parent_id'   => $this->memberID,
             'mr.son_id_type' => 0,
@@ -43,7 +43,8 @@ class MemberRelationship extends Model
             'mr.status'      => 0,
             'mr.son_id'      => array('not in',[1,$this->memberID]),
             'm.dtype'=>array('in',[0,1,7]),
-            'length(m.account)' => array('neq',11),
+            'm.status'=>array('in',[0,3]),
+            'length(m.account)' => 6,
         );
         if ( ! empty($search)) {
             if (intval($search)) {
