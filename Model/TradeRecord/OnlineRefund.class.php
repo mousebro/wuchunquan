@@ -25,7 +25,7 @@ class OnlineRefund extends Model
         $param = ["out_trade_no"=>$ordernum, "status"=>1,"trade_no"=>["neq",""]];
         return $this->Table('pft_alipay_rec')
             ->where($param)
-            ->field('seller_email,trade_no,sourceT')
+            ->field('seller_email,trade_no,sourceT,total_fee')
             ->limit(1)
             ->find();
     }
