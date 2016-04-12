@@ -24,13 +24,16 @@ class MemberRelationship extends Model
     /**
      * 根据名称或账号获取分销商
      * @param string $search
+     * @param        $page
+     * @param        $limit
+     * @param bool   $count
      *
      * @return mixed
      */
-    public function getDistributor($search = '',$page=1,$limit=20,$count=false)
+    public function getDistributor($search = '',$page,$limit,$count=false)
     {
+        $limit = (($page!=0)&&($limit!=0)) ? $limit : 9999;
         $page = $page ? $page : 1;
-        $limit = $limit ? $limit : 20;
         $table = "{$this->_memberTable} AS m";
         $join  = "LEFT JOIN {$this->_memberRealtionTable} AS mr ON m.id=mr.son_id";
         $where = array(
