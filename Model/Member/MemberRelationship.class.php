@@ -39,7 +39,9 @@ class MemberRelationship extends Model
         $where = array(
             'mr.parent_id'   => $this->memberID,
             'mr.son_id_type' => 0,
+            'mr.ship_type'   => 0,
             'mr.status'      => 0,
+            'mr.son_id'      => array('neq',$this->memberID),
         );
         if ( ! empty($search)) {
             if (intval($search)) {
