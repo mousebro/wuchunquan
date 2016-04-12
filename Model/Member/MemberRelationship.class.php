@@ -32,17 +32,18 @@ class MemberRelationship extends Model
      */
     public function getDistributor($search = '',$page,$limit,$count=false)
     {
-        $limit = (($page!=0)&&($limit!=0)) ? $limit : 9999;
+        $limit = $page ? ($limit ? $limit : 20) : 9999;
         $page = $page ? $page : 1;
-        $table = "{$this->_memberTable} AS m";
-        $join  = "LEFT JOIN {$this->_memberRealtionTable} AS mr ON m.id=mr.son_id";
+        $table = "{$this->_memberRealtionTable} AS mr ";
+        $join  = "{$this->_memberTable} AS m ON m.id=mr.son_id ";
         $where = array(
             'mr.parent_id'   => $this->memberID,
             'mr.son_id_type' => 0,
             'mr.ship_type'   => 0,
             'mr.status'      => 0,
-            'mr.son_id'      => array('neq',$this->memberID),
-            'm.dtype'=>array('in')
+            'mr.son_id'      => array('not in',[1,$this->memberID]),
+            'm.dtype'=>array('in',[0,1,7,9]),
+            'length(m.account)' => array('neq',11),
         );
         if ( ! empty($search)) {
             if (intval($search)) {
