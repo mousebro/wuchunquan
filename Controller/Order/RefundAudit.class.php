@@ -16,8 +16,8 @@ class RefundAudit extends Controller
 {
     const MODIFY_CODE = 2;      //退款审核表中修改申请的stype值
     const CANCEL_CODE = 3;      //退款审核表中取消申请的stype值
-    const APPLY_AUDIT_CODE = 10;      //订单追踪表中表示发起退款审核
-    const OPERATE_AUDIT_CODE = 11;     //订单追踪表中表示退款审核已处理
+    const APPLY_AUDIT_CODE = 11;      //订单追踪表中表示发起退款审核
+    const OPERATE_AUDIT_CODE = 10;     //订单追踪表中表示退款审核已处理
     private $noticeURL = 'http://localhost/new/d/module/api/RefundNotice.php';
 
 
