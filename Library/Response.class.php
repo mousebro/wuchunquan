@@ -127,7 +127,7 @@ class Response
         $result = [
             'code' => $code,
             'msg'  => $msg,
-            'time' => NOW_TIME,
+            'time' => time(),
             'data' => $data,
         ];
 
