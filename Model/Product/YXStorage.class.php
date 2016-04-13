@@ -934,12 +934,13 @@ class YXStorage extends Model{
             'area_id' => $areaId
         );
 
-        $storageList = $this->table($this->_defaultStorageTable)->field('reseller_id,total_num')->where($where)->select();
+        $storageList = $this->table($this->_defaultStorageTable)->field('reseller_id,total_num,setter_id')->where($where)->select();
 
         $setData = array();
         foreach($storageList as $item) {
              $setData[] = [
                 'reseller_id' => $item['reseller_id'],
+                'setter_id'   => $item['setter_id'],
                 'round_id'    => $roundId,
                 'area_id'     => $areaId,
                 'total_num'   => $item['total_num'],
@@ -983,7 +984,8 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'status'      => $status,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId
             );
 
             $res = $this->table($this->_infoTable)->where($where)->save($data);
@@ -1398,7 +1400,9 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'total_num'   => $storage,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId,
+                'use_date'    => $useDate
             );
 
             $res = $this->table($this->_storageTable)->where($where)->save($data);
@@ -1442,7 +1446,8 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'reserve_num' => $reserveNum,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId
             );
 
             if($status !== false) {
@@ -1494,7 +1499,8 @@ class YXStorage extends Model{
             $data = array(
                 'reserve_num' => $reserveNum,
                 'status'      => $status,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId
             );
 
             $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
@@ -1537,7 +1543,8 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'total_num'   => $storage,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId
             );
 
             $res = $this->table($this->_defaultStorageTable)->where($where)->save($data);
@@ -1545,7 +1552,7 @@ class YXStorage extends Model{
             $newData = $where;
             $newData['total_num'] = $storage;
             $newData['update_time'] = time();
-            $newData['setter_id'] = $setterId;
+            $newData['setter_id'] = $setterId; 
 
             $res = $this->table($this->_defaultStorageTable)->add($newData);
         }
@@ -1553,7 +1560,7 @@ class YXStorage extends Model{
         if($res === false) {
             return false;
         } else {
-            return true;
+            return true; 
         }
     }
     /**
