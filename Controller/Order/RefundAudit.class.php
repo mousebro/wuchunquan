@@ -4,7 +4,7 @@
  * Time: 15:03 2016/3/11
  */
 
-namespace Controller;
+namespace Controller\Order;
 
 use Library\Controller;
 use Library\Exception;
