@@ -281,15 +281,22 @@ class RefundAuditModel extends Model
     public function getRemainTicketNumber($orderNum)
     {
         $table = 'pft_order_track';
-        $field = 'left_num';
-        $where = ['ordernum' => $orderNum];
+        $field = 'sum(*) as verify_num';
+        $where = ['ordernum' => $orderNum,
+                  'action' => 5
+        ];
         $order = 'id desc';
 
-        return $this->table($table)
+        $result =  $this->table($table)
                     ->where($where)
                     ->field($field)
                     ->order($order)
                     ->find();
+        if($result){
+            return $result['verify_num'];
+        }else{
+            return $result;
+        }
     }
 
     /**
