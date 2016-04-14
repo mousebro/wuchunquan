@@ -101,6 +101,7 @@ class OrderTrack extends Model
     public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0,
                              $branch_terminal=0, $id_card='', $oper=0,$salerid=0, $create_time='')
     {
+        $oper = $oper ? $oper : 0;
         $data = [
             'ordernum'       => $ordernum,
             'action'         => $action,
@@ -136,6 +137,19 @@ class OrderTrack extends Model
             ->where($where)
             ->bind(':ordernum',$ordernum)
             ->order('id ASC')
+            ->select();
+    }
+
+    public function QueryLog($ordernum)
+    {
+        $where['ordernum'] = ':ordernum';
+        $where['action'] = array('neq', self::ORDER_EXPIRE);
+        return $this->Table('pft_order_track')
+            ->where($where)
+            ->field('left_num')
+            ->bind(':ordernum',$ordernum)
+            ->order('id DESC')
+            ->limit(1)
             ->select();
     }
 }
