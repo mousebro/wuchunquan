@@ -138,4 +138,17 @@ class OrderTrack extends Model
             ->order('id ASC')
             ->select();
     }
+
+    public function QueryLog($ordernum)
+    {
+        $where['ordernum'] = ':ordernum';
+        $where['daction'] = array('neq', self::ORDER_EXPIRE);
+        return $this->Table('pft_order_track')
+            ->where($where)
+            ->field('left_num')
+            ->bind(':ordernum',$ordernum)
+            ->order('id DESC')
+            ->limit(1)
+            ->select();
+    }
 }
