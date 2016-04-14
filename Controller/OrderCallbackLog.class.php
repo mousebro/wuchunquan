@@ -20,7 +20,7 @@ class OrderCallbackLog extends Controller
     /**
      * 获取退款通知日志里列表
      */
-    public function getNoticeList()
+    public function getLogList()
     {
         $memberID = I('session.sid');
         if(!$memberID){
