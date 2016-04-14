@@ -124,6 +124,6 @@ else {
             die('Could not write PID information to ' . $PIDFILE);
     }
 
-    $logger->log(Psr\Log\LogLevel::NOTICE, 'Starting worker {worker}', array('worker' => $worker));
+    //$logger->log(Psr\Log\LogLevel::NOTICE, 'Starting worker {worker}', array('worker' => $worker));
     $worker->work($interval, $BLOCKING);
 }

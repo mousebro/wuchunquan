@@ -27,7 +27,7 @@ if( ! defined('CRLF')) define('CRLF', sprintf('%s%s', chr(13), chr(10)));
 /**
  * Credis-specific errors, wraps native Redis errors
  */
-class CredisException extends Exception
+class CredisException extends \Exception
 {
 
     const CODE_TIMED_OUT = 1;
@@ -371,7 +371,7 @@ class Credis_Client {
         }
         else {
             if ( ! $this->redis) {
-                $this->redis = new Redis;
+                $this->redis = new \Redis;
             }
             $result = $this->persistent
                 ? $this->redis->pconnect($this->host, $this->port, $this->timeout, $this->persistent)

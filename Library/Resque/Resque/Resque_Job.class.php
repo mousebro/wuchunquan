@@ -3,6 +3,7 @@ namespace Library\Resque\Resque;
 
 use Library\Resque\Resque\Resque_Exception as Resque_Exception;
 use Library\Resque\Resque\Resque_Job_Status as Resque_Job_Status;
+use Library\Resque\Resque as Resque;
 
 /**
  * Resque job.
