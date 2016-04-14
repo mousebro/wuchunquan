@@ -1,11 +1,15 @@
 <?php
+use Model\Product\Land as Land;
 
 class Mail_Job {
     
     public function perform(){
-        fwrite(STDOUT, 'Start job! -> ');
-        sleep(1);
-        fwrite(STDOUT, 'Job ended!' . PHP_EOL);
+        $land = new Land();
+
+        $time = date('Y-m-d H:i:s');
+        $mess = $land->tt($time);
+
+        echo $time . '#' . $mess;
     }
 }
 

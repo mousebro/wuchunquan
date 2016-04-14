@@ -71,4 +71,16 @@ class Land extends Model
     public function getLandIdByPid($pid) {
         return $this->table('uu_products')->where(['id' => $pid])->getField('contact_id');
     }
+
+    public function tt($time) {
+        $data = array(
+            'wtime'  => $time,
+            'status' => 100,
+            'cnum'   => 10
+        );
+
+        $res = $this->table('uu_watchdog')->add($data);
+
+        return $res === false ? 'fail' : 'success';
+    }
 }

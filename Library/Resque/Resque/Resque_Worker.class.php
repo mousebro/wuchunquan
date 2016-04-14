@@ -2,8 +2,10 @@
 namespace Library\Resque\Resque;
 
 use Library\Resque\Resque\Resque_Log as Resque_Log;
+use Library\Resque\Resque\Job\Resque_Job_Status as Resque_Job_Status;
 use Library\Resque\Resque\Job\Resque_Job_DirtyExitException as Resque_Job_DirtyExitException;
 use Library\Resque\Resque as Resque;
+
 
 /**
  * Resque worker that handles checking queues for jobs, fetching them

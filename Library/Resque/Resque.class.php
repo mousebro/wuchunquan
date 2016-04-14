@@ -2,6 +2,8 @@
 namespace Library\Resque;
 
 use Library\Resque\Resque\Resque_Redis as Resque_Redis;
+use Library\Resque\Resque\Resque_Event as Resque_Event;
+use Library\Resque\Resque\Resque_Job as Resque_Job;
 
 /**
  * Base Resque class.
