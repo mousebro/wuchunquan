@@ -13,6 +13,6 @@ include '/var/www/html/Service/init.php';
 
 $queue = new Queue();
 
-$jobId = $queue->push('default', 'Mail_Job', array());
+$jobId = $queue->push('default', 'Mail_Job', array('time' => '2020-10-12 12:11:11'));
 
 echo $jobId;

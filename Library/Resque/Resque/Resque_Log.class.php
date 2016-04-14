@@ -1,5 +1,6 @@
 <?php
 namespace Library\Resque\Resque;
+use Library\Resque\Log\AbstractLogger as AbstractLogger;
 
 /**
  * Resque default logger PSR-3 compliant
@@ -8,7 +9,7 @@ namespace Library\Resque\Resque;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Resque_Log 
+class Resque_Log  extends AbstractLogger
 {
 	public $verbose;
 
@@ -26,7 +27,6 @@ class Resque_Log
 	 */
 	public function log($level, $message, array $context = array())
 	{
-		return true;
 		if ($this->verbose) {
 			fwrite(
 				STDOUT,
@@ -53,7 +53,6 @@ class Resque_Log
 	 */
 	public function interpolate($message, array $context = array())
 	{
-		return true;
 		// build a replacement array with braces around the context keys
 		$replace = array();
 		foreach ($context as $key => $val) {

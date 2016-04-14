@@ -1,8 +1,10 @@
 <?php
 namespace Library\Resque\Resque\Failure;
+use Library\Resque\Resque\Failure\Resque_Failure_Interface as Resque_Failure_Interface;
+use Library\Resque\Resque as Resque;
 
 /**
- * Redis backend for storing failed Resque jobs.
+ * Redis backend for storing failed Resque jobs.  
  *
  * @package		Resque/Failure
  * @author		Chris Boulton <chris@bigcommerce.com>
@@ -21,7 +23,7 @@ class Resque_Failure_Redis implements Resque_Failure_Interface
 	 */
 	public function __construct($payload, $exception, $worker, $queue)
 	{
-		$data = new stdClass;
+		$data = new \stdClass;
 		$data->failed_at = strftime('%a %b %d %H:%M:%S %Z %Y');
 		$data->payload = $payload;
 		$data->exception = get_class($exception);
@@ -33,3 +35,4 @@ class Resque_Failure_Redis implements Resque_Failure_Interface
 		Resque::redis()->rpush('failed', $data);
 	}
 }
+

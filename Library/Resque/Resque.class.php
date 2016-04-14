@@ -92,7 +92,7 @@ class Resque
 
 		$pid = pcntl_fork();
 		if($pid === -1) {
-			throw new RuntimeException('Unable to fork child worker.');
+			throw new \RuntimeException('Unable to fork child worker.');
 		}
 
 		return $pid;
@@ -206,6 +206,29 @@ class Resque
 	public static function size($queue)
 	{
 		return self::redis()->llen('queue:' . $queue);
+	}
+
+    /**
+     * 获取错误的队列数据
+     * @author dwer
+     * @date   2016-04-15
+     *
+     * @return 
+     */
+	public static function FailedSize(){
+		return self::redis()->lSize('resque:failed');
+	}
+
+	/**
+     * 获取错误的队列数据
+     * @author dwer
+     * @date   2016-04-15
+     *
+     * @param  $num
+     * @return 
+     */
+	public static function FailedPop($num = 1){
+		return self::redis()->rPop('resque:failed');
 	}
 
 	/**

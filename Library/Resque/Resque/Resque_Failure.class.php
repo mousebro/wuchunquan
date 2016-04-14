@@ -1,5 +1,7 @@
 <?php
 namespace Library\Resque\Resque;
+use Library\Resque\Resque\Failure\Resque_Failure_Redis as Resque_Failure_Redis;
+
 /**
  * Failed Resque job.
  *
@@ -22,10 +24,10 @@ class Resque_Failure
 	 * @param \Resque_Worker $worker Instance of Resque_Worker that was running this job when it failed.
 	 * @param string $queue          The name of the queue that this job was fetched from.
 	 */
-	public static function create($payload, Exception $exception, Resque_Worker $worker, $queue)
+	public static function create($payload, \Exception $exception, Resque_Worker $worker, $queue)
 	{
 		$backend = self::getBackend();
-		new $backend($payload, $exception, $worker, $queue);
+		new Resque_Failure_Redis($payload, $exception, $worker, $queue);
 	}
 
 	/**

@@ -3,6 +3,7 @@ use Library\Resque\Resque\Resque_Worker as Resque_Worker;
 use Library\Resque\Resque\Resque_Log as Resque_Log;
 use Library\Resque\Resque\Resque_Redis as Resque_Redis;
 use Library\Resque\Resque as Resque;
+use Library\Resque\Log\LogLevel as LogLevel;
 
 /**
  *  通过cli模式开启队列
@@ -121,7 +122,7 @@ if(!empty($COUNT) && $COUNT > 1) {
 
 $PREFIX = getenv('PREFIX');
 if(!empty($PREFIX)) {
-    $logger->log(Psr\Log\LogLevel::INFO, 'Prefix set to {prefix}', array('prefix' => $PREFIX));
+    $logger->log(LogLevel::INFO, 'Prefix set to {prefix}', array('prefix' => $PREFIX));
     Resque_Redis::prefix($PREFIX);
 }
 
@@ -129,7 +130,7 @@ if($count > 1) {
     for($i = 0; $i < $count; ++$i) {
         $pid = Resque::fork();
         if($pid == -1) {
-            $logger->log(Psr\Log\LogLevel::EMERGENCY, 'Could not fork worker {count}', array('count' => $i));
+            $logger->log(LogLevel::EMERGENCY, 'Could not fork worker {count}', array('count' => $i));
             die();
         }
         // Child, start the worker
@@ -137,7 +138,7 @@ if($count > 1) {
             $queues = explode(',', $QUEUE);
             $worker = new Resque_Worker($queues);
             $worker->setLogger($logger);
-            $logger->log(Psr\Log\LogLevel::NOTICE, 'Starting worker {worker}', array('worker' => $worker));
+            $logger->log(LogLevel::NOTICE, 'Starting worker {worker}', array('worker' => $worker));
             $worker->work($interval, $BLOCKING);
             break;
         }
@@ -155,6 +156,6 @@ else {
             die('Could not write PID information to ' . $PIDFILE);
     }
 
-    //$logger->log(Psr\Log\LogLevel::NOTICE, 'Starting worker {worker}', array('worker' => $worker));
+    $logger->log(LogLevel::NOTICE, 'Starting worker {worker}', array('worker' => $worker));
     $worker->work($interval, $BLOCKING);
 }

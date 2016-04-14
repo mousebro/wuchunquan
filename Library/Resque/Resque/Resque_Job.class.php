@@ -64,7 +64,7 @@ class Resque_Job
 		}
 
 		if($args !== null && !is_array($args)) {
-			throw new InvalidArgumentException(
+			throw new \InvalidArgumentException(
 				'Supplied $args must be an array.'
 			);
 		}
