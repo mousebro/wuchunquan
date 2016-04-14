@@ -1,6 +1,7 @@
 <?php
 /**
- *  测试入队列
+ * 测试入队列
+ * 需要入队列的地方，只需要实例化Library\Resque\Queue，然后调用push方法就可以了
  *
  * @author dwer
  * @date 2016-04-14 

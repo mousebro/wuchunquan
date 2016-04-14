@@ -59,9 +59,10 @@ return array(
     ),
     'redis'=>array(
         'main'=> array(
-            'db_host'=>'192.168.20.138',
-            'db_port'=> 6379,
-            'db_pwd' => '123666',
+            'db_host'  =>'192.168.20.138',
+            'db_port'  => 6379,
+            'db_pwd'   => '123666',
+            'db_queue' => 10, //队列使用的数据库
         ),
     ),
 );

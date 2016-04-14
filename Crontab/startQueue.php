@@ -14,17 +14,48 @@ use Library\Resque\Resque as Resque;
 //包含初始化文件
 include '/var/www/html/Service/init.php';
 
+define('CONF_DIR', dirname(__DIR__) . '/Conf/');
+define('JOBS_DIR', dirname(__DIR__) . '/Jobs/');
+
+//加载配置文件
+$conf = CONF_DIR . 'jobs.conf.php';
+if(!file_exists($conf)) {
+    die('队列配置文件不存在');
+}
+$config  = include($conf);
+$setting = $config['setting'];
+$jobs    = $config['jobs'];
+
 //包含需要执行的Job
-include '/var/www/html/Service/Jobs/Mail_Job.php';
+foreach ($jobs as $value) {
+    $jobFile = JOBS_DIR . $value . '.php';
+    if(file_exists($jobFile)) {
+        include_once($jobFile);
+    }
+}
 
 //设置变量
-putenv('QUEUE=*');
-putenv('PIDFILE=/tmp/resque.pid');
-putenv('REDIS_BACKEND=tcp://user:root@127.0.0.1:6379/10');
-putenv('COUNT=1');
+foreach($setting as $key => $val) {
+    if($val) {
+        $tmp = "{$key}={$val}";
+        putenv($tmp);
+    }
+}
+//如果配置文件里面没有，就使用pft.confg.php 里面的配置
+if(!isset($setting['REDIS_BACKEND']) || !$setting['REDIS_BACKEND']) {
+    $redisConfig = C('redis');
+    if(!isset($redisConfig['main'])) {
+        die('Redis配置文件错误');
+    }
+    $con = $redisConfig['main'];
+    $dsn = "tcp://user:{$con['db_pwd']}@{$con['db_host']}:{$con['db_port']}/{$con['db_queue']}";
+    $tmp = "REDIS_BACKEND={$dsn}";
+    putenv($tmp);
+}
 
-
+//开启队列进程
 $QUEUE = getenv('QUEUE');
+
 if(empty($QUEUE)) {
     die("Set QUEUE env var containing the list of queues to work.\n");
 }
