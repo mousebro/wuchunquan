@@ -1035,13 +1035,13 @@ class YXStorage extends Model{
                 'update_time' => time()
             );
 
-            $res = $this->table($this->_infoTable)->where($where)->save($data);
+            $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
         } else {
             $newData = $where;
             $newData['status']      = $status;
             $newData['update_time'] = time();
 
-            $res = $this->table($this->_infoTable)->add($newData);
+            $res = $this->table($this->_defaultInfoTable)->add($newData);
         }
 
         //写日志
