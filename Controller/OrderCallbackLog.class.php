@@ -27,8 +27,9 @@ class OrderCallbackLog extends Controller
 
     /**
      * 获取退款通知日志里列表
+     *
      */
-    public function getLogList()
+    public function getNoticeList()
     {
         $orderNum   = I('param.ordernum');
         $noticeType = I('param.stype');
@@ -69,9 +70,13 @@ class OrderCallbackLog extends Controller
                 });
                 $row[]   = $row_tmp;
             }
-
-            print_r($row);
-            //            $this->apiReturn(200, $row);
+            $data = array(
+                'page'=>$page,
+                'limit'=>$limit,
+                'total'=>$total,
+                'list'=>$row,
+            );
+            $this->apiReturn(200, $data);
         } catch (Exception $e) {
             $this->apiReturn(203, [], $e->getMessage());
         }
@@ -80,14 +85,21 @@ class OrderCallbackLog extends Controller
     /**
      * 获取对接接口列表
      */
-    public function getReceiverList()
+    public function getReceivers()
     {
         $page     = I('param.page');
         $limit    = I('param.limit');
         $dname = I('param.dname');
-
-
-
+        if(!class_exists('Model\\Order\\RefundAuditModel')){
+            $this->apiReturn(204);
+        }
+        try{
+            $refundModel = new Order\RefundAuditModel();
+            $receivers = $refundModel -> getReceiverList($dname);
+            return $receivers;
+        }catch (Exception $e) {
+            $this->apiReturn(203, [], $e->getMessage());
+        }
     }
 
     public function apiReturn($code, $data = array(), $msg = '')

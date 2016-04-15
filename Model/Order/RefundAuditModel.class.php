@@ -615,6 +615,27 @@ class RefundAuditModel extends Model
     }
 
     /**
+     * 获取通知接口列表
+     * @param string $dname 可按照用户名查询
+     *
+     * @return mixed
+     */
+    public function getReceiverList($dname){
+        $table = $this->_memberTable;
+        $where = array(
+            'dcodeurl' => array('neq',''),
+        );
+        if($dname){
+            $where['dname'] = array('like', "%{$dname}%");
+        }
+        $field = array(
+            'dname',
+            'id as memberid',
+        );
+        $result = $this->table($table)->where($where)->field($field)->select();
+        return $result;
+    }
+    /**
      * 测试用：打印调用的sql语句
      *
      * @return string

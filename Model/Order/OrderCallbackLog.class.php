@@ -29,11 +29,7 @@ class OrderCallbackLog extends Model
         $page       = $page ? $page : 1;
         $limit      = $limit ? $limit : 20;
         $table      = $this->_orderSyncTable;
-//        $where = array(
-//          'ordernum' => array('in', $ordernum),
-//        );
-//        $where = array();
-            $where['notice_type'] = array('in', [1, 2]);
+        $where['notice_type'] = array('in', [1, 2]);
         if($orderNum){
             $where['ordernum'] = $orderNum; //订单号优先级最高
         }else{
@@ -60,36 +56,16 @@ class OrderCallbackLog extends Model
             'pushlasttime as last_push_time',
             'pushstatus as push_state',
             'notice_type as change_type',
+            'pushchannel',
         );
         $order = array(
             'id DESC',
         );
         $result = $this->table($table)->field($field)->where($where)->order($order)->page($page)->limit($limit)->select();
-        $this->test();
         return $result;
     }
 
-    /**
-     * 获取通知接口列表
-     * @param string $dname 可按照用户名查询
-     *
-     * @return mixed
-     */
-    public function getReceiverList($dname){
-        $table = $this->_memberTable;
-        $where = array(
-            'dcodeurl' => array('neq',''),
-        );
-        if($dname){
-            $where['dname'] = array('like', "%{$dname}%");
-        }
-        $field = array(
-          'dname',
-          'id as memberid',
-        );
-        $result = $this->table($table)->where($where)->field($field)->select();
-        return $result;
-    }
+
     /**
      * 测试用：打印调用的sql语句
      *
