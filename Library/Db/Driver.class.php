@@ -71,6 +71,10 @@ abstract class Driver {
     );
     protected $bind         =   array(); // 参数绑定
 
+    private $_pingTimes    = 0;     // ping的次数
+    private $_prevLinkTime = 0;     // 上次连接数据库的时间
+    private $_intervalTime = 12;    // 连接数据库后，多长时间需要ping
+
     /**
      * 架构函数 读取数据库配置信息
      * @access public
@@ -105,6 +109,10 @@ abstract class Driver {
                 }
 
                 $this->linkID[$linkNum] = new PDO( $config['dsn'], $config['username'], $config['password'],$this->options);
+
+                //记录连接数据的时间
+                $this->_prevLinkTime = time();
+
             }catch (\PDOException $e) {
                 if($autoConnection){
                     return $this->connect($autoConnection,$linkNum);
@@ -113,6 +121,27 @@ abstract class Driver {
                 }
             }
         }
+
+        //如果连接的时间
+        $interval = time() - $this->_prevLinkTime;
+        if($interval >= $this->_intervalTime) {
+            $isLink = $this->ping();
+            if(!$isLink) {
+                //重新进行连接
+                if(empty($config))  {
+                    $config =   $this->config;
+                }
+
+                if(empty($config['dsn'])) {
+                    $config['dsn']  =   $this->parseDsn($config);
+                }
+                $this->linkID[$linkNum] = new PDO( $config['dsn'], $config['username'], $config['password'],$this->options);
+
+                //记录连接数据的时间
+                $this->_prevLinkTime = time();
+            }
+        }
+
         return $this->linkID[$linkNum];
     }
 
@@ -178,6 +207,36 @@ abstract class Driver {
             }
         }catch (\PDOException $e) {
             $this->error();
+            return false;
+        }
+    }
+
+    /**
+     * 试探服务器是不是挂了
+     * @author dwer
+     * @date   2016-04-15
+     *
+     * @return bool
+     *   数据库服务器是否连通的
+     */
+    public function ping() {
+        //记录ping的次数
+        $this->_pingTimes += 1;
+        $pingSql = 'SELECT 1';
+        $this->PDOStatement = $this->_linkID->prepare($pingSql);
+        if(false === $this->PDOStatement){
+            $this->error();
+            return false;
+        }
+
+        try{
+            $result =   @$this->PDOStatement->execute();
+            if ( false === $result ) {
+                return false;
+            } else {
+                return true;
+            }
+        }catch (\PDOException $e) {
             return false;
         }
     }
@@ -1045,7 +1104,7 @@ abstract class Driver {
             $this->_linkID = $this->multiConnect($master);
         else
             // 默认单数据库
-            if ( !$this->_linkID ) $this->_linkID = $this->connect();
+            $this->_linkID = $this->connect();
     }
 
     /**
