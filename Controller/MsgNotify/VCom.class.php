@@ -63,9 +63,21 @@ XML;
         return $res;
     }
 
+    /**
+     * 获取短信状态报告
+     */
     public function Notify()
     {
-        pft_log('vcome', json_encode($_GET));
+        pft_log('vcome/notify', json_encode($_GET));
+        echo '0';
+    }
+
+    /**
+     * 上行回复
+     */
+    public function Reply()
+    {
+        pft_log('vcome/reply', json_encode($_GET));
         echo '0';
     }
 }
