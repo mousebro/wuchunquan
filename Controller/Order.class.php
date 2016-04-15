@@ -54,6 +54,7 @@ class Order extends Controller
             parent::apiReturn(202, [],'其他错误:'.$res);
         }
     }
+
     public function QuickSearch()
     {
 
@@ -69,9 +70,9 @@ class Order extends Controller
         $tid = 0;
         $member             = $this->data->member;
         $aid                = $this->data->aid;
-        if (!$member && !$aid) {
-            parent::apiReturn('403',[],'供应商ID与购买者ID不能全为空');
-        }
+        //if (!$member && !$aid) {
+        //    parent::apiReturn('403',[],'供应商ID与购买者ID不能全为空');
+        //}
         //print_r($this->data);exit;
         //echo $salerId;
         //exit;
