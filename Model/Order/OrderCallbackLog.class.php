@@ -57,9 +57,9 @@ class OrderCallbackLog extends Model
         $field = array(
             'id as notice_id',
             'ordernum',
-            'pushlasttime',
-            'pushstatus',
-            'notice_type',
+            'pushlasttime as last_push_time',
+            'pushstatus as push_state',
+            'notice_type as change_type',
         );
         $order = array(
             'id DESC',

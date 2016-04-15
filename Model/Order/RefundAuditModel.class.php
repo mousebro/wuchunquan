@@ -532,13 +532,13 @@ class RefundAuditModel extends Model
         );
         $field  = array(
             'a.ordernum',
-            'a.stype',
-            'a.dtime',
-            'a.stime',
-            'a.fxid',
-            'a.dstatus',
-            'm.dname',
-            'l.title',
+//            'a.stype',
+//            'a.dtime',
+            'a.stime as apply_time',
+//            'a.fxid',
+            'a.dstatus as handle_res',
+            'm.dname as ota_name',
+            'l.title as ltitle',
         );
         $order  = array(
             'a.dtime desc',

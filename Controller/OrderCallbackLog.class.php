@@ -14,7 +14,7 @@ use Library\Exception;
 class OrderCallbackLog extends Controller
 {
     private $msgInfo
-        = array(200 => '操作成功', 201 => '无权限查看', 202 => '查询记录为空',203=>'未知错误');
+        = array(200 => '操作成功', 201 => '无权限查看', 202 => '查询记录为空', 203 => '未知错误');
 
     /**
      * 获取退款通知日志里列表
@@ -49,11 +49,23 @@ class OrderCallbackLog extends Controller
                 $this->apiReturn(201, [], '查询记录为空');
             }
             foreach ($audits as $audit) {
-                $row[] = array_merge($row1[$audit['ordernum']], $audit);
+                $row_tmp = array_merge($row1[$audit['ordernum']], $audit);
+                uksort($row_tmp, function ($key1, $key2) {
+                    $key_arr      = array('notice_id', 'ordernum', 'ltitle', 'change_type', 'apply_time', 'handle_res', 'ota_name', 'last_push_time', 'push_state',);
+                    $key_arr_flip = array_flip($key_arr);
+                    if(in_array($key1,$key_arr) && in_array($key2,$key_arr) && $key_arr_flip[$key1] > $key_arr_flip[$key2]){
+                        return 1;
+                    }else{
+                        return -1;
+                    }
+                });
+                $row[]   = $row_tmp;
             }
-            $this->apiReturn(200, $row);
+
+            print_r($row);
+            //            $this->apiReturn(200, $row);
         } catch (Exception $e) {
-            $this->apiReturn(203,[],$e->getMessage());
+            $this->apiReturn(203, [], $e->getMessage());
         }
     }
 
