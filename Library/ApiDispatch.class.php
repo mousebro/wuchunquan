@@ -1,6 +1,6 @@
 <?php
 /**
- * API接口进行统一的路由和交易
+ * API接口进行统一的路由和校验
  * @author zdw
  * @date 2016-04-14
  * 
@@ -57,8 +57,8 @@ class ApiDispatch{
      * @return
      */
     private static function _auth() {
-        return true;
-
+        
+        
     }
 
     private static function _getRequestRoute(){
