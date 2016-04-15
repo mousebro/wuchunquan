@@ -560,6 +560,92 @@ class storage extends Controller{
         }
     }
 
+    /**
+     * 开启关闭默认的分销库存
+     * @author dwer
+     * @date   2016-03-16
+     *
+     * @return [type]
+     */
+    public function openDefault() {
+        $areaId  = $this->getParam('area_id');
+        $venusId = $this->getParam('venus_id');
+        $memberId   = $this->memberId;
+
+        if(!$venusId || !$areaId) {
+            $this->apiReturn(203, '', '参数错误');
+        }
+
+        //加载模型
+        $storageModel = $this->model('Product/YXStorage');
+
+        $defaultInfo = $storageModel->getDefaultInfo($areaId);
+        if(!$defaultInfo) {
+            $this->apiReturn(206, '', '请先保存默认库存配置');
+        }
+
+        //权限验证
+        $isAuth = $storageModel->isAuth($venusId, $memberId);
+        if(!$isAuth) {
+            $this->apiReturn(205, '', '没有权限配置库存');
+        }
+
+        if($defaultInfo['status'] == 1) {
+            $this->apiReturn(200, array());
+        }
+
+        $res = $storageModel->setInfoDefault($areaId, $memberId, 1);
+
+        if($res) {
+            $this->apiReturn(200, array());
+        } else {
+            $this->apiReturn(500, array(), '服务器错误');
+        }
+    }
+
+    /**
+     * 关闭默认的分销库存
+     * @author dwer
+     * @date   2016-03-16
+     *
+     * @return [type]
+     */
+    public function closeDefault() {
+        $areaId  = $this->getParam('area_id');
+        $venusId = $this->getParam('venus_id');
+        $memberId   = $this->memberId;
+
+        if(!$venusId || !$areaId) {
+            $this->apiReturn(203, '', '参数错误');
+        }
+
+        //加载模型
+        $storageModel = $this->model('Product/YXStorage');
+
+        $defaultInfo = $storageModel->getDefaultInfo($areaId);
+        if(!$defaultInfo) {
+            $this->apiReturn(206, '', '请先保存默认库存配置');
+        }
+
+        //权限验证
+        $isAuth = $storageModel->isAuth($venusId, $memberId);
+        if(!$isAuth) {
+            $this->apiReturn(205, '', '没有权限配置库存');
+        }
+
+        if($defaultInfo['status'] == 0) {
+            $this->apiReturn(200, array());
+        }
+
+        $res = $storageModel->setInfoDefault($areaId, $memberId, 0);
+
+        if($res) {
+            $this->apiReturn(200, array());
+        } else {
+            $this->apiReturn(500, array(), '服务器错误');
+        }
+    }
+
 
 
     //测试使用
