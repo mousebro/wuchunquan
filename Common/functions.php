@@ -587,5 +587,62 @@ if(!function_exists('pft_log')) {
         }
         return null;
     }
+}
+if (!function_exists('curl_post')) {
+    /**
+     * CURL 提交请求数据
+     *
+     * @author dwer
+     * @date   2016-04-11
+     * @param string $url 请求URL
+     * @param string $postData 请求发送的数据
+     * @param int $port 请求端口
+     * @param int $timeout 超时时间
+     * @param string $logPath 错误日志文件
+     * @return bool|mixed
+     */
+    function curl_post($url,$postData, $port=80, $timeout=15, $logPath=BASE_LOG_DIR . '/api/curl_post.log') {
+        $ch = curl_init();
 
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_PORT, $port);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        $res = curl_exec($ch);
+        //错误处理
+        $errCode = curl_errno($ch);
+        if ($errCode > 0) {
+            //记录日志
+            $logData = json_encode(array(
+                'err_code' => $errCode,
+                'err_msg'  => curl_error($ch)
+            ));
+            pft_log($logPath, $logData);
+            curl_close($ch);
+            //返回false
+            return false;
+        } else {
+            //获取HTTP码
+            $httpCode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+            if($httpCode != 200) {
+                //接口错误
+                $logData = json_encode(array(
+                    'err_code' => $httpCode,
+                    'err_msg'  => $res
+                ));
+                pft_log($logPath, $logData);
+                curl_close($ch);
+                return false;
+            } else {
+                curl_close($ch);
+                return $res;
+            }
+        }
+    }
 }
