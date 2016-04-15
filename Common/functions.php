@@ -373,9 +373,9 @@ if(!function_exists('pft_log')) {
      * @author dwer
      * @date   2016-03-07
      *
-     * @param  $path 在BASE_LOG_DIR这个下面的目录 - product/reseller_storage
-     * @param  $content 需要写入的内容 
-     * @param  $pathMode 目录分隔模式：
+     * @param string $path 在BASE_LOG_DIR这个下面的目录 - product/reseller_storage
+     * @param string $content 需要写入的内容
+     * @param string $pathMode 目录分隔模式：
      *                      day：按日切分 - product/reseller_storage/2016/03/23.log
      *                      month：按月切分 - product/reseller_storage/2016/03.log
      *                      year：按年切分 - product/reseller_storage/2016.log
