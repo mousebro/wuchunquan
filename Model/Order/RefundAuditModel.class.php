@@ -536,6 +536,7 @@ class RefundAuditModel extends Model
             'a.dtime',
             'a.stime',
             'a.fxid',
+            'a.dstatus',
             'm.dname',
             'l.title',
         );
