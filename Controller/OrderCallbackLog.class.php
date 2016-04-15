@@ -10,27 +10,35 @@ namespace Controller;
 
 use Library\Controller;
 use Library\Exception;
+use Model\Order;
 
 class OrderCallbackLog extends Controller
 {
-    private $msgInfo
-        = array(200 => '操作成功', 201 => '无权限查看', 202 => '查询记录为空', 203 => '未知错误');
+    private $msgInfo = array(200 => '操作成功', 201 => '无权限查看', 202 => '查询记录为空', 203 => '未知错误',204=>'文件缺失');
+
+    public function __construct()
+    {
+        $memberID = $this->isLogin('ajax');
+        //只有管理员可以查看
+        if ($memberID != 1) {
+            $this->apiReturn(201);
+        }
+    }
 
     /**
      * 获取退款通知日志里列表
      */
     public function getLogList()
     {
-        $memberID = $this->isLogin('ajax');
-        if ($memberID != 1) {
-            $this->apiReturn(201);
-        }
         $orderNum   = I('param.ordernum');
         $noticeType = I('param.stype');
         $noticeDate = I('param.notice_date');
         $receiver   = I('param.receiver');
         $page       = I('param.page') ? I('param.page') : 1;
         $limit      = I('param.limit') ? I('param.limit') : 20;
+        if(!class_exists('Model\\Order\\OrderCallbackLog') || !class_exists('Model\\Order\\RefundAuditModel')){
+            $this->apiReturn(204);
+        }
         try {
             $logModel  = new \Model\Order\OrderCallbackLog();
             $callbacks = $logModel->getNoticeList($orderNum, $noticeType, $noticeDate, $receiver, $page, $limit);
@@ -76,12 +84,10 @@ class OrderCallbackLog extends Controller
     {
         $page     = I('param.page');
         $limit    = I('param.limit');
-        $memberID = I('session.sid');
-        if ( ! $memberID) {
-            $this->apiReturn(203);
-        } elseif ($memberID != 1) {
-            $this->apiReturn(201);
-        }
+        $dname = I('param.dname');
+
+
+
     }
 
     public function apiReturn($code, $data = array(), $msg = '')
