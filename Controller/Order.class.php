@@ -125,4 +125,24 @@ class Order extends Controller
             );
         echo $xml;
     }
+
+    /**
+     * 现金支付/会员卡支付
+     */
+    public function QuickPayOffline()
+    {
+        $ordernum       = $this->data->ordernum;
+        $pay_total_fee  = (int)$this->data->total_fee;
+        $pay_channel    = 4;
+        $sourceT        = (int)$this->data->sorceT;//4=>现金 5 =>会员卡
+        $pay_to_pft     = false;
+        //$soap = new \ServerInside();
+        $res = $this->soap->Change_Order_Pay($ordernum,-1, $sourceT, $pay_total_fee, 1,'','',1,
+            $pay_to_pft, $pay_channel);
+        if ($res==100) {
+            parent::apiReturn(200, [], '支付成功');
+        }
+        parent::apiReturn(201,[], '支付失败');
+
+    }
 }
