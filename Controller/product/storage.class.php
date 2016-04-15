@@ -133,6 +133,7 @@ class storage extends Controller{
             $sales = $storageModel->getResellerNums($roundId, $areaId, $resellerId);
             $sales = intval($sales);
 
+
             $list[] = array(
                 'name'       => $item['dname'],
                 'id'         => $item['son_id'],
@@ -385,6 +386,9 @@ class storage extends Controller{
             $resellerListArr[] = $item['son_id'];
         }
 
+        //获取之前的配置
+        $originSetting = $storageModel->getOriginSetting($roundId, $areaId);
+
         $resData = array();
         $allocateNum = 0;
 
@@ -396,6 +400,31 @@ class storage extends Controller{
                 $totalNum = $totalNum < -1 ? -1 : $totalNum;
                 $resData[$item['reseller_id']] = $totalNum;
 
+                //如果之前配置的不是-1，重新配置的时候，需要比对已经设置值
+                if(isset($originSetting[$item['reseller_id']])) {
+                    //获取已经销售的数据
+                    $sales = $storageModel->getResellerNums($roundId, $areaId, $item['reseller_id']);
+                    $sales = intval($sales);
+
+                    if($originSetting[$item['reseller_id']] == -1) {
+                        //之前设定库存库存是-1的情况下，如果变更为固定的库存时，需要和之前销售的量进行比对
+                        if($totalNum != -1) {
+                            if($sales > 0) {
+                                if($totalNum < $sales) {
+                                    $this->apiReturn(206, '', '保留库存数据配置错误');
+                                }
+                            }
+                        }
+                    } else {
+                        //之前就设置固定库存的，再次设置的话，就要和之前销售的量进行比对
+                        if($sales > 0) {
+                            if($totalNum < $sales) {
+                                $this->apiReturn(206, '', '保留库存数据配置错误');
+                            }
+                        }
+                    }
+                }
+
                 if($totalNum > 0) {
                     $allocateNum += $totalNum;
                 }
@@ -403,7 +432,7 @@ class storage extends Controller{
         }
 
         if(!$resData) {
-            $this->apiReturn(203, '', '设置数据错误');
+            $this->apiReturn(203, '', '保留库存数据配置错误');
         }
 
         //判断总是是不是超过
@@ -523,6 +552,84 @@ class storage extends Controller{
         }
 
         $res = $storageModel->setInfo($roundId, $areaId, $setterId, 0);
+
+        if($res) {
+            $this->apiReturn(200, array());
+        } else {
+            $this->apiReturn(500, array(), '服务器错误');
+        }
+    }
+
+    /**
+     * 开启关闭默认的分销库存
+     * @author dwer
+     * @date   2016-03-16
+     *
+     * @return [type]
+     */
+    public function openDefault() {
+        $areaId  = $this->getParam('area_id');
+        $venusId = $this->getParam('venus_id');
+        $memberId   = $this->memberId;
+
+        if(!$venusId || !$areaId) {
+            $this->apiReturn(203, '', '参数错误');
+        }
+
+        //加载模型
+        $storageModel = $this->model('Product/YXStorage');
+
+        $defaultInfo = $storageModel->getDefaultInfo($areaId);
+        if(!$defaultInfo) {
+            $this->apiReturn(206, '', '请先保存默认库存配置');
+        }
+
+        //权限验证
+        $isAuth = $storageModel->isAuth($venusId, $memberId);
+        if(!$isAuth) {
+            $this->apiReturn(205, '', '没有权限配置库存');
+        }
+
+        $res = $storageModel->setInfoDefault($areaId, $memberId, 1);
+
+        if($res) {
+            $this->apiReturn(200, array());
+        } else {
+            $this->apiReturn(500, array(), '服务器错误');
+        }
+    }
+
+    /**
+     * 关闭默认的分销库存
+     * @author dwer
+     * @date   2016-03-16
+     *
+     * @return [type]
+     */
+    public function closeDefault() {
+        $areaId  = $this->getParam('area_id');
+        $venusId = $this->getParam('venus_id');
+        $memberId   = $this->memberId;
+
+        if(!$venusId || !$areaId) {
+            $this->apiReturn(203, '', '参数错误');
+        }
+
+        //加载模型
+        $storageModel = $this->model('Product/YXStorage');
+
+        $defaultInfo = $storageModel->getDefaultInfo($areaId);
+        if(!$defaultInfo) {
+            $this->apiReturn(206, '', '请先保存默认库存配置');
+        }
+
+        //权限验证
+        $isAuth = $storageModel->isAuth($venusId, $memberId);
+        if(!$isAuth) {
+            $this->apiReturn(205, '', '没有权限配置库存');
+        }
+
+        $res = $storageModel->setInfoDefault($areaId, $memberId, 0);
 
         if($res) {
             $this->apiReturn(200, array());

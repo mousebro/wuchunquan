@@ -27,5 +27,5 @@ if (class_exists($controller))
 else exit("Controller Not Exist");
 
 if (method_exists($controller, $action))
-    $_object->$action();
+    $_object->$action($argv);
 else exit('Action Not Exist');

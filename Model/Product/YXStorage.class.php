@@ -146,7 +146,6 @@ class YXStorage extends Model{
         $reserveNum = $info['reserve_num'];
 
         $resStorage = 0;
-
         if($sellerStorage == -1) {
             //使用未分配的库存
             $leftStorage = $this->_getLeftStorage($roundId, $areaId, $reserveNum);
@@ -222,7 +221,8 @@ class YXStorage extends Model{
         //保留的库存之和
         $reserveNum = $info['reserve_num'];
 
-        if($reserveNum != -1) {
+        if($sellerStorage == -1) {
+            //使用未分配的库存
             $leftStorage = $this->_getLeftStorage($roundId, $areaId, $reserveNum);
 
             //如果使用量超过剩余库存
@@ -244,7 +244,6 @@ class YXStorage extends Model{
             } else {
                 return false;
             }
-
         } else {
             return true;
         }
@@ -431,12 +430,46 @@ class YXStorage extends Model{
 
         $where = array('area_id' => $areaId);
 
-        $info = $this->table($this->_defaultInfoTable)->find();
+        $info = $this->table($this->_defaultInfoTable)->where($where)->find();
         if($info) {
             return $info;
         } else {
             return false;
         }
+    }
+
+    /**
+     * 获取之前的库存配置
+     * @author dwer
+     * @date   2016-04-07
+     *
+     * @param  $roundId 场次
+     * @param  $areaId 分区
+     * @return
+     */
+    public function getOriginSetting($roundId, $areaId) {
+        if(!$roundId || !$areaId) {
+            return [];
+        }
+
+        $storageInfo    = $this->getInfo($areaId, $roundId);
+        $isUseDefault   = $storageInfo ? false : true;
+
+        $field = 'reseller_id,total_num';
+        if($isUseDefault) {
+            //获取默认的配置
+            $tmp = $this->table($this->_defaultStorageTable)->field($field)->where(['area_id' => $areaId])->select();
+        } else {
+            //获取具体的场次的配置
+            $tmp = $this->table($this->_storageTable)->field($field)->where(['area_id' => $areaId, 'round_id' => $roundId])->select();
+        }
+
+        $resArr = [];
+        foreach($tmp as $item) {
+            $resArr[$item['reseller_id']] = $item['total_num'];
+        }
+
+        return $resArr;
     }
 
     /**
@@ -901,12 +934,13 @@ class YXStorage extends Model{
             'area_id' => $areaId
         );
 
-        $storageList = $this->table($this->_defaultStorageTable)->field('reseller_id,total_num')->where($where)->select();
+        $storageList = $this->table($this->_defaultStorageTable)->field('reseller_id,total_num,setter_id')->where($where)->select();
 
         $setData = array();
         foreach($storageList as $item) {
              $setData[] = [
                 'reseller_id' => $item['reseller_id'],
+                'setter_id'   => $item['setter_id'],
                 'round_id'    => $roundId,
                 'area_id'     => $areaId,
                 'total_num'   => $item['total_num'],
@@ -950,7 +984,8 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'status'      => $status,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId
             );
 
             $res = $this->table($this->_infoTable)->where($where)->save($data);
@@ -966,6 +1001,52 @@ class YXStorage extends Model{
         //写日志
         $logData         = ['ac' => 'setInfo'];
         $logData['data'] = [$roundId, $areaId, $setterId, $status];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'set');
+
+        if($res === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * 设置默认分销库存的状态
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param  $areaId 分区ID
+     * @param  $setterId 供应商ID
+     * @param  $status 状态
+     */
+    public function setInfoDefault($areaId, $setterId, $status){
+        $where = array(
+            'area_id'     => $areaId,
+            'setter_id'   => $setterId
+        );
+
+        $field = 'id';
+        $tmp = $this->table($this->_defaultInfoTable)->field($field)->where($where)->find();
+
+        if($tmp) {
+            $data = array(
+                'status'      => $status,
+                'update_time' => time()
+            );
+
+            $res = $this->table($this->_infoTable)->where($where)->save($data);
+        } else {
+            $newData = $where;
+            $newData['status']      = $status;
+            $newData['update_time'] = time();
+
+            $res = $this->table($this->_infoTable)->add($newData);
+        }
+
+        //写日志
+        $logData         = ['ac' => 'setInfoDefault'];
+        $logData['data'] = [$areaId, $setterId, $status];
         $logData['rs']   = $res;
         $this->_log($logData, 'set');
 
@@ -1365,7 +1446,9 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'total_num'   => $storage,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId,
+                'use_date'    => $useDate
             );
 
             $res = $this->table($this->_storageTable)->where($where)->save($data);
@@ -1409,10 +1492,11 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'reserve_num' => $reserveNum,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId
             );
 
-            if(!$status !== false) {
+            if($status !== false) {
                 $data['status'] = $status;
             }
 
@@ -1424,7 +1508,7 @@ class YXStorage extends Model{
             $newData['use_date']    = $useDate;
             $newData['setter_id']   = $setterId; 
 
-            if(!$status !== false) {
+            if($status !== false) {
                 $newData['status'] = $status;
             }
 
@@ -1461,7 +1545,8 @@ class YXStorage extends Model{
             $data = array(
                 'reserve_num' => $reserveNum,
                 'status'      => $status,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId
             );
 
             $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
@@ -1504,7 +1589,8 @@ class YXStorage extends Model{
         if($tmp) {
             $data = array(
                 'total_num'   => $storage,
-                'update_time' => time()
+                'update_time' => time(),
+                'setter_id'   => $setterId
             );
 
             $res = $this->table($this->_defaultStorageTable)->where($where)->save($data);
@@ -1512,7 +1598,7 @@ class YXStorage extends Model{
             $newData = $where;
             $newData['total_num'] = $storage;
             $newData['update_time'] = time();
-            $newData['setter_id'] = $setterId;
+            $newData['setter_id'] = $setterId; 
 
             $res = $this->table($this->_defaultStorageTable)->add($newData);
         }
@@ -1520,7 +1606,7 @@ class YXStorage extends Model{
         if($res === false) {
             return false;
         } else {
-            return true;
+            return true; 
         }
     }
     /**
