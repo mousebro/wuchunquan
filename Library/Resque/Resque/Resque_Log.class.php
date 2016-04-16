@@ -1,6 +1,7 @@
 <?php
 namespace Library\Resque\Resque;
 use Library\Resque\Log\AbstractLogger as AbstractLogger;
+use Library\Resque\Log\LogLevel as LogLevel;
 
 /**
  * Resque default logger PSR-3 compliant
@@ -35,7 +36,7 @@ class Resque_Log  extends AbstractLogger
 			return;
 		}
 
-		if (!($level === Psr\Log\LogLevel::INFO || $level === Psr\Log\LogLevel::DEBUG)) {
+		if (!($level === LogLevel::INFO || $level === LogLevel::DEBUG)) {
 			fwrite(
 				STDOUT,
 				'[' . $level . '] ' . $this->interpolate($message, $context) . PHP_EOL

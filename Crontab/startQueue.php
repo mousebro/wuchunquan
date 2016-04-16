@@ -37,11 +37,31 @@ foreach ($jobs as $value) {
 
 //设置变量
 foreach($setting as $key => $val) {
-    if($val) {
-        $tmp = "{$key}={$val}";
-        putenv($tmp);
+    switch($key) {
+        case 'QUEUE' :
+            $QUEUE = $val;
+            break;
+        case 'PIDFILE' :
+            $PIDFILE = $val;
+            break;
+        case 'COUNT' :
+            $COUNT = $val;
+            break;
+        case 'VERBOSE' :
+            $VERBOSE = $val;
+            break;
+        case 'INTERVAL' :
+            $INTERVAL = $val;
+            break;
+        case 'BLOCKING' :
+            $BLOCKING = $val;
+            break;
+        case 'PREFIX' :
+            $PREFIX = $val;
+            break;
     }
 }
+
 //如果配置文件里面没有，就使用pft.confg.php 里面的配置
 if(!isset($setting['REDIS_BACKEND']) || !$setting['REDIS_BACKEND']) {
     $redisConfig = C('redis');
@@ -50,52 +70,22 @@ if(!isset($setting['REDIS_BACKEND']) || !$setting['REDIS_BACKEND']) {
     }
     $con = $redisConfig['main'];
     $dsn = "tcp://user:{$con['db_pwd']}@{$con['db_host']}:{$con['db_port']}/{$con['db_queue']}";
-    $tmp = "REDIS_BACKEND={$dsn}";
-    putenv($tmp);
+    
+    $REDIS_BACKEND = $dsn;
+} else {
+    $REDIS_BACKEND = $setting['REDIS_BACKEND'];
 }
-
-//开启队列进程
-$QUEUE = getenv('QUEUE');
 
 if(empty($QUEUE)) {
     die("Set QUEUE env var containing the list of queues to work.\n");
 }
 
-/**
- * REDIS_BACKEND can have simple 'host:port' format or use a DSN-style format like this:
- * - redis://user:pass@host:port
- *
- * Note: the 'user' part of the DSN URI is required but is not used.
- */
-$REDIS_BACKEND = getenv('REDIS_BACKEND');
-
 // A redis database number
-$REDIS_BACKEND_DB = getenv('REDIS_BACKEND_DB');
-if(!empty($REDIS_BACKEND)) {
-    if (empty($REDIS_BACKEND_DB))
-        Resque::setBackend($REDIS_BACKEND);
-    else
-        Resque::setBackend($REDIS_BACKEND, $REDIS_BACKEND_DB);
-}
+Resque::setBackend($REDIS_BACKEND);
 
 $logLevel = false;
-$LOGGING = getenv('LOGGING');
-$VERBOSE = getenv('VERBOSE');
-$VVERBOSE = getenv('VVERBOSE');
 if(!empty($LOGGING) || !empty($VERBOSE)) {
     $logLevel = true;
-}
-else if(!empty($VVERBOSE)) {
-    $logLevel = true;
-}
-
-$APP_INCLUDE = getenv('APP_INCLUDE');
-if($APP_INCLUDE) {
-    if(!file_exists($APP_INCLUDE)) {
-        die('APP_INCLUDE ('.$APP_INCLUDE.") does not exist.\n");
-    }
-
-    require_once $APP_INCLUDE;
 }
 
 // See if the APP_INCLUDE containes a logger object,
@@ -104,23 +94,19 @@ if (!isset($logger) || !is_object($logger)) {
     $logger = new Resque_Log($logLevel);
 }
 
-$BLOCKING = getenv('BLOCKING') !== FALSE;
+$BLOCKING = $BLOCKING !== FALSE;
 
 //包含初始化文件
-
 $interval = 5;
-$INTERVAL = getenv('INTERVAL');
 if(!empty($INTERVAL)) {
     $interval = $INTERVAL;
 }
 
 $count = 1;
-$COUNT = getenv('COUNT');
 if(!empty($COUNT) && $COUNT > 1) {
     $count = $COUNT;
 }
 
-$PREFIX = getenv('PREFIX');
 if(!empty($PREFIX)) {
     $logger->log(LogLevel::INFO, 'Prefix set to {prefix}', array('prefix' => $PREFIX));
     Resque_Redis::prefix($PREFIX);
@@ -150,7 +136,6 @@ else {
     $worker = new Resque_Worker($queues);
     $worker->setLogger($logger);
 
-    $PIDFILE = getenv('PIDFILE');
     if ($PIDFILE) {
         file_put_contents($PIDFILE, getmypid()) or
             die('Could not write PID information to ' . $PIDFILE);
