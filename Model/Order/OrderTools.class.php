@@ -170,4 +170,56 @@ class OrderTools extends Model {
 
         return $this->table(self::__ORDER_TABLE__)->where(['member' => $memberid])->select($options);
     }
+
+    /**
+     * 更新套票状态
+     * @author Guangpeng Cheng
+     * @date 2016-04-16
+     *
+     * @param string $begin_time 开始时间
+     * @param string $end_time 截止时间
+     */
+    public function syncPackageOrderStatus($begin_time, $end_time)
+    {
+        $dbConf = C('db');
+        $this->db(11,$dbConf['terminal'], true);
+        //获取子票
+        $where = [
+            'updateTime'=>
+                [
+                    array('egt',$begin_time),
+                    array('elt',$end_time)
+                ],
+        ];
+        $ordernums = $this->table('order_print')
+            ->where($where)->getField('orderNUM');
+        if ($ordernums)
+        {
+            $ordernum_str = "'". implode("','", $ordernums) . "'";
+            $where = "uu_ss_order.ordernum IN($ordernum_str) and uu_ss_order.status=0 and uu_order_addon.ifpack=2";
+            $unchanged_orders = $this->db(0)->table('uu_ss_order')
+                ->join('LEFT JOIN  uu_order_addon ON  uu_ss_order.ordernum=uu_order_addon.orderid')
+                ->where($where)
+                ->getField('uu_ss_order.ordernum');
+            if ($unchanged_orders) {
+                $unchanged_orders_str = "'".implode("','", $unchanged_orders) ."'";
+                $sql = <<<SQL
+SELECT MAX(s.dtime) as dtime,pack_order FROM uu_ss_order s LEFT JOIN uu_order_addon a ON a.orderid=s.ordernum
+WHERE a.pack_order IN($unchanged_orders_str)
+GROUP BY pack_order
+SQL;
+                $ret = $this->db(0)->query($sql);
+                $sql = "UPDATE uu_ss_order SET status=1,dtime= CASE ordernum WHERE";
+                $main_ordernums = [];
+                foreach ($ret as $item) {
+                    $main_ordernums[] = "'".$item['pack_order']."'";
+                    $sql .=  sprintf("WHEN '%s' THEN '%s' ", $item['pack_order'], $item['dtime']);
+                }
+                $main_ordernum_str = implode(',', $main_ordernums);
+                $sql .= "END WHERE ordernum IN ($main_ordernum_str)";
+                $this->db(0)->execute($sql);
+            }
+        }
+
+    }
 }
