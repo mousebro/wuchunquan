@@ -11,6 +11,7 @@ namespace Controller;
 
 use Library\Controller;
 use Library\Response;
+use Model\Order\OrderTools;
 
 class Order extends Controller
 {
@@ -27,6 +28,8 @@ class Order extends Controller
 
     private function verify()
     {
+        if (PHP_SAPI=='cli') return true;
+
         $data   = I('post.data');
         $token  = I('post.token');
         if ($token != md5(self::TOKEN_SALT . $data))
@@ -143,6 +146,18 @@ class Order extends Controller
             parent::apiReturn(200, [], '支付成功');
         }
         parent::apiReturn(201,[], '支付失败');
+    }
 
+    public function PackageOrderCheck($args)
+    {
+        if (PHP_SAPI!='cli') parent::apiReturn(0,[],'Invalid Access');
+        $time_begin = $args[3];
+        if (!$time_begin) {
+            $time_begin = date('Y-m-d H:00:00', strtotime('-1 hours'));
+        }
+        $time_end   = date('Y-m-d H:i:00',strtotime("+30 mins",strtotime($time_begin)));
+        echo $time_begin,'---', $time_end;
+        $model = new OrderTools();
+        $model->syncPackageOrderStatus($time_begin, $time_end);
     }
 }

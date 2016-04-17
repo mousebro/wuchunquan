@@ -191,8 +191,9 @@ class OrderTools extends Model {
                     array('elt',$end_time)
                 ],
         ];
-        $ordernums = $this->table('order_print')
-            ->where($where)->getField('orderNUM');
+        $ordernums = $this->db(11)->table('order_print')
+            ->where($where)->getField('orderNUM', true);
+        echo $this->db(11)->getLastSql();
         if ($ordernums)
         {
             $ordernum_str = "'". implode("','", $ordernums) . "'";
@@ -200,7 +201,9 @@ class OrderTools extends Model {
             $unchanged_orders = $this->db(0)->table('uu_ss_order')
                 ->join('LEFT JOIN  uu_order_addon ON  uu_ss_order.ordernum=uu_order_addon.orderid')
                 ->where($where)
-                ->getField('uu_ss_order.ordernum');
+                ->getField('uu_ss_order.ordernum', true);
+            echo $this->db(0)->getLastSql();
+                        
             if ($unchanged_orders) {
                 $unchanged_orders_str = "'".implode("','", $unchanged_orders) ."'";
                 $sql = <<<SQL
