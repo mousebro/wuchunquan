@@ -27,12 +27,12 @@ class Auth {
         $params     = base64_encode(json_encode($paramArr));
         $signature = $this->genSignature($controller, $action, $secret, $timestamp, $params);
 
-        $dataArr = {
+        $dataArr = array(
             'app_id'    => $appId,
             'signature' => $signature,
             'params'    => $params,
             'timestamp' => $timestamp
-        };
+        );
 
         return json_encode($dataArr);
     }
@@ -51,12 +51,14 @@ class Auth {
         if(!$jsonArr) {
             return false;
         }
+        $jsonArr = (array)$jsonArr;
 
         if(!isset($jsonArr['app_id']) || !isset($jsonArr['signature']) || !isset($jsonArr['params']) || !isset($jsonArr['timestamp'])) {
             return false;
         }
 
         $paramsArr = @json_decode(base64_decode($jsonArr['params']));
+        $paramsArr = (array)$paramsArr;
         if(!is_array($paramsArr)) {
             return false;
         }
@@ -79,7 +81,7 @@ class Auth {
      * @return
      */
     public static function genSignature($controller, $action, $secret, $timestamp, $params) {
-        if(!$controller || !$action || !$secret || !$timestamp || !$param) {
+        if(!$controller || !$action || !$secret || !$timestamp || !$params) {
             return false;
         }
 
@@ -87,7 +89,7 @@ class Auth {
         $action     = strval($action);
         $secret     = strval($secret);
         $timestamp  = strval($timestamp);
-        $params      = strval($conparamtroller);
+        $params     = strval($params);
 
         $signature = md5($controller . $action . $secret . $timestamp . $params);
         return $signature;
@@ -107,7 +109,7 @@ class Auth {
      * @return
      */
     public static function checkSignature($controller, $action, $secret, $timestamp, $params, $signature) {
-        if(!$controller || !$action || !$secret || !$timestamp || !$param) {
+        if(!$controller || !$action || !$secret || !$timestamp || !$params || !$signature) {
             return false;
         }
 
@@ -115,17 +117,17 @@ class Auth {
         $action     = strval($action);
         $secret     = strval($secret);
         $timestamp  = strval($timestamp);
-        $param      = strval($conparamtroller);
+        $params     = strval($params);
         $signature  = strval($signature);
 
         //判断时间
         $middleTime = time() - intval($timestamp);
-        if($middleTime > self::_validTime) {
+        if($middleTime > self::$_validTime) {
             return false;
         }
 
         //判断签名
-        $originSig = $this->genSignature($controller, $action, $secret, $timestamp, $params);
+        $originSig = self::genSignature($controller, $action, $secret, $timestamp, $params);
 
         if($originSig == $signature) {
             return true;

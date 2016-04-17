@@ -24,8 +24,7 @@ class withdraw extends Controller{
         $limit = intval($this->getParam('limit'));
         $limit = $limit < 1 ? 100 : ($limit > 100 ? 100 : $limit);
 
-        $withdrawModel = $this->model('');
-        $list = 
+        
     }
 
     /**

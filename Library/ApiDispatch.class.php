@@ -87,11 +87,12 @@ class ApiDispatch{
         $params    = $jsonArr['params'];
         $signature = $jsonArr['signature'];
         $paramsArr = $jsonArr['paramsArr'];
-        $res = Auth::checkSignature($controller, $action, $secret, $timestamp, $params, $signature)
+        $res = Auth::checkSignature($controller, $action, $secret, $timestamp, $params, $signature);
 
         //记录访问日志
         unset($jsonArr['params']);
-        pft_log('pft_api/log', json_encode($jsonArr));
+        $jsonArr['auth'] = $res ? 1 : 0;
+        pft_log('pft_api_access/log', json_encode($jsonArr));
 
         if(!$res) {
             return false;
