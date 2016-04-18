@@ -41,7 +41,14 @@ class withdraw extends Controller{
      * @return
      */
     public function feedback() {
+        $orderId = $this->getParam('order_id');
+        $status  = $this->getParam('status');
+        $queryId = $this->getParam('query_id');
 
+
+        pft_log('withdraw_error/api', json_encode($_POST));
+
+        $this->apiReturn(200, []);
     }
 
 }
