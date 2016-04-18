@@ -4,6 +4,7 @@
  * Time: 18:31 2016/4/1
  * TestUrl: http://www.12301.local/route/index.php?c=OrderCallbackLog&a=getNoticeList
  * TestUrl: http://www.12301.test/route/index.php?c=OrderCallbackLog&a=getNoticeList
+ * TestUrl: http://www.12301.local/route/index.php?c=OrderCallbackLog&a=getReceivers
  */
 
 namespace Controller;
@@ -34,31 +35,34 @@ class OrderCallbackLog extends Controller
         $orderNum   = I('param.ordernum');
         $noticeType = I('param.stype');
         $noticeDate = I('param.notice_date');
-        $receiver   = I('param.receiver');
+        $memberId   = I('param.memberId');
         $page       = I('param.page') ? I('param.page') : 1;
         $limit      = I('param.limit') ? I('param.limit') : 20;
         if(!class_exists('Model\\Order\\OrderCallbackLog') || !class_exists('Model\\Order\\RefundAuditModel')){
             $this->apiReturn(204);
         }
         try {
-            $logModel  = new \Model\Order\OrderCallbackLog();
-            $callbacks = $logModel->getNoticeList($orderNum, $noticeType, $noticeDate, $receiver, $page, $limit);
-            if ( ! $callbacks) {
-                $this->apiReturn(201);
-            }
             $row = array();
-            foreach ($callbacks as $callback) {
-                $row1[$callback['ordernum']] = $callback;
+            $logModel  = new \Model\Order\OrderCallbackLog();
+            $callbacks = $logModel->getNoticeList($orderNum, $noticeType, $noticeDate, $memberId, $page, $limit);
+            if ( ! $callbacks) {
+                $this->apiReturn(202);
             }
+            $callback_list = $callbacks['list'];
+            foreach ($callback_list as $callback) {
+                $row[$callback['ordernum']] = $callback;
+            }
+            $total = $callbacks['total'];
 
-            $orders     = array_column($callbacks, 'ordernum');
+            $row_merged = array();
+            $orders     = array_column($callback_list, 'ordernum');
             $auditModel = new \Model\Order\RefundAuditModel();
             $audits     = $auditModel->getNoticeList($orders);
             if ( ! $audits) {
-                $this->apiReturn(201, [], '查询记录为空');
+                $this->apiReturn(202);
             }
-            foreach ($audits as $audit) {
-                $row_tmp = array_merge($row1[$audit['ordernum']], $audit);
+            foreach ($audits['list'] as $audit) {
+                $row_tmp = array_merge($row[$audit['ordernum']], $audit);
                 uksort($row_tmp, function ($key1, $key2) {
                     $key_arr      = array('notice_id', 'ordernum', 'ltitle', 'change_type', 'apply_time', 'handle_res', 'ota_name', 'last_push_time', 'push_state',);
                     $key_arr_flip = array_flip($key_arr);
@@ -68,13 +72,13 @@ class OrderCallbackLog extends Controller
                         return -1;
                     }
                 });
-                $row[]   = $row_tmp;
+                $row_merged[]   = $row_tmp;
             }
             $data = array(
                 'page'=>$page,
                 'limit'=>$limit,
                 'total'=>$total,
-                'list'=>$row,
+                'list'=>$row_merged,
             );
             $this->apiReturn(200, $data);
         } catch (Exception $e) {
@@ -87,16 +91,18 @@ class OrderCallbackLog extends Controller
      */
     public function getReceivers()
     {
-        $page     = I('param.page');
-        $limit    = I('param.limit');
-        $dname = I('param.dname');
+        $page = intval(I('param.page'));
+        $page = $page ? $page : 1;
+        $limit = intval(I('param.limit'));
+        $limit = $limit ? $limit : 20;
+        $ota_name = trim(I('param.ota_name'));
         if(!class_exists('Model\\Order\\RefundAuditModel')){
             $this->apiReturn(204);
         }
         try{
             $refundModel = new Order\RefundAuditModel();
-            $receivers = $refundModel -> getReceiverList($dname);
-            return $receivers;
+            $data = $refundModel -> getReceiverList($ota_name,$page,$limit);
+            $this->apiReturn(200, $data);
         }catch (Exception $e) {
             $this->apiReturn(203, [], $e->getMessage());
         }

@@ -23,7 +23,7 @@ class OrderCallbackLog extends Model
 
 //    public function getNoticeList(array $ordernum){
 //notice—type 1-修改 2-取消
-    public function getNoticeList($orderNum=null,$noticeType=null,$noticeDate=null,$receiver=null,$page=1,$limit=20){
+    public function getNoticeList($orderNum=null,$noticeType=null,$noticeDate=null,$memberId=null,$page=1,$limit=20){
         $orderNum   = $orderNum ? $orderNum : null;
         $noticeType = (in_array($noticeType,[1, 2])) ? $noticeType : null;
         $page       = $page ? $page : 1;
@@ -45,8 +45,8 @@ class OrderCallbackLog extends Model
                 $where['pushtime'] = array('between',"{$bTime},{$eTime}");
             }
             //通知接口
-            if($receiver){
-                $where['pushchannel'] = $receiver;
+            if($memberId){
+                $where['fid'] = $memberId;
             }
         }
 
@@ -56,13 +56,17 @@ class OrderCallbackLog extends Model
             'pushlasttime as last_push_time',
             'pushstatus as push_state',
             'notice_type as change_type',
-            'pushchannel',
+//            'pushchannel',
         );
         $order = array(
             'id DESC',
         );
-        $result = $this->table($table)->field($field)->where($where)->order($order)->page($page)->limit($limit)->select();
-        return $result;
+        $list = $this->table($table)->field($field)->where($where)->order($order)->page($page)->limit($limit)->select();
+        if(!$list){
+            return false;
+        }
+        $total = $this->table($table)->where($where)->count();
+        return array('list'=>$list,'total'=>$total);
     }
 
 

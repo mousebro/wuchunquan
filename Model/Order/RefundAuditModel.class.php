@@ -543,16 +543,19 @@ class RefundAuditModel extends Model
         $order  = array(
             'a.dtime desc',
         );
-        $result = $this->table($table)
-                       ->join($join)
-                       ->where($where)
-                       ->field($field)
-                       ->order($order)
-                       ->page($page)
-                       ->limit($limit)
-                       ->select();
-
-        return $result;
+        $list = $this->table($table)
+            ->join($join)
+            ->where($where)
+            ->field($field)
+            ->order($order)
+            ->page($page)
+            ->limit($limit)
+            ->select();
+        if(!$list){
+            return false;
+        }
+        $total = $this->table($table)->join($join)->where($where)->count();
+        return array('total'=>$total, 'list'=>$list);
     }
 
     /**
@@ -616,23 +619,38 @@ class RefundAuditModel extends Model
 
     /**
      * 获取通知接口列表
-     * @param string $dname 可按照用户名查询
+     *
+     * @param string $ota_name 可按照用户名查询
+     *
+     * @param int    $page
+     * @param int    $limit
      *
      * @return mixed
      */
-    public function getReceiverList($dname){
+    public function getReceiverList($ota_name = null,$page=1,$limit=20){
         $table = $this->_memberTable;
         $where = array(
-            'dcodeurl' => array('neq',''),
+            'dcodeURL' => array('neq',''),
+            'dtype'=>array('in',[0,1,7]),
+            'status'=>array('in',[0,3]),
+            'length(account)' => 6,
         );
-        if($dname){
-            $where['dname'] = array('like', "%{$dname}%");
+        if ($ota_name){
+            $where['dname'] = array('like', "%{$ota_name}%");
         }
         $field = array(
-            'dname',
+            'dname as ota_name',
             'id as memberid',
         );
-        $result = $this->table($table)->where($where)->field($field)->select();
+        $data = $this->table($table)->where($where)->field($field)->page($page)->limit($limit)->select();
+//        $this->test();
+        $total = $this->table($table)->where($where)->count();
+        $result = array(
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $total,
+            'data' => $data,
+        );
         return $result;
     }
     /**
