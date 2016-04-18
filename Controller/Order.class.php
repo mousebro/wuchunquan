@@ -148,6 +148,11 @@ class Order extends Controller
         parent::apiReturn(201,[], '支付失败');
     }
 
+    public function OrderSaleLog()
+    {
+        
+    }
+
     public function PackageOrderCheck($args)
     {
         if (PHP_SAPI!='cli') parent::apiReturn(0,[],'Invalid Access');
