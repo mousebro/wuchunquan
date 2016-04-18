@@ -27,7 +27,7 @@ elseif (ENV=='TEST') {
     define('PAY_DOMAIN', 'http://pay.12301dev.com/');
     define('MOBILE_DOMAIN', 'http://wx.12301dev.com/');
     define('IMAGE_URL', 'http://images.12301dev.com/');
-    define('STATIC_URL', 'http://static.12301.cc/');
+    define('STATIC_URL', 'http://static.12301dev.com/');
     define('OPEN_URL', 'http://open.12301dev.com/');
     define('MOBILE_URL', 'http://12301dev.com/');
     define('IP_INSIDE', '10.117.7.197');
