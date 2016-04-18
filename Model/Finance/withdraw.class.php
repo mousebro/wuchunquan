@@ -27,12 +27,17 @@ class Reseller extends Model{
         );
 
         $order = 'apply_time asc';
-        $page = "1,{$limit}";
+        $page  = "1,{$limit}";
         $field = '*';
 
         $list = $this->table($this->withdrawTable)->where($where)->field($field)->order($order)->page($page)->select();
 
         return $list;
+    }
+
+    
+    public function feedbackStatus() {
+
     }
 
 }
