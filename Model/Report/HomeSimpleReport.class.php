@@ -32,7 +32,6 @@ class HomeSimpleReport extends Model
      */
     public function StoreNotice($aid, $start_date, $end_date, $today=false)
     {
-
         if ($today) {
             $where = [
                 'aid'   =>$aid,

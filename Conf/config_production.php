@@ -56,6 +56,14 @@ return array(
             'db_port'   => 3306,
             'db_name'   => 'summary',
         ),
+        'terminal'  => array(
+            'db_type'   => 'mysql',
+            'db_host'   => '10.171.194.212',
+            'db_user'   => 'app_user',
+            'db_pwd'    => 'app@12301$*#',
+            'db_port'   => 3306,
+            'db_name'   => 'orderdata',
+        ),
     ),
     'redis'=>array(
         'main'=> array(

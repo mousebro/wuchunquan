@@ -11,6 +11,7 @@ namespace Controller;
 
 use Library\Controller;
 use Library\Response;
+use Model\Order\OrderTools;
 
 class Order extends Controller
 {
@@ -27,6 +28,8 @@ class Order extends Controller
 
     private function verify()
     {
+        if (PHP_SAPI=='cli') return true;
+
         $data   = I('post.data');
         $token  = I('post.token');
         if ($token != md5(self::TOKEN_SALT . $data))
@@ -54,6 +57,7 @@ class Order extends Controller
             parent::apiReturn(202, [],'其他错误:'.$res);
         }
     }
+
     public function QuickSearch()
     {
 
@@ -69,9 +73,9 @@ class Order extends Controller
         $tid = 0;
         $member             = $this->data->member;
         $aid                = $this->data->aid;
-        if (!$member && !$aid) {
-            parent::apiReturn('403',[],'供应商ID与购买者ID不能全为空');
-        }
+        //if (!$member && !$aid) {
+        //    parent::apiReturn('403',[],'供应商ID与购买者ID不能全为空');
+        //}
         //print_r($this->data);exit;
         //echo $salerId;
         //exit;
@@ -123,5 +127,37 @@ class Order extends Controller
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
+    }
+
+    /**
+     * 现金支付/会员卡支付
+     */
+    public function QuickPayOffline()
+    {
+        $ordernum       = $this->data->ordernum;
+        $pay_total_fee  = (int)$this->data->total_fee;
+        $pay_channel    = 4;
+        $sourceT        = (int)$this->data->sorceT;//4=>现金 5 =>会员卡
+        $pay_to_pft     = false;
+        //$soap = new \ServerInside();
+        $res = $this->soap->Change_Order_Pay($ordernum,-1, $sourceT, $pay_total_fee, 1,'','',1,
+            $pay_to_pft, $pay_channel);
+        if ($res==100) {
+            parent::apiReturn(200, [], '支付成功');
+        }
+        parent::apiReturn(201,[], '支付失败');
+    }
+
+    public function PackageOrderCheck($args)
+    {
+        if (PHP_SAPI!='cli') parent::apiReturn(0,[],'Invalid Access');
+        $time_begin = $args[3];
+        if (!$time_begin) {
+            $time_begin = date('Y-m-d H:00:00', strtotime('-1 hours'));
+        }
+        $time_end   = date('Y-m-d H:i:00',strtotime("+30 mins",strtotime($time_begin)));
+        echo $time_begin,'---', $time_end;
+        $model = new OrderTools();
+        $model->syncPackageOrderStatus($time_begin, $time_end);
     }
 }

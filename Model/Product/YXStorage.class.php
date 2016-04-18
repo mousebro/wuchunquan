@@ -1012,6 +1012,52 @@ class YXStorage extends Model{
     }
 
     /**
+     * 设置默认分销库存的状态
+     * @author dwer
+     * @date   2016-03-20
+     *
+     * @param  $areaId 分区ID
+     * @param  $setterId 供应商ID
+     * @param  $status 状态
+     */
+    public function setInfoDefault($areaId, $setterId, $status){
+        $where = array(
+            'area_id'     => $areaId,
+            'setter_id'   => $setterId
+        );
+
+        $field = 'id';
+        $tmp = $this->table($this->_defaultInfoTable)->field($field)->where($where)->find();
+
+        if($tmp) {
+            $data = array(
+                'status'      => $status,
+                'update_time' => time()
+            );
+
+            $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
+        } else {
+            $newData = $where;
+            $newData['status']      = $status;
+            $newData['update_time'] = time();
+
+            $res = $this->table($this->_defaultInfoTable)->add($newData);
+        }
+
+        //写日志
+        $logData         = ['ac' => 'setInfoDefault'];
+        $logData['data'] = [$areaId, $setterId, $status];
+        $logData['rs']   = $res;
+        $this->_log($logData, 'set');
+
+        if($res === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
      * 获取已经使用掉的未分配库存
      * @autho dwer
      * @date   2016-03-22
