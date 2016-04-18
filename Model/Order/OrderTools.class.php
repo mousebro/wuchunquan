@@ -203,7 +203,7 @@ class OrderTools extends Model {
                 ->where($where)
                 ->getField('uu_ss_order.ordernum', true);
             echo $this->db(0)->getLastSql();
-                        
+
             if ($unchanged_orders) {
                 $unchanged_orders_str = "'".implode("','", $unchanged_orders) ."'";
                 $sql = <<<SQL
