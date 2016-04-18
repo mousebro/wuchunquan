@@ -18,21 +18,26 @@ class ApiDispatch{
         }
 
         //设置传过来的参数
-        $_POST = $res;
+        $_POST  = $res['paramsArr'];
+        $method = $res['method'];
 
         //处理路由
-        $_routeAr = self::_getRequestRoute();
+        $_routeAr = self::_handleRoute($method);
+        if(!$_routeAr) {
+            self::error(400, 'Method Not Exist');
+        }
+
         $key      = $_routeAr['c'] . '_' . $_routeAr['a'];
         if (class_exists($_routeAr['c'])){
             $_object = new $_routeAr['c']();
         } else {
-            self::error(400, 'Controller Not Exist');
+            self::error(400, 'Method Not Exist');
         }
 
         if (method_exists($_routeAr['c'], $_routeAr['a'])) {
             $_codeAr[$key] = $_object->$_routeAr['a']();
         } else {
-            self::error(400, 'Action Not Exist');
+            self::error(400, 'Method Not Exist');
         }
     }
 
@@ -60,13 +65,6 @@ class ApiDispatch{
      * @return
      */
     private static function _auth() {
-        $controller = strval(I('get.c'));
-        $action     = strval(I('get.a'));
-
-        if(!$controller || !$action) {
-            return false;
-        }
-        
         $jsonData = self::_getPostData();
         if(!$jsonData) {
             return false;
@@ -87,7 +85,9 @@ class ApiDispatch{
         $params    = $jsonArr['params'];
         $signature = $jsonArr['signature'];
         $paramsArr = $jsonArr['paramsArr'];
-        $res = Auth::checkSignature($controller, $action, $secret, $timestamp, $params, $signature);
+        $method    = $jsonArr['method'];
+
+        $res = Auth::checkSignature($method, $secret, $timestamp, $params, $signature);
 
         //记录访问日志
         unset($jsonArr['params']);
@@ -97,17 +97,45 @@ class ApiDispatch{
         if(!$res) {
             return false;
         } else {
-            return $paramsArr;
+            return array('paramsArr' =>$paramsArr, 'method' => $method);
         }
     }
 
-    private static function _getRequestRoute(){
-        $controller = I('get.c');
-        if (strpos($controller, '_')!==false) {
-            list($namespace, $controller) = explode('_', $controller);
-            $controller = $namespace . '/' . $controller;
+    /**
+     * 从传过来的参数中获取路由信息
+     * @author dwer
+     * @date   2016-04-18
+     *
+     * @param $method
+     * @return 
+     */
+    private static function _handleRoute($method){
+        $method = strval($method);
+        if(!$method) {
+            return false;
         }
-        $action     = I('get.a');
+
+        $methodArr = explode('_', $method);
+        $length = count($methodArr);
+        if($length <= 1 || $length > 3) {
+            return false;
+        }
+
+        $controller = '';
+        $action     = '';
+        for($i = 0; $i < $length; $i++) {
+            if(!$methodArr[$i]) {
+                return false;
+            }
+
+            if($i < ($length-1)) {
+                $controller .= '/' . $methodArr[$i];
+            } else {
+                $action = $methodArr[$i];
+            }
+        }
+
+        $controller = trim($controller, '/');
         $controller = 'Api\\' . str_replace('/', '\\', $controller);
         return [
             'c'=>$controller,

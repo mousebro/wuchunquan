@@ -17,21 +17,21 @@ class Auth {
      *
      * @param  $appId
      * @param  $secret
-     * @param  $controller
-     * @param  $action
+     * @param  $method
      * @param  $paramArr
      * @return
      */
-    public static function genPostData($appId, $secret, $controller, $action, $paramArr) {
+    public static function genPostData($appId, $secret, $method, $paramArr) {
         $timestamp = time();
         $params     = base64_encode(json_encode($paramArr));
-        $signature = $this->genSignature($controller, $action, $secret, $timestamp, $params);
+        $signature = $this->genSignature($method, $secret, $timestamp, $params);
 
         $dataArr = array(
             'app_id'    => $appId,
             'signature' => $signature,
             'params'    => $params,
-            'timestamp' => $timestamp
+            'timestamp' => $timestamp,
+            'method'    => $method
         );
 
         return json_encode($dataArr);
@@ -53,7 +53,7 @@ class Auth {
         }
         $jsonArr = (array)$jsonArr;
 
-        if(!isset($jsonArr['app_id']) || !isset($jsonArr['signature']) || !isset($jsonArr['params']) || !isset($jsonArr['timestamp'])) {
+        if(!isset($jsonArr['app_id']) || !isset($jsonArr['signature']) || !isset($jsonArr['params']) || !isset($jsonArr['timestamp']) || !isset($jsonArr['method'])) {
             return false;
         }
 
@@ -64,7 +64,6 @@ class Auth {
         }
 
         $jsonArr['paramsArr'] = $paramsArr;
-
         return $jsonArr;
     }
 
@@ -73,25 +72,23 @@ class Auth {
      * @author dwer
      * @date   2016-04-16
      *
-     * @param  $action 控制器 url中的c参数
-     * @param  $controller 方法 url中的a参数
+     * @param  $method 方法名
      * @param  $secret 密钥
      * @param  $timestamp 时间戳 - 1460823195
      * @param  $params - 参数 - base64_encode(json_encode(参数数组))
      * @return
      */
-    public static function genSignature($controller, $action, $secret, $timestamp, $params) {
-        if(!$controller || !$action || !$secret || !$timestamp || !$params) {
+    public static function genSignature($method, $secret, $timestamp, $params) {
+        if(!$method || !$secret || !$timestamp || !$params) {
             return false;
         }
+        
+        $method    = strval($method);
+        $secret    = strval($secret);
+        $timestamp = strval($timestamp);
+        $params    = strval($params);
 
-        $controller = strval($controller);
-        $action     = strval($action);
-        $secret     = strval($secret);
-        $timestamp  = strval($timestamp);
-        $params     = strval($params);
-
-        $signature = md5($controller . $action . $secret . $timestamp . $params);
+        $signature = md5(md5($method . $secret . $timestamp . $params));
         return $signature;
     }
 
@@ -108,17 +105,16 @@ class Auth {
      * @param  $signature 待验证的签名 
      * @return
      */
-    public static function checkSignature($controller, $action, $secret, $timestamp, $params, $signature) {
-        if(!$controller || !$action || !$secret || !$timestamp || !$params || !$signature) {
+    public static function checkSignature($method, $secret, $timestamp, $params, $signature) {
+        if(!$method || !$secret || !$timestamp || !$params || !$signature) {
             return false;
         }
 
-        $controller = strval($controller);
-        $action     = strval($action);
-        $secret     = strval($secret);
-        $timestamp  = strval($timestamp);
-        $params     = strval($params);
-        $signature  = strval($signature);
+        $method    = strval($method);
+        $secret    = strval($secret);
+        $timestamp = strval($timestamp);
+        $params    = strval($params);
+        $signature = strval($signature);
 
         //判断时间
         $middleTime = time() - intval($timestamp);
@@ -127,7 +123,7 @@ class Auth {
         }
 
         //判断签名
-        $originSig = self::genSignature($controller, $action, $secret, $timestamp, $params);
+        $originSig = self::genSignature($method, $secret, $timestamp, $params);
 
         if($originSig == $signature) {
             return true;
