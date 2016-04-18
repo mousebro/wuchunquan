@@ -28,6 +28,7 @@ class ApiDispatch{
         }
 
         $key      = $_routeAr['c'] . '_' . $_routeAr['a'];
+        echo $_routeAr['c'];
         if (class_exists($_routeAr['c'])){
             $_object = new $_routeAr['c']();
         } else {
