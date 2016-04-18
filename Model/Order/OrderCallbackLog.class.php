@@ -18,7 +18,7 @@ class OrderCallbackLog extends Model
      */
     public function __construct()
     {
-        parent::__construct('orderdata');
+        parent::__construct('terminal');
     }
 
 //    public function getNoticeList(array $ordernum){
