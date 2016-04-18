@@ -42,6 +42,10 @@ class Order extends Controller
         }
     }
 
+    /**
+     * 闸机快速下单——根据门票，支付码
+     *
+     */
     public function QuickOrder()
     {
 
@@ -148,20 +152,30 @@ class Order extends Controller
         parent::apiReturn(201,[], '支付失败');
     }
 
+    /**
+     * 订单销售记录
+     */
     public function OrderSaleLog()
     {
         
     }
+    /**
+     * 订单汇总
+     */
+    public function Summary()
+    {
 
+
+    }
     public function PackageOrderCheck($args)
     {
-        if (PHP_SAPI!='cli') parent::apiReturn(0,[],'Invalid Access');
+        if (PHP_SAPI != 'cli') parent::apiReturn(0, [], 'Invalid Access');
         $time_begin = $args[3];
         if (!$time_begin) {
             $time_begin = date('Y-m-d H:00:00', strtotime('-1 hours'));
         }
-        $time_end   = date('Y-m-d H:i:00',strtotime("+30 mins",strtotime($time_begin)));
-        echo $time_begin,'---', $time_end;
+        $time_end = date('Y-m-d H:i:00', strtotime("+30 mins", strtotime($time_begin)));
+        echo $time_begin, '---', $time_end;
         $model = new OrderTools();
         $model->syncPackageOrderStatus($time_begin, $time_end);
     }
