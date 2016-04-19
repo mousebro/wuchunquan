@@ -62,7 +62,8 @@ class OrderCallbackLog extends Controller
                 $this->apiReturn(202);
             }
             foreach ($audits['list'] as $audit) {
-                $row_tmp = array_merge($row[$audit['ordernum']], $audit);
+                $row2[$audit['ordernum']] = $audit;
+                $row_tmp = array_merge($row[$audit['ordernum']], $row2[$audit['ordernum']]);
                 uksort($row_tmp, function ($key1, $key2) {
                     $key_arr      = array('notice_id', 'ordernum', 'ltitle', 'change_type', 'apply_time', 'handle_res', 'ota_name', 'last_push_time', 'push_state',);
                     $key_arr_flip = array_flip($key_arr);
