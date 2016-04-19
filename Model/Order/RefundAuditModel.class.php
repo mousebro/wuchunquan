@@ -536,6 +536,7 @@ class RefundAuditModel extends Model
 //            'a.dtime',
             'a.stime as apply_time',
 //            'a.fxid',
+            'a.tnum',
             'a.dstatus as handle_res',
             'm.dname as ota_name',
             'l.title as ltitle',
