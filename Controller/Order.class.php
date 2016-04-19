@@ -39,6 +39,10 @@ class Order extends Controller
         }
     }
 
+    /**
+     * 闸机快速下单——根据门票，支付码
+     *
+     */
     public function QuickOrder()
     {
 
@@ -124,5 +128,20 @@ class Order extends Controller
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
+    }
+
+    /**
+     * 订单销售记录
+     */
+    public function OrderSaleLog()
+    {
+
+    }
+    /**
+     * 订单汇总
+     */
+    public function Summary()
+    {
+
     }
 }
