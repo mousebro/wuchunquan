@@ -5,15 +5,24 @@
 
 namespace Model\Product;
 use Library\Model;
+use Model\Product\Ticket;
+use Library\Resque\Queue as Queue;
 
 class Price extends Model {
 
-    const __SALE_LIST_TABLE__   = 'pft_product_sale_list';    //一手供应商产品表
-    const __EVOLUTE_TABLE__     = 'pft_p_apply_evolute';    //转分销产品表
+    const __SALE_LIST_TABLE__       = 'pft_product_sale_list';    //一手供应商产品表
+    const __EVOLUTE_TABLE__         = 'pft_p_apply_evolute';    //转分销产品表
 
-    const __PRICESET_TABLE__    = 'uu_priceset';   //产品价格表
+    const __PRICESET_TABLE__        = 'uu_priceset';   //产品价格表
+    const __PRICE_CHG_NOTIFY_TABLE__  = 'pft_price_change_notify';
+    const __PRICE_GROUP__TABLE__    = 'pft_price_group';
 
-    protected $soap_cli = null; //soap接口实例
+    protected $soap_cli             = null;     //soap接口实例
+
+    protected $notify_data          = array();  //权限变更待通知数据
+
+    protected $commit_flag          = false;    //本次配置是否成功标识
+
 
     
     /**
@@ -28,6 +37,7 @@ class Price extends Model {
         $result = $this->setPriceForOneProduct($sid, $saccount, $pid, $priceset, $aid);
         if ($result) {
             $this->commit();
+            $this->commit_flag = true;
             return true;
         } else {
             $this->rollback();
@@ -62,6 +72,7 @@ class Price extends Model {
             }
         }
         $this->commit();
+        $this->commit_flag = true;
         return true;
     }
 
@@ -91,6 +102,7 @@ class Price extends Model {
             }
         }
         $this->commit();
+        $this->commit_flag = true;
         return true;
     }
 
@@ -108,7 +120,7 @@ class Price extends Model {
 
         //获取当前登录用户的结算价
         $self_price = $this->getSettlePrice($saccount, $pid, $aid);
-        if ($self_price == false) {
+        if ($self_price === false) {
             // var_dump($pid);die;
             return true;   //无分销权限
         }
@@ -201,15 +213,15 @@ class Price extends Model {
         if (count($todo_insert)) {
             foreach ($todo_insert as $did => $diff_price) {
                 $insert_data[] = array(
-                    'tid' => $pid,
-                    'pid' => $did,
-                    'aid' => $real_aid,
-                    'dprice' => $diff_price,
-                    'status' => 0 
+                    'tid'       => $pid,
+                    'pid'       => $did,
+                    'aid'       => $real_aid,
+                    'dprice'    => $diff_price,
+                    'status'    => 0 
                 );
             }
         }
-        // var_dump($todo_update, $insert_data);
+        // var_dump($todo_update, $insert_data);die;
         if ($insert_data) {
             $last_insert_id = $this->table(self::__PRICESET_TABLE__)->addAll($insert_data);
             $this->recordLog($sid, $last_insert_id . $this->_sql());
@@ -226,6 +238,10 @@ class Price extends Model {
             $this->recordLog($sid, $affect_rows . $this->_sql());
 
             if (!$affect_rows) return false;
+
+            foreach ($update_did_arr as $did) {
+                $this->_priceChangeNotify($sid, $did, $pid);    //价格变动通知
+            }
         }
 
         return true;
@@ -266,12 +282,15 @@ class Price extends Model {
                 if (!$this->deletePermission($pid, $did, "$sid,$did", $sid)) {
                     return false;
                 }
+                $this->_permissionChangeNotify($sid, $did, $pid, 'delete');
                 // continue;
             } else {
                 if ($pid_arr[0] == 'A' || in_array($pid, $pid_arr)) {
                     continue;
                 }
                 $new_pid_arr = array_merge($pid_arr, array($pid));
+
+                self::_permissionChangeNotify($sid, $did, $pid, 'add');
             }
 
             $new_pid_arr = array_unique($new_pid_arr);
@@ -289,9 +308,8 @@ class Price extends Model {
 
         if ($todo_open) {
             $affect_rows = $this->table(self::__EVOLUTE_TABLE__)
-                                ->where(array('id' => array('in', implode($todo_open))))
+                                ->where(array('id' => array('in', implode(',', $todo_open))))
                                 ->save(array('active' => 0));
-        
             $this->recordLog($sid, $affect_rows . $this->_sql());
             if (!$affect_rows) return false;
         }
@@ -331,12 +349,14 @@ class Price extends Model {
             if ($did == $sid || in_array($did, $chain_cur)) {
                 continue;
             }
+            $add_permission = false;    //是否新增分销权限
             //存在则更新，不存在则插入
             if (isset($tmp_chain_info[$did])) {
                 //价格为空，去除分销权限
                 if ($priceset[$did] == '' && $priceset[$did] !== 0) {
                     if ($tmp_chain_info[$did]['status'] != 1 || $tmp_chain_info[$did]['active'] != 0) {
                         $todo_delete[] = $tmp_chain_info[$did]['id'];
+                        $this->_permissionChangeNotify($sid, $did, $pid, 'delete');
                     }
                     $this->deletePermission($pid, $did, $tmp_chain_info[$did]['aids'].','.$did, $sid);
                     continue;
@@ -344,12 +364,18 @@ class Price extends Model {
 
                 if ($tmp_chain_info[$did]['status'] == 0) continue;
 
+                $add_permission = true;
                 $todo_update[] = $tmp_chain_info[$did]['id'];
             } else {
                 if ($priceset[$did] == '' && $priceset[$did] !== 0) {
                     continue;
                 }
+                $add_permission = true;
                 $todo_insert[] = $did;
+            }
+
+            if ($add_permission) {
+                $this->_permissionChangeNotify($sid, $did, $pid, 'add');
             }
         }
         // var_dump($todo_insert, $todo_update, $todo_delete);die;
@@ -408,13 +434,23 @@ class Price extends Model {
      * @return [type]       [description]
      */
     public function deletePermission($pid, $did, $aids, $sid) {
+
+        //取消分销权限通知
+        $this->_permissionDeleteNotify($did, $pid, $sid);
+        // var_dump($did);
+
         $tree = $this->table(self::__EVOLUTE_TABLE__)
-                    ->where(array('pid' => $pid, 'status' => 0, 'sid' => array('exp', '=substring(aids, -length(sid))'), 'aids' => array('like', $aids . '%')))
-                    ->field('id')
+                    ->where(array(
+                        'pid'       => $pid, 
+                        'status'    => 0, 
+                        '_string'   => 'sid=substring(aids, -length(sid))', 
+                        'aids'      => array('like', $aids . '%')))
+                    ->field('id,fid,sid')
                     ->select();
-        // var_dump($this->_sql());
+
         $todo_update = array();
         foreach ($tree as  $item) {
+            $this->_permissionChangeNotify($item['sid'], $item['fid'], $pid, 'delete');
             $todo_update[] = $item['id'];
         }
         if ($todo_update) {
@@ -427,13 +463,232 @@ class Price extends Model {
         return true;
     }
 
+    /**
+     * 监听供货价修改，根据差价修改分组的价格
+     * @param  [type] $pid  [description]
+     * @param  [type] $diff [description]
+     * @return [type]       [description]
+     */
+    public function resetGroupPrice($sid, $pid, $diff) {
+        $groups = $this->table(self::__PRICE_GROUP__TABLE__)
+            ->where([
+                'dids' => array('neq', ''),
+                '_string' => "default_inc != '' and default_inc != '[]'"
+            ])
+            ->field('id,default_inc')
+            ->select();
+
+        $update = array();
+        foreach ($groups as $group) {
+            $default_inc = json_decode($group['default_inc'], true);
+            if (!array_key_exists($pid, $default_inc)) {
+                continue;
+            }
+
+            $default_inc[$pid] = $default_inc[$pid] + $diff;
+            $update[$group['id']] = json_encode($default_inc);
+        }
+
+        if (!$update) return true;
+
+        $sql = 'update '.self::__PRICE_GROUP__TABLE__.' set default_inc = case ';
+        $ids_str = implode(',',array_keys($update)); 
+
+        foreach($update as $k=>$v){
+              $sql .= sprintf(" when id = %d then '%s'",$k,$v);
+        }
+        $sql .= ' END WHERE id IN ('.$ids_str.') ';
+        if ($this->execute($sql)) {
+            echo 'success';
+        } else {
+            echo $sql;
+            echo 'fail';
+        }
+    }
+
+    /**
+     * 获取某个用户的产品上下架通知
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
+    public function getPermissionChange($memberid, $type = 'in', $options = array()) {
+        $options = $this->_combineNotifyOptions($options);
+        extract($options);
+
+        $notify_type = $type == 'in' ? 2 : 1;
+        $where = array(
+            'mid'           => $memberid,
+            'notify_type'   => $notify_type,
+            'create_time'   => array('between', array($begin_time, $end_time)),
+        );
+        $result = $this->table(self::__PRICE_CHG_NOTIFY_TABLE__)
+                        ->where($where)
+                        ->field('aid,mid,pid,create_time')
+                        ->limit($limit)
+                        ->select();
+
+        $return = array();
+        foreach ($result as $key => $item) {
+            $return[$item['pid']] = $item;
+        }
+        return $return;
+    }
+
+    /**
+     * 获取价格变动的记录
+     * @param  [type] $memberid [description]
+     * @param  array  $options  [description]
+     * @return [type]           [description]
+     */
+    public function getPriceChange($memberid, $options = array()) {
+        $options = $this->_combineNotifyOptions($options);
+        extract($options);
+
+        $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
+
+        $sale_pid_arr = array();
+        foreach ($sale_list as $item) {
+            $sale_pid_arr = array_merge($sale_pid_arr, explode(',', $item['pids']));
+        }
+
+        $TicketModel = new Ticket();
+        $products = $TicketModel->getSaleDisProducts(
+            $memberid, 
+            array('active' => array('in', '0,1')), 
+            array('field' => 'p.id')
+        );
+        $dis_pid_arr = array();
+        foreach ($products as $product) {
+            $dis_pid_arr[] = $product['id'];
+        }
+        //监听变化的产品集合
+        $pid_arr = array_unique(array_merge($dis_pid_arr, $sale_pid_arr));
+
+        $where = array(
+            'pid' => array('in', implode(',', $pid_arr)),
+            'notify_type' => 0,
+            'create_time' => array('between', array($begin_time, $end_time)),
+        );
+
+        //可能发生改变的产品结合
+        $possible_change = $this->table(self::__PRICE_CHG_NOTIFY_TABLE__)
+            ->where($where)
+            ->field('mid,aid,pid,create_time')
+            ->select(); 
+
+        $result = $next_find = array();
+        if ($possible_change) {
+            foreach ($possible_change as $item) {
+                if ($item['mid'] == $memberid) {
+                    //因为上级供应商配置价格直接引起的变化
+                    $result[] = $item;
+                } else {
+                    $next_find[] = $item;
+                }
+            }
+        }
+
+        if ($next_find) {
+            $goto = array();
+            foreach ($next_find as $item) {
+                $where = array(
+                    'fid'       => $memberid,
+                    'pid'       => $item['pid'],
+                    '_string'   => 'find_in_set('.$item['mid'].', aids)',
+                    'status'    => 0
+                );
+                //因为上游(不是直接上下级)的供应商更改价格引起的价格变化
+                $find = $this->table(self::__EVOLUTE_TABLE__)->where($where)->find();
+                if ($find && !in_array($find['sid'] . $item['create_time'], $goto)) {
+                    $item['aid'] = $find['sid'];
+                    $item['mid'] = $find['fid'];
+                    $result[]    = $item;
+                    $goto[]      = $find['sid'] . $item['create_time'];
+                }
+            }
+        }
+
+        $iterator = new \ArrayIterator($result);
+        $limits = new \LimitIterator($iterator, ($page - 1) * $page_size, $page_size);
+
+        $result = array();
+        foreach ($limits as $item) {
+            $result[$item['pid']] = $item;
+        }
+
+        return $result;
+    }
+
+    private function _combineNotifyOptions($options) {
+        $begin_time = isset($options['begin_time']) ? $options['begin_time'] : strtotime(date('Y-m-d'));
+        return array(
+            'begin_time' => $begin_time,
+            'end_time'   => isset($options['end_time']) ? $options['end_time'] : $begin_time + 3600 * 24,
+            'page'       => isset($options['page']) ? $options['page'] : 1,
+            'page_size'  => isset($options['page_size']) ? $options['page_size'] : 20
+        );
+    }
+
+    /**
+     * 取消分销权限通知(一级)
+     * @param  int $did 分销商id
+     * @param  int $pid 产品id
+     * @param  int $sid 供应商id
+     * @return [type]      [description]
+     */
+    private function _permissionDeleteNotify($did, $pid, $sid) {
+        $params = array(
+            'did' => $did,
+            'pid' => $pid,
+            'sid' => $sid
+        );
+        $queue = new Queue();
+        $aa = $queue->push('default', 'SalePermission_Job', $params);
+    }
+
+    /**
+     * 去除/新增分销权限通知(多级)
+     * @param  [type] $sid [description]
+     * @param  [type] $did [description]
+     * @param  [type] $pid [description]
+     * @return [type]      [description]
+     */
+    private function _permissionChangeNotify($sid, $did, $pid, $type = 'add') {
+        $notify_type = $type == 'add' ? 2 : 1;
+        $notify = array(
+            'aid'           => $sid,
+            'mid'           => $did,
+            'pid'           => $pid,
+            'notify_type'   => $notify_type,
+            'create_time'   => time()
+        );
+        $this->notify_data[] = $notify;
+    }
+
+    /**
+     * 价格变动通知
+     * @param  [type] $sid [description]
+     * @param  [type] $did [description]
+     * @param  [type] $pid [description]
+     * @return [type]      [description]
+     */
+    private function _priceChangeNotify($sid, $did, $pid) {
+        $notify = array(
+            'aid'           => $sid,
+            'mid'           => $did,
+            'pid'           => $pid,
+            'notify_type'   => 0,
+            'create_time'   => time()
+        );
+        $this->notify_data[] = $notify;
+    }
+
     public function setSoapClient(\SoapClient $soap) {
         $this->soap_cli = $soap;
     }
 
 
-    public function recordLog($sid, $txt,$file=''){
-        // echo $txt.'<br/>';
+    public function recordLog($sid, $txt,$file='') {
         $dir = BASE_LOG_DIR . '/price/priceset/';
         if (!is_dir($dir)) mkdir($dir, 0777, true);
         if($file=='') $file = $dir . $sid . date('_Y-m-d'). '.txt';
@@ -442,6 +697,12 @@ class Price extends Model {
         fwrite($fp,date("Y-m-d H:i:s").":".$txt."\n");
         flock($fp, LOCK_UN);
         fclose($fp);
+    }
+
+    public function __destruct() {
+        if ($this->commit_flag && $this->notify_data) {
+            $this->table(self::__PRICE_CHG_NOTIFY_TABLE__)->addAll($this->notify_data);
+        }
     }
 
     

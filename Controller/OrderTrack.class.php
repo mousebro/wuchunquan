@@ -67,7 +67,12 @@ class OrderTrack extends Controller
         $ordernum = I('get.ordernum');
         $token    = I('get.token');
         $this->verify($ordernum, $token);
-        $log      = $this->model->getLog($ordernum);
+        if (I('get.filter_expire')) {
+            $log  = $this->model->QueryLog($ordernum);
+        }
+        else {
+            $log = $this->model->getLog($ordernum);
+        }
         $this->apiReturn(200, $log, 'success');
     }
 }

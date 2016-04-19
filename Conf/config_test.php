@@ -56,7 +56,7 @@ return array(
             'db_port'   => 3307,
             'db_name'   => 'summary',
         ),
-        'terminal' => array(
+        'terminal'  => array(
             'db_type'   => 'mysql',
             'db_host'   => '127.0.0.1',
             'db_user'   => 'cat',

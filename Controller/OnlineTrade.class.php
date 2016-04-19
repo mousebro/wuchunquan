@@ -27,4 +27,24 @@ class OnlineTrade extends Controller
         $this->model->Summary($bt, $et);
     }
 
+    public function Summary_Manual($data)
+    {
+        //$time_begin = strtotime('2014-01-01 00:00:00');
+        //$time_end   = strtotime('2015-01-01 00:00:00');
+        //print_r($data);
+        $bt = $data[3];
+        $et = $data[4];
+        if (!$bt || !$et) exit('Error BeginTime Or End Time.');
+        $time_begin = strtotime("$bt 00:00:00");
+        $time_end   = strtotime("$et 00:00:00");
+        $diff       = ($time_end - $time_begin) / 86400;
+        for ($i=0; $i<$diff; $i++) {
+            $tm = strtotime(" +$i days", $time_begin);
+            $bt = date('Y-m-d 00:00:00', $tm);
+            $et = date('Y-m-d 23:59:59', $tm);
+            echo $bt,'---', $et, PHP_EOL;
+            $this->model->Summary($bt, $et);
+        }
+
+    }
 }
