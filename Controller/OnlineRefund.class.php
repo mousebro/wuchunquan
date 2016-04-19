@@ -23,6 +23,7 @@ class OnlineRefund extends Controller
 {
     const UNION_MCH_ID  = 802350173720081;
     private $data;
+    private $model;
     public function __construct()
     {
         $this->req_log = BASE_LOG_DIR . '/refund/req_'.date('ymd').'.log';
@@ -41,6 +42,7 @@ class OnlineRefund extends Controller
         $data  = $this->model->GetRefundLog($this->log_id);
         if (!$data) exit("退款记录不存在");
         $this->data  = (object)$data;
+
         $pay_mode = I("post.pay_mode");
         if (ENV!='PRODUCTION') $res = ['code'=>200];
         else {
@@ -84,7 +86,10 @@ class OnlineRefund extends Controller
         $refund_fee   = $this->data->refund_money;
         $out_refund_no = "$out_trade_no".time();//商户退款单号，商户自定义，此处仅作举例
         //总金额需与订单号out_trade_no对应，demo中的所有订单的总金额为1分
-        $total_fee  = $this->data->refund_money;
+        //获取总金额
+        $trade_info = $this->model->GetTradeLog($out_trade_no);
+        $total_fee  = $trade_info['total_fee']*100;
+
         $trade_no   = $this->data->trade_no;
         $refund = new Refund_pub($uappid, $mchid, $key, $app_secret);
         //设置必填参数
@@ -112,7 +117,7 @@ class OnlineRefund extends Controller
             Api::Log("通信出错：{$refundResult['return_msg']}", $this->ok_log);
             return ['code'=>400, 'msg'=>"通信出错,原因:{$refundResult['return_msg']}"];
         }
-        elseif($refundResult["return_code"] == 'SUCCESS') {
+        elseif($refundResult["return_code"] == 'SUCCESS' && $refundResult['result_code']!='FAIL') {
             Api::Log("退款成功:退款记录ID[{$this->log_id}],订单号[{$out_trade_no}],总金额[{$total_fee}],退款金额[{$refund_fee}]", $this->ok_log);
             return ['code'=>200, 'msg'=>'退款成功'];
 
@@ -122,6 +127,7 @@ class OnlineRefund extends Controller
             return ['code'=>400, 'msg'=>"退款失败,原因:{$refundResult['err_code_des']}"];
         }
     }
+
     public function union()
     {
         $union_log_req = BASE_LOG_DIR . '/refund/union_req_'.date('ymd').'.log';

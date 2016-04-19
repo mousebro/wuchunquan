@@ -30,6 +30,17 @@ class Controller {
     }
 
     /**
+     * 是否为POST提交
+     *
+     * @author Guangpeng Chen
+     * @return bool
+     */
+    public static function isPost()
+    {
+        return $_SERVER['REQUEST_METHOD']==='POST';
+    }
+
+    /**
      * 接口数据返回
      * @author dwer
      * @DateTime 2016-02-16T13:48:27+0800
