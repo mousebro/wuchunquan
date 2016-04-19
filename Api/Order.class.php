@@ -16,8 +16,6 @@ use Model\Order\OrderTools;
 class Order extends Controller
 {
     private $soap;
-    private $data;
-    const TOKEN_SALT = '966*#06#';
 
     private function getSoap()
     {

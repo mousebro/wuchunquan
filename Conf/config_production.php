@@ -71,5 +71,15 @@ return array(
             'db_port'=> 6379,
             'db_pwd' => 'myPft!12301!&',
         ),
+        'master'=> array(
+            'db_host'=>'10.51.26.214',
+            'db_port'=> 6679,
+            'db_pwd' => 'pft666',
+        ),
+        'slave' => array(
+            'db_host'=>'10.160.4.140',
+            'db_port'=> 6680,
+            'db_pwd' => 'pft666',
+        ),
     ),
 );
