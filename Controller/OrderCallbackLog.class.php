@@ -74,13 +74,10 @@ class OrderCallbackLog extends Controller
                 });
                 $row_merged[]   = $row_tmp;
             }
-            $total_page = ceil($total/$limit);
-//            $page_next = $page + 1;
             $data = array(
                 'page'=>$page,
                 'limit'=>$limit,
-                'total'=>$total_page,
-//                'total'=>$total,
+                'total'=>$total,
                 'list'=>$row_merged,
             );
             $this->apiReturn(200, $data);
