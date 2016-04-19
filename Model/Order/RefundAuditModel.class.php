@@ -647,11 +647,11 @@ class RefundAuditModel extends Model
 //        $this->test();
         $total = $this->table($table)->where($where)->count();
         $total_page = ceil($total/$limit);
-        $page_next = $page + 1;
+//        $page_next = $page + 1;
         $result = array(
-            'page' => $page_next,
+            'page' => $page,
             'limit' => $limit,
-            'total_page' => $total_page,
+            'total' => $total_page,
             'data' => $data,
         );
         return $result;
