@@ -71,5 +71,10 @@ return array(
             'db_port'=> 6379,
             'db_pwd' => '123666',
         ),
+        'master'=> array(
+            'db_host'=>'192.168.20.138',
+            'db_port'=> 6379,
+            'db_pwd' => '123666',
+        ),
     ),
 );

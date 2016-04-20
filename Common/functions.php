@@ -646,3 +646,43 @@ if (!function_exists('curl_post')) {
         }
     }
 }
+
+if (!function_exists('get_obj_instance')) {
+    /**
+     * 取得对象实例
+     *
+     * @param string $class 类名
+     * @param string $method 方法名
+     * @param array $args 参数
+     * @return mixed
+     * @throws Exception
+     */
+    function get_obj_instance($class, $method = '', $args = array()) {
+        static $_cache = array();
+        $key = $class . $method . (empty($args) ? NULL : md5(serialize($args)));
+        if (isset($_cache[$key])) {
+            return $_cache[$key];
+        }
+        else if (class_exists($class)) {
+            $obj = new $class();
+            if (method_exists($obj, $method))
+            {
+                if (empty($args)) {
+                    $_cache[$key] = $obj->$method();
+                }
+                else {
+                    $_cache[$key] = call_user_func_array(array(&$obj,
+                        $method
+                    ) , $args);
+                }
+            }
+            else {
+                $_cache[$key] = $obj;
+            }
+            return $_cache[$key];
+        } else {
+            throw new Exception('Class ' . $class . ' isn\'t exists!');
+        }
+    }
+}
+
