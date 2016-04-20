@@ -531,8 +531,10 @@ class RefundAuditModel extends Model
         $join   = array(
             "JOIN {$this->_landTable} AS l ON a.lid=l.id",
             "JOIN {$this->_memberTable} AS m ON m.id=a.fxid",
+            "JOIN {$this->_orderAppendixTable} AS oa ON oa.orderid=a.ordernum"
         );
         $where  = array(
+            "oa.ifpack" => array('in', [1,0]),
             "a.dstatus"  => array('in', [1, 2]),
             "m.dcodeURL" => array('neq', ''),
             'm.dtype'=>array('in',[0,1,7]),
