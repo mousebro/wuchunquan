@@ -20,6 +20,30 @@ class OrderCallbackLog extends Model
     {
         parent::__construct('terminal');
     }
+    
+    public function getLogList(array $orderNum, $page = 1, $limit = 20){
+        $limit  = $limit ? $limit : 20;
+        $page   = $page ? $page : 1;
+        $table = $this->_orderSyncTable;
+        $where = array(
+            "ordernum" => array('in', $orderNum),
+        );
+        $field = array(
+            'ordernum',
+            'pushlasttime as last_push_time',
+            'pushstatus as push_state',
+        );
+        $order = array(
+            'id DESC',
+        );
+        $list = $this->table($table)->field($field)->where($where)->order($order)->page($page)->limit($limit)->select();
+//        $this->test();
+        if(!$list){
+            return false;
+        }
+        $total = $this->table($table)->where($where)->count();
+        return array('list'=>$list,'total'=>$total);
+    }
 
 //    public function getNoticeList(array $ordernum){
 //notice—type 1-修改 2-取消

@@ -510,16 +510,23 @@ class RefundAuditModel extends Model
 //        $this->test();
         return $result;
     }
+
     /**
-     * @param $page
-     * @param $limit
+     * 获取ota通知列表
+     * @param null $orderNum
+     * @param null $noticeType
+     * @param null $noticeDate
+     * @param null $memberId
+     * @param int  $page
+     * @param int  $limit
      *
-     * @return mixed
+     * @return array|bool
      */
-    public function getNoticeList(array $orderNum, $page = 1, $limit = 20)
-    {
-        $limit  = $limit ? $limit : 20;
-        $page   = $page ? $page : 1;
+    public function getLogList($orderNum=null,$noticeType=null,$noticeDate=null,$memberId=null,$page=1,$limit=20){
+        $orderNum   = $orderNum ? $orderNum : null;
+        $noticeType = (in_array($noticeType,[2,3])) ? $noticeType : null;
+        $page       = $page ? $page : 1;
+        $limit      = $limit ? $limit : 20;
         $table  = "{$this->_refundAuditTable} AS a";
         $join   = array(
             "JOIN {$this->_landTable} AS l ON a.lid=l.id",
@@ -528,18 +535,40 @@ class RefundAuditModel extends Model
         $where  = array(
             "a.dstatus"  => array('in', [1, 2]),
             "m.dcodeURL" => array('neq', ''),
-            "a.ordernum" => array('in', $orderNum),
+            'm.dtype'=>array('in',[0,1,7]),
+            'm.status'=>array('in',[0,3]),
+            'length(m.account)' => 6,
         );
+        if($orderNum) {
+            $where['a.ordernum'] = $orderNum; //订单号优先级最高
+        }else{
+            //变动通知类型
+            if($noticeType){
+                $where['a.stype'] = $noticeType;
+            }
+            //通知日期
+            if($noticeDate){
+                $noticeDate = substr($noticeDate,0,10);
+                $bTime = $noticeDate . ' 00:00:00';
+                $eTime = $noticeDate . ' 23:59:59';
+                $where['a.dtime'] = array('between',"{$bTime},{$eTime}");
+            }
+            //通知接口
+            if($memberId){
+                $where['a.fxid'] = $memberId;
+            }
+        }
         $field  = array(
-            'a.ordernum',
-//            'a.stype',
-//            'a.dtime',
-            'a.stime as apply_time',
-//            'a.fxid',
+            'a.id as notice_id',
             'a.tnum',
+            'a.ordernum',
+            'l.title as ltitle',
+            'a.stype as change_type',
+            'a.stime as apply_time',
             'a.dstatus as handle_res',
             'm.dname as ota_name',
-            'l.title as ltitle',
+//            'a.dtime as push_time',
+//            'a.fxid',
         );
         $order  = array(
             'a.dtime desc',
@@ -552,13 +581,13 @@ class RefundAuditModel extends Model
             ->page($page)
             ->limit($limit)
             ->select();
+//        $this->test();
         if(!$list){
             return false;
         }
         $total = $this->table($table)->join($join)->where($where)->count();
         return array('total'=>$total, 'list'=>$list);
     }
-
     /**
      * 获取判断退票审核的相关信息
      *

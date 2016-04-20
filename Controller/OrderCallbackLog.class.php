@@ -27,8 +27,7 @@ class OrderCallbackLog extends Controller
     }
 
     /**
-     * 获取退款通知日志里列表
-     *
+     *  ota日志通知列表
      */
     public function getNoticeList()
     {
@@ -38,48 +37,47 @@ class OrderCallbackLog extends Controller
         $memberId   = I('param.memberId');
         $page       = I('param.page') ? I('param.page') : 1;
         $limit      = I('param.limit') ? I('param.limit') : 20;
-        if(!class_exists('Model\\Order\\OrderCallbackLog') || !class_exists('Model\\Order\\RefundAuditModel')){
+        if ( ! class_exists('Model\\Order\\OrderCallbackLog') || ! class_exists('Model\\Order\\RefundAuditModel')) {
             $this->apiReturn(204);
         }
         try {
-            $row = array();
-            $logModel  = new \Model\Order\OrderCallbackLog();
-            $callbacks = $logModel->getNoticeList($orderNum, $noticeType, $noticeDate, $memberId, $page, $limit);
-            if ( ! $callbacks) {
-                $this->apiReturn(202);
-            }
-            $callback_list = $callbacks['list'];
-            foreach ($callback_list as $callback) {
-                $row[$callback['ordernum']] = $callback;
-            }
-            $total = $callbacks['total'];
-
-            $row_merged = array();
-            $orders     = array_column($callback_list, 'ordernum');
+            $row1       = array();
             $auditModel = new \Model\Order\RefundAuditModel();
-            $audits     = $auditModel->getNoticeList($orders);
+            $audits     = $auditModel->getLogList($orderNum, $noticeType, $noticeDate, $memberId, $page, $limit);
             if ( ! $audits) {
                 $this->apiReturn(202);
             }
-            foreach ($audits['list'] as $audit) {
-                $row2[$audit['ordernum']] = $audit;
-                $row_tmp = array_merge($row[$audit['ordernum']], $row2[$audit['ordernum']]);
-                uksort($row_tmp, function ($key1, $key2) {
-                    $key_arr      = array('notice_id', 'ordernum', 'ltitle', 'change_type', 'apply_time', 'handle_res', 'ota_name', 'last_push_time', 'push_state',);
-                    $key_arr_flip = array_flip($key_arr);
-                    if(in_array($key1,$key_arr) && in_array($key2,$key_arr) && $key_arr_flip[$key1] > $key_arr_flip[$key2]){
-                        return 1;
-                    }else{
-                        return -1;
-                    }
-                });
-                $row_merged[]   = $row_tmp;
+            $audit_list = $audits['list'];
+            $total      = $audits['total'];
+
+            foreach ($audit_list as $audit) {
+                $row1[$audit['ordernum']] = $audit;
+            }
+
+            $row_merged = array();
+            $row2       = array();
+            $orders     = array_column($audit_list, 'ordernum');
+            $logModel   = new \Model\Order\OrderCallbackLog();
+            $callbacks  = $logModel->getLogList($orders);
+            if ( ! $callbacks) {
+                $this->apiReturn(202);
+            }
+            foreach ($callbacks['list'] as $callback) {
+                $row2[$callback['ordernum']] = $callback;
+            }
+            foreach ($row1 as $key => $value) {
+                $row2["$key"] = empty($row2["$key"]) ? array(
+                    'last_push_time' => '0000-00-00 00:00:00',
+                    'push_state'     => 0,
+                ) : $row2["$key"];
+                $row_tmp      = array_merge($row1[$key], $row2[$key]);
+                $row_merged[] = $row_tmp;
             }
             $data = array(
-                'page'=>$page,
-                'limit'=>$limit,
-                'total'=>$total,
-                'list'=>$row_merged,
+                'page'  => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'list'  => $row_merged,
             );
             $this->apiReturn(200, $data);
         } catch (Exception $e) {
