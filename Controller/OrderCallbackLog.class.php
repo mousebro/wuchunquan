@@ -67,7 +67,7 @@ class OrderCallbackLog extends Controller
 
             foreach ($row1 as $key => $value) {
                 $row2["$key"] = empty($row2["$key"]) ? array(
-                    'last_push_time' => '0000-00-00 00:00:00',
+                    'last_push_time' => '',
                     'push_state'     => 0,
                 ) : $row2["$key"];
                 $row_tmp      = array_merge($row1[$key], $row2[$key]);
