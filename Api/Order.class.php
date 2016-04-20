@@ -33,9 +33,11 @@ class Order extends Controller
     {
         $tid        = I('post.tid');
         $auth_code  = I('post.auth_code');
+
         if (!$tid>0  || empty($auth_code)) {
             parent::apiReturn(401, [],'参数错误');
         }
+        //echo $tid;exit;
         $this->getSoap();
         $res        = $this->soap->QuickOrder($tid, $auth_code);
         if ($res==100) {

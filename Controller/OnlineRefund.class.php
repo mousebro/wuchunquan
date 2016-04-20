@@ -31,11 +31,14 @@ class OnlineRefund extends Controller
         $this->ok_log  = BASE_LOG_DIR . '/refund/ok_'.date('ymd') .'.log';
         Api::Log(json_encode($_POST), $this->req_log);
         $auth = I('post.auth');
-        $comp = md5(md5(I('post.ordernum').md5(strrev(I('post.ordernum')))));
-        //if (empty( $auth ) || $auth!=$comp) {
-        //    Api::Log('身份验证失败',$this->err_log);
-        //    exit("身份验证失败");
-        //}
+        $ordern = I('post.ordernum');
+        //$comp = md5(md5(.md5(strrev(I('post.ordernum')))));
+        $comp = md5(md5($ordern).md5(strrev($ordern)));
+        //echo $auth;exit;
+        if (empty( $auth ) || $auth!=$comp) {
+            Api::Log('身份验证失败' . $auth . ':'.$comp,$this->err_log);
+            exit("身份验证失败". $auth . ':'.$comp);
+        }
         $this->log_id = I("post.log_id");
         if (!$this->log_id) exit("退款记录ID不能为空");
         $this->model  = new \Model\TradeRecord\OnlineRefund();
