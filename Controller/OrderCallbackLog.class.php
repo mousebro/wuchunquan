@@ -59,12 +59,12 @@ class OrderCallbackLog extends Controller
             $orders     = array_column($audit_list, 'ordernum');
             $logModel   = new \Model\Order\OrderCallbackLog();
             $callbacks  = $logModel->getLogList($orders);
-            if ( ! $callbacks) {
-                $this->apiReturn(202);
+            if($callbacks){
+                foreach ($callbacks['list'] as $callback) {
+                    $row2[$callback['ordernum']] = $callback;
+                }
             }
-            foreach ($callbacks['list'] as $callback) {
-                $row2[$callback['ordernum']] = $callback;
-            }
+
             foreach ($row1 as $key => $value) {
                 $row2["$key"] = empty($row2["$key"]) ? array(
                     'last_push_time' => '0000-00-00 00:00:00',
