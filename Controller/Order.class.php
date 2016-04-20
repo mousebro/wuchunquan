@@ -10,7 +10,7 @@ namespace Controller;
 
 
 use Library\Controller;
-use Library\Response;
+use Model\Order\OrderCommon;
 use Model\Order\OrderTools;
 
 class Order extends Controller
@@ -18,6 +18,7 @@ class Order extends Controller
     private $soap;
     private $data;
     const TOKEN_SALT = '966*#06#';
+
     public function __construct()
     {
         $this->verify();
@@ -38,10 +39,14 @@ class Order extends Controller
         }
         $this->data = json_decode(base64_decode($data));
         if (!$this->data) {
-            parent::apiReturn(403,[],'数据格式错误,请检查是否为标准的JSON');
+            parent::apiReturn(400,[],'数据格式错误,请检查是否为标准的JSON');
         }
     }
 
+    /**
+     * 闸机快速下单——根据门票，支付码
+     *
+     */
     public function QuickOrder()
     {
 
@@ -143,20 +148,59 @@ class Order extends Controller
         $res = $this->soap->Change_Order_Pay($ordernum,-1, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
-            parent::apiReturn(200, [], '支付成功');
+            parent::apiReturn(parent::CODE_SUCCESS, [], '支付成功');
         }
-        parent::apiReturn(201,[], '支付失败');
+        parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败');
     }
 
+    /**
+     * 订单销售记录
+     */
+    public function OrderSaleLog()
+    {
+        $oc = new OrderCommon();
+
+        $ordernum   = I('post.ordernum');
+        $sale_price = I('post.sale_price');
+        $sale_op    = I('post.sale_op');
+        $op_id      = I('post.op_id');
+        $ad_flag    = I('post.ad_flag');
+        $sale_type  = I('post.sale_type');
+
+        if (!is_numeric($ordernum) || !$ordernum) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '订单号格式错误');
+        }
+        if (!is_numeric($sale_price) || !$sale_price) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '销售价格式错误');
+        }
+        if (!is_numeric($sale_op) || !$sale_op) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '销售员ID格式错误');
+        }
+        $ad_flag    = $ad_flag ? $ad_flag+0 : 0;
+        $sale_type  = $sale_type ? $sale_type+0 : 0;
+        $res = $oc->OrderSaleLog($ordernum, $sale_price, $sale_op, $op_id, $ad_flag, $sale_type);
+        if ($res) {
+            parent::apiReturn(parent::CODE_SUCCESS,[],'操作成功');
+        }
+        parent::apiReturn(parent::CODE_SUCCESS,[],'操作成功');
+    }
+    /**
+     * 订单汇总
+     */
+    public function Summary()
+    {
+
+
+    }
     public function PackageOrderCheck($args)
     {
-        if (PHP_SAPI!='cli') parent::apiReturn(0,[],'Invalid Access');
+        if (PHP_SAPI != 'cli') parent::apiReturn(0, [], 'Invalid Access');
         $time_begin = $args[3];
         if (!$time_begin) {
             $time_begin = date('Y-m-d H:00:00', strtotime('-1 hours'));
         }
-        $time_end   = date('Y-m-d H:i:00',strtotime("+30 mins",strtotime($time_begin)));
-        echo $time_begin,'---', $time_end;
+        $time_end = date('Y-m-d H:i:00', strtotime("+30 mins", strtotime($time_begin)));
+        echo $time_begin, '---', $time_end;
         $model = new OrderTools();
         $model->syncPackageOrderStatus($time_begin, $time_end);
     }
