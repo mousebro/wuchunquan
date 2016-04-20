@@ -54,24 +54,57 @@ class withdraw extends Controller{
      * @return
      */
     public function feedback() {
-        $orderId = $this->getParam('order_id');
-        $status  = $this->getParam('status');
-        $queryId = $this->getParam('query_id');
+        $orderId  = $this->getParam('order_id');
+        $status   = $this->getParam('status');
+        $queryId  = $this->getParam('query_id');
+        $errorMsg = $this->getParam('error_msg');
 
-        $platformOrderId = $this->_handleOrderId($orderId);
+        $orderId   = strval($orderId);
+        $statusArr = array(2, 3, 4);
+        if(!$orderId || !in_array($status, $statusArr)) {
+            $this->apiReturn(400, [], '参数错误');
+        }
+
+        $platformOrderId = $this->_handleOrderId($orderId, 2);
+        if(!$platformOrderId) {
+            $this->apiReturn(400, [], '参数错误');
+        }
+
+        //看是不是存在记录
+        $withdrawModel = $this->model('Finance/Withdraw');
+        $info = $withdrawModel->getWithdrawInfo($platformOrderId);
+        if(!$info) {
+            $this->apiReturn(400, [], '参数错误 - 订单ID错误');
+        }
         
+        if($status == 2) {
+            //通知已经推送成功
+            $res = $withdrawModel->feedbackPushed($platformOrderId);
 
-        pft_log('withdraw_error/api', json_encode($_POST));
+        } else if($status == 3) {
+            //支付失败
+            $res = $withdrawModel->feedbackFail($platformOrderId, $errMsg)
 
+            $errorMsg = strval($errorMsg);
+            if(!$errorMsg) {
+                $this->apiReturn(400, [], '参数错误 - 错误信息缺失');
+            }
 
+        } else if($status == 4) {
+            //支付成功
+            $queryId = strval($queryId);
+            if(!$queryId) {
+                $this->apiReturn(400, [], '参数错误 - 流水ID缺失');
+            }
 
-        //通知提现的数据已经收到
+            $res = $withdrawModel->feedbackSuccess($platformOrderId, $queryId);
+        }
 
-
-
-        //通知外付的结构
-
-        $this->apiReturn(200, []);
+        if($res) {
+            $this->apiReturn(200, [], '反馈成功');
+        } else {
+            $this->apiReturn(500, [], '反馈失败');
+        }
     }
 
     /**
