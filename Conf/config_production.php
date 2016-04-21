@@ -56,12 +56,30 @@ return array(
             'db_port'   => 3306,
             'db_name'   => 'summary',
         ),
+        'terminal'  => array(
+            'db_type'   => 'mysql',
+            'db_host'   => '10.171.194.212',
+            'db_user'   => 'app_user',
+            'db_pwd'    => 'app@12301$*#',
+            'db_port'   => 3306,
+            'db_name'   => 'orderdata',
+        ),
     ),
     'redis'=>array(
         'main'=> array(
-            'db_host'=>'10.169.9.198',
-            'db_port'=> 6379,
-            'db_pwd' => 'myPft!12301!&',
+            'db_host'=> '10.51.26.214',
+            'db_port'=> 6679,
+            'db_pwd' => 'pft666',
+        ),
+        'master'=> array(
+            'db_host'=>'10.51.26.214',
+            'db_port'=> 6679,
+            'db_pwd' => 'pft666',
+        ),
+        'slave' => array(
+            'db_host'=>'10.160.4.140',
+            'db_port'=> 6680,
+            'db_pwd' => 'pft666',
         ),
     ),
 );

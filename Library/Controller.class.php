@@ -11,6 +11,14 @@ namespace Library;
 
 class Controller {
 
+    const  UN_LOGIN         = 0;//未登录
+    const  CODE_SUCCESS     = 200;//200 OK
+    const  CODE_CREATED     = 201;//sql execute fail
+    const  CODE_NO_CONTENT  = 204;//没有数据
+    const  CODE_INVALID_REQUEST  = 400;//Bad Request
+    const  CODE_AUTH_ERROR       = 401;//认证失败
+    const  CODE_METHOD_NOT_ALLOW = 405;
+
     /**
      *  
      * @author dwer

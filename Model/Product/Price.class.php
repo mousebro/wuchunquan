@@ -6,6 +6,7 @@
 namespace Model\Product;
 use Library\Model;
 use Model\Product\Ticket;
+use Library\Resque\Queue as Queue;
 
 class Price extends Model {
 
@@ -14,6 +15,7 @@ class Price extends Model {
 
     const __PRICESET_TABLE__        = 'uu_priceset';   //产品价格表
     const __PRICE_CHG_NOTIFY_TABLE__  = 'pft_price_change_notify';
+    const __PRICE_GROUP__TABLE__    = 'pft_price_group';
 
     protected $soap_cli             = null;     //soap接口实例
 
@@ -432,11 +434,16 @@ class Price extends Model {
      * @return [type]       [description]
      */
     public function deletePermission($pid, $did, $aids, $sid) {
+
+        //取消分销权限通知
+        $this->_permissionDeleteNotify($did, $pid, $sid);
+        // var_dump($did);
+
         $tree = $this->table(self::__EVOLUTE_TABLE__)
                     ->where(array(
                         'pid'       => $pid, 
                         'status'    => 0, 
-                        'sid'       => array('exp', '=substring(aids, -length(sid))'), 
+                        '_string'   => 'sid=substring(aids, -length(sid))', 
                         'aids'      => array('like', $aids . '%')))
                     ->field('id,fid,sid')
                     ->select();
@@ -454,6 +461,49 @@ class Price extends Model {
             if (!$affect_rows) return false;
         }
         return true;
+    }
+
+    /**
+     * 监听供货价修改，根据差价修改分组的价格
+     * @param  [type] $pid  [description]
+     * @param  [type] $diff [description]
+     * @return [type]       [description]
+     */
+    public function resetGroupPrice($sid, $pid, $diff) {
+        $groups = $this->table(self::__PRICE_GROUP__TABLE__)
+            ->where([
+                'dids' => array('neq', ''),
+                '_string' => "default_inc != '' and default_inc != '[]'"
+            ])
+            ->field('id,default_inc')
+            ->select();
+
+        $update = array();
+        foreach ($groups as $group) {
+            $default_inc = json_decode($group['default_inc'], true);
+            if (!array_key_exists($pid, $default_inc)) {
+                continue;
+            }
+
+            $default_inc[$pid] = $default_inc[$pid] + $diff;
+            $update[$group['id']] = json_encode($default_inc);
+        }
+
+        if (!$update) return true;
+
+        $sql = 'update '.self::__PRICE_GROUP__TABLE__.' set default_inc = case ';
+        $ids_str = implode(',',array_keys($update)); 
+
+        foreach($update as $k=>$v){
+              $sql .= sprintf(" when id = %d then '%s'",$k,$v);
+        }
+        $sql .= ' END WHERE id IN ('.$ids_str.') ';
+        if ($this->execute($sql)) {
+            echo 'success';
+        } else {
+            echo $sql;
+            echo 'fail';
+        }
     }
 
     /**
@@ -476,9 +526,20 @@ class Price extends Model {
                         ->field('aid,mid,pid,create_time')
                         ->limit($limit)
                         ->select();
-        return $result;
+
+        $return = array();
+        foreach ($result as $key => $item) {
+            $return[$item['pid']] = $item;
+        }
+        return $return;
     }
 
+    /**
+     * 获取价格变动的记录
+     * @param  [type] $memberid [description]
+     * @param  array  $options  [description]
+     * @return [type]           [description]
+     */
     public function getPriceChange($memberid, $options = array()) {
         $options = $this->_combineNotifyOptions($options);
         extract($options);
@@ -514,8 +575,7 @@ class Price extends Model {
             ->where($where)
             ->field('mid,aid,pid,create_time')
             ->select(); 
-        // echo $this->_sql();
-        // var_dump($possible_change);die;
+
         $result = $next_find = array();
         if ($possible_change) {
             foreach ($possible_change as $item) {
@@ -553,7 +613,7 @@ class Price extends Model {
 
         $result = array();
         foreach ($limits as $item) {
-            $result[] = $item;
+            $result[$item['pid']] = $item;
         }
 
         return $result;
@@ -570,7 +630,24 @@ class Price extends Model {
     }
 
     /**
-     * 去除/新增分销权限通知
+     * 取消分销权限通知(一级)
+     * @param  int $did 分销商id
+     * @param  int $pid 产品id
+     * @param  int $sid 供应商id
+     * @return [type]      [description]
+     */
+    private function _permissionDeleteNotify($did, $pid, $sid) {
+        $params = array(
+            'did' => $did,
+            'pid' => $pid,
+            'sid' => $sid
+        );
+        $queue = new Queue();
+        $aa = $queue->push('default', 'SalePermission_Job', $params);
+    }
+
+    /**
+     * 去除/新增分销权限通知(多级)
      * @param  [type] $sid [description]
      * @param  [type] $did [description]
      * @param  [type] $pid [description]

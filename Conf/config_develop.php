@@ -56,9 +56,22 @@ return array(
             'db_port'   => 3307,
             'db_name'   => 'summary',
         ),
+        'terminal'  => array(
+            'db_type'   => 'mysql',
+            'db_host'   => '192.168.20.138',
+            'db_user'   => 'cat',
+            'db_pwd'    => 'cat123',
+            'db_port'   => 3307,
+            'db_name'   => 'orderdata',
+        ),
     ),
     'redis'=>array(
         'main'=> array(
+            'db_host'=>'192.168.20.138',
+            'db_port'=> 6379,
+            'db_pwd' => '123666',
+        ),
+        'master'=> array(
             'db_host'=>'192.168.20.138',
             'db_port'=> 6379,
             'db_pwd' => '123666',
