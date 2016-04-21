@@ -252,15 +252,17 @@ class Ticket extends Model {
             //时间段模式
             $price_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
                 ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
-                ->field('pid,l_price,start_date,end_date')
+                ->field('pid,l_price,min(start_date) as start_date,min(end_date) as end_date')
+                ->group('pid')
                 ->select();
 
+            // echo $this->_sql();die;
             if ($price_info && is_array($price_info)) {
                 foreach ($price_info as $item) {
                     $start_time = strtotime($item['start_date']);
                     $end_time   = strtotime($item['end_date']);
                     $cur_time   = strtotime($date);
-                    if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                    if ($end_time >= $cur_time) {
                         $result[$item['pid']] = $item['l_price'] / 100;
                     }
                 }
@@ -296,7 +298,8 @@ class Ticket extends Model {
             //时间段模式
             $storage_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
                 ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
-                ->field('pid,storage,start_date,end_date')
+                ->field('pid,storage,min(start_date) as start_date,min(end_date) as end_date')
+                ->group('pid')
                 ->select();
             if (!$storage_info) return false;
 
@@ -304,7 +307,7 @@ class Ticket extends Model {
                 $start_time = strtotime($item['start_date']);
                 $end_time   = strtotime($item['end_date']);
                 $cur_time   = strtotime($date);
-                if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                if ($end_time >= $cur_time) {
                     $result[$item['pid']] = $item['storage'];
                 }
             }
