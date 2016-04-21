@@ -11,7 +11,6 @@ if(!defined('PFT_API')) {exit('Access Deny');}
  */
 
 use Library\Controller;
-use Model\Finance\Withdraw as Withdraw;
 
 class withdraw extends Controller{
     /**
@@ -83,7 +82,7 @@ class withdraw extends Controller{
 
         } else if($status == 3) {
             //支付失败
-            $res = $withdrawModel->feedbackFail($platformOrderId, $errMsg)
+            $res = $withdrawModel->feedbackFail($platformOrderId, $errMsg);
 
             $errorMsg = strval($errorMsg);
             if(!$errorMsg) {

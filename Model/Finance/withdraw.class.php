@@ -3,7 +3,7 @@
  * 提现相关模型
  *
  * @author dwer
- * @date 2016-01-20
+ * @date 2016-01-20 
  * 
  */
 namespace Model\Finance;
@@ -11,7 +11,7 @@ use Library\Model;
 
 class Withdraw extends Model{
 
-    private $this->_withdrawTable = 'pft_wd_cash';
+    private $_withdrawTable = 'pft_wd_cash';
 
     /**
      *  获取需要自动提现的列表
