@@ -70,7 +70,7 @@ class Member extends Controller
         }
         elseif ( ctype_digit($p1) || ctype_alpha($p1)) {
             //纯数字&纯字母的提示
-            return '请输入6-20位数字、字母或常用符号，字母区分大小写';
+            return '您设置的密码过于简单，请输入6-20位数字、字母或常用符号，字母区分大小写';
         }
         elseif (in_array($p1, $commonWeakPassword)) {
             return '您输入的密码太常见，很容易被人猜出，请重新选择无规则的数字字母组合。';
