@@ -37,4 +37,6 @@ class OrderCommon extends Model
         ];
         return $this->table('pft_ordercustomer')->data($data)->add();
     }
+
+
 }

@@ -145,6 +145,7 @@ class OrderTrack extends Model
     {
         $where['ordernum'] = ':ordernum';
         $where['action'] = array('neq', self::ORDER_EXPIRE);
+        $where['tnum'] = array('gt', 0);
         return $this->Table('pft_order_track')
             ->where($where)
             ->field('left_num')
