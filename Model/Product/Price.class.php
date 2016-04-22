@@ -600,14 +600,20 @@ class Price extends Model {
      * @return [type]      [description]
      */
     private function _permissionDeleteNotify($did, $pid, $sid) {
+        $storageModel = new Model\Product\YXStorage();
+        $storageModel->removeReseller($sid, $did, $pid);
+
+        //加载分销库存模型
+        $storageModel = new Model\Product\SellerStorage();
+        $storageModel->removeReseller($did, $pid, $sid);
         return true;
-        $params = array(
-            'did' => $did,
-            'pid' => $pid,
-            'sid' => $sid
-        );
-        $queue = new Queue();
-        $aa = $queue->push('default', 'SalePermission_Job', $params);
+        // $params = array(
+        //     'did' => $did,
+        //     'pid' => $pid,
+        //     'sid' => $sid
+        // );
+        // $queue = new Queue();
+        // $aa = $queue->push('default', 'SalePermission_Job', $params);
     }
 
     /**
