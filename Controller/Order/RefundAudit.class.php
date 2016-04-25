@@ -572,10 +572,11 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
         $payMode   = intval(trim($payMode));
         $payStatus = intval(trim($payStatus));
         //检查支付方式
-        $onlinePay = array(1, 5, 7, 8);
-        if (in_array($payMode, $onlinePay)) {
-            return (100);//在线支付订单:无需退票审核
-        } elseif ($payMode == 4) {
+//        $onlinePay = array(1, 5, 7, 8);
+//        if (in_array($payMode, $onlinePay)) {
+//            return (100);//在线支付订单:无需退票审核
+//        } else
+        if ($payMode == 4) {
             return (100);//到付订单:无需退票审核
         }
         //检查支付状态
