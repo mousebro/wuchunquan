@@ -11,6 +11,7 @@ use Library\Model;
 class Member extends Model
 {
     const __MEMBER_TABLE__ = 'pft_member';
+    const __MEMBER_RELATIONSHOP_TABLE__ = 'pft_member_relationship';
 
     protected $connection = '';
     public static function say()
@@ -72,15 +73,54 @@ class Member extends Model
     }
 
     /**
+     * 检测旧密码是否正确
+     *
+     * @param $memberid
+     * @param $old_password
+     * @return bool
+     */
+    public function checkOldPassword($memberid, $old_password)
+    {
+        $old = $this->table(self::__MEMBER_TABLE__)->where(['id'=>$memberid])->getField('password');
+        return $old_password == $old;
+    }
+
+    /**
+     * 检查是否建立过对应的关系
+     *
+     * @param $parent_id
+     * @param $son_id
+     * @param $ship_type
+     */
+    public function checkRelationShip($parent_id, $son_id, $ship_type)
+    {
+        $where = [
+            'parent_id'=>':parent_id',
+            'son_id'   => ':son_id',
+            'ship_type' => ':ship_type',
+        ];
+        $bind = [
+            ':parent_id'=> $parent_id,
+            ':son_id'   => $son_id,
+            ':ship_type'=> $ship_type,
+        ];
+        return $this->table(self::__MEMBER_RELATIONSHOP_TABLE__)
+            ->where($where)
+            ->bind($bind)
+            ->getField('id');
+    }
+
+    /**
      * 重置用户密码
      * @param  [type] $memberid     [description]
      * @param  [type] $new_password [description]
      * @return [type]               [description]
      */
-    public function resetPassword($memberid, $new_password) {
+    public function resetPassword($memberid, $new_password, $hasMd5=false) {
+        $new_password = $hasMd5 ? md5($new_password) : md5(md5($new_password));
         $data = array(
-            'id' => $memberid,
-            'password' => md5(md5($new_password))
+            'id'        => $memberid,
+            'password'  => $new_password
         );
         $affect_rows = $this->table(self::__MEMBER_TABLE__)->save($data);
         return $affect_rows ? true : false;

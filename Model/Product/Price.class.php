@@ -14,8 +14,10 @@ class Price extends Model {
     const __EVOLUTE_TABLE__         = 'pft_p_apply_evolute';    //转分销产品表
 
     const __PRICESET_TABLE__        = 'uu_priceset';   //产品价格表
-    const __PRICE_CHG_NOTIFY_TABLE__  = 'pft_price_change_notify';
+    const __PRICE_CHG_NOTIFY_TABLE__= 'pft_price_change_notify';
     const __PRICE_GROUP__TABLE__    = 'pft_price_group';
+
+    protected $diff_mode            = false;  //当前传的价格是否是差价模式
 
     protected $soap_cli             = null;     //soap接口实例
 
@@ -148,7 +150,11 @@ class Price extends Model {
                 continue;
             }
             //要设置的差价
-            $diff_price = ($price - $self_price) * 100;
+            if ($this->diff_mode) {
+                $diff_price = $price * 100;
+            } else {
+                $diff_price = ($price - $self_price) * 100;
+            }
             if ($diff_price < 0) {
                 unset($did_arr[array_search($did, $did_arr)]);
                 unset($priceset[$did]);
@@ -273,7 +279,7 @@ class Price extends Model {
             $pid_arr = explode(',', $item['pids']);
             //价格为空，则去除分销权限
             if (($priceset[$did] == '' && $priceset[$did] !== 0)) {
-                if ($pid_arr[0] == '' || $pid_arr[0] == 'A') {
+                if ((count($pid_arr) == 1 && $pid_arr[0] == '') || $pid_arr[0] == 'A') {
                     continue;
                 }
                 if (!in_array($pid, $pid_arr)) continue;
@@ -464,49 +470,6 @@ class Price extends Model {
     }
 
     /**
-     * 监听供货价修改，根据差价修改分组的价格
-     * @param  [type] $pid  [description]
-     * @param  [type] $diff [description]
-     * @return [type]       [description]
-     */
-    public function resetGroupPrice($sid, $pid, $diff) {
-        $groups = $this->table(self::__PRICE_GROUP__TABLE__)
-            ->where([
-                'dids' => array('neq', ''),
-                '_string' => "default_inc != '' and default_inc != '[]'"
-            ])
-            ->field('id,default_inc')
-            ->select();
-
-        $update = array();
-        foreach ($groups as $group) {
-            $default_inc = json_decode($group['default_inc'], true);
-            if (!array_key_exists($pid, $default_inc)) {
-                continue;
-            }
-
-            $default_inc[$pid] = $default_inc[$pid] + $diff;
-            $update[$group['id']] = json_encode($default_inc);
-        }
-
-        if (!$update) return true;
-
-        $sql = 'update '.self::__PRICE_GROUP__TABLE__.' set default_inc = case ';
-        $ids_str = implode(',',array_keys($update)); 
-
-        foreach($update as $k=>$v){
-              $sql .= sprintf(" when id = %d then '%s'",$k,$v);
-        }
-        $sql .= ' END WHERE id IN ('.$ids_str.') ';
-        if ($this->execute($sql)) {
-            echo 'success';
-        } else {
-            echo $sql;
-            echo 'fail';
-        }
-    }
-
-    /**
      * 获取某个用户的产品上下架通知
      * @param  [type] $memberid [description]
      * @return [type]           [description]
@@ -637,13 +600,20 @@ class Price extends Model {
      * @return [type]      [description]
      */
     private function _permissionDeleteNotify($did, $pid, $sid) {
-        $params = array(
-            'did' => $did,
-            'pid' => $pid,
-            'sid' => $sid
-        );
-        $queue = new Queue();
-        $aa = $queue->push('default', 'SalePermission_Job', $params);
+        $storageModel = new Model\Product\YXStorage();
+        $storageModel->removeReseller($sid, $did, $pid);
+
+        //加载分销库存模型
+        $storageModel = new Model\Product\SellerStorage();
+        $storageModel->removeReseller($did, $pid, $sid);
+        return true;
+        // $params = array(
+        //     'did' => $did,
+        //     'pid' => $pid,
+        //     'sid' => $sid
+        // );
+        // $queue = new Queue();
+        // $aa = $queue->push('default', 'SalePermission_Job', $params);
     }
 
     /**
@@ -685,6 +655,10 @@ class Price extends Model {
 
     public function setSoapClient(\SoapClient $soap) {
         $this->soap_cli = $soap;
+    }
+
+    public function setPriceMode($mode) {
+        $this->diff_mode = $mode;
     }
 
 

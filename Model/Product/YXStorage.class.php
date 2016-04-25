@@ -817,9 +817,8 @@ class YXStorage extends Model{
         $where = array(
             'venue_id'    => $venusId,
             'zone_id'     => $areaId,
-            'seat_status' => array('neq', 5)
+            'seat_status' => array(array('neq', 1),array('neq', 5), 'and'),
         );
-
         $allSeats = $this->table($this->_seatsTable)->where($where)->count();
         $allSeats = $allSeats === false ? 0 : intval($allSeats);
 
