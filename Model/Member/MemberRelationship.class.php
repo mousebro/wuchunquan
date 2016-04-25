@@ -49,7 +49,7 @@ class MemberRelationship extends Model
             'm.dtype'=>array('in',[0,1,7]),
             'm.status'=>array('in',[0,3]),
             'length(m.account)' => 6,
-            'me.com_type' => array('not in',['电商','团购网','淘宝/天猫']),
+            'me.com_type' => array('not in',['电商','团购网','淘宝/天猫','电商/团购网']),
         );
         if ( ! empty($search)) {
             if (intval($search)) {
