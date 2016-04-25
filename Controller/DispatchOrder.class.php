@@ -32,13 +32,10 @@ class DispatchOrder extends Controller
         }
         $limit         = $page ? ($limit ? $limit : 20) : 9999;
         $relationModel = new MemberRelationship($this->memberId);
-        $distributor   = $relationModel->getDistributor($search, $page, $limit);
-        $total         = $relationModel->getDistributor($search, $page, $limit, true);
-        if (is_array($distributor) && count($distributor) > 0) {
-            $data = array("page" => $page, "limit" => $limit, "total" => $total, "list" => $distributor);
-        } else {
-            $data = array("page" => $page, "limit" => $limit, "total" => 0, "list" => []);
-        }
+        $result  = $relationModel->getDispatchDistributor($search, $page, $limit);
+        $total = reset($result);
+        $distributor= end($result);
+        $data = array("page" => $page, "limit" => $limit, "total" => $total, "list" => $distributor);
         $this->apiReturn(200, $data, '操作成功');
     }
 
