@@ -7,6 +7,7 @@
  */
 
 namespace Model\Member;
+use Library\Cache\Cache;
 use Library\Model;
 class Member extends Model
 {
@@ -70,6 +71,28 @@ class Member extends Model
 
         $member = $this->table(self::__MEMBER_TABLE__)->where($where)->find();
         return $member ?: false;
+    }
+
+    public function getMemberCache()
+    {
+        /** @var $cache \Library\Cache\CacheRedis;*/
+        $cache = Cache::getInstance('redis');
+        $members = $cache->get('global:members');
+        //var_dump($members);
+        //$members = $cache->hdel('global:members', '');
+        if ($members) return $members;
+        $items = $this->table(self::__MEMBER_TABLE__)->where("status=0 AND dtype IN(0,1)")->getField('id,account,dname', true);
+        $data = [];
+        foreach ($items as $item) {
+            $data[$item['id']] = [
+                'account'=>$item['account'],
+                'dname'=>$item['dname']
+            ];
+        }
+        //print_r($data);
+        //exit;
+        $cache->set('global:members', $data, '', 86400);
+        return $data;
     }
 
     /**

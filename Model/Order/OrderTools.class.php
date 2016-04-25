@@ -24,12 +24,22 @@ class OrderTools extends Model {
 
     /**
      * 获取订单的额外信息
-     * @param  int $orderid 订单id
+     * @param  string $orderid 订单id
      * @return array
      * @author  wengbin
      */
     public function getOrderAddonInfo($orderid) {
         return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
+    }
+
+    /**
+     * 获取订单的额外信息
+     * @author Guangpeng Chen
+     * @param string $orderid  订单id
+     * @return mixed
+     */
+    public function getOrderDetailInfo($orderid) {
+        return $this->table('uu_order_fx_details')->where(array('orderid' => $orderid))->find();
     }
 
     /**
