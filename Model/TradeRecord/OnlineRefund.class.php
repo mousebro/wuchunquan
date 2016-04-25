@@ -67,9 +67,10 @@ class OnlineRefund extends Model
         if ($trade_log['sourceT']==1) {
             if (!$trade_log['seller_email']) {
                 $appid = PFT_WECHAT_APPID;
-            } else {
-                $obj  = json_decode($trade_log['seller_email']);
-                $appid = $obj->sub_appid;
+            }
+            else {
+                $obj  = json_decode($trade_log['seller_email'], true);
+                $appid = isset($obj['sub_appid']) ? $obj['sub_appid'] : $obj['appid'];
             }
         }
 
