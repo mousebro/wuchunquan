@@ -25,6 +25,8 @@ class Price extends Model {
 
     protected $commit_flag          = false;    //本次配置是否成功标识
 
+    protected $price_diff           = array();  //本次价格变动集合
+
 
     
     /**
@@ -164,6 +166,9 @@ class Price extends Model {
             //价格记录，存在则更新，不存在则插入
             if (isset($tmp_priceset[$did])) {
                 if ((string)$tmp_priceset[$did] != (string)$diff_price) {
+                    //本次价格变动的差价
+                    $this->price_diff[$did.'_'.$pid] = $diff_price - $tmp_priceset[$did];
+
                     $todo_update[(string)$diff_price][] = $did;
                 }
             } else {
@@ -246,7 +251,8 @@ class Price extends Model {
             if (!$affect_rows) return false;
 
             foreach ($update_did_arr as $did) {
-                $this->_priceChangeNotify($sid, $did, $pid);    //价格变动通知
+                $price_diff = isset($this->price_diff[$did.'_'.$pid]) ? $this->price_diff[$did.'_'.$pid] : 0;
+                $this->_priceChangeNotify($sid, $did, $pid, $price_diff);    //价格变动通知
             }
         }
 
@@ -296,7 +302,7 @@ class Price extends Model {
                 }
                 $new_pid_arr = array_merge($pid_arr, array($pid));
 
-                self::_permissionChangeNotify($sid, $did, $pid, 'add');
+                $this->_permissionChangeNotify($sid, $did, $pid, 'add');
             }
 
             $new_pid_arr = array_unique($new_pid_arr);
@@ -536,7 +542,7 @@ class Price extends Model {
         //可能发生改变的产品结合
         $possible_change = $this->table(self::__PRICE_CHG_NOTIFY_TABLE__)
             ->where($where)
-            ->field('mid,aid,pid,create_time')
+            ->field('mid,aid,pid,create_time,price_diff')
             ->select(); 
 
         $result = $next_find = array();
@@ -600,11 +606,11 @@ class Price extends Model {
      * @return [type]      [description]
      */
     private function _permissionDeleteNotify($did, $pid, $sid) {
-        $storageModel = new Model\Product\YXStorage();
+        $storageModel = new \Model\Product\YXStorage();
         $storageModel->removeReseller($sid, $did, $pid);
 
         //加载分销库存模型
-        $storageModel = new Model\Product\SellerStorage();
+        $storageModel = new \Model\Product\SellerStorage();
         $storageModel->removeReseller($did, $pid, $sid);
         return true;
         // $params = array(
@@ -642,11 +648,12 @@ class Price extends Model {
      * @param  [type] $pid [description]
      * @return [type]      [description]
      */
-    private function _priceChangeNotify($sid, $did, $pid) {
+    private function _priceChangeNotify($sid, $did, $pid, $price_diff) {
         $notify = array(
             'aid'           => $sid,
             'mid'           => $did,
             'pid'           => $pid,
+            'price_diff'    => $price_diff,
             'notify_type'   => 0,
             'create_time'   => time()
         );
