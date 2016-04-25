@@ -131,6 +131,13 @@ class OrderTrack extends Model
         $this->table('pft_order_track')->addAll($data);
     }
 
+    public function getTnumByAction($ordernum, $action=5)
+    {
+        return $this->table('pft_order_track')
+                ->where(['ordernum'=>$ordernum, 'action'=>$action])
+                ->sum('tnum');
+    }
+
     public function getLog($ordernum)
     {
         $where['ordernum'] = ':ordernum';
