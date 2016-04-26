@@ -27,7 +27,7 @@ class Ticket extends Model {
 	 * @return array   
 	 */
 	public function getTicketInfoById($id) {
-		return $this->table(self::__TICKET_TABLE__)->find($id);
+		return $this->table(self::__TICKET_TABLE__)->field('')->find($id);
 	}
 
     /**
@@ -37,7 +37,19 @@ class Ticket extends Model {
      * @return array   
      */
     public function getTicketInfoByPid($pid) {
-        return $this->table(self::__TICKET_TABLE__)->where(array('pid' => $pid))->find();
+        $filed = [
+            'landid', 'title', 'tprice', 'reb', 'discount', 'delaydays', 'status', 'pay',
+            'notes', 'ddays', 'getaddr', 'smslimit', 's_limit_up', 's_limit_low', 'buy_limit_up',
+            'buy_limit_low', 'open_time', 'end_time', 'apply_did', 'pid', 'cancel_cost', 'reb_type',
+            'order_start', 'max_order_days', 'Mdetails', 'Mpath', 'sourceT', 'cancel_auto_onMin',
+            'delaytype', 'delaytime', 'order_end', 'order_limit', 'overdue_refund',
+            'overdue_auto_cancel', 'overdue_auto_check', 'batch_check', 'batch_day_check',
+            'batch_diff_identities', 'refund_audit', 'refund_rule', 'refund_early_time',
+            'cancel_notify_supplier',
+        ];
+        return $this->table(self::__TICKET_TABLE__)
+            ->field( $filed )
+            ->where(array('pid' => $pid))->find();
     }
 
     /**
