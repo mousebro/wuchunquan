@@ -13,12 +13,17 @@ return array(
         'COUNT'         => 1,    //开启几个进程
         'VERBOSE'       => false, //是否显示出调试信息
         'INTERVAL'      => 2,     //检查队列的时间间隔
-        'BLOCKING'      => false  //暂时不知道做什么的
+        'BLOCKING'      => false,  //暂时不知道做什么的
+        'REDIS_BACKEND' => [
+            array('host' => '192.168.20.139', 'port' => 6379, 'database'=>10, 'alias'=>'master', 'master'=>true),
+            array('host' => '192.168.20.139', 'port' => 6380, 'database'=>10, 'alias'=>'slave')
+        ],
+        'REDIS_BACKEND_DATABASE' => 10,
     ),
     //定义需要加载的Job
     'jobs' => array(
         'Dog_Job', //小狗队列
-        'Mail_Job' //邮件队列
+        'Mail_Job', //邮件队列
     )
 );
 

@@ -12,8 +12,17 @@ use Library\Resque\Resque as Resque;
  */
 class Queue {
     private $_dsn = '';
+    private $database = 0;
 
-    public function __construct($dsn = false) {
+    public function __construct($conf) {
+        $config  = include($conf);
+        $setting = $config['setting'];
+        $dsn     = $setting['REDIS_BACKEND'];
+        $database = $setting['REDIS_BACKEND_DATABASE'];
+
+        if ($database) {
+            $this->database = $database;
+        }
         if($dsn) {
             $this->_dsn = $dsn;
         } else {
@@ -38,7 +47,7 @@ class Queue {
      * @return 返回任务ID
      */
     public function push($queueName, $jobName, $args) {
-        Resque::setBackend($this->_dsn);
+        Resque::setBackend($this->_dsn, $this->database);
         $jobId = Resque::enqueue($queueName, $jobName, $args, true);
         return $jobId;
     }

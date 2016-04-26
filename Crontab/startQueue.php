@@ -74,6 +74,7 @@ if(!isset($setting['REDIS_BACKEND']) || !$setting['REDIS_BACKEND']) {
     $REDIS_BACKEND = $dsn;
 } else {
     $REDIS_BACKEND = $setting['REDIS_BACKEND'];
+    $REDIS_BACKEND_DATABASE = $setting['REDIS_BACKEND_DATABASE'];
 }
 
 if(empty($QUEUE)) {
@@ -81,7 +82,7 @@ if(empty($QUEUE)) {
 }
 
 // A redis database number
-Resque::setBackend($REDIS_BACKEND);
+Resque::setBackend($REDIS_BACKEND, $REDIS_BACKEND_DATABASE);
 
 $logLevel = false;
 if(!empty($LOGGING) || !empty($VERBOSE)) {

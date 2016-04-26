@@ -1,6 +1,7 @@
 <?php
 namespace Library\Resque\credis;
-
+use Exception;
+use Redis;
 /**
  * Credis_Client (a fork of Redisent)
  *
@@ -27,7 +28,7 @@ if( ! defined('CRLF')) define('CRLF', sprintf('%s%s', chr(13), chr(10)));
 /**
  * Credis-specific errors, wraps native Redis errors
  */
-class CredisException extends \Exception
+class CredisException extends Exception
 {
 
     const CODE_TIMED_OUT = 1;
@@ -111,7 +112,7 @@ class CredisException extends \Exception
  * @method bool|int      hLen(string $key)
  * @method bool          hDel(string $key, string $field)
  * @method array         hKeys(string $key, string $field)
- * @method array         hVals(string $key, string $field)
+ * @method array         hVals(string $key)
  * @method array         hGetAll(string $key)
  * @method bool          hExists(string $key, string $field)
  * @method int           hIncrBy(string $key, string $field, int $value)
@@ -138,11 +139,15 @@ class CredisException extends \Exception
  * @method int           rPushX(string $key, mixed $value)
  *
  * Sorted Sets:
+ * @method int           zCard(string $key)
+ * @method array         zRangeByScore(string $key, mixed $start, mixed $stop, array $args = null)
+ * @method array         zRevRangeByScore(string $key, mixed $start, mixed $stop, array $args = null)
+ * @method int           zRemRangeByScore(string $key, mixed $start, mixed $stop)
+ * @method array         zRange(string $key, mixed $start, mixed $stop, array $args = null)
+ * @method array         zRevRange(string $key, mixed $start, mixed $stop, array $args = null)
  * TODO
  *
  * Pub/Sub
- * @method array         pUnsubscribe(mixed $pattern, string $patternN = NULL))
- * @method array         unsubscribe(mixed $channel, string $channelN = NULL))
  * @method int           publish(string $channel, string $message)
  * @method int|array     pubsub(string $subCommand, $arg = NULL)
  *
@@ -173,7 +178,7 @@ class Credis_Client {
      * @var string
      */
     protected $host;
-    
+
     /**
      * Port on which the Redis server is running
      * @var integer
@@ -270,6 +275,17 @@ class Credis_Client {
     protected $renamedCommands;
 
     /**
+     * @var int
+     */
+    protected $requests = 0;
+
+    /**
+     * @var bool
+     */
+    protected $subscribed = false;
+
+
+    /**
      * Creates a Redisent connection to the Redis server on host {@link $host} and port {@link $port}.
      * $host may also be a path to a unix socket or a string in the form of tcp://[hostname]:[port] or unix://[path]
      *
@@ -277,14 +293,19 @@ class Credis_Client {
      * @param integer $port The port number of the Redis server
      * @param float $timeout  Timeout period in seconds
      * @param string $persistent  Flag to establish persistent connection
+     * @param int $db The selected datbase of the Redis server
+     * @param string $password The authentication password of the Redis server
      */
-    public function __construct($host = '127.0.0.1', $port = 6379, $timeout = null, $persistent = '')
+    public function __construct($host = '127.0.0.1', $port = 6379, $timeout = null, $persistent = '', $db = 0, $password = null)
     {
         $this->host = (string) $host;
         $this->port = (int) $port;
         $this->timeout = $timeout;
         $this->persistent = (string) $persistent;
         $this->standalone = ! extension_loaded('redis');
+        $this->authPassword = $password;
+        $this->selectedDb = (int)$db;
+        $this->convertHost();
     }
 
     public function __destruct()
@@ -295,11 +316,54 @@ class Credis_Client {
     }
 
     /**
+     * @return bool
+     */
+    public function isSubscribed()
+    {
+        return $this->subscribed;
+    }
+
+    /**
+     * Return the host of the Redis instance
+     * @return string
+     */
+    public function getHost()
+    {
+        return $this->host;
+    }
+    /**
+     * Return the port of the Redis instance
+     * @return int
+     */
+    public function getPort()
+    {
+        return $this->port;
+    }
+
+    /**
+     * Return the selected database
+     * @return int
+     */
+    public function getSelectedDb()
+    {
+        return $this->selectedDb;
+    }
+    /**
+     * @return string
+     */
+    public function getPersistence()
+    {
+        return $this->persistent;
+    }
+    /**
      * @throws CredisException
      * @return Credis_Client
      */
     public function forceStandalone()
     {
+        if ($this->standalone) {
+            return $this;
+        }
         if($this->connected) {
             throw new CredisException('Cannot force Credis_Client to use standalone PHP driver after a connection has already been established.');
         }
@@ -326,24 +390,16 @@ class Credis_Client {
         $this->closeOnDestruct = $flag;
         return $this;
     }
-
-    /**
-     * @throws CredisException
-     * @return Credis_Client
-     */
-    public function connect()
+    protected function convertHost()
     {
-        if ($this->connected) {
-            return $this;
-        }
         if (preg_match('#^(tcp|unix)://(.*)$#', $this->host, $matches)) {
             if($matches[1] == 'tcp') {
-                if ( ! preg_match('#^(.*)(?::(\d+))?(?:/(.*))?$#', $matches[2], $matches)) {
-                    throw new CredisException('Invalid host format; expected tcp://host[:port][/persistent]');
+                if ( ! preg_match('#^([^:]+)(:([0-9]+))?(/(.+))?$#', $matches[2], $matches)) {
+                    throw new CredisException('Invalid host format; expected tcp://host[:port][/persistence_identifier]');
                 }
                 $this->host = $matches[1];
-                $this->port = (int) (isset($matches[2]) ? $matches[2] : 6379);
-                $this->persistent = isset($matches[3]) ? $matches[3] : '';
+                $this->port = (int) (isset($matches[3]) ? $matches[3] : 6379);
+                $this->persistent = isset($matches[5]) ? $matches[5] : '';
             } else {
                 $this->host = $matches[2];
                 $this->port = NULL;
@@ -354,6 +410,16 @@ class Credis_Client {
         }
         if ($this->port !== NULL && substr($this->host,0,1) == '/') {
             $this->port = NULL;
+        }
+    }
+    /**
+     * @throws CredisException
+     * @return Credis_Client
+     */
+    public function connect()
+    {
+        if ($this->connected) {
+            return $this;
         }
         if ($this->standalone) {
             $flags = STREAM_CLIENT_CONNECT;
@@ -371,7 +437,7 @@ class Credis_Client {
         }
         else {
             if ( ! $this->redis) {
-                $this->redis = new \Redis;
+                $this->redis = new Redis;
             }
             $result = $this->persistent
                 ? $this->redis->pconnect($this->host, $this->port, $this->timeout, $this->persistent)
@@ -397,9 +463,21 @@ class Credis_Client {
             $this->setReadTimeout($this->readTimeout);
         }
 
+        if($this->authPassword) {
+            $this->auth($this->authPassword);
+        }
+        if($this->selectedDb !== 0) {
+            $this->select($this->selectedDb);
+        }
         return $this;
     }
-
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return $this->connected;
+    }
     /**
      * Set the read timeout for the connection. Use 0 to disable timeouts entirely (or use a very long timeout
      * if not supported).
@@ -519,8 +597,8 @@ class Credis_Client {
      */
     public function auth($password)
     {
+        $response = $this->__call('auth', array($password));
         $this->authPassword = $password;
-        $response = $this->__call('auth', array($this->authPassword));
         return $response;
     }
 
@@ -530,9 +608,64 @@ class Credis_Client {
      */
     public function select($index)
     {
+        $response = $this->__call('select', array($index));
         $this->selectedDb = (int) $index;
-        $response = $this->__call('select', array($this->selectedDb));
         return $response;
+    }
+
+    /**
+     * @param string|array $pattern
+     * @return array
+     */
+    public function pUnsubscribe()
+    {
+        list($command, $channel, $subscribedChannels) = $this->__call('punsubscribe', func_get_args());
+        $this->subscribed = $subscribedChannels > 0;
+        return array($command, $channel, $subscribedChannels);
+    }
+
+    /**
+     * @param int $Iterator
+     * @param string $pattern
+     * @param int $Iterator
+     * @return bool | Array
+     */
+    public function scan(&$Iterator, $pattern = null, $count = null)
+    {
+        return $this->__call('scan', array(&$Iterator, $pattern, $count));
+    }
+
+    /**
+     * @param int $Iterator
+     * @param string $pattern
+     * @param int $Iterator
+     * @return bool | Array
+     */
+    public function hscan(&$Iterator, $pattern = null, $count = null)
+    {
+        return $this->__call('hscan', array(&$Iterator, $pattern, $count));
+    }
+
+    /**
+     * @param int $Iterator
+     * @param string $pattern
+     * @param int $Iterator
+     * @return bool | Array
+     */
+    public function sscan(&$Iterator, $pattern = null, $count = null)
+    {
+        return $this->__call('sscan', array(&$Iterator, $pattern, $count));
+    }
+
+    /**
+     * @param int $Iterator
+     * @param string $pattern
+     * @param int $Iterator
+     * @return bool | Array
+     */
+    public function zscan(&$Iterator, $pattern = null, $count = null)
+    {
+        return $this->__call('zscan', array(&$Iterator, $pattern, $count));
     }
 
     /**
@@ -555,12 +688,13 @@ class Credis_Client {
             } else {
                 list($command, $pattern, $status) = $this->__call('psubscribe', array($patterns));
             }
+            $this->subscribed = $status > 0;
             if ( ! $status) {
                 throw new CredisException('Invalid pSubscribe response.');
             }
         }
         try {
-            while (1) {
+            while ($this->subscribed) {
                 list($type, $pattern, $channel, $message) = $this->read_reply();
                 if ($type != 'pmessage') {
                     throw new CredisException('Received non-pmessage reply.');
@@ -583,6 +717,17 @@ class Credis_Client {
     }
 
     /**
+     * @param string|array $pattern
+     * @return array
+     */
+    public function unsubscribe()
+    {
+        list($command, $channel, $subscribedChannels) = $this->__call('unsubscribe', func_get_args());
+        $this->subscribed = $subscribedChannels > 0;
+        return array($command, $channel, $subscribedChannels);
+    }
+
+    /**
      * @param string|array $channels
      * @param $callback
      * @throws CredisException
@@ -602,12 +747,13 @@ class Credis_Client {
             } else {
                 list($command, $channel, $status) = $this->__call('subscribe', array($channels));
             }
+            $this->subscribed = $status > 0;
             if ( ! $status) {
                 throw new CredisException('Invalid subscribe response.');
             }
         }
         try {
-            while (1) {
+            while ($this->subscribed) {
                 list($type, $channel, $message) = $this->read_reply();
                 if ($type != 'message') {
                     throw new CredisException('Received non-message reply.');
@@ -647,30 +793,65 @@ class Credis_Client {
                     $eArgs = (array) array_shift($args);
                     $args = array($script, count($keys), $keys, $eArgs);
                     break;
+                case 'set':
+                    // The php redis module has different behaviour with ttl
+                    // https://github.com/phpredis/phpredis#set
+                    if (count($args) === 3 && is_int($args[2])) {
+                        $args = array($args[0], $args[1], array('EX', $args[2]));
+                    } elseif (count($args) === 3 && is_array($args[2])) {
+                        $tmp_args = $args;
+                        $args = array($tmp_args[0], $tmp_args[1]);
+                        foreach ($tmp_args[2] as $k=>$v) {
+                            if (is_string($k)) {
+                                $args[] = array($k,$v);
+                            } elseif (is_int($k)) {
+                                $args[] = $v;
+                            }
+                        }
+                        unset($tmp_args);
+                    }
+                    break;
+                case 'scan':
+                case 'sscan':
+                case 'hscan':
+                case 'zscan':
+                    $ref =& $args[0];
+                    if (empty($ref))
+                    {
+                        $ref = 0;
+                    }
+                    $eArgs = array($ref);
+                    if (!empty($args[1]))
+                    {
+                        $eArgs[] = 'MATCH';
+                        $eArgs[] = $args[1];
+                    }
+                    if (!empty($args[2]))
+                    {
+                        $eArgs[] = 'COUNT';
+                        $eArgs[] = $args[2];
+                    }
+                    $args = $eArgs;
+                    break;
+                case 'zrangebyscore':
+                case 'zrevrangebyscore':
+                case 'zrange':
+                case 'zrevrange':
+                    if (isset($args[3]) && is_array($args[3])) {
+                        // map options
+                        $cArgs = array();
+                        if (!empty($args[3]['withscores'])) {
+                            $cArgs[] = 'withscores';
+                        }
+                        if (($name == 'zrangebyscore' || $name == 'zrevrangebyscore') && array_key_exists('limit', $args[3])) {
+                            $cArgs[] = array('limit' => $args[3]['limit']);
+                        }
+                        $args[3] = $cArgs;
+                    }
+                    break;
             }
             // Flatten arguments
-            $argsFlat = NULL;
-            foreach($args as $index => $arg) {
-                if(is_array($arg)) {
-                    if($argsFlat === NULL) {
-                        $argsFlat = array_slice($args, 0, $index);
-                    }
-                    if($name == 'mset' || $name == 'msetnx' || $name == 'hmset') {
-                      foreach($arg as $key => $value) {
-                        $argsFlat[] = $key;
-                        $argsFlat[] = $value;
-                      }
-                    } else {
-                      $argsFlat = array_merge($argsFlat, $arg);
-                    }
-                } else if($argsFlat !== NULL) {
-                    $argsFlat[] = $arg;
-                }
-            }
-            if($argsFlat !== NULL) {
-                $args = $argsFlat;
-                $argsFlat = NULL;
-            }
+            $args = self::_flattenArguments($args);
 
             // In pipeline mode
             if($this->usePipeline)
@@ -734,6 +915,38 @@ class Credis_Client {
             $this->write_command($command);
             $response = $this->read_reply($name);
 
+            switch($name)
+            {
+                case 'scan':
+                case 'sscan':
+                case 'hscan':
+                case 'zscan':
+                    $ref = array_shift($response);
+                    if (empty($ref))
+                    {
+                        $response = false;
+                    }
+                    break;
+                case 'zrangebyscore':
+                case 'zrevrangebyscore':
+                    if (in_array('withscores', $args, true)) {
+                        // Map array of values into key=>score list like phpRedis does
+                        $item = null;
+                        $out = array();
+                        foreach ($response as $value) {
+                            if ($item == null) {
+                                $item = $value;
+                            } else {
+                                // 2nd value is the score
+                                $out[$item] = (float) $value;
+                                $item = null;
+                            }
+                        }
+                        $response = $out;
+                    }
+                    break;
+            }
+
             // Watch mode disables reconnect so error is thrown
             if($name == 'watch') {
                 $this->isWatching = TRUE;
@@ -764,6 +977,10 @@ class Credis_Client {
                 case 'hmset':
                 case 'hmget':
                 case 'del':
+                case 'zrangebyscore':
+                case 'zrevrangebyscore':
+                case 'zrange':
+                case 'zrevrange':
                     break;
                 case 'mget':
                     if(isset($args[0]) && ! is_array($args[0])) {
@@ -794,23 +1011,16 @@ class Credis_Client {
                 case 'subscribe':
                 case 'psubscribe':
                     break;
+                case 'scan':
+                case 'sscan':
+                case 'hscan':
+                case 'zscan':
+                    // allow phpredis to see the caller's reference
+                    //$param_ref =& $args[0];
+                    break;
                 default:
                     // Flatten arguments
-                    $argsFlat = NULL;
-                    foreach($args as $index => $arg) {
-                        if(is_array($arg)) {
-                            if($argsFlat === NULL) {
-                                $argsFlat = array_slice($args, 0, $index);
-                            }
-                            $argsFlat = array_merge($argsFlat, $arg);
-                        } else if($argsFlat !== NULL) {
-                            $argsFlat[] = $arg;
-                        }
-                    }
-                    if($argsFlat !== NULL) {
-                        $args = $argsFlat;
-                        $argsFlat = NULL;
-                    }
+                    $args = self::_flattenArguments($args);
             }
 
             try {
@@ -821,6 +1031,7 @@ class Credis_Client {
                     } else {
                         $this->isMulti = TRUE;
                         $this->redisMulti = call_user_func_array(array($this->redis, $name), $args);
+                        return $this;
                     }
                 }
                 else if($name == 'exec' || $name == 'discard') {
@@ -842,9 +1053,21 @@ class Credis_Client {
                     return $this;
                 }
 
-                $response = call_user_func_array(array($this->redis, $name), $args);
+                // Send request, retry one time when using persistent connections on the first request only
+                $this->requests++;
+                try {
+                    $response = call_user_func_array(array($this->redis, $name), $args);
+                } catch (RedisException $e) {
+                    if ($this->persistent && $this->requests == 1 && $e->getMessage() == 'read error on connection') {
+                        $this->connected = FALSE;
+                        $this->connect();
+                        $response = call_user_func_array(array($this->redis, $name), $args);
+                    } else {
+                        throw $e;
+                    }
+                }
             }
-            // Wrap exceptions
+                // Wrap exceptions
             catch(RedisException $e) {
                 $code = 0;
                 if ( ! ($result = $this->redis->IsConnected())) {
@@ -865,12 +1088,12 @@ class Credis_Client {
 
                 case 'type':
                     $typeMap = array(
-                      self::TYPE_NONE,
-                      self::TYPE_STRING,
-                      self::TYPE_SET,
-                      self::TYPE_LIST,
-                      self::TYPE_ZSET,
-                      self::TYPE_HASH,
+                        self::TYPE_NONE,
+                        self::TYPE_STRING,
+                        self::TYPE_SET,
+                        self::TYPE_LIST,
+                        self::TYPE_ZSET,
+                        self::TYPE_HASH,
                     );
                     $response = $typeMap[$response];
                     break;
@@ -884,6 +1107,13 @@ class Credis_Client {
                     if ($error && substr($error,0,8) == 'NOSCRIPT') {
                         $response = NULL;
                     } else if ($error) {
+                        throw new CredisException($error);
+                    }
+                    break;
+                default:
+                    $error = $this->redis->getLastError();
+                    $this->redis->clearLastError();
+                    if ($error) {
                         throw new CredisException($error);
                     }
                     break;
@@ -915,12 +1145,14 @@ class Credis_Client {
         }
 
         $commandLen = strlen($command);
+        $lastFailed = FALSE;
         for ($written = 0; $written < $commandLen; $written += $fwrite) {
             $fwrite = fwrite($this->redis, substr($command, $written));
-            if ($fwrite === FALSE || $fwrite == 0 ) {
+            if ($fwrite === FALSE || ($fwrite == 0 && $lastFailed)) {
                 $this->connected = FALSE;
                 throw new CredisException('Failed to write entire command to stream');
             }
+            $lastFailed = $fwrite == 0;
         }
     }
 
@@ -954,7 +1186,7 @@ class Credis_Client {
             case '+':
                 $response = substr($reply, 1);
                 if($response == 'OK' || $response == 'QUEUED') {
-                  return TRUE;
+                    return TRUE;
                 }
                 break;
             /* Bulk reply */
@@ -975,7 +1207,7 @@ class Credis_Client {
 
                 $response = array();
                 for ($i = 0; $i < $count; $i++) {
-                        $response[] = $this->read_reply();
+                    $response[] = $this->read_reply();
                 }
                 break;
             /* Integer reply */
@@ -1006,7 +1238,7 @@ class Credis_Client {
                 $response = array();
                 foreach($lines as $line) {
                     if ( ! $line || substr($line, 0, 1) == '#') {
-                      continue;
+                        continue;
                     }
                     list($key, $value) = explode(':', $line, 2);
                     $response[$key] = $value;
@@ -1038,4 +1270,31 @@ class Credis_Client {
         return sprintf('$%d%s%s', strlen($arg), CRLF, $arg);
     }
 
+    /**
+     * Flatten arguments
+     *
+     * If an argument is an array, the key is inserted as argument followed by the array values
+     *  array('zrangebyscore', '-inf', 123, array('limit' => array('0', '1')))
+     * becomes
+     *  array('zrangebyscore', '-inf', 123, 'limit', '0', '1')
+     *
+     * @param array $in
+     * @return array
+     */
+    private static function _flattenArguments(array $arguments, &$out = array())
+    {
+        foreach ($arguments as $key => $arg) {
+            if (!is_int($key)) {
+                $out[] = $key;
+            }
+
+            if (is_array($arg)) {
+                self::_flattenArguments($arg, $out);
+            } else {
+                $out[] = $arg;
+            }
+        }
+
+        return $out;
+    }
 }
