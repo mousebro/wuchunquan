@@ -269,10 +269,10 @@ class Price extends Model {
      */
     protected function setPermissionForSupply($sid, $pid, $did_arr, $aid, $priceset) {
         $sale_list = $this->table(self::__SALE_LIST_TABLE__)
-                        ->where(array(
-                            'aid' => $sid,
-                            'fid' => array('in', implode(',', $did_arr))))
-                        ->select();
+            ->where(array(
+                'aid' => $sid,
+                'fid' => array('in', implode(',', $did_arr))))
+            ->select();
 
         $tmp_sale_list = array();
         if ($sale_list) {
@@ -307,7 +307,7 @@ class Price extends Model {
 
             $new_pid_arr = array_unique($new_pid_arr);
             $affect_rows = $this->table(self::__SALE_LIST_TABLE__)
-                                ->save(array('id' => $item['id'], 'pids' => implode(',', $new_pid_arr)));
+                ->save(array('id' => $item['id'], 'pids' => implode(',', $new_pid_arr)));
             $this->recordLog($sid, $affect_rows . $this->_sql());
             if (!$affect_rows) return false;
 
@@ -320,8 +320,8 @@ class Price extends Model {
 
         if ($todo_open) {
             $affect_rows = $this->table(self::__EVOLUTE_TABLE__)
-                                ->where(array('id' => array('in', implode(',', $todo_open))))
-                                ->save(array('active' => 0));
+                ->where(array('id' => array('in', implode(',', $todo_open))))
+                ->save(array('active' => 0));
             $this->recordLog($sid, $affect_rows . $this->_sql());
             if (!$affect_rows) return false;
         }
@@ -453,10 +453,11 @@ class Price extends Model {
 
         $tree = $this->table(self::__EVOLUTE_TABLE__)
                     ->where(array(
+                        '_string'   => "aids='{$aids}' or aids like '{$aids},%'",
                         'pid'       => $pid, 
-                        'status'    => 0, 
-                        '_string'   => 'sid=substring(aids, -length(sid))', 
-                        'aids'      => array('like', $aids . '%')))
+                        'status'    => 0))
+                        // '_string'   => 'sid=substring(aids, -length(sid))', 
+                        // 'aids'      => array('like', $aids . '%')))
                     ->field('id,fid,sid')
                     ->select();
 
@@ -635,6 +636,7 @@ class Price extends Model {
             'aid'           => $sid,
             'mid'           => $did,
             'pid'           => $pid,
+            'price_diff'    => 0,
             'notify_type'   => $notify_type,
             'create_time'   => time()
         );
