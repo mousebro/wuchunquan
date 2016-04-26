@@ -34,6 +34,7 @@ class OrderTrack extends Model
     const ORDER_MODIFY       = 1;
     const ORDER_PAY          = 4;
     const ORDER_VERIFIED     = 5;
+    const ORDER_VERIFIED_CANCEL = 6;//撤销
     const ORDER_VERIFIED_CHG = 7;//撤改
     const ORDER_EXPIRE       = 12;
 
