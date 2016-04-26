@@ -272,13 +272,13 @@ class RefundAuditModel extends Model
     }
 
     /**
-     * 获取部分使用订单的剩余票数
+     * 获取部分使用订单的已验证票数
      *
      * @param $orderNum
      *
      * @return mixed
      */
-    public function getRemainTicketNumber($orderNum)
+    public function getVerifiedTnum($orderNum)
     {
         $table = 'pft_order_track';
         $field = 'sum(tnum) as verify_num';

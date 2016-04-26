@@ -727,7 +727,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
             $operateTicketNum = $orderInfo['tnum'] - $targetTicketNum;
 
             if ($orderInfo['status'] == 7) {
-                $verify_num = $refundModel->getRemainTicketNumber($orderNum);
+                $verify_num = $refundModel->getVerifiedTnum($orderNum);
                 if($verify_num){
                     $ticketNumBeforeAudit = $orderInfo['tnum'] - $verify_num;
                 }else{
@@ -740,10 +740,10 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
             switch ($auditStatus) {
                 case 0:
                 case 1:
-                    $remainTicketNum = $ticketNumBeforeAudit;
+                    $remainTicketNum = $ticketNumBeforeAudit-$operateTicketNum;
                     break;
                 case 2:
-                    $remainTicketNum = $ticketNumBeforeAudit+$operateTicketNum;
+                    $remainTicketNum = $ticketNumBeforeAudit;
                     break;
             }
             $trackModel = new OrderTrack();
