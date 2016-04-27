@@ -1,8 +1,8 @@
 <?php
 namespace Library\Resque\Resque;
 
-use Library\Resque\credis\Credis_Client as Credis_Client;
-use Library\Resque\credis\Credis_Cluster as Credis_Cluster;
+use Library\credis\Credis_Client as Credis_Client;
+use Library\credis\Credis_Cluster as Credis_Cluster;
 
 /**
  * Wrap Credis to add namespace support and various helper methods.
