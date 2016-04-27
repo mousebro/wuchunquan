@@ -24,7 +24,7 @@ class OrderTools extends Model {
 
     /**
      * 获取订单的额外信息
-     * @param  int $orderid 订单id
+     * @param  string $orderid 订单id
      * @return array
      * @author  wengbin
      */
@@ -33,15 +33,13 @@ class OrderTools extends Model {
     }
 
     /**
-     * 获取订单的分销详情
-     * @param $orderID
-     *
+     * 获取订单的额外信息
+     * @author Guangpeng Chen
+     * @param string $orderid  订单id
      * @return mixed
-     * @author fangli
      */
-    public function getOrderDetail($orderID){
-
-        return $this->table('uu_order_fx_details')->where(['orderid'=>$orderID])->find();
+    public function getOrderDetailInfo($orderid) {
+        return $this->table('uu_order_fx_details')->where(array('orderid' => $orderid))->find();
     }
 
     /**
@@ -172,20 +170,6 @@ class OrderTools extends Model {
         }
     }
 
-    /**
-     * 获取套票主票的子票信息
-     * @param $orderNum
-     *
-     * @return mixed
-     */
-    public function getPackSubOrder($orderNum){
-        $table = 'uu_order_addon';
-        $where = ['pack_order' => $orderNum,];
-        $field = ['orderid'];
-        $result =  $this->table($table)->where($where)->field($field)->select();
-//        $this->test();
-        return $result;
-    }
 
     /**
      * 获取联票所有子票订单号
