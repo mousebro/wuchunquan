@@ -53,6 +53,7 @@ class OrderTools extends Model {
         $result = $this->table('uu_ss_order')->join("
 				left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid
 				left join uu_land land on uu_ss_order.lid=land.id")
+
             ->where(array(
                 'uu_ss_order.status' => 0,
                 'detail.pay_status' => 2,
@@ -171,10 +172,33 @@ class OrderTools extends Model {
 
 
     /**
+     * 获取联票所有子票订单号
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function getLinkSubOrder($orderNum){
+        $table = 'uu_order_fx_details';
+        $where = array(
+            'concat_id' => $orderNum,
+        );
+        $field = ['orderid'];
+        $result = $this->table($table)->where($where)->field($field)->select();
+        return $result;
+    }
+
+    /**
+     * 打印测试语句
+     */
+    private function test(){
+        $str = $this->getLastSql();
+        var_dump($str);
+    }
+    /**
      * 获取某个会员所购买的订单信息
      * @param  int      $memberid 会员id
      * @param  array    $option   额外的查询条件
-     * @return array    
+     * @return array
      */
     public function getSomeOneBoughtOrders($memberid, $options = array()) {
 
