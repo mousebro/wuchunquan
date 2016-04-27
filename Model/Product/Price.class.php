@@ -125,7 +125,6 @@ class Price extends Model {
         //获取当前登录用户的结算价
         $self_price = $this->getSettlePrice($saccount, $pid, $aid);
         if ($self_price === false) {
-            // var_dump($pid);die;
             return true;   //无分销权限
         }
 
@@ -175,7 +174,7 @@ class Price extends Model {
                 $todo_insert[$did] = $diff_price; 
             }
         }
-        // var_dump($todo_insert, $todo_update);die;
+
         // $this->startTrans();    //开启事务
 
         //差价保存
@@ -250,9 +249,10 @@ class Price extends Model {
 
             if (!$affect_rows) return false;
 
+            //价格变动通知
             foreach ($update_did_arr as $did) {
                 $price_diff = isset($this->price_diff[$did.'_'.$pid]) ? $this->price_diff[$did.'_'.$pid] : 0;
-                $this->_priceChangeNotify($sid, $did, $pid, $price_diff);    //价格变动通知
+                $this->_priceChangeNotify($sid, $did, $pid, $price_diff);    
             }
         }
 
@@ -314,7 +314,8 @@ class Price extends Model {
             //变更转分销状态
             
             $open_id = $this->table(self::__EVOLUTE_TABLE__)
-                            ->where(array('sid' => $sid, 'fid' => $did, 'pid' => $pid, 'active' => 1))->getField('id');
+                ->where(array('sid' => $sid, 'fid' => $did, 'pid' => $pid, 'active' => 1))
+                ->getField('id');
             if ($open_id) $todo_open[] = $open_id;
         }
 
@@ -390,7 +391,6 @@ class Price extends Model {
                 $this->_permissionChangeNotify($sid, $did, $pid, 'add');
             }
         }
-        // var_dump($todo_insert, $todo_update, $todo_delete);die;
 
         if ($todo_update) {
             $affect_rows = $this->table(self::__EVOLUTE_TABLE__)
@@ -452,14 +452,14 @@ class Price extends Model {
         // var_dump($did);
 
         $tree = $this->table(self::__EVOLUTE_TABLE__)
-                    ->where(array(
-                        '_string'   => "aids='{$aids}' or aids like '{$aids},%'",
-                        'pid'       => $pid, 
-                        'status'    => 0))
-                        // '_string'   => 'sid=substring(aids, -length(sid))', 
-                        // 'aids'      => array('like', $aids . '%')))
-                    ->field('id,fid,sid')
-                    ->select();
+            ->where(array(
+                '_string'   => "aids='{$aids}' or aids like '{$aids},%'",
+                'pid'       => $pid, 
+                'status'    => 0))
+                // '_string'   => 'sid=substring(aids, -length(sid))', 
+                // 'aids'      => array('like', $aids . '%')))
+            ->field('id,fid,sid')
+            ->select();
 
         $todo_update = array();
         foreach ($tree as  $item) {
@@ -492,10 +492,10 @@ class Price extends Model {
             'create_time'   => array('between', array($begin_time, $end_time)),
         );
         $result = $this->table(self::__PRICE_CHG_NOTIFY_TABLE__)
-                        ->where($where)
-                        ->field('aid,mid,pid,create_time')
-                        ->limit($limit)
-                        ->select();
+            ->where($where)
+            ->field('aid,mid,pid,create_time')
+            ->limit($limit)
+            ->select();
 
         $return = array();
         foreach ($result as $key => $item) {
