@@ -170,6 +170,20 @@ class OrderTools extends Model {
         }
     }
 
+    /**
+     * 获取套票主票的子票信息
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function getPackSubOrder($orderNum){
+        $table = 'uu_order_addon';
+        $where = ['pack_order' => $orderNum,];
+        $field = ['orderid'];
+        $result =  $this->table($table)->where($where)->field($field)->select();
+//        $this->test();
+        return $result;
+    }
 
     /**
      * 获取联票所有子票订单号
