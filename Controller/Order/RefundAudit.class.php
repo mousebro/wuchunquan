@@ -717,33 +717,32 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
         if ( ! in_array($auditStatus, [0, 1, 2])) {
             return 208;
         }
-//        var_dump($orderInfo);
         $refundModel = new RefundAuditModel();
         try {
             if (count($orderInfo) <= 0) {
                 $orderInfo = $refundModel->getOrderInfoForAudit($orderNum);
             }
 
-            $operateTicketNum = $orderInfo['tnum'] - $targetTicketNum;
+            $tNumOperate = $orderInfo['tnum'] - $targetTicketNum;
 
             if ($orderInfo['status'] == 7) {
                 $verify_num = $refundModel->getVerifiedTnum($orderNum);
                 if($verify_num){
-                    $ticketNumBeforeAudit = $orderInfo['tnum'] - $verify_num;
+                    $tNumCanBeModified = $orderInfo['tnum'] - $verify_num;
                 }else{
                     return 241;
                 }
             } else {
-                $ticketNumBeforeAudit = $targetTicketNum;
+                $tNumCanBeModified = $orderInfo['tnum'] ;
             }
 
             switch ($auditStatus) {
                 case 0:
                 case 1:
-                    $remainTicketNum = $ticketNumBeforeAudit-$operateTicketNum;
+                    $remainTicketNum = $tNumCanBeModified - $tNumOperate;
                     break;
                 case 2:
-                    $remainTicketNum = $ticketNumBeforeAudit;
+                    $remainTicketNum = $tNumCanBeModified;
                     break;
             }
             $trackModel = new OrderTrack();
@@ -752,7 +751,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
                 $orderNum,
                 $action, //拒绝退票审核
                 $orderInfo['tid'],
-                $operateTicketNum,
+                $tNumOperate,
                 $remainTicketNum,
                 $source,
                 $orderInfo['terminal'],
