@@ -88,7 +88,8 @@ class CacheRedis extends Cache
         return $result;
     }
 
-    public function hset($name, $prefix, $data) {
+    public function hset($name, $prefix, $data, $expire=1800) {
+        /** @var $hanlder \Redis;*/
         $this->init_master();
         if (!$this->enable || !is_array($data) || empty($data)) return false;
         $this->type = $prefix;
@@ -107,6 +108,7 @@ class CacheRedis extends Cache
         } elseif (count($data) > 1) {
             $this->handler->hMset($this->_key($name), $data);
         }
+        $this->handler->expire($this->_key($name), $expire);
     }
 
     public function hget($name, $prefix, $key = null) {
