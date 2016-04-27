@@ -9,6 +9,7 @@ use Library\Model;
 class Ticket extends Model {
 
     const __TICKET_TABLE__          = 'uu_jq_ticket';    //门票信息表
+    const __TICKET_TABLE_EXT__      = 'uu_land_f';    //门票信息表
     const __PRODUCT_TABLE__         = 'uu_products';    //产品信息表
     const __LAND_TABLE__            = 'uu_land';   //景区信息表
 
@@ -40,6 +41,21 @@ class Ticket extends Model {
 		return $this->table(self::__TICKET_TABLE__)
             ->field($this->ticket_filed)
             ->find($id);
+	}
+
+    /**
+     * 获取门票扩展属性
+     * @author Guangpeng Chen
+     * @param int $tid 门票ID
+     * @param string $field
+     * @return mixed
+     */
+    public function getTicketExtInfoByTid($tid, $field="*") {
+		return $this->table(self::__TICKET_TABLE_EXT__)
+            ->field($field)
+            ->where(['tid'=>':tid'])
+            ->bind([':tid'=>$tid])
+            ->find();
 	}
 
     /**
