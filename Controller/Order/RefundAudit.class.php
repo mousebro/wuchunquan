@@ -160,6 +160,84 @@ class RefundAudit extends Controller
     }
 
     /**
+     * 检查订单使用状态
+     *
+     * @param $useStatus  0未使用|1已使用|2已过期|3被取消|4凭证码被替代|5被终端修改|6被终端撤销|7部分使用
+     * @param $modifyType 0撤改|1撤销|2修改|3取消
+     * @param $ticketAid
+     * @param $operatorId
+     *
+     * @return int
+     */
+    private function checkUseStatus(
+        $useStatus,
+        $modifyType,
+        $ticketAid,
+        $operatorId
+    ) {
+        $useStatus = intval($useStatus);
+        switch ($useStatus) {
+            case 1:
+                return (210);//订单已使用:不可取消或修改
+                break;
+            case 2:
+                if ($modifyType == self::MODIFY_CODE) {
+                    return (211);//订单已过期:不允许修改
+                } else {
+                    if ($operatorId != $ticketAid) {
+                        return (212);//订单已过期：只有供应商可以取消
+                    } else {
+                        return (100);//供应商取消已过期订单：无需退票审核
+                    }
+                }
+                break;
+            case 3:
+                return (213);//订单已取消:不可再取消或修改
+                break;
+            case 5:
+                return (214);//订单已被终端撤改:不可取消或修改
+                break;
+            case 6:
+                return (215);//订单已被终端撤销:不可取消或修改
+                break;
+            default://(0-未使用 7-部分使用 [4-不处理])
+                continue;
+        }
+
+        return (200);
+    }
+
+    /**
+     *
+     * 检查支付方式和支付状态
+     *
+     * @param int $payMode   支付方式：1在线支付|2授信支付|3自供自销|4到付|5微信支付|7银联支付|8环迅支付
+     * @param int $payStatus 0景区到付|1已成功|2未支付
+     *
+     * @return int
+     */
+    private function checkPayStatus($payMode, $payStatus)
+    {
+        $payMode   = intval(trim($payMode));
+        $payStatus = intval(trim($payStatus));
+        //检查支付方式
+        //        $onlinePay = array(1, 5, 7, 8);
+        //        if (in_array($payMode, $onlinePay)) {
+        //            return (100);//在线支付订单:无需退票审核
+        //        } else
+        if ($payMode == 4) {
+            return (100);//到付订单:无需退票审核
+        }
+        //检查支付状态
+        if ($payStatus == 2) {
+            return (100);//未支付订单:无需退票审核
+        }
+
+        return (200);
+    }
+
+
+    /**
      * 添加退票审核记录：
      * 只支持取消和修改，不支持撤销撤改
      *
@@ -249,18 +327,6 @@ class RefundAudit extends Controller
         return 200;//数据添加成功
     }
 
-    public function checkAndAddAudit($ordernum, $targeTnum, $opertorID, $source)
-    {
-        $orderInfo  = [];
-        $checkAudit = $this->checkRefundAudit($ordernum, $targeTnum, $opertorID, null, $orderInfo);
-        if ($checkAudit == 200) {
-            $this->addRefundAudit($ordernum, $targeTnum, $opertorID, $source, 0, $orderInfo);
-        }
-
-        return $checkAudit;
-
-    }
-    
     /**
      * 更新审核记录
      * 
@@ -382,7 +448,7 @@ class RefundAudit extends Controller
         $action = self::OPERATE_AUDIT_CODE;
         $source = 16;
         $return = $refundModel->updateAudit($orderNum, $auditResult, $auditNote, $operatorID, $auditTime, $auditID);
-        if ($auditResult == 2) {
+        if (in_array($auditResult,[1,2])) {
             $this->addRefundAuditOrderTrack($orderNum, $source, $operatorID, $action, $auditResult, $targetTnum);
             if ($ifpack != 2) {
                 $this->noticeAuditResult('reject', $orderNum, $targetTnum, $auditResult);
@@ -457,86 +523,8 @@ class RefundAudit extends Controller
             'total'      => $total,
             'audit_list' => $r,
         );
-        $this->ajaxReturn(200, $data);
+        $this->apiReturn(200,$data);
     }
-
-    /**
-     * 检查订单使用状态
-     *
-     * @param $useStatus  0未使用|1已使用|2已过期|3被取消|4凭证码被替代|5被终端修改|6被终端撤销|7部分使用
-     * @param $modifyType 0撤改|1撤销|2修改|3取消
-     * @param $ticketAid
-     * @param $operatorId
-     *
-     * @return int
-     */
-    private function checkUseStatus(
-        $useStatus,
-        $modifyType,
-        $ticketAid,
-        $operatorId
-    ) {
-        $useStatus = intval($useStatus);
-        switch ($useStatus) {
-            case 1:
-                return (210);//订单已使用:不可取消或修改
-                break;
-            case 2:
-                if ($modifyType == self::MODIFY_CODE) {
-                    return (211);//订单已过期:不允许修改
-                } else {
-                    if ($operatorId != $ticketAid) {
-                        return (212);//订单已过期：只有供应商可以取消
-                    } else {
-                        return (100);//供应商取消已过期订单：无需退票审核
-                    }
-                }
-                break;
-            case 3:
-                return (213);//订单已取消:不可再取消或修改
-                break;
-            case 5:
-                return (214);//订单已被终端撤改:不可取消或修改
-                break;
-            case 6:
-                return (215);//订单已被终端撤销:不可取消或修改
-                break;
-            default://(0-未使用 7-部分使用 [4-不处理])
-                continue;
-        }
-
-        return (200);
-    }
-
-    /**
-     *
-     * 检查支付方式和支付状态
-     *
-     * @param int $payMode   支付方式：1在线支付|2授信支付|3自供自销|4到付|5微信支付|7银联支付|8环迅支付
-     * @param int $payStatus 0景区到付|1已成功|2未支付
-     *
-     * @return int
-     */
-    private function checkPayStatus($payMode, $payStatus)
-    {
-        $payMode   = intval(trim($payMode));
-        $payStatus = intval(trim($payStatus));
-        //检查支付方式
-        //        $onlinePay = array(1, 5, 7, 8);
-        //        if (in_array($payMode, $onlinePay)) {
-        //            return (100);//在线支付订单:无需退票审核
-        //        } else
-        if ($payMode == 4) {
-            return (100);//到付订单:无需退票审核
-        }
-        //检查支付状态
-        if ($payStatus == 2) {
-            return (100);//未支付订单:无需退票审核
-        }
-
-        return (200);
-    }
-
 
     //返回接口数据
     public function apiReturn($code, $data = [], $msg = '')
@@ -618,33 +606,6 @@ class RefundAudit extends Controller
     }
 
     /**
-     * 返回json格式的数据
-     *
-     * @param mixed  $code
-     * @param string $data
-     * @param string $msg
-     * @param string $type
-     * @param int    $json_option
-     *
-     * @return string
-     */
-    public function ajaxReturn(
-        $code,
-        $data = '',
-        $msg = '',
-        $type = 'JSON',
-        $json_option = 0
-    ) {
-        $return = array(
-            'code' => $code,
-            'data' => $data,
-            'msg'  => $msg,
-        );
-
-        parent::ajaxReturn($return, $type, $json_option);
-    }
-
-    /**
      * @param       $orderNum
      * @param       $source
      * @param       $operatorID
@@ -718,26 +679,6 @@ class RefundAudit extends Controller
             $this->apiReturn(244);
         }
 
-    }
-
-    public function getTicketTitle($orderNum)
-    {
-        $refundModel = new RefundAuditModel();
-        $result      = $refundModel->getTicketTitle($orderNum);
-
-        return $result;
-    }
-
-    public function getRequestType()
-    {
-        $r = isset($_SERVER['HTTP_X_REQUESTED_WITH']) ? strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) : '';
-        if ($r == 'xmlhttprequest') {
-            $type = 'ajax';
-        } else {
-            $type = 'html';
-        }
-
-        return $type;
     }
 
     public function logTime($last, $content)
