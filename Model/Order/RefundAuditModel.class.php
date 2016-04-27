@@ -594,6 +594,9 @@ class RefundAuditModel extends Model
         $total = $this->table($table)->join($join)->where($where)->count();
         return array('total'=>$total, 'list'=>$list);
     }
+    public function getTicketInfoById($tid,$field='id'){
+        return $this->table('uu_jq_ticket')->where(['id'=>$tid])->getField($field);
+    }
     /**
      * 获取判断退票审核的相关信息
      *
@@ -607,16 +610,14 @@ class RefundAuditModel extends Model
         $join   = array(
             "{$this->_orderDetailTable} AS od ON o.ordernum=od.orderid",
             "{$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
-            "{$this->_ticketTable} AS t ON o.tid=t.id",
         );
         $where  = array(
             "o.ordernum" => $ordernum,
         );
         $field  = array(
-            "t.refund_audit",
-            "t.apply_did",
             "o.status",
             "o.paymode",
+            "o.tid",
             "o.tnum",
             "od.concat_id",
             "od.pay_status",
@@ -628,28 +629,6 @@ class RefundAuditModel extends Model
                        ->where($where)
                        ->field($field)
                        ->find();
-
-        // $this->test();
-        return $result;
-    }
-
-    /**
-     * 获取门票名称
-     *
-     * @param $orderNum
-     *
-     * @return mixed
-     */
-    public function getTicketTitle($orderNum)
-    {
-        $table               = "{$this->_ticketTable} AS t";
-        $join                = "{$this->_orderTable} AS o ON o.tid=t.id";
-        $field               = ["t.title"];
-        $result              = $this->table($table)->join($join)->field($field);
-        $where["o.ordernum"] = $orderNum;
-        $result              = $result->where($where)->find();
-        // print_r($result);
-        // $this->test();
         return $result;
     }
 
@@ -699,5 +678,11 @@ class RefundAuditModel extends Model
         $str = $this->getLastSql();
         print_r($str . PHP_EOL);
     }
-
+    public function logTime($last,$content){
+        $now = microtime(true);
+        $time = $now - $last;
+        $content .= ":$time";
+        pft_log('refund',$content);
+        return $now;
+    }
 }
