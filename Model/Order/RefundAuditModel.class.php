@@ -396,7 +396,10 @@ class RefundAuditModel extends Model
                 ),
                 array(
                     't.apply_did'    => $memberID,
-                    'oa.ifpack' => array('in', array(0, 1, 2)),
+                ),
+                array(
+                    '_string' => "find_in_set('{$memberID}',od.aids)",
+                    'oa.ifpack' => array('in', array(0, 1)),
                 ),
                 '_logic' => 'or',
             );
@@ -481,7 +484,7 @@ class RefundAuditModel extends Model
             }
 
 //            $this->test();
-//            print_r($result);
+//           print_r($result);
             return $result;
         }
     }
