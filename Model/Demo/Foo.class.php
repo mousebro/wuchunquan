@@ -14,7 +14,7 @@ class Foo extends Model
 
 
     public function getName() {
-                $res = $this->table('pft_resellers_storage_fixed')->where(['id' => 1])->find();
+        $res = $this->table('pft_resellers_storage_fixed')->where(['id' => 1])->find();
         return $res;
     }
 
@@ -43,13 +43,19 @@ class Foo extends Model
         return $this->query("select * from pft_member where id=94 limit 1");
     }
 
+    /**
+     * 查询-1
+     *
+     * @param $id
+     * @return mixed
+     */
     public function findMemberById($id)
     {
-        return self::where("id=$id")->find();
+        return $this->table('pft_member')->where("id=$id")->find();
     }
 
     /**
-     * 绑定参数查询
+     * 查询-2：绑定参数查询
      *
      * @param $id
      * @return mixed
@@ -57,7 +63,7 @@ class Foo extends Model
     public function findMemberByIdDemo2($id)
     {
         $where['id'] = ':id';
-        return $this->where($where)->bind(':id',$id,\PDO::PARAM_INT)->select();
+        return $this->table('pft_member')->where($where)->bind(':id',$id,\PDO::PARAM_INT)->select();
     }
 
     /**
@@ -73,8 +79,25 @@ class Foo extends Model
         return $this->where("id=$id")->save();
     }
 
+    public function addMember()
+    {
+        $mainData = array();
+
+        $result1 = $this->Table('pft_member')->data($mainData)->add();
+        //插入成功,得到最后插入ID
+        if (is_numeric($result1)) {
+            return $result1;
+        }
+        //插入失败
+        //查看sql语句
+        echo $this->getLastSql();
+        //查看错误信息
+        echo $this->getDbError();
+        return false;
+    }
+
     /**
-     * 创建数据
+     * 创建数据-使用了事务
      *
      * @param $mainData
      * @param array $extData

@@ -11,7 +11,7 @@ use Library\Model;
 
 class Reseller extends Model{
 
-    private $this->withdrawTable = 'pft_wd_cash';
+    private $withdrawTable = 'pft_wd_cash';
 
     /**
      *  获取需要自动提现的列表

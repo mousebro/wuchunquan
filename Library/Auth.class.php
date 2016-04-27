@@ -97,12 +97,12 @@ class Auth {
      * @author dwer
      * @date   2016-04-16
      *
-     * @param  $action 控制器 url中的c参数
-     * @param  $controller 方法 url中的a参数
-     * @param  $secret 密钥
-     * @param  $timestamp 时间戳 - 1460823195
-     * @param  $params 参数 - base64_encode(json_encode(参数数组))
-     * @param  $signature 待验证的签名 
+     * @param  string $action 控制器 url中的c参数
+     * @param  string $controller 方法 url中的a参数
+     * @param  string $secret 密钥
+     * @param  string $timestamp 时间戳 - 1460823195
+     * @param  string $params 参数 - base64_encode(json_encode(参数数组))
+     * @param  string $signature 待验证的签名
      * @return
      */
     public static function checkSignature($method, $secret, $timestamp, $params, $signature) {

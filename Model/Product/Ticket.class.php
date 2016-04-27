@@ -9,6 +9,7 @@ use Library\Model;
 class Ticket extends Model {
 
     const __TICKET_TABLE__          = 'uu_jq_ticket';    //门票信息表
+    const __TICKET_TABLE_EXT__      = 'uu_land_f';    //门票信息表
     const __PRODUCT_TABLE__         = 'uu_products';    //产品信息表
     const __LAND_TABLE__            = 'uu_land';   //景区信息表
 
@@ -20,6 +21,16 @@ class Ticket extends Model {
     const __ORDER_TABLE__           = 'uu_ss_order';
     const __ORDER_DETAIL_TABLE__    = 'uu_order_fx_details';
 
+    private $ticket_filed = [
+        'landid', 'title', 'tprice', 'reb', 'discount', 'delaydays', 'status', 'pay',
+        'notes', 'ddays', 'getaddr', 'smslimit', 's_limit_up', 's_limit_low', 'buy_limit_up',
+        'buy_limit_low', 'open_time', 'end_time', 'apply_did', 'pid', 'cancel_cost', 'reb_type',
+        'order_start', 'max_order_days', 'Mdetails', 'Mpath', 'sourceT', 'cancel_auto_onMin',
+        'delaytype', 'delaytime', 'order_end', 'order_limit', 'overdue_refund',
+        'overdue_auto_cancel', 'overdue_auto_check', 'batch_check', 'batch_day_check',
+        'batch_diff_identities', 'refund_audit', 'refund_rule', 'refund_early_time',
+        'cancel_notify_supplier',
+    ];
 	/**
 	 * 根据票类id获取票类信息
      * @author wengbin 
@@ -27,7 +38,24 @@ class Ticket extends Model {
 	 * @return array   
 	 */
 	public function getTicketInfoById($id) {
-		return $this->table(self::__TICKET_TABLE__)->find($id);
+		return $this->table(self::__TICKET_TABLE__)
+            ->field($this->ticket_filed)
+            ->find($id);
+	}
+
+    /**
+     * 获取门票扩展属性
+     * @author Guangpeng Chen
+     * @param int $tid 门票ID
+     * @param string $field
+     * @return mixed
+     */
+    public function getTicketExtInfoByTid($tid, $field="*") {
+		return $this->table(self::__TICKET_TABLE_EXT__)
+            ->field($field)
+            ->where(['tid'=>':tid'])
+            ->bind([':tid'=>$tid])
+            ->find();
 	}
 
     /**
@@ -37,7 +65,10 @@ class Ticket extends Model {
      * @return array   
      */
     public function getTicketInfoByPid($pid) {
-        return $this->table(self::__TICKET_TABLE__)->where(array('pid' => $pid))->find();
+
+        return $this->table(self::__TICKET_TABLE__)
+            ->field( $this->ticket_filed )
+            ->where(array('pid' => $pid))->find();
     }
 
     /**

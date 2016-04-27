@@ -25,6 +25,8 @@ class Price extends Model {
 
     protected $commit_flag          = false;    //本次配置是否成功标识
 
+    protected $price_diff           = array();  //本次价格变动集合
+
 
     
     /**
@@ -123,7 +125,6 @@ class Price extends Model {
         //获取当前登录用户的结算价
         $self_price = $this->getSettlePrice($saccount, $pid, $aid);
         if ($self_price === false) {
-            // var_dump($pid);die;
             return true;   //无分销权限
         }
 
@@ -164,13 +165,16 @@ class Price extends Model {
             //价格记录，存在则更新，不存在则插入
             if (isset($tmp_priceset[$did])) {
                 if ((string)$tmp_priceset[$did] != (string)$diff_price) {
+                    //本次价格变动的差价
+                    $this->price_diff[$did.'_'.$pid] = $diff_price - $tmp_priceset[$did];
+
                     $todo_update[(string)$diff_price][] = $did;
                 }
             } else {
                 $todo_insert[$did] = $diff_price; 
             }
         }
-        // var_dump($todo_insert, $todo_update);die;
+
         // $this->startTrans();    //开启事务
 
         //差价保存
@@ -245,8 +249,10 @@ class Price extends Model {
 
             if (!$affect_rows) return false;
 
+            //价格变动通知
             foreach ($update_did_arr as $did) {
-                $this->_priceChangeNotify($sid, $did, $pid);    //价格变动通知
+                $price_diff = isset($this->price_diff[$did.'_'.$pid]) ? $this->price_diff[$did.'_'.$pid] : 0;
+                $this->_priceChangeNotify($sid, $did, $pid, $price_diff);    
             }
         }
 
@@ -263,10 +269,10 @@ class Price extends Model {
      */
     protected function setPermissionForSupply($sid, $pid, $did_arr, $aid, $priceset) {
         $sale_list = $this->table(self::__SALE_LIST_TABLE__)
-                        ->where(array(
-                            'aid' => $sid,
-                            'fid' => array('in', implode(',', $did_arr))))
-                        ->select();
+            ->where(array(
+                'aid' => $sid,
+                'fid' => array('in', implode(',', $did_arr))))
+            ->select();
 
         $tmp_sale_list = array();
         if ($sale_list) {
@@ -296,26 +302,27 @@ class Price extends Model {
                 }
                 $new_pid_arr = array_merge($pid_arr, array($pid));
 
-                self::_permissionChangeNotify($sid, $did, $pid, 'add');
+                $this->_permissionChangeNotify($sid, $did, $pid, 'add');
             }
 
             $new_pid_arr = array_unique($new_pid_arr);
             $affect_rows = $this->table(self::__SALE_LIST_TABLE__)
-                                ->save(array('id' => $item['id'], 'pids' => implode(',', $new_pid_arr)));
+                ->save(array('id' => $item['id'], 'pids' => implode(',', $new_pid_arr)));
             $this->recordLog($sid, $affect_rows . $this->_sql());
             if (!$affect_rows) return false;
 
             //变更转分销状态
             
             $open_id = $this->table(self::__EVOLUTE_TABLE__)
-                            ->where(array('sid' => $sid, 'fid' => $did, 'pid' => $pid, 'active' => 1))->getField('id');
+                ->where(array('sid' => $sid, 'fid' => $did, 'pid' => $pid, 'active' => 1))
+                ->getField('id');
             if ($open_id) $todo_open[] = $open_id;
         }
 
         if ($todo_open) {
             $affect_rows = $this->table(self::__EVOLUTE_TABLE__)
-                                ->where(array('id' => array('in', implode(',', $todo_open))))
-                                ->save(array('active' => 0));
+                ->where(array('id' => array('in', implode(',', $todo_open))))
+                ->save(array('active' => 0));
             $this->recordLog($sid, $affect_rows . $this->_sql());
             if (!$affect_rows) return false;
         }
@@ -384,7 +391,6 @@ class Price extends Model {
                 $this->_permissionChangeNotify($sid, $did, $pid, 'add');
             }
         }
-        // var_dump($todo_insert, $todo_update, $todo_delete);die;
 
         if ($todo_update) {
             $affect_rows = $this->table(self::__EVOLUTE_TABLE__)
@@ -446,13 +452,14 @@ class Price extends Model {
         // var_dump($did);
 
         $tree = $this->table(self::__EVOLUTE_TABLE__)
-                    ->where(array(
-                        'pid'       => $pid, 
-                        'status'    => 0, 
-                        '_string'   => 'sid=substring(aids, -length(sid))', 
-                        'aids'      => array('like', $aids . '%')))
-                    ->field('id,fid,sid')
-                    ->select();
+            ->where(array(
+                '_string'   => "aids='{$aids}' or aids like '{$aids},%'",
+                'pid'       => $pid, 
+                'status'    => 0))
+                // '_string'   => 'sid=substring(aids, -length(sid))', 
+                // 'aids'      => array('like', $aids . '%')))
+            ->field('id,fid,sid')
+            ->select();
 
         $todo_update = array();
         foreach ($tree as  $item) {
@@ -485,10 +492,10 @@ class Price extends Model {
             'create_time'   => array('between', array($begin_time, $end_time)),
         );
         $result = $this->table(self::__PRICE_CHG_NOTIFY_TABLE__)
-                        ->where($where)
-                        ->field('aid,mid,pid,create_time')
-                        ->limit($limit)
-                        ->select();
+            ->where($where)
+            ->field('aid,mid,pid,create_time')
+            ->limit($limit)
+            ->select();
 
         $return = array();
         foreach ($result as $key => $item) {
@@ -536,7 +543,7 @@ class Price extends Model {
         //可能发生改变的产品结合
         $possible_change = $this->table(self::__PRICE_CHG_NOTIFY_TABLE__)
             ->where($where)
-            ->field('mid,aid,pid,create_time')
+            ->field('mid,aid,pid,create_time,price_diff')
             ->select(); 
 
         $result = $next_find = array();
@@ -600,11 +607,11 @@ class Price extends Model {
      * @return [type]      [description]
      */
     private function _permissionDeleteNotify($did, $pid, $sid) {
-        $storageModel = new Model\Product\YXStorage();
+        $storageModel = new \Model\Product\YXStorage();
         $storageModel->removeReseller($sid, $did, $pid);
 
         //加载分销库存模型
-        $storageModel = new Model\Product\SellerStorage();
+        $storageModel = new \Model\Product\SellerStorage();
         $storageModel->removeReseller($did, $pid, $sid);
         return true;
         // $params = array(
@@ -629,6 +636,7 @@ class Price extends Model {
             'aid'           => $sid,
             'mid'           => $did,
             'pid'           => $pid,
+            'price_diff'    => 0,
             'notify_type'   => $notify_type,
             'create_time'   => time()
         );
@@ -642,11 +650,12 @@ class Price extends Model {
      * @param  [type] $pid [description]
      * @return [type]      [description]
      */
-    private function _priceChangeNotify($sid, $did, $pid) {
+    private function _priceChangeNotify($sid, $did, $pid, $price_diff) {
         $notify = array(
             'aid'           => $sid,
             'mid'           => $did,
             'pid'           => $pid,
+            'price_diff'    => $price_diff,
             'notify_type'   => 0,
             'create_time'   => time()
         );
