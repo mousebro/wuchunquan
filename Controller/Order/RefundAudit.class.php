@@ -475,7 +475,7 @@ public function checkAndAddAudit($ordernum,$targeTnum,$opertorID,$source){
                 $row['action'] = 0;
                 $row['repush'] = false;
                 // action -0 等待处理 -1 同意|拒绝 -2 已处理
-                if ($row['apply_did'] == $operatorID || $operatorID == 1 && $row['ifpack'] != 1){
+                if (($row['apply_did'] == $operatorID || $operatorID == 1)&& $row['ifpack'] != 1){
                     if($row['dstatus']==0){
                         $row['action'] = 1;
                     }else {

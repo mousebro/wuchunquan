@@ -394,6 +394,10 @@ class RefundAuditModel extends Model
                     'a.fxid'    => $memberID,
                     'oa.ifpack' => array('in', array(0, 1)),
                 ),
+                array(
+                    't.apply_did'    => $memberID,
+                    'oa.ifpack' => array('in', array(0, 1, 2)),
+                ),
                 '_logic' => 'or',
             );
         }
