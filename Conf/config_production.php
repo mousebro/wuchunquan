@@ -82,4 +82,35 @@ return array(
             'db_pwd' => 'pft666',
         ),
     ),
+    'queue' => array(
+        'setting' => array(
+            'QUEUE'         => '*',  //先后顺序的队列名称 mail,default,log
+            'PIDFILE'       => '',   //如果是一个进程时指定的进程PID存放文件
+            'COUNT'         => 1,    //开启几个进程
+            'VERBOSE'       => false, //是否显示出调试信息
+            'INTERVAL'      => 2,     //检查队列的时间间隔
+            'BLOCKING'      => false,  //暂时不知道做什么的
+            'REDIS_BACKEND' => [
+                [
+                    'host' => '10.51.26.214',
+                    'port' => 6379,
+                    'password'=>'pft666',
+                    'alias'=>'master',
+                    'master'=>true
+                ],
+                [
+                    'host' => '10.160.4.140',
+                    'port' => 6380,
+                    'password'=>'pft666',
+                    'alias'=>'slave'
+                ],
+            ],
+            'REDIS_BACKEND_DATABASE' => 10,
+        ),
+        //定义需要加载的Job
+        'jobs' => array(
+            'Dog_Job', //小狗队列
+            'Mail_Job', //邮件队列
+        )
+    ),
 );
