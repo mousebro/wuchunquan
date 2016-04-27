@@ -15,8 +15,20 @@ class VComSms
         'account'   => 'fzpft',
         'password'  => 'ab8888',
     ];
+    private $errCode = [
+        '00'    => '成功',
+        '01'    => '账号或密码错误',
+        '02'    => '账号欠费',
+        '09'    => '无效的接收方号码',
+        '10'    => '网络或系统内部错误',
+    ];
 
-    public function Send($tel, $msg, $search_id=null, $account=null, $pwd=null) {
+    public function Send($tel, $msg, $search_id=null, $account=null, $pwd=null)
+    {
+        if (ENV!='PRODUCTION') {
+            pft_log('queue/vcom', "发送短信|$tel:$msg");
+            return ['code'=>200];
+        }
         $account    = is_null($account) ? $this->infoConf['account'] :  $account;
         $pwd        = is_null($pwd) ? $this->infoConf['password'] : $pwd ;
         $pwd        = strtoupper(md5($pwd));
@@ -39,6 +51,14 @@ class VComSms
 </Group>
 XML;
         $res = curl_post($url_post, $data);
-        return $res;
+        $code = 200;
+        if ($res!='00') {
+            $code = 401;
+            pft_log('queue/vcom', "发送短信失败|$data");
+        }
+        return [
+            'code'=>$code,
+            'msg'=>"$res:{$this->errCode[$res]}",
+        ];
     }
 }
