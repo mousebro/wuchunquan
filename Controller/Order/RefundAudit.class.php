@@ -129,9 +129,7 @@ class RefundAudit extends Controller
                 return $result;
             }
             //自供自销的订单可自行取消
-            if ($orderInfo['apply_did'] == $operatorID
-                && $modifyType == self::CANCEL_CODE
-            ) {
+            if ($orderInfo['apply_did'] == $operatorID) {
                 return 100;
             }
         } else {
