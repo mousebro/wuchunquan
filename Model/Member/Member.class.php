@@ -15,10 +15,6 @@ class Member extends Model
     const __MEMBER_RELATIONSHOP_TABLE__ = 'pft_member_relationship';
 
     protected $connection = '';
-    public static function say()
-    {
-        echo 'hello world';
-    }
 
     private function getLimitReferer()
     {
@@ -71,6 +67,26 @@ class Member extends Model
 
         $member = $this->table(self::__MEMBER_TABLE__)->where($where)->find();
         return $member ?: false;
+    }
+
+    /**
+     * 从缓存里面获取会员的数据
+     *
+     * @param int $id 会员ID
+     * @param string $field 需要的字段
+     * @return bool|mixed
+     */
+    public function getMemberCacheById($id, $field)
+    {
+        /** @var $cache \Library\Cache\CacheRedis;*/
+        $cache = Cache::getInstance('redis');
+        $name = "member:$id";
+        $data = $cache->hget($name, '', $field);
+        if (!$data) {
+            $data = $this->table(self::__MEMBER_TABLE__)->where("id=$id")->getField($field);
+            $cache->hset($name, '', [$field=>$data]);
+        }
+        return $data;
     }
 
     public function getMemberCache()
