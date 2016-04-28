@@ -130,8 +130,14 @@ class OnlineTrade extends Model
                 'Fid'     => (int)$mid,
             ));
             $send_time = 0;
+            //设置超时为10s
+            $context = stream_context_create(array(
+                'http' => array(
+                    'timeout' => 10 //超时时间，单位为秒
+                )
+            ));
             do{
-                $return = file_get_contents($mData['Mpath'].'?'.$relation_info_req);
+                $return = file_get_contents($mData['Mpath'].'?'.$relation_info_req, 0, $context);
                 ++$send_time;
             }while(!$return && $send_time<3);
         }

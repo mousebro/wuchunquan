@@ -71,4 +71,11 @@ class Land extends Model
     public function getLandIdByPid($pid) {
         return $this->table('uu_products')->where(['id' => $pid])->getField('contact_id');
     }
+
+    public function AddProduct(Array $params)
+    {
+        $params['terminal']      = self::getTerminalId();
+        $params['terminal_type'] = 1;
+        return $this->table('uu_land')->data($params)->add();
+    }
 }

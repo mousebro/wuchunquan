@@ -67,9 +67,10 @@ return array(
     ),
     'redis'=>array(
         'main'=> array(
-            'db_host'=>'127.0.0.1',
-            'db_port'=> 6379,
-            'db_pwd' => 'pft666',
+            'db_host'  =>'127.0.0.1',
+            'db_port'  => 6379,
+            'db_pwd'   => 'pft666',
+            'db_queue' => 10, //队列使用的数据库
         ),
         'master'=> array(
             'db_host'=>'127.0.0.1',

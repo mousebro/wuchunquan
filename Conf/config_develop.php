@@ -41,20 +41,20 @@ return array(
             'db_name' => 'myuu',
         ),
         'slave'   => array(//slave db
-            'db_type'   => 'mysql',
-            'db_host'   => '192.168.20.138',
-            'db_user'   => 'develop',
-            'db_pwd'    => 'develop%',
-            'db_port'   => 3308,
-            'db_name'   => 'myuu',
+                           'db_type'   => 'mysql',
+                           'db_host'   => '192.168.20.138',
+                           'db_user'   => 'develop',
+                           'db_pwd'    => 'develop%',
+                           'db_port'   => 3308,
+                           'db_name'   => 'myuu',
         ),
         'summary'   => array(//统计数据库
-            'db_type'   => 'mysql',
-            'db_host'   => '192.168.20.138',
-            'db_user'   => 'develop',
-            'db_pwd'    => 'develop%',
-            'db_port'   => 3307,
-            'db_name'   => 'summary',
+                             'db_type'   => 'mysql',
+                             'db_host'   => '192.168.20.138',
+                             'db_user'   => 'develop',
+                             'db_pwd'    => 'develop%',
+                             'db_port'   => 3307,
+                             'db_name'   => 'summary',
         ),
         'terminal'  => array(
             'db_type'   => 'mysql',
@@ -67,9 +67,10 @@ return array(
     ),
     'redis'=>array(
         'main'=> array(
-            'db_host'=>'192.168.20.138',
-            'db_port'=> 6379,
-            'db_pwd' => '123666',
+            'db_host'  =>'192.168.20.138',
+            'db_port'  => 6379,
+            'db_pwd'   => '123666',
+            'db_queue' => 10, //队列使用的数据库
         ),
         'master'=> array(
             'db_host'=>'192.168.20.138',
