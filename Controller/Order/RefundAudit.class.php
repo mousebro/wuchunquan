@@ -353,7 +353,6 @@ class RefundAudit extends Controller
         if ( ! in_array($auditResult, [1, 2])) {
             $this->apiReturn(250);//审核结果只能是同意或拒绝
         }
-        //        echo 1111;
         //参数初始化
         $refundModel = new RefundAuditModel();
         $result      = 0;
@@ -369,12 +368,10 @@ class RefundAudit extends Controller
             $this->apiReturn(255);//套票主票无人工审核权限
         } else {
             $result = $this->updateAudit($refundModel, $ifpack, $orderNum, $targetTnum, $auditResult, $auditNote, $operatorID, $auditTime, $auditID);
-            //            var_dump($result);
             if ( ! $result) {
                 $this->apiReturn(241);
             }
         }
-        //        var_dump($ifpack);
         if ($ifpack == 2) {
             $mainOrder        = $orderInfo['pack_order'];
             $ordersAutoUpdate = $orderModel->getPackSubOrder($mainOrder);
@@ -447,7 +444,6 @@ class RefundAudit extends Controller
         if ( ! $refundModel) {
             $refundModel = new RefundAuditModel();
         }
-        $action = self::OPERATE_AUDIT_CODE;
         $source = 16;
         $return = $refundModel->updateAudit($orderNum, $auditResult, $auditNote, $operatorID, $auditTime, $auditID);
         if (in_array($auditResult,[1,2])) {
@@ -644,7 +640,7 @@ class RefundAudit extends Controller
                 if ($verify_num) {
                     $tNumCanBeModified = $orderInfo['tnum'] - $verify_num;
                 } else {
-                    return 241;
+                    $tNumCanBeModified = $orderInfo['tnum'];
                 }
             } else {
                 $tNumCanBeModified = $orderInfo['tnum'];
@@ -675,6 +671,7 @@ class RefundAudit extends Controller
                 $operatorID,
                 $orderInfo['salerid']
             );
+
             $result     = $addTrack ? 200 : 244;
 
             return $result;
