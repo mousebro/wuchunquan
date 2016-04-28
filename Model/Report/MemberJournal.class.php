@@ -23,17 +23,17 @@ class MemberJournal extends Model
 
     public function AdminSummary($startDate, $endDate, $memberId=0, $expectMember=array())
     {
+        if (!$startDate || !$endDate) return [];
         $where = '1=1 ';
         if (is_numeric($memberId) && $memberId>0) $where .= " AND fid=$memberId";
         if (!empty($expectMember)) $where .= " AND fid NOT IN(".implode(',', $expectMember) .")";
         $where .= " AND ptype<>2 AND ptype<>3";
-        $where .= " AND rectime=>'$startDate' and rectime<='$endDate'";
+        $where .= " AND rectime BETWEEN '$startDate' and '$endDate'";
         $sql = <<<SQL
 select fid,daction,dtype,ptype,sum(dmoney) as dmoney from {$this->_journalTable}
 where $where
 group by fid,daction,dtype,ptype
 SQL;
-        //echo $sql;exit;
         $items = $this->query($sql);
         $data  = [];
         foreach ($items as $item) {
@@ -43,14 +43,36 @@ SQL;
         }
         return $data;
     }
-    private function MoneySummary()
+    public function MoneySummary($startDate, $endDate,$memberIdList)
     {
-        $where = $this->_where;
-        $where .= "";
-        $sql = <<<SQL
-SELECT lmoney,fid,MAX(rectime)  AS rectime FROM {$this->_journalTable} WHERE $this->_where
-GROUP BY fid ORDER BY rectime DESC
-SQL;
-;
+        $data = [];
+        //$memberIdStr = implode(',', $memberIdList);
+        $map1 = [
+            'fid'       => ['in', $memberIdList],
+            'rectime'   => ['elt', $startDate]
+        ];
+        $map2 = [
+            'fid'       => ['in', $memberIdList],
+            'rectime'   => ['elt', $endDate]
+        ];
+        $preMaxId = $this->table($this->_journalTable)->where($map1)->group('fid')->getField('max(id)', true);
+        //echo $this->getLastSql();exit;
+        $preList  = $this->table($this->_journalTable)
+            ->where(['id'=>['in', $preMaxId]])
+            ->getField('fid,lmoney', true);
+        foreach ($preList as $fid=>$money) {
+            $data[$fid]['pre'] =$money;
+        }
+        $curMaxId = $this->table($this->_journalTable)->where($map2)->group('fid')->getField('max(id)', true);
+        $curList  = $this->table($this->_journalTable)
+            ->where(['id'=>['in', $curMaxId]])
+            ->getField('fid, lmoney', true);
+        //print_r($curList);
+        //echo $this->getLastSql();
+        foreach ($curList as $fid=>$money) {
+            $data[$fid]['cur'] =$money;
+        }
+        //print_r($data);
+       return $data;
     }
 }

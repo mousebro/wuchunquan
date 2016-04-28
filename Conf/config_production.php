@@ -6,6 +6,7 @@
  * Time: 11:57
  */
 return array(
+    'DEFAULT_FILTER' => 'htmlspecialchars', // 默认参数过滤方法 用于I函数...
     'db'=> array(
         'localhost' => array(
             'db_type'=>'mysql',
