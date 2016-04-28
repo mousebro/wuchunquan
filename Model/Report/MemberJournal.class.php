@@ -27,13 +27,14 @@ class MemberJournal extends Model
         $where = '1=1 ';
         if (is_numeric($memberId) && $memberId>0) $where .= " AND fid=$memberId";
         if (!empty($expectMember)) $where .= " AND fid NOT IN(".implode(',', $expectMember) .")";
-        $where .= " AND ptype<>2 AND ptype<>3";
+        $where .= " AND ptype in (0,1,4,5,6)";
         $where .= " AND rectime BETWEEN '$startDate' and '$endDate'";
         $sql = <<<SQL
-select fid,daction,dtype,ptype,sum(dmoney) as dmoney from {$this->_journalTable}
+select fid,daction,dtype,sum(dmoney) as dmoney from {$this->_journalTable}
 where $where
-group by fid,daction,dtype,ptype
+group by fid,daction,dtype
 SQL;
+        //echo $sql;
         $items = $this->query($sql);
         $data  = [];
         foreach ($items as $item) {
@@ -49,11 +50,13 @@ SQL;
         //$memberIdStr = implode(',', $memberIdList);
         $map1 = [
             'fid'       => ['in', $memberIdList],
-            'rectime'   => ['elt', $startDate]
+            'rectime'   => ['elt', $startDate],
+            'ptype'     => ['not in','2,3'],
         ];
         $map2 = [
             'fid'       => ['in', $memberIdList],
-            'rectime'   => ['elt', $endDate]
+            'rectime'   => ['elt', $endDate],
+            'ptype'     => ['not in','2,3'],
         ];
         $preMaxId = $this->table($this->_journalTable)->where($map1)->group('fid')->getField('max(id)', true);
         //echo $this->getLastSql();exit;
