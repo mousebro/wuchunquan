@@ -113,6 +113,7 @@ class RefundAudit extends Controller
         if ( ! $orderInfo['ifpack'] && $orderInfo['tnum'] == $targetTnum) {
             return (100);
         }
+        $orderInfo['apply_did'] = $orderInfo['aids'] ? reset(explode(',',$orderInfo['aids'])) : $orderInfo['aid'];
         $orderInfo['refund_audit'] = $auditModel->getTicketInfoById($orderInfo['tid'],'refund_audit');
         //对需要审核的票类，需判断是否满足订单变更条件（对套票主票设置审核是无效的）
         if ($orderInfo['refund_audit'] != 0 && $orderInfo['ifpack'] != 1) {
