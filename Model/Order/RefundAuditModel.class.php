@@ -580,11 +580,13 @@ class RefundAuditModel extends Model
         );
         $field  = array(
             "o.status",
+            "o.aid",
             "o.paymode",
             "o.tid",
             "o.tnum",
             "od.concat_id",
             "od.pay_status",
+            "od.aids",
             "oa.ifpack",
             "oa.pack_order",
         );
