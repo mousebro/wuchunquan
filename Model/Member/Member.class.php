@@ -126,15 +126,16 @@ class Member extends Model
         return $data;
     }
 
-    public function getMemberCache()
+    public function getMemberList(Array $memberIds)
     {
         /** @var $cache \Library\Cache\CacheRedis;*/
-        $cache = Cache::getInstance('redis');
-        $members = $cache->get('global:members');
+        //$cache = Cache::getInstance('redis');
+        //$members = $cache->get('global:members');
         //var_dump($members);
         //$members = $cache->hdel('global:members', '');
-        if ($members) return $members;
-        $items = $this->table(self::__MEMBER_TABLE__)->where("status=0 AND dtype IN(0,1)")->getField('id,account,dname', true);
+        //if ($members) return $members;
+        $map  = ['id'=>['in', $memberIds]];
+        $items = $this->table(self::__MEMBER_TABLE__)->where($map)->getField('id,account,dname', true);
         $data = [];
         foreach ($items as $item) {
             $data[$item['id']] = [
@@ -144,7 +145,7 @@ class Member extends Model
         }
         //print_r($data);
         //exit;
-        $cache->set('global:members', $data, '', 86400);
+        //$cache->set('global:members', $data, '', 86400);
         return $data;
     }
 
