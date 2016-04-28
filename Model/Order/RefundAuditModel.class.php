@@ -123,18 +123,16 @@ class RefundAuditModel extends Model
      *
      * @return mixed
      */
-    public function getPackOrderInfo($orderNum)
-    {
-        $table  = $this->_orderAppendixTable;
-        $where  = array(
-            "orderid" => $orderNum,
+    public function getPackOrderInfo($orderNum){
+        $table = $this->_orderAppendixTable;
+        $where = array(
+            "orderid" =>$orderNum,
         );
-        $field  = array(
+        $field = array(
             "pack_order",
             "ifpack",
         );
         $result = $this->table($table)->where($where)->field($field)->find();
-
         return $result;
     }
 
@@ -145,27 +143,24 @@ class RefundAuditModel extends Model
      *
      * @return mixed
      */
-    public function getAuditInfoForAudit($orderNum, $dstatus = 0)
-    {
-        $table  = "$this->_refundAuditTable AS a";
-        $join   = array(
+    public function getAuditInfoForAudit($orderNum,$dstatus=0){
+        $table = "$this->_refundAuditTable AS a";
+        $join = array(
             "{$this->_orderAppendixTable} AS oa ON oa.orderid=a.ordernum",
-        );
-        $where  = array(
+        ) ;
+        $where = array(
             "a.dstatus" => $dstatus,
             "a.orderid" => $orderNum,
         );
-        $field  = array(
+        $field = array(
             "a.tnum as audit_tnum",
             "oa.ifpack",
             "oa.pack_order",
         );
-        $order  = "id desc";
+        $order = "id desc";
         $result = $this->table($table)->join($join)->where($where)->field($field)->order($order)->find();
-
         return $result;
     }
-
     /**
      * 查询订单是否处于退款审核状态
      *
@@ -181,7 +176,7 @@ class RefundAuditModel extends Model
             'ordernum' => $orderNum,
             'dstatus'  => 0,
         );
-        if ($modifyType !== null) {
+        if ($modifyType!==null) {
             $where['stype'] = $modifyType;
         }
 
@@ -272,16 +267,19 @@ class RefundAuditModel extends Model
     {
         $table = 'pft_order_track';
         $field = 'sum(tnum) as verify_num';
-        $where = [
-            'ordernum' => $orderNum,
+        $where = ['ordernum' => $orderNum,
             'action'   => 5,
         ];
         $order = 'id desc';
 
-        $result = $this->table($table)->where($where)->field($field)->order($order)->find();
-        if ($result) {
+        $result =  $this->table($table)
+                    ->where($where)
+                    ->field($field)
+                    ->order($order)
+                    ->find();
+        if($result){
             return $result['verify_num'];
-        } else {
+        }else{
             return $result;
         }
     }
@@ -303,7 +301,11 @@ class RefundAuditModel extends Model
         $filed = 'tnum as audit_tnum';
         $order = 'id desc';
 
-        return $this->table($table)->where($where)->field($filed)->order($order)->find();
+        return $this->table($table)
+                    ->where($where)
+                    ->field($filed)
+                    ->order($order)
+                    ->find();
     }
 
     /**
@@ -351,7 +353,7 @@ class RefundAuditModel extends Model
                 array(
                     't.refund_audit' => 1,
                     'oa.ifpack'      => 1,
-                    "a.stype"        => array("in", [0, 1]), //撤销撤改的不受以上限制
+                    "a.stype" => array("in", [0, 1]), //撤销撤改的不受以上限制
                     '_logic'         => 'or',
                 ),
             ),
@@ -379,19 +381,22 @@ class RefundAuditModel extends Model
                     'oa.ifpack' => array('in', array(0, 1)),
                 ),
                 array(
-                    't.apply_did' => $memberID,
-                    'oa.ifpack'   => array('in', array(0, 1, 2)),
+                    't.apply_did'    => $memberID,
+                ),
+                array(
+                    '_string' => "find_in_set('{$memberID}',od.aids)",
+                    'oa.ifpack' => array('in', array(0, 1)),
                 ),
                 '_logic' => 'or',
             );
         }
 
         if ($orderNum) {
-            $where['_complex'][] = array(
-                'a.ordernum'   => $orderNum,
-                'od.concat_id' => $orderNum,
-                '_logic'       => 'or',
-            );
+            $where['_complex'][]=array(
+                    'a.ordernum' => $orderNum,
+                    'od.concat_id'=> $orderNum,
+                    '_logic' => 'or',
+                );
         } else {
             if ($landTitle) {
                 $where['l.title'] = array("like", "%{$landTitle}%");
@@ -422,7 +427,11 @@ class RefundAuditModel extends Model
         if ($getTotalPage) {
             $field = array("count(*)");
 
-            return $this->table($table)->join($join)->where($where)->field($field)->find();
+            return $this->table($table)
+                        ->join($join)
+                        ->where($where)
+                        ->field($field)
+                        ->find();
         } else {
             //查询记录详情
             $field = array(
@@ -440,22 +449,27 @@ class RefundAuditModel extends Model
                 'm.dcodeURL',
                 'oa.ifpack',
                 'oa.pack_order',
-                //                't.mdetails',
                 't.sourceT',
             );
             $order = array(
                 'stime DESC',
                 'dstatus ASC',
             );
-            $map   = $this->table($table)->join($join)->where($where)->field($field)->page($page)->limit($limit)->order($order);
+            $map   = $this->table($table)
+                          ->join($join)
+                          ->where($where)
+                          ->field($field)
+                          ->page($page)
+                          ->limit($limit)
+                          ->order($order);
             if ($limit == 1) {
                 $result = $map->find();
             } else {
                 $result = $map->select();
             }
 
-            //            $this->test();
-            //            print_r($result);
+//            $this->test();
+//           print_r($result);
             return $result;
         }
     }
@@ -473,46 +487,45 @@ class RefundAuditModel extends Model
      *
      * @return array|bool
      */
-    public function getLogList($orderNum = null, $noticeType = null, $noticeDate = null, $memberId = null, $page = 1, $limit = 20)
-    {
+    public function getLogList($orderNum=null,$noticeType=null,$noticeDate=null,$memberId=null,$page=1,$limit=20){
         $orderNum   = $orderNum ? $orderNum : null;
-        $noticeType = (in_array($noticeType, [2, 3])) ? $noticeType : null;
+        $noticeType = (in_array($noticeType,[2,3])) ? $noticeType : null;
         $page       = $page ? $page : 1;
         $limit      = $limit ? $limit : 20;
-        $table      = "{$this->_refundAuditTable} AS a";
-        $join       = array(
+        $table  = "{$this->_refundAuditTable} AS a";
+        $join   = array(
             "JOIN {$this->_landTable} AS l ON a.lid=l.id",
             "JOIN {$this->_memberTable} AS m ON m.id=a.fxid",
             "JOIN {$this->_orderAppendixTable} AS oa ON oa.orderid=a.ordernum",
         );
-        $where      = array(
-            "oa.ifpack"         => array('in', [1, 0]),
-            "a.dstatus"         => array('in', [1, 2]),
-            "m.dcodeURL"        => array('neq', ''),
-            'm.dtype'           => array('in', [0, 1, 7]),
-            'm.status'          => array('in', [0, 3]),
+        $where  = array(
+            "oa.ifpack" => array('in', [1,0]),
+            "a.dstatus"  => array('in', [1, 2]),
+            "m.dcodeURL" => array('neq', ''),
+            'm.dtype'=>array('in',[0,1,7]),
+            'm.status'=>array('in',[0,3]),
             'length(m.account)' => 6,
         );
-        if ($orderNum) {
+        if($orderNum) {
             $where['a.ordernum'] = $orderNum; //订单号优先级最高
-        } else {
+        }else{
             //变动通知类型
-            if ($noticeType) {
+            if($noticeType){
                 $where['a.stype'] = $noticeType;
             }
             //通知日期
-            if ($noticeDate) {
-                $noticeDate       = substr($noticeDate, 0, 10);
-                $bTime            = $noticeDate . ' 00:00:00';
-                $eTime            = $noticeDate . ' 23:59:59';
-                $where['a.dtime'] = array('between', "{$bTime},{$eTime}");
+            if($noticeDate){
+                $noticeDate = substr($noticeDate,0,10);
+                $bTime = $noticeDate . ' 00:00:00';
+                $eTime = $noticeDate . ' 23:59:59';
+                $where['a.dtime'] = array('between',"{$bTime},{$eTime}");
             }
             //通知接口
-            if ($memberId) {
+            if($memberId){
                 $where['a.fxid'] = $memberId;
             }
         }
-        $field = array(
+        $field  = array(
             'a.id as notice_id',
             'a.tnum',
             'a.ordernum',
@@ -521,20 +534,26 @@ class RefundAuditModel extends Model
             'a.stime as apply_time',
             'a.dstatus as handle_res',
             'm.dname as ota_name',
-            //            'a.dtime as push_time',
-            //            'a.fxid',
+//            'a.dtime as push_time',
+//            'a.fxid',
         );
-        $order = array(
+        $order  = array(
             'a.dtime desc',
         );
-        $list  = $this->table($table)->join($join)->where($where)->field($field)->order($order)->page($page)->limit($limit)->select();
-        //        $this->test();
-        if ( ! $list) {
+        $list = $this->table($table)
+            ->join($join)
+            ->where($where)
+            ->field($field)
+            ->order($order)
+            ->page($page)
+            ->limit($limit)
+            ->select();
+//        $this->test();
+        if(!$list){
             return false;
         }
         $total = $this->table($table)->join($join)->where($where)->count();
-
-        return array('total' => $total, 'list' => $list);
+        return array('total'=>$total, 'list'=>$list);
     }
 
     public function getTicketInfoById($tid, $field = 'id')
@@ -569,7 +588,11 @@ class RefundAuditModel extends Model
             "oa.ifpack",
             "oa.pack_order",
         );
-        $result = $this->table($table)->join($join)->where($where)->field($field)->find();
+        $result = $this->table($table)
+                       ->join($join)
+                       ->where($where)
+                       ->field($field)
+                       ->find();
 
         return $result;
     }
@@ -584,35 +607,32 @@ class RefundAuditModel extends Model
      *
      * @return mixed
      */
-    public function getReceiverList($ota_name = null, $page = 1, $limit = 20)
-    {
+    public function getReceiverList($ota_name = null,$page=1,$limit=20){
         $table = $this->_memberTable;
         $where = array(
-            'dcodeURL'        => array('neq', ''),
-            'dtype'           => array('in', [0, 1, 7]),
-            'status'          => array('in', [0, 3]),
+            'dcodeURL' => array('neq',''),
+            'dtype'=>array('in',[0,1,7]),
+            'status'=>array('in',[0,3]),
             'length(account)' => 6,
         );
-        if ($ota_name) {
+        if ($ota_name){
             $where['dname'] = array('like', "%{$ota_name}%");
         }
         $field = array(
             'dname as ota_name',
             'id as memberid',
         );
-        $data  = $this->table($table)->where($where)->field($field)->page($page)->limit($limit)->select();
-        //        $this->test();
-        $total  = $this->table($table)->where($where)->count();
+        $data = $this->table($table)->where($where)->field($field)->page($page)->limit($limit)->select();
+//        $this->test();
+        $total = $this->table($table)->where($where)->count();
         $result = array(
-            'page'  => $page,
+            'page' => $page,
             'limit' => $limit,
             'total' => $total,
-            'data'  => $data,
+            'data' => $data,
         );
-
         return $result;
     }
-
     /**
      * 测试用：打印调用的sql语句
      *
