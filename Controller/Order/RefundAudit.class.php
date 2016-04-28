@@ -20,7 +20,7 @@ class RefundAudit extends Controller
     const OPERATE_AUDIT_CODE = 10;     //订单追踪表中表示退款审核已处理
     const AGREE_AUDIT_CODE = 13;
     const REFUSE_AUDIT_CODE = 14;
-    private $noticeURL = 'http://localhost/ota/RefundNotice.php';
+    private $noticeURL = 'http://localhost/new/d/module/api/RefundNotice.php';
 
 
     /**
