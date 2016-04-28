@@ -450,7 +450,7 @@ class RefundAudit extends Controller
         if (in_array($auditResult,[1,2])) {
             $action = $auditResult==1 ? self::AGREE_AUDIT_CODE : self::REFUSE_AUDIT_CODE;
             $this->addRefundAuditOrderTrack($orderNum, $source, $operatorID, $action, $auditResult, $targetTnum);
-            if ($ifpack != 2) {
+            if ($ifpack != 2 && $auditResult==2 ) {
                 $this->noticeAuditResult('reject', $orderNum, $targetTnum, $auditResult);
             }
         };
