@@ -18,6 +18,8 @@ class RefundAudit extends Controller
     const CANCEL_CODE = 3;      //退款审核表中取消申请的stype值
     const APPLY_AUDIT_CODE = 11;      //订单追踪表中表示发起退款审核
     const OPERATE_AUDIT_CODE = 10;     //订单追踪表中表示退款审核已处理
+    const AGREE_AUDIT_CODE = 13;
+    const REFUSE_AUDIT_CODE = 14;
     private $noticeURL = 'http://localhost/ota/RefundNotice.php';
 
 
@@ -449,6 +451,7 @@ class RefundAudit extends Controller
         $source = 16;
         $return = $refundModel->updateAudit($orderNum, $auditResult, $auditNote, $operatorID, $auditTime, $auditID);
         if (in_array($auditResult,[1,2])) {
+            $action = $auditResult==1 ? self::AGREE_AUDIT_CODE : self::REFUSE_AUDIT_CODE;
             $this->addRefundAuditOrderTrack($orderNum, $source, $operatorID, $action, $auditResult, $targetTnum);
             if ($ifpack != 2) {
                 $this->noticeAuditResult('reject', $orderNum, $targetTnum, $auditResult);
@@ -661,7 +664,7 @@ class RefundAudit extends Controller
             $person_id  = $orderInfo['person_id'] ? $orderInfo['person_id'] : 0;
             $addTrack   = $trackModel->addTrack(
                 $orderNum,
-                $action, //拒绝退票审核
+                $action,
                 $orderInfo['tid'],
                 $tNumOperate,
                 $remainTicketNum,
