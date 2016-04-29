@@ -11,7 +11,7 @@ include_once __DIR__ .'/Common/functions.php';
 C(include  __DIR__ .'/Conf/config_'.strtolower(ENV).'.php');
 spl_autoload_register("\\AutoLoading\\loading::autoload");
 date_default_timezone_set('Asia/Shanghai');
-define('__TIMESTAMP__', date('Y-m-d H:i:s'));
+//define('__TIMESTAMP__', date('Y-m-d H:i:s'));
 //添加全局的初始化常量标识
 define('PFT_INIT', true);
 
