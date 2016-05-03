@@ -35,9 +35,19 @@ class withdraw extends Controller{
                 'acc_name' => $item['wd_name'],
                 'acc_type' => $item['accType'],
                 'ins_name' => $item['bank_name'],
-                'ins_code' => $item['bank_ins_code'],
-                'txn_amt'  => $item['wd_money'],
+                'ins_code' => $item['bank_ins_code']
             );
+
+            //计算实际需要转的金额
+            $fee1     = $item['wd_money'] / 100 / (1+$item['fee_bank_once']/1000);
+            $wm       = $item['cut_fee_way'] ? (($item['wd_money']/100-$fee1<1)?($item['wd_money']/100-1):$fee1) : ($item['wd_money']/100);
+            $payMoney = $wm * $item['fee_bank_once'] / 1000;
+            $pm       = ($payMoney < 1 && $payMoney > 0) ? 1 : $payMoney;
+
+            //最后的金额转换成分为单位
+            $txnAmt   = sprintf("%.2f", ($item['wd_money']/100 - $pm)) * 100;
+
+            $tmp['txn_amt'] = $txnAmt;
 
             $res[] = $tmp;
         }

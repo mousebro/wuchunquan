@@ -31,7 +31,7 @@ class Withdraw extends Model{
 
         $order = 'apply_time asc';
         $page  = "1,{$limit}";
-        $field = 'id, wd_money, bank_name, bank_ins_code, bank_accuont, wd_name, accType';
+        $field = 'id, wd_money, bank_name, bank_ins_code, bank_accuont, wd_name, accType, fee_bank_once, cut_fee_way';
 
         $list = $this->table($this->_withdrawTable)->where($where)->field($field)->order($order)->page($page)->select();
 
