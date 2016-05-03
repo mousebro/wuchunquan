@@ -24,7 +24,7 @@ class withdraw extends Controller{
         $limit = intval($this->getParam('limit'));
         $limit = $limit < 1 ? 100 : ($limit > 100 ? 100 : $limit);
 
-        $withdrawModel = $this->model('Finance/Withdraw');
+        $withdrawModel = $this->model('Finance/Withdraws');
         $list = $withdrawModel->getAutoTransferList($limit);
 
         $res = array();
@@ -80,7 +80,7 @@ class withdraw extends Controller{
         }
 
         //看是不是存在记录
-        $withdrawModel = $this->model('Finance/Withdraw');
+        $withdrawModel = $this->model('Finance/Withdraws');
         $info = $withdrawModel->getWithdrawInfo($platformOrderId);
         if(!$info) {
             $this->apiReturn(400, [], '参数错误 - 订单ID错误');
@@ -98,7 +98,7 @@ class withdraw extends Controller{
             }
 
             $res = $withdrawModel->feedbackFail($platformOrderId, $errorMsg);
-            
+
         } else if($status == 4) {
             //支付成功
             $queryId = strval($queryId);

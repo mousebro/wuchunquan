@@ -9,7 +9,7 @@
 namespace Model\Finance;
 use Library\Model;
 
-class Withdraw extends Model{
+class Withdraws extends Model{
 
     private $_withdrawTable = 'pft_wd_cash';   
 
@@ -127,7 +127,7 @@ class Withdraw extends Model{
         //更新代付数据
         $data = [
             'push_status' => 3,
-            'wd_status'   => 0,
+            'wd_status'   => 1,
             'memo'        => $errMsg
         ];
 
