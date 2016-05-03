@@ -70,6 +70,23 @@ class Order extends Controller
         echo $xml;
     }
 
+    public function QuickVerify()
+    {
+        include '/var/www/html/new/d/class/Terminal_Check_Socket.class.php';
+        $tc = new \Terminal_Check_Socket();
+        $salerid       = I('post.salerid');
+        $terminal_id   = I('post.terminal_id');
+        $code          = I('post.code');
+
+        $chkIns        = '499';
+        $actiontime    = '2016-04-19 00:00:00';
+        $terminal = $tc->Terminal_Check_In_Voucher($terminal_id,
+            $salerid,$code,array(
+                "vMode"=>7,
+                "vCmd"=>$chkIns,
+                'vCheckDate'=>$actiontime));
+    }
+
     /**
      * 现金支付/会员卡支付
      */
