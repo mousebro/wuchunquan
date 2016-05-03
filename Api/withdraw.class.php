@@ -92,13 +92,13 @@ class withdraw extends Controller{
 
         } else if($status == 3) {
             //支付失败
-            $res = $withdrawModel->feedbackFail($platformOrderId, $errMsg);
-
             $errorMsg = strval($errorMsg);
             if(!$errorMsg) {
                 $this->apiReturn(400, [], '参数错误 - 错误信息缺失');
             }
 
+            $res = $withdrawModel->feedbackFail($platformOrderId, $errorMsg);
+            
         } else if($status == 4) {
             //支付成功
             $queryId = strval($queryId);
