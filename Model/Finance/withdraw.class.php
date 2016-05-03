@@ -11,7 +11,7 @@ use Library\Model;
 
 class Withdraw extends Model{
 
-    private $_withdrawTable = 'pft_wd_cash';
+    private $_withdrawTable = 'pft_wd_cash';   
 
     /**
      *  获取需要自动提现的列表
