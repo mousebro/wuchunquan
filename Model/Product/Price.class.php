@@ -129,6 +129,8 @@ class Price extends Model {
             if ($self_price === false) {
                 return true;   //无分销权限
             }
+
+            $this->recordLog($sid, 'price:' . $self_price);
         }
         
 
@@ -208,6 +210,7 @@ class Price extends Model {
             include '/var/www/html/new/d/class/abc/PFTCoreAPI.class.php';
         }
 
+        $date = $date ? $date : date('Y-m-d');
         $result = \PFTCoreAPI::pStorage($this->soap_cli, $saccount, $pid, $aid, $date, 0);
         return $result['js']['p'] == -1 ? false : $result['js']['p'];
 
