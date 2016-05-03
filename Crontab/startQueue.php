@@ -14,19 +14,15 @@ use Library\Resque\Log\LogLevel as LogLevel;
 
 //包含初始化文件
 include '/var/www/html/Service/init.php';
-
-define('CONF_DIR', dirname(__DIR__) . '/Conf/');
 define('JOBS_DIR', dirname(__DIR__) . '/Jobs/');
 
 //加载配置文件
-$conf = CONF_DIR . 'jobs.conf.php';
-if(!file_exists($conf)) {
+$config  = C('queue');
+if(!$config) {
     die('队列配置文件不存在');
 }
-$config  = include($conf);
 $setting = $config['setting'];
 $jobs    = $config['jobs'];
-
 //包含需要执行的Job
 foreach ($jobs as $value) {
     $jobFile = JOBS_DIR . $value . '.php';

@@ -6,6 +6,7 @@
  * Time: 11:57
  */
 return array(
+    'DEFAULT_FILTER' => 'htmlspecialchars', // 默认参数过滤方法 用于I函数...
     'db'=> array(
         'localhost' => array(
             'db_type'=>'mysql',
@@ -77,5 +78,37 @@ return array(
             'db_port'=> 6379,
             'db_pwd' => '123666',
         ),
+    ),
+    'queue' => array(
+        'setting' => array(
+            'QUEUE'         => '*',  //先后顺序的队列名称 mail,default,log
+            'PIDFILE'       => '',   //如果是一个进程时指定的进程PID存放文件
+            'COUNT'         => 1,    //开启几个进程
+            'VERBOSE'       => false, //是否显示出调试信息
+            'INTERVAL'      => 2,     //检查队列的时间间隔
+            'BLOCKING'      => false,  //暂时不知道做什么的
+            'REDIS_BACKEND' => [
+                [
+                    'host' => '192.168.20.139',
+                    'port' => 6379,
+                    'db'=>10,
+                    'alias'=>'master',
+                    'master'=>true
+                ],
+                [
+                    'host' => '192.168.20.139',
+                    'port' => 6380,
+                    'db'    =>10,
+                    'alias'=>'slave'
+                ],
+            ],
+            'REDIS_BACKEND_DATABASE' => 10,
+        ),
+        //定义需要加载的Job
+        'jobs' => array(
+            'Dog_Job', //小狗队列
+            'Mail_Job', //邮件队列
+            'SmsNotify_Job',//短信通知队列
+        )
     ),
 );
