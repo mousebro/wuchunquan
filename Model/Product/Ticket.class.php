@@ -70,7 +70,6 @@ class Ticket extends Model {
             ->field( $this->ticket_filed )
             ->where(array('pid' => $pid))->find();
     }
-
     /**
      * 获取产品类型
      * @param  int $pid productID
@@ -466,5 +465,28 @@ class Ticket extends Model {
     public function isSelfApplyProduct($memberid, $pid) {
         $find = $this->table(self::__PRODUCT_TABLE__)->where(array('id' => $pid, 'apply_did' => $memberid))->find();
         return $find ? true : false;
+    }
+
+    /**
+     * 根据不同的条件获取门票表的数据
+     * @author Guangpeng Chen
+     *
+     * @param int $id ID字段
+     * @param string|array $where 查询条件
+     * @param string|array $field 需要查询的字段
+     * @param string  $join 关联查询
+     * @return mixed
+     */
+    public function QueryTicketInfo($where, $field='', $join='')
+    {
+        if (!$where) throw_exception('查询条件不能为空');
+        $field = !$field ?  $this->ticket_filed : $field;
+        $query = $this->table(self::__TICKET_TABLE__ .' t ')
+            ->field( $field )
+            ->where($where);
+        if ($join) $query->join($join);
+        $data = $query->select();
+        //echo $this->getLastSql();
+        return $data;
     }
 }
