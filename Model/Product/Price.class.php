@@ -70,6 +70,7 @@ class Price extends Model {
                 $todo_priceset[$did] = $priceset[$pid];
             }
             $result = self::setPriceForOneProduct($sid, $saccount, $pid, $todo_priceset, 0);
+            $this->recordLog($sid, $result);
             if (!$result) {
                 $this->rollback();
                 return false;
@@ -123,10 +124,15 @@ class Price extends Model {
         }
 
         //获取当前登录用户的结算价
-        $self_price = $this->getSettlePrice($saccount, $pid, $aid);
-        if ($self_price === false) {
-            return true;   //无分销权限
+        if (!$this->diff_mode) {
+            $self_price = $this->getSettlePrice($saccount, $pid, $aid);
+            if ($self_price === false) {
+                return true;   //无分销权限
+            }
+
+            $this->recordLog($sid, 'price:' . $self_price);
         }
+        
 
         //带配置的会员id数组
         $did_arr = array_keys($priceset);   
@@ -204,6 +210,7 @@ class Price extends Model {
             include '/var/www/html/new/d/class/abc/PFTCoreAPI.class.php';
         }
 
+        $date = $date ? $date : date('Y-m-d');
         $result = \PFTCoreAPI::pStorage($this->soap_cli, $saccount, $pid, $aid, $date, 0);
         return $result['js']['p'] == -1 ? false : $result['js']['p'];
 
@@ -247,7 +254,7 @@ class Price extends Model {
                 ->save(array('dprice' => $diff_price));
             $this->recordLog($sid, $affect_rows . $this->_sql());
 
-            if (!$affect_rows) return false;
+            if ($affect_rows === false) return false;
 
             //价格变动通知
             foreach ($update_did_arr as $did) {
@@ -309,7 +316,7 @@ class Price extends Model {
             $affect_rows = $this->table(self::__SALE_LIST_TABLE__)
                 ->save(array('id' => $item['id'], 'pids' => implode(',', $new_pid_arr)));
             $this->recordLog($sid, $affect_rows . $this->_sql());
-            if (!$affect_rows) return false;
+            if ($affect_rows === false) return false;
 
             //变更转分销状态
             

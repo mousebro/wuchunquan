@@ -73,7 +73,6 @@ class Member extends Model
             'status'          =>':status',
             //':password'=>':password',
         ];
-        //$map['name|title'] = 'thinkphp';
         $res = $this->table('pft_member')
             ->getField('id,account,member_auth,dname,satus,id,password,derror,errortime,dtype')
             ->where($where)
@@ -108,7 +107,7 @@ class Member extends Model
 
     /**
      * 从缓存里面获取会员的数据
-     *
+     * @author Guangpeng Chen
      * @param int $id 会员ID
      * @param string $field 需要的字段
      * @return bool|mixed
@@ -123,29 +122,6 @@ class Member extends Model
             $data = $this->table(self::__MEMBER_TABLE__)->where("id=$id")->getField($field);
             $cache->hset($name, '', [$field=>$data]);
         }
-        return $data;
-    }
-
-    public function getMemberList(Array $memberIds)
-    {
-        /** @var $cache \Library\Cache\CacheRedis;*/
-        //$cache = Cache::getInstance('redis');
-        //$members = $cache->get('global:members');
-        //var_dump($members);
-        //$members = $cache->hdel('global:members', '');
-        //if ($members) return $members;
-        $map  = ['id'=>['in', $memberIds]];
-        $items = $this->table(self::__MEMBER_TABLE__)->where($map)->getField('id,account,dname', true);
-        $data = [];
-        foreach ($items as $item) {
-            $data[$item['id']] = [
-                'account'=>$item['account'],
-                'dname'=>$item['dname']
-            ];
-        }
-        //print_r($data);
-        //exit;
-        //$cache->set('global:members', $data, '', 86400);
         return $data;
     }
 
@@ -263,8 +239,8 @@ class Member extends Model
                                            $dtype=NULL, $ptype=NULL, $orderid='', $memo='')
     {
         if ($dmode>0 && (!$aid || $aid<0)) return false;
-        $act    = $action?"setDec":"setInc";
-        $act_res= $action?"setInc":"setDec";
+        $act    = $action ? "-" : "+";
+        $act_res= $action ? "+" : "-";
         if ($dmode>0 && $dtype==6) {
             E('授信额度不允许提现');
         }
@@ -285,12 +261,19 @@ class Member extends Model
         $result3 = true;
         $this->startTrans();
         if ($dmode==0) {
-            $result1 = $this->Table('pft_member_money')->where(['fid'=>$id])->$act('amoney', $Mmoney);
+            $result1 = $this->Table('pft_member_money')
+                ->where(['fid'=>$id])
+                ->data(['amoney'=>['exp', "amoney{$act}{$Mmoney}"]])
+                ->save();
             if ($dtype==6){
                 $result3 = $this->Table('pft_member_money')
                     ->where(['fid'=>$id])
-                    ->data(['frozentime'=>__TIMESTAMP__])
-                    ->$act_res('fmoney', $Mmoney);
+                    ->data([
+                            'frozentime'=> time(),
+                            'fmoney'    => ['exp', "fmoney{$act_res}{$Mmoney}"],
+                        ])
+                    ->save();
+                ;
             }
             $journalData['dtype']  = (!is_numeric($dtype)) ? 3 : $dtype;
             $journalData['ptype']  = (!is_numeric($ptype)) ? 0 : $ptype;
@@ -298,7 +281,10 @@ class Member extends Model
         elseif ($dmode==1){
             //查看有无记录
             $this->checkCreditExitst($id, $aid);
-            $result1 = $this->Table('pft_member_credit')->where(['fid'=>$id,'aid'=>$aid])->$act('kmoney', $Mmoney);
+            $result1 = $this->Table('pft_member_credit')
+                ->where(['fid'=>$id,'aid'=>$aid])
+                ->data(['kmoney'=>['exp', "kmoney{$act}{$Mmoney}"]])
+                ->save();
             $journalData['dtype']  = (!is_numeric($dtype))?4:$dtype;
             $journalData['ptype']  = (!is_numeric($ptype))?1:$ptype;
         }
@@ -307,10 +293,11 @@ class Member extends Model
             $this->checkCreditExitst($id, $aid);
             $result1 = $this->Table('pft_member_credit')->where(['fid'=>$id,'aid'=>$aid])
                 ->data( [
-                    'basetime'      => __TIMESTAMP__,
+                    'basetime'      => time(),
                     'baseauthority' => $opID,
+                    'basecredit'    => ['exp', "basecredit{$act}{$Mmoney}"]
                     ] )
-                ->$act('basecredit', $Mmoney);
+                ->save();
             $journalData['dtype'] =(!is_numeric($dtype)) ? 11 : $dtype;
             $journalData['ptype'] =(!is_numeric($ptype)) ? 3  : $ptype;
         }

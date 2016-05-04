@@ -92,6 +92,7 @@ class ApiDispatch{
         //记录访问日志
         unset($jsonArr['params']);
         $jsonArr['auth'] = $res ? 1 : 0;
+        $jsonArr['access_ip'] = $_SERVER['REMOTE_ADDR'];
         pft_log('pft_api_access/log', json_encode($jsonArr));
 
         if(!$res) {
