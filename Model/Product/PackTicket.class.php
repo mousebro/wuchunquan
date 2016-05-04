@@ -10,6 +10,7 @@
 namespace Model\Product;
 
 
+use Library\Cache\Cache;
 use Library\Model;
 
 class PackTicket extends Model
@@ -21,7 +22,8 @@ class PackTicket extends Model
 
     private $parent_tid             = 0;
     private $childTickets           = null;
-
+    private $cacheKey              = '';
+    private $cache  = null;
     public $paymode = 0;// 支付方式
     public $advance = 0;// 套票需要提前多少天购买
     public $section = 0;// 是否存在验证区间，1 存在
@@ -32,7 +34,7 @@ class PackTicket extends Model
 
     public function getChildTickets()
     {
-        if (!is_null($this->childTickets)) return $this->childTicketData($this->parent_tid);
+        if (!is_null($this->childTickets)) return $this->childTicketData();
         return $this->childTickets;
     }
 
@@ -40,9 +42,48 @@ class PackTicket extends Model
     {
         parent::__construct('localhost', 'pft');
         $this->parent_tid = $parent_tid;
+        $this->cacheKey   = "pkg:{$_SESSION['memberID']}";
+        /** @var $cache \Library\Cache\CacheRedis*/
+        $this->cache = Cache::getInstance('redis');
         if ($parent_tid>0 ) $this->childTicketData($parent_tid);
     }
 
+    /**
+     * 检测套票数据是否合法
+     *
+     * @param $json
+     * @return bool
+     */
+    public function checkPackData($json)
+    {
+        $arr_list = json_decode($json, true);
+        //[{"lid":"8264","pid":"14624","aid":"3385","num":"1"},{"lid":"8264","pid":"21656","aid":"3385","num":"1"}]﻿
+        $limit_key_list = ['lid','pid','aid','num'];
+        foreach ($arr_list as $arr) {
+            foreach ($arr as $key=>$val) {
+                if(!in_array($key, $limit_key_list) || !is_numeric($val)) {
+                    echo $key, $val;
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public function getCache()
+    {
+        return $this->cache->get($this->cacheKey);
+    }
+
+    public function setCache($json)
+    {
+        return $this->cache->set($this->cacheKey, $json, '', 1800);
+    }
+
+    public function rmCache()
+    {
+        return $this->cache->rm($this->cacheKey);
+    }
     // 获取关联子票数据
     public function childTicketData(){
         $data = $this->table($this->package_ticket_table)
@@ -51,6 +92,25 @@ class PackTicket extends Model
             ->join("left join {$this->ticket_ext_table} f ON f.pid={$this->package_ticket_table}.pid")
             ->join("left join {$this->products_table} p ON p.id={$this->package_ticket_table}.pid")
             ->where(['parent_tid'=>$this->parent_tid])->select();
+        //echo $this->getLastSql();
+        $this->childTickets = $data;
+        return $data;
+    }
+
+    public function childTempTicketsInfo(){
+        //[{"lid":"8264","pid":"14624","aid":"3385","num":"1"},{"lid":"8264","pid":"21656","aid":"3385","num":"1"}]﻿
+        $child_info = $this->getCache();
+        if (empty($child_info)) return [];
+        $child_info = json_decode($child_info, true);
+        $pid_list = [];
+        foreach ($child_info as $info) {
+            $pid_list[] = $info['pid'];
+        }
+        $data = $this->table($this->ticket_table .' t')
+            ->field("p.p_name,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->join("left join {$this->ticket_ext_table} f ON f.pid=t.pid")
+            ->join("left join {$this->products_table} p ON p.id=t.pid")
+            ->where(['t.pid'=>['in', $pid_list]])->select();
         //echo $this->getLastSql();
         $this->childTickets = $data;
         return $data;
