@@ -490,6 +490,54 @@ class Ticket extends Model {
         return $data;
     }
 
+    /**
+     * 获取该景区底下其他门票
+     *
+     * @author Guangpeng Chen
+     * @param $lid
+     * @return array
+     */
+    public function GetLandTickets($lid)
+    {
+        $where = [
+            't.landid'=>$lid,
+            'p.apply_limit'=>['neq',6],
+        ];
+        $data = $this->table(self::__TICKET_TABLE__ . ' t')->join(self::__PRODUCT_TABLE__ . " p on t.pid=p.id")
+            ->where($where)
+            ->field('t.title,t.id as tid')
+            ->select();
+        if ($data!==false) return ['code'=>200,'data'=>$data];
+        return ['code'=>0, 'data'=>'', 'msg'=>$this->getDbError()];
+    }
+
+    /**
+     * 获取时间段价格
+     *
+     * @param int $pid 产品ID
+     * @return array
+     */
+    public function getPriceSection($pid)
+    {
+        $today  = date('Y-m-d');
+        $priceModel = new PriceRead();
+        $price = $priceModel->get_Dynamic_Price_Merge($pid, '', 0, '', '', 0, 1);
+        $price_section = array();
+        foreach($price as $val){
+            if($val->ptype==0 && $val->end_date>=$today){
+                $price_section[(int)$val->UUid] = array(
+                    'js'    => $val['n_price'],
+                    'ls'    => $val['l_price'],
+                    'id'    => $val['id'],
+                    'sdate' => $val['start_date'],
+                    'edate' => $val['end_date'],
+                    'storage'  => $val['storage'],
+                    'weekdays' => $val['weekdays'],
+                );
+            }
+        }
+        return $price_section;
+    }
     public function UpdateProducts($where, $params)
     {
         //uu_products
