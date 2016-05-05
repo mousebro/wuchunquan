@@ -176,7 +176,6 @@ class ticket extends Controller
         // 绑定闸机票类数据
         if($jiutian_auth == 1 && $tid)
         {
-            $tmp = array();// 自己生成
             $md5 = ($data['uuid']!='') ? $data['uuid']:md5($data['ttitle'].'-'.$data['tid']);
             $data['jiutian'][]  = array('uuid'=>$md5,'name'=>$data['ttitle']);
             $data['needBindGate'] = true;
@@ -207,5 +206,292 @@ class ticket extends Controller
                 'land'          =>$landData,
             ],
             'success');
+    }
+    public function Update($oneTicket)
+    {
+
+        $isSectionTicket = false;// 是否是期票
+        if($oneTicket['order_start'] && $oneTicket['order_end']) $isSectionTicket = true;
+
+        // 价格判断
+        if(isset($oneTicket['price_section']) && count($oneTicket['price_section']) ){
+
+            $compareSec = array();
+            $changeNote = array();
+            $original_price = $this->ticketObj->getPriceSection($oneTicket['pid']);
+            foreach($oneTicket['price_section'] as $row)
+            {
+                // 期票模式（有效期是时间段）只能全部有价格
+                if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6')) return array('status'=>'fail', 'msg'=>'期票模式必须每天都有价格');
+                if(($tableId = ($row['id']+0))==0) continue; // 已存在表ID
+                $section = $row['sdate'].' 至 '.$row['edate'];
+                $diff_js = $original_price[$tableId]['js'] - $row['js'];
+                $diff_ls = $original_price[$tableId]['ls'] - $row['ls'];
+                if($diff_js) $changeNote[] = $section.' 供货价变动，原:'.($original_price[$tableId]['js']/100).'，现:'.($row['js']/100);
+                if($diff_ls) $changeNote[] = $section.' 零售价变动，原:'.($original_price[$tableId]['ls']/100).'，现:'.($row['ls']/100);
+            }
+        }
+
+        // 整合数据
+        $jData = $fData = array();
+        $jData['title']   = $oneTicket['ttitle'];
+        $jData['landid']  = $oneTicket['lid']+0;
+        $jData['tprice']  = $oneTicket['tprice']+0;    // 门市价
+        $jData['pay']     = $oneTicket['pay']+0;       // 支付方式 0 现场 1 在线
+        $jData['ddays']   = $oneTicket['ddays']+0;     // 提前下单时间
+        $jData['getaddr'] = $oneTicket['getaddr'];     // 取票信息
+        $jData['notes']   = $oneTicket['notes'];       // 产品说明
+        // $jData['order_limit']   = $oneTicket['order_limit'];    // 验证限制
+        $jData['buy_limit_up']  = $oneTicket['buy_limit_up']+0; // 购买上限
+        $jData['buy_limit_low'] = $oneTicket['buy_limit_low']+0;
+        $jData['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $oneTicket['order_limit'])));
+
+        if(($jData['buy_limit_up']>0) && $jData['buy_limit_low']>$jData['buy_limit_up'])
+            return array('status'=>'fail', 'msg'=>'最少购买张数不能大于最多购买张数');
+
+        // 延迟验证
+        $delaytime = array(0,0);
+        if(!isset($oneTicket['vtimehour']) && $oneTicket['vtimehour']) $delaytime[0] = $oneTicket['vtimehour']+0;
+        if(!isset($oneTicket['vtimeminu']) && $oneTicket['vtimeminu']) $delaytime[1] = $oneTicket['vtimeminu']+0;
+        $jData['delaytime'] = implode('|', $delaytime);
+
+
+        // 闸机绑定
+        $jData['uuid'] = isset($oneTicket['uuid']) ? $oneTicket['uuid']:'';
+
+        if($jData['uuid'])
+        {
+            $sql = "select jiutian_auth from pft_member_extinfo where fid={$_SESSION['sid']} limit 1";
+            $GLOBALS['le']->query($sql);
+            $GLOBALS['le']->fetch_assoc();
+            if($GLOBALS['le']->f('jiutian_auth')) $jData['sourceT'] = 1;
+        }
+
+        if(isset($oneTicket['tid']) && $oneTicket['tid']>0)
+        {
+            $tid = $oneTicket['tid'];
+            $sql = "select sourceT from uu_jq_ticket where id=$tid limit 1";
+            $GLOBALS['le']->query($sql);
+            if($GLOBALS['le']->fetch_assoc()) if($GLOBALS['le']->f('sourceT')==2) $jData['sourceT'] = 2;
+        }
+
+
+
+        if($jData['buy_limit_low']<=0) return array('status'=>'fail', 'msg'=>'购买下限不能小于0');
+
+        $jData['max_order_days']    = isset($oneTicket['max_order_days']) ? $oneTicket['max_order_days']+0:'-1';// 提前预售天数
+        $jData['cancel_auto_onMin'] = abs($oneTicket['cancel_auto_onMin']); // 未支付多少分钟内自动取消
+
+
+        // 取消费用（统一）
+        $jData['reb']      = $oneTicket['reb']+0;   // 实际值以分为单位
+        $jData['reb_type'] = $oneTicket['reb_type'];// 取消费用类型 0 百分比 1 实际值
+        if($jData['reb_type']==0) {
+            $jData['reb'] = $jData['reb'] / 100;
+            if($jData['reb']>100 || $jData['reb']<0) return array('status'=>'fail', 'msg'=>'取消费用百分比值不合法');
+        }
+
+        // 阶梯取消费用设置
+        if(isset($oneTicket['cancel_cost']) && $oneTicket['cancel_cost'])
+        {
+            $c_days = array();
+            foreach($oneTicket['cancel_cost'] as $row)
+            {
+                if(in_array($row['c_days'], $c_days))
+                    return array('status'=>'fail', 'msg'=>'退票手续费日期重叠');
+                $c_days[] = $row['c_days'];
+            }
+        }
+
+        $jData['cancel_cost'] = (isset($oneTicket['cancel_cost'])) ? json_encode($oneTicket['cancel_cost']):'';
+        $jData['cancel_cost'] = addslashes($jData['cancel_cost']);
+        // exit;
+
+        // 订单有效期 类型 0 游玩时间 1 下单时间 2 区间
+        $jData['delaytype'] = $oneTicket['validTime']+0;
+        $jData['delaydays'] = $oneTicket['delaydays']+0;
+        $jData['order_end'] = $jData['order_start'] = '';
+        if($oneTicket['validTime']==2){
+            if($oneTicket['order_end']=='' || $oneTicket['order_start']=='')
+                return array('status'=>'fail', 'msg'=>'有效期时间不能为空');
+            $jData['order_end']   = date('Y-m-d 23:59:59', strtotime($oneTicket['order_end']));// 订单截止有效日期
+            $jData['order_start'] = date('Y-m-d 00:00:00', strtotime($oneTicket['order_start']));
+        }
+
+        // 退票规则 0 有效期内、过期可退 1 有效期内可退 2  不可退
+        $jData['refund_rule'] = $jData['refund_early_time'] = 0;
+        if(!isset($oneTicket['refund_rule'])) $jData['refund_rule'] = $oneTicket['refund_rule']+0;
+        if(!isset($oncTicket['refund_early_time'])) $jData['refund_early_time'] = $oncTicket['refund_early_time']+0;
+
+        // 过期退票规则
+        // $jData['overdue_refund'] = 0;// 不可退
+        // if(isset($oneTicket['overdue_refund'])) $jData['overdue_refund'] = $oneTicket['overdue_refund']+0;
+        // $jData['overdue_auto_check']  = isset($oneTicket['overdue_auto_check']) ? $oneTicket['overdue_auto_check']+0:0;
+        // $jData['overdue_auto_cancel'] = isset($oneTicket['overdue_auto_cancel']) ? $oneTicket['overdue_auto_cancel']+0:0;
+
+        // 退票审核
+        $jData['refund_audit'] = (isset($oneTicket['refund_audit']) && $oneTicket['refund_audit']) ? 1:0;
+
+        $cancel_sms  = 0;// 取消是否通知游客
+        $cancel_sms  = isset($oneTicket['cancel_sms']) ? $oneTicket['cancel_sms']+0:0;
+        $confirm_sms = isset($oneTicket['confirm_sms']) ? $oneTicket['confirm_sms']+0:0;
+        $fData['confirm_sms']  = bindec($cancel_sms.$confirm_sms);
+
+
+        // 取消通知供应商 0 不通知 1 通知
+        if(isset($oncTicket['cancel_notify_supplier'])) $jData['cancel_notify_supplier'] = $oncTicket['cancel_notify_supplier']+0;
+
+
+        // 分批验证设置
+        $jData['batch_check']     = $oneTicket['batch_check']+0;
+        $jData['batch_day_check'] = $oneTicket['batch_day_check']+0;
+        $jData['batch_diff_identities'] = $oneTicket['batch_diff_identities']+0;
+
+
+        // 景点类别属性（二次交互）
+        $jData['Mpath'] = '';
+        if(isset($oneTicket['mpath']))    $jData['Mpath'] = $oneTicket['mpath'];
+
+        $jData['Mdetails'] = ($jData['Mpath']) ? 1:0;
+
+        if(isset($oneTicket['re_integral'])) $jData['re_integral'] = $oneTicket['re_integral'] + 0;
+
+        $jData['apply_did'] = $oneTicket['apply_did'];// 产品供应商
+
+        // 验证景区是否存在
+        $lid = $oneTicket['lid']+0;
+        $sql = "select title,id,p_type from uu_land where id=$lid limit 1";
+        $GLOBALS['le']->query($sql);
+        if(!$GLOBALS['le']->fetch_assoc()) return array('status'=>'fail', 'msg'=>'景区不存在');
+        $ltitle = $GLOBALS['le']->f('title');
+        $p_type = $GLOBALS['le']->f('p_type');
+
+
+
+        // 扩展属性 uu_land_f
+        $fData['confirm_wx']   = $oneTicket['confirm_wx']+0;
+        $fData['sendVoucher']  = $oneTicket['sendVoucher']+0;
+        // $fData['confirm_sms']  = $oneTicket['confirm_sms']+0;
+        $fData['tourist_info'] = $oneTicket['tourist_info']+0;
+
+        // 提前预定小时  01:00:00 - 23:59:00
+        $fData['dhour'] = str_pad($oneTicket['dhour'], 5, 0, STR_PAD_LEFT).':00';
+        if($p_type=='H') $fData['zone_id'] = $oneTicket['zone_id']+0;
+
+        // 验证时间 08:00|18:00
+        $fData['v_time_limit'] = 0;
+        if(isset($oneTicket['v_time_limit']) && $oneTicket['v_time_limit'])
+        {
+            $arr1 = explode('|', $oneTicket['v_time_limit']);
+            $arr1[0] = str_pad($arr1[0], 5, 0, STR_PAD_LEFT);
+            $arr1[1] = str_pad($arr1[1], 5, 0, STR_PAD_LEFT);
+            $fData['v_time_limit'] = implode('|', $arr1);
+        }
+
+
+
+
+
+        if($p_type=='B')
+        {
+            $fData['rdays'] = $oneTicket['rdays']+0;// 游玩天数
+            $fData['series_model'] = '';
+            if(isset($oneTicket['g_number']) && $oneTicket['g_number']) $fData['series_model'] = $oneTicket['g_number'].'{fck_date}';
+            if(isset($oneTicket['s_number']) && $oneTicket['s_number'] && $fData['series_model']) $fData['series_model'].= '-'.$oneTicket['s_number'];
+            $ass_station = $oneTicket['ass_station'];
+            $ass_station = str_replace('；', ';', $ass_station);
+            $fData['ass_station'] = addslashes(serialize(explode(';', $ass_station)));
+        }
+
+
+        if(isset($oneTicket['tid']) && $oneTicket['tid']>0)
+        {   // 以下编辑操作
+
+            $tid = $oneTicket['tid']+0;
+            $sql = "select * from uu_jq_ticket t left join uu_products p on t.pid=p.id where t.id=$tid limit 1";
+            $GLOBALS['le']->query($sql);// 缓存原设置
+            if(($original_info = $GLOBALS['le']->fetch_assoc())){
+                $original_info['memberID'] = $_SESSION['memberID'];
+                $original_info['REQUESTD'] = $_REQUEST;
+                // write_logs(json_encode($original_info), 'before_ticket_'.date('Ymd').'.txt');
+            }else return array('status'=>'fail', 'msg'=>'票类不存在');
+
+            $pid = $original_info['pid'];
+            $sql = buildUpdateSql($jData, 'uu_jq_ticket', "where id=$tid limit 1"); // echo $sql;
+            if(!$GLOBALS['le']->query($sql)) return array('status'=>'fail', 'msg'=>'其他错误,请联系客服');
+            $sql = buildUpdateSql($fData, 'uu_land_f', "where tid=$tid limit 1");
+            if(!$GLOBALS['le']->query($sql)) return array('status'=>'fail', 'msg'=>'其他错误,请联系客服');
+
+            $sql = "UPDATE uu_products SET verify_time=now() WHERE id=$pid LIMIT 1";
+            $GLOBALS['le']->query($sql);
+            $daction = "对 $ltitle".$jData['title']." 进行编辑";
+
+            // 产品有效期监控
+            if(count($original_info))
+            {
+                $oneTicket['pid']    = $pid;
+                $oneTicket['action'] = 'CreateNewTicket';
+                $oneTicket['add_ticket']  = ($tid==0) ? 1:0;
+                $oneTicket['validHtml_2'] = htmlValid($jData);
+                $oneTicket['validHtml_1'] = htmlValid($original_info);
+                fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $oneTicket);
+            }
+        }else
+        {
+
+            // 以下新增操作
+            $sql = buildInsertSql($jData, 'uu_jq_ticket');
+            if(!$GLOBALS['le']->query($sql)) FinishExit('{"status":"fail", "msg":"操作失败,请重试"}');
+            // echo $sql;
+
+            $sql = "select last_insert_id() as lastid";
+            $GLOBALS['le']->query($sql); $GLOBALS['le']->fetch_assoc();
+            $tid = $GLOBALS['le']->f('lastid');
+
+            $sql = "SELECT pid FROM uu_jq_ticket WHERE id=$tid LIMIT 1";
+            $GLOBALS['le']->query($sql);
+            $GLOBALS['le']->fetch_assoc();
+            $pid = $GLOBALS['le']->f('pid');
+
+            // $tid = 0; $pid = 0;
+            $fData['lid'] = $lid;
+            $fData['pid'] = $pid;
+            $fData['tid'] = $tid;
+
+            $sql = buildInsertSql($fData, 'uu_land_f'); // echo $sql;
+            if(!$GLOBALS['le']->query($sql)) return array('status'=>'fail', 'msg'=>'其他错误,请联系客服');
+            $daction = '添加门票.'.$ltitle.$jData['title'];
+        }
+
+        $apply_limit = $oneTicket['apply_limit']+0;
+        $sql ="update uu_products set apply_limit=$apply_limit,p_status=0 where id=$pid limit 1";
+        $GLOBALS['le']->query($sql);
+
+        include_once BASE_WWW_DIR.'/class/MemberAccount.class.php';
+        if($_SESSION['dtype']==6) pft\Member\MemberAccount::StuffOptLog($_SESSION['memberID'], $_SESSION['sid'], $daction);
+
+        // 保存或修改价格判断
+        // print_r($original_price);
+        if(isset($oneTicket['price_section']) && count($oneTicket['price_section']) && $pid){
+
+            foreach($oneTicket['price_section'] as $row)
+            {
+
+                if(($tableId = ($row['id']+0))>0)
+                {
+
+                    $intersect = array();
+                    $intersect = array_diff_assoc($row, $original_price[$tableId]);
+                    if(count($intersect)==0) continue;
+                }
+                $action = ($tableId>0) ? 1:0;// 0 插入 1 修改
+                $sdate  = date('Y-m-d', strtotime($row['sdate']));
+                $edate  = date('Y-m-d', strtotime($row['edate']));
+                $apiret = $soap->In_Dynamic_Price_Merge($pid, $sdate, $edate, $row['js'], $row['ls'], 0, $action, $tableId, '', $row['weekdays'], ($row['storage']+0));
+                // print_r(array($pid, $sdate, $edate, $row['js'], $row['ls'], 0, $action, $tableId, '', $row['weekdays'], ($row['storage']+0)));
+                if($apiret!=100) return array('status'=>'fail', 'msg'=>$apiret);
+            }
+        }
+        return array('status'=>'success','data'=>array('lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$jData['title']));
     }
 }
