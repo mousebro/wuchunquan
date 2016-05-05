@@ -97,9 +97,10 @@ class Order extends Controller
         $pay_channel    = 4;
         $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡
         $pay_to_pft     = false;
+        $tradeno        = I('post.tradeno');//流水号
         $this->getSoap();
         //$soap = new \ServerInside();
-        $res = $this->soap->Change_Order_Pay($ordernum,-1, $sourceT, $pay_total_fee, 1,'','',1,
+        $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
             parent::apiReturn(parent::CODE_SUCCESS, [], '支付成功');
