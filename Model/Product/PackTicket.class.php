@@ -19,6 +19,7 @@ class PackTicket extends Model
     private $ticket_ext_table       = 'uu_land_f';
     private $package_ticket_table   = 'pft_package_tickets';
     private $products_table         = 'uu_products';
+    private $land_table             = 'uu_land';
 
     private $parent_tid             = 0;
     private $childTickets           = null;
@@ -105,7 +106,7 @@ class PackTicket extends Model
         $child_info = json_decode($child_info, true);
         $pid_list = [];
         foreach ($child_info as $info) {
-            $pid_list[] = $info['pid'];
+            $pid_list[] = (int)$info['pid'];
         }
         $data = $this->table($this->ticket_table .' t')
             ->field("l.title as ltitle,t.title as ttitle,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
