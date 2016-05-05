@@ -19,14 +19,15 @@ class ticket extends Controller
     //private $ticketObj = ;
     public function __construct()
     {
+        if (!$_SESSION['memberID']) parent::apiReturn(self::CODE_AUTH_ERROR,[],'未登录');
         //$this->ticketObj = parent::model('\Product\Ticket');
         $this->ticketObj = new \Model\Product\Ticket();
     }
 
     public function ticket_attribute()
     {
-        $lid = I('get.lid', 0, 'intval');
-        $tid = I('get.tid', 0, 'intval');
+        $lid = I('post.lid', 0, 'intval');
+        $tid = I('post.tid', 0, 'intval');
         if($lid==0 && $tid==0) parent::apiReturn(self::CODE_INVALID_REQUEST, [], '参数错误');
         $data = $landData = array();
         if($tid>0)
