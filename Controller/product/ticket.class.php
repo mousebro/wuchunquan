@@ -124,6 +124,7 @@ class ticket extends Controller
         {
 
         }
+        $memberObj = new Member();
 
         // 套票属性
         if($landData['p_type']=='F')
@@ -142,10 +143,11 @@ class ticket extends Controller
             $useDate = $pack->usedate;// 套票使用时间
             if($useDate['section']==0) $data['minActive'] = floor((strtotime($useDate['eDate']) - strtotime($useDate['sDate'])) / 86400);
             //exit;
-            $sql = "select group_id from pft_member where id={$_SESSION['sid']} limit 1";
-            $GLOBALS['le']->query($sql);$GLOBALS['le']->fetch_assoc();
-            $group_id = $GLOBALS['le']->f('group_id');// 只有云顶允许打包现场支付
-            if($paymode==0 && ($group_id!=4)) FinishExit('{"status":"fail","msg":"现场支付不支持打包"}');
+            $group_id = $memberObj->getMemberCacheById($landData['apply_did'], 'group_id');
+            // 只有云顶允许打包现场支付
+            if($paymode==0 && ($group_id!=4)) {
+                parent::apiReturn(self::CODE_INVALID_REQUEST,[], '现场支付不支持打包');
+            }
             $child_info = $pack->getCache();
             $child_info = json_decode($child_info, true);
             foreach($child_ticket_data as $child)
@@ -169,7 +171,6 @@ class ticket extends Controller
 
         // 闸机绑定
         $apply_did = $_SESSION['sid'];
-        $memberObj = new Member();
         $jiutian_auth = $memberObj->getMemberExtInfo($apply_did, 'jiutian_auth');
         $landData['needBindGate'] = $data['needBindGate'] = false;
         // 绑定闸机票类数据
@@ -197,7 +198,7 @@ class ticket extends Controller
         // 获取该景区底下其他门票，套票除外
         if ($landData['p_type']!='F') {
             $other_ticket_ret = $this->ticketObj->GetLandTickets($lid);
-            if ($other_ticket_ret['code']==200) $other_tickets = $other_ticket_ret['dta'];
+            if ($other_ticket_ret['code']==200) $other_tickets = $other_ticket_ret['data'];
         }
         parent::apiReturn(200,
             [

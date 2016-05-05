@@ -99,6 +99,17 @@ class PackTicket extends Model
         return $data;
     }
 
+    private function ChkSales()
+    {
+        // 获取关联子票
+        $child_pids = array();
+        foreach($this->childTickets as $child) $child_pids[] = $child['pid'];
+        $count = $this->relationChildCount = count($child_pids);
+
+        $sql = "select p.p_name,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour from uu_products p left join uu_jq_ticket t on t.pid=p.id left join uu_land_f f on f.pid=p.id where p.apply_limit=1 and p.p_status<6 and p.id in ($child_pids_s) limit $count";
+
+    }
+
     public function childTempTicketsInfo(){
         //[{"lid":"8264","pid":"14624","aid":"3385","num":"1"},{"lid":"8264","pid":"21656","aid":"3385","num":"1"}]﻿
         $child_info = $this->getCache();
@@ -142,13 +153,14 @@ class PackTicket extends Model
     }
     // 检查套票是否合法有效
     public function checkEffectivePack(){
-        //var_dump($this->childTicketDatas);
+        //var_dump($this->childTickets);
 
-        if($this->relationChildCount!=count($this->childTicketDatas))
+        if($this->relationChildCount!=count($this->childTickets))
         {
             $this->message[] = '子票非所有都可销售';
             return false;// 子票非所有都可销售
         }
+
         // 获取套票的有效时间段 如果开始时间大于结束时间，表示无效
         $useDate = $this->useDate();// 获取时间交集
         if($useDate['sDate']>$useDate['eDate'])
@@ -169,9 +181,8 @@ class PackTicket extends Model
     public function useDate($playDate=''){
         //var_dump( $this->childTickets);
         $this->paymode = $this->childTickets[0]['pay'];// 支付方式
-        $this->advance = $this->childTicketDatas[0]['ddays'];// 提前购买天数
+        $this->advance = $this->childTickets[0]['ddays'];// 提前购买天数
         $orderDate = date('Y-m-d 00:00:00');// 下单时间
-
         // 获取最大提前天数
         if(is_null($this->childTickets)){
             return array(
