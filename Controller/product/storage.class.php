@@ -590,6 +590,10 @@ class storage extends Controller{
             $this->apiReturn(205, '', '没有权限配置库存');
         }
 
+        if($defaultInfo['status'] == 1) {
+            $this->apiReturn(200, array());
+        }
+
         $res = $storageModel->setInfoDefault($areaId, $memberId, 1);
 
         if($res) {
@@ -627,6 +631,10 @@ class storage extends Controller{
         $isAuth = $storageModel->isAuth($venusId, $memberId);
         if(!$isAuth) {
             $this->apiReturn(205, '', '没有权限配置库存');
+        }
+
+        if($defaultInfo['status'] == 0) {
+            $this->apiReturn(200, array());
         }
 
         $res = $storageModel->setInfoDefault($areaId, $memberId, 0);

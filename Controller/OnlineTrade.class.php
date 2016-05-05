@@ -10,6 +10,7 @@ namespace Controller;
 
 
 use Library\Controller;
+use Model\Report\OrderReport;
 
 class OnlineTrade extends Controller
 {
@@ -17,6 +18,14 @@ class OnlineTrade extends Controller
     public function __construct()
     {
         $this->model = new \Model\TradeRecord\OnlineTrade();
+    }
+
+    public function OrderCount()
+    {
+        $model = new OrderReport();
+        $tm = strtotime('- 1 days');
+        $bt = date('Y-m-d', $tm);
+        $model->OrderCountEveryDayCreate($bt);
     }
 
     public function Summary()

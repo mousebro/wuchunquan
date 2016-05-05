@@ -24,12 +24,22 @@ class OrderTools extends Model {
 
     /**
      * 获取订单的额外信息
-     * @param  int $orderid 订单id
+     * @param  string $orderid 订单id
      * @return array
      * @author  wengbin
      */
     public function getOrderAddonInfo($orderid) {
         return $this->table('uu_order_addon')->where(array('orderid' => $orderid))->find();
+    }
+
+    /**
+     * 获取订单的额外信息
+     * @author Guangpeng Chen
+     * @param string $orderid  订单id
+     * @return mixed
+     */
+    public function getOrderDetailInfo($orderid) {
+        return $this->table('uu_order_fx_details')->where(array('orderid' => $orderid))->find();
     }
 
     /**
@@ -43,6 +53,7 @@ class OrderTools extends Model {
         $result = $this->table('uu_ss_order')->join("
 				left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid
 				left join uu_land land on uu_ss_order.lid=land.id")
+
             ->where(array(
                 'uu_ss_order.status' => 0,
                 'detail.pay_status' => 2,
@@ -159,15 +170,107 @@ class OrderTools extends Model {
         }
     }
 
+    /**
+     * 获取套票主票的子票信息
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function getPackSubOrder($orderNum){
+        $table = 'uu_order_addon';
+        $where = ['pack_order' => $orderNum,];
+        $field = ['orderid'];
+        $result =  $this->table($table)->where($where)->field($field)->select();
+//        $this->test();
+        return $result;
+    }
 
+    /**
+     * 获取联票所有子票订单号
+     * @param $orderNum
+     *
+     * @return mixed
+     */
+    public function getLinkSubOrder($orderNum){
+        $table = 'uu_order_fx_details';
+        $where = array(
+            'concat_id' => $orderNum,
+        );
+        $field = ['orderid'];
+        $result = $this->table($table)->where($where)->field($field)->select();
+        return $result;
+    }
+
+    /**
+     * 打印测试语句
+     */
+    private function test(){
+        $str = $this->getLastSql();
+        var_dump($str);
+    }
     /**
      * 获取某个会员所购买的订单信息
      * @param  int      $memberid 会员id
      * @param  array    $option   额外的查询条件
-     * @return array    
+     * @return array
      */
     public function getSomeOneBoughtOrders($memberid, $options = array()) {
 
         return $this->table(self::__ORDER_TABLE__)->where(['member' => $memberid])->select($options);
+    }
+
+    /**
+     * 更新套票状态
+     * @author Guangpeng Cheng
+     * @date 2016-04-16
+     *
+     * @param string $begin_time 开始时间
+     * @param string $end_time 截止时间
+     */
+    public function syncPackageOrderStatus($begin_time, $end_time)
+    {
+        $dbConf = C('db');
+        $this->db(11,$dbConf['terminal'], true);
+        //获取子票
+        $where = [
+            'updateTime'=>
+                [
+                    array('egt',$begin_time),
+                    array('elt',$end_time)
+                ],
+        ];
+        $ordernums = $this->db(11)->table('order_print')
+            ->where($where)->getField('orderNUM', true);
+        echo $this->db(11)->getLastSql();
+        if ($ordernums)
+        {
+            $ordernum_str = "'". implode("','", $ordernums) . "'";
+            $where = "uu_ss_order.ordernum IN($ordernum_str) and uu_ss_order.status=0 and uu_order_addon.ifpack=2";
+            $unchanged_orders = $this->db(0)->table('uu_ss_order')
+                ->join('LEFT JOIN  uu_order_addon ON  uu_ss_order.ordernum=uu_order_addon.orderid')
+                ->where($where)
+                ->getField('uu_ss_order.ordernum', true);
+            echo $this->db(0)->getLastSql();
+
+            if ($unchanged_orders) {
+                $unchanged_orders_str = "'".implode("','", $unchanged_orders) ."'";
+                $sql = <<<SQL
+SELECT MAX(s.dtime) as dtime,pack_order FROM uu_ss_order s LEFT JOIN uu_order_addon a ON a.orderid=s.ordernum
+WHERE a.pack_order IN($unchanged_orders_str)
+GROUP BY pack_order
+SQL;
+                $ret = $this->db(0)->query($sql);
+                $sql = "UPDATE uu_ss_order SET status=1,dtime= CASE ordernum WHERE";
+                $main_ordernums = [];
+                foreach ($ret as $item) {
+                    $main_ordernums[] = "'".$item['pack_order']."'";
+                    $sql .=  sprintf("WHEN '%s' THEN '%s' ", $item['pack_order'], $item['dtime']);
+                }
+                $main_ordernum_str = implode(',', $main_ordernums);
+                $sql .= "END WHERE ordernum IN ($main_ordernum_str)";
+                $this->db(0)->execute($sql);
+            }
+        }
+
     }
 }

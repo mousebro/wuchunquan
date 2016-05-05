@@ -9,6 +9,7 @@ use Library\Model;
 class Ticket extends Model {
 
     const __TICKET_TABLE__          = 'uu_jq_ticket';    //门票信息表
+    const __TICKET_TABLE_EXT__      = 'uu_land_f';    //门票信息表
     const __PRODUCT_TABLE__         = 'uu_products';    //产品信息表
     const __LAND_TABLE__            = 'uu_land';   //景区信息表
 
@@ -20,6 +21,16 @@ class Ticket extends Model {
     const __ORDER_TABLE__           = 'uu_ss_order';
     const __ORDER_DETAIL_TABLE__    = 'uu_order_fx_details';
 
+    private $ticket_filed = [
+        'landid', 'title', 'tprice', 'reb', 'discount', 'delaydays', 'status', 'pay',
+        'notes', 'ddays', 'getaddr', 'smslimit', 's_limit_up', 's_limit_low', 'buy_limit_up',
+        'buy_limit_low', 'open_time', 'end_time', 'apply_did', 'pid', 'cancel_cost', 'reb_type',
+        'order_start', 'max_order_days', 'Mdetails', 'Mpath', 'sourceT', 'cancel_auto_onMin',
+        'delaytype', 'delaytime', 'order_end', 'order_limit', 'overdue_refund',
+        'overdue_auto_cancel', 'overdue_auto_check', 'batch_check', 'batch_day_check',
+        'batch_diff_identities', 'refund_audit', 'refund_rule', 'refund_early_time',
+        'cancel_notify_supplier',
+    ];
 	/**
 	 * 根据票类id获取票类信息
      * @author wengbin 
@@ -27,7 +38,24 @@ class Ticket extends Model {
 	 * @return array   
 	 */
 	public function getTicketInfoById($id) {
-		return $this->table(self::__TICKET_TABLE__)->find($id);
+		return $this->table(self::__TICKET_TABLE__)
+            ->field($this->ticket_filed)
+            ->find($id);
+	}
+
+    /**
+     * 获取门票扩展属性
+     * @author Guangpeng Chen
+     * @param int $tid 门票ID
+     * @param string $field
+     * @return mixed
+     */
+    public function getTicketExtInfoByTid($tid, $field="*") {
+		return $this->table(self::__TICKET_TABLE_EXT__)
+            ->field($field)
+            ->where(['tid'=>':tid'])
+            ->bind([':tid'=>$tid])
+            ->find();
 	}
 
     /**
@@ -37,9 +65,11 @@ class Ticket extends Model {
      * @return array   
      */
     public function getTicketInfoByPid($pid) {
-        return $this->table(self::__TICKET_TABLE__)->where(array('pid' => $pid))->find();
-    }
 
+        return $this->table(self::__TICKET_TABLE__)
+            ->field( $this->ticket_filed )
+            ->where(array('pid' => $pid))->find();
+    }
     /**
      * 获取产品类型
      * @param  int $pid productID
@@ -252,15 +282,17 @@ class Ticket extends Model {
             //时间段模式
             $price_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
                 ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
-                ->field('pid,l_price,start_date,end_date')
+                ->field('pid,l_price,min(start_date) as start_date,min(end_date) as end_date')
+                ->group('pid')
                 ->select();
 
+            // echo $this->_sql();die;
             if ($price_info && is_array($price_info)) {
                 foreach ($price_info as $item) {
                     $start_time = strtotime($item['start_date']);
                     $end_time   = strtotime($item['end_date']);
                     $cur_time   = strtotime($date);
-                    if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                    if ($end_time >= $cur_time) {
                         $result[$item['pid']] = $item['l_price'] / 100;
                     }
                 }
@@ -296,7 +328,8 @@ class Ticket extends Model {
             //时间段模式
             $storage_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
                 ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
-                ->field('pid,storage,start_date,end_date')
+                ->field('pid,storage,min(start_date) as start_date,min(end_date) as end_date')
+                ->group('pid')
                 ->select();
             if (!$storage_info) return false;
 
@@ -304,7 +337,7 @@ class Ticket extends Model {
                 $start_time = strtotime($item['start_date']);
                 $end_time   = strtotime($item['end_date']);
                 $cur_time   = strtotime($date);
-                if ($start_time <= $cur_time && $end_time >= $cur_time) {
+                if ($end_time >= $cur_time) {
                     $result[$item['pid']] = $item['storage'];
                 }
             }
@@ -432,5 +465,28 @@ class Ticket extends Model {
     public function isSelfApplyProduct($memberid, $pid) {
         $find = $this->table(self::__PRODUCT_TABLE__)->where(array('id' => $pid, 'apply_did' => $memberid))->find();
         return $find ? true : false;
+    }
+
+    /**
+     * 根据不同的条件获取门票表的数据
+     * @author Guangpeng Chen
+     *
+     * @param int $id ID字段
+     * @param string|array $where 查询条件
+     * @param string|array $field 需要查询的字段
+     * @param string  $join 关联查询
+     * @return mixed
+     */
+    public function QueryTicketInfo($where, $field='', $join='')
+    {
+        if (!$where) throw_exception('查询条件不能为空');
+        $field = !$field ?  $this->ticket_filed : $field;
+        $query = $this->table(self::__TICKET_TABLE__ .' t ')
+            ->field( $field )
+            ->where($where);
+        if ($join) $query->join($join);
+        $data = $query->select();
+        //echo $this->getLastSql();
+        return $data;
     }
 }

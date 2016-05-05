@@ -11,6 +11,14 @@ namespace Library;
 
 class Controller {
 
+    const  UN_LOGIN         = 0;//未登录
+    const  CODE_SUCCESS     = 200;//200 OK
+    const  CODE_CREATED     = 201;//sql execute fail
+    const  CODE_NO_CONTENT  = 204;//没有数据
+    const  CODE_INVALID_REQUEST  = 400;//Bad Request
+    const  CODE_AUTH_ERROR       = 401;//认证失败
+    const  CODE_METHOD_NOT_ALLOW = 405;
+
     /**
      *  
      * @author dwer
@@ -162,10 +170,6 @@ class Controller {
                 // 返回JSON数据格式到客户端 包含状态信息
                 header('Content-Type:application/json; charset=utf-8');
                 exit(json_encode($data, $json_option));
-//            case 'XML'  :
-//                // 返回xml格式数据
-//                header('Content-Type:text/xml; charset=utf-8');
-//                exit(xml_encode($data));
             case 'JSONP':
                 // 返回JSON数据格式到客户端 包含状态信息
                 header('Content-Type:application/json; charset=utf-8');
@@ -180,6 +184,24 @@ class Controller {
             default     :
                 exit;
         }
+    }
+    /**
+     * 通过curl提交数据
+     * @param $url
+     * @param $data
+     *
+     * @return mixed
+     */
+    public function raw_post($url,$data){
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_URL,$url);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+        $rt=curl_exec($ch);
+        curl_close($ch);
+        return $rt;
     }
 }
 ?>

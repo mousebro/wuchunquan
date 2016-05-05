@@ -817,9 +817,8 @@ class YXStorage extends Model{
         $where = array(
             'venue_id'    => $venusId,
             'zone_id'     => $areaId,
-            'seat_status' => array('neq', 5)
+            'seat_status' => array(array('neq', 1),array('neq', 5), 'and'),
         );
-
         $allSeats = $this->table($this->_seatsTable)->where($where)->count();
         $allSeats = $allSeats === false ? 0 : intval($allSeats);
 
@@ -1035,13 +1034,13 @@ class YXStorage extends Model{
                 'update_time' => time()
             );
 
-            $res = $this->table($this->_infoTable)->where($where)->save($data);
+            $res = $this->table($this->_defaultInfoTable)->where($where)->save($data);
         } else {
             $newData = $where;
             $newData['status']      = $status;
             $newData['update_time'] = time();
 
-            $res = $this->table($this->_infoTable)->add($newData);
+            $res = $this->table($this->_defaultInfoTable)->add($newData);
         }
 
         //写日志

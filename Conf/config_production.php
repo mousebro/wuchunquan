@@ -6,6 +6,7 @@
  * Time: 11:57
  */
 return array(
+    'DEFAULT_FILTER' => 'htmlspecialchars', // 默认参数过滤方法 用于I函数...
     'db'=> array(
         'localhost' => array(
             'db_type'=>'mysql',
@@ -56,12 +57,61 @@ return array(
             'db_port'   => 3306,
             'db_name'   => 'summary',
         ),
+        'terminal'  => array(
+            'db_type'   => 'mysql',
+            'db_host'   => '10.171.194.212',
+            'db_user'   => 'app_user',
+            'db_pwd'    => 'app@12301$*#',
+            'db_port'   => 3306,
+            'db_name'   => 'orderdata',
+        ),
     ),
     'redis'=>array(
         'main'=> array(
-            'db_host'=>'10.169.9.198',
-            'db_port'=> 6379,
-            'db_pwd' => 'myPft!12301!&',
+            'db_host'=> '10.51.26.214',
+            'db_port'=> 6679,
+            'db_pwd' => 'pft666',
         ),
+        'master'=> array(
+            'db_host'=>'10.51.26.214',
+            'db_port'=> 6679,
+            'db_pwd' => 'pft666',
+        ),
+        'slave' => array(
+            'db_host'=>'10.160.4.140',
+            'db_port'=> 6680,
+            'db_pwd' => 'pft666',
+        ),
+    ),
+    'queue' => array(
+        'setting' => array(
+            'QUEUE'         => '*',  //先后顺序的队列名称 mail,default,log
+            'PIDFILE'       => '',   //如果是一个进程时指定的进程PID存放文件
+            'COUNT'         => 1,    //开启几个进程
+            'VERBOSE'       => false, //是否显示出调试信息
+            'INTERVAL'      => 2,     //检查队列的时间间隔
+            'BLOCKING'      => false,  //暂时不知道做什么的
+            'REDIS_BACKEND' => [
+                [
+                    'host' => '10.51.26.214',
+                    'port' => 6379,
+                    'password'=>'pft666',
+                    'alias'=>'master',
+                    'master'=>true
+                ],
+                [
+                    'host' => '10.160.4.140',
+                    'port' => 6380,
+                    'password'=>'pft666',
+                    'alias'=>'slave'
+                ],
+            ],
+            'REDIS_BACKEND_DATABASE' => 10,
+        ),
+        //定义需要加载的Job
+        'jobs' => array(
+            'Dog_Job', //小狗队列
+            'Mail_Job', //邮件队列
+        )
     ),
 );

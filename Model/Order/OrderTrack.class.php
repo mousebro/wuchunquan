@@ -34,6 +34,8 @@ class OrderTrack extends Model
     const ORDER_MODIFY       = 1;
     const ORDER_PAY          = 4;
     const ORDER_VERIFIED     = 5;
+    const ORDER_VERIFIED_CANCEL = 6;//撤销
+    const ORDER_VERIFIED_CHG = 7;//撤改
     const ORDER_EXPIRE       = 12;
 
     const SOURCE_INSIDE_SOAP = 16;
@@ -79,6 +81,8 @@ class OrderTrack extends Model
             10=>'处理退票申请',
             11=>'提交退票申请',
             12=>'过期',
+            13=>'同意退票申请',
+            14=>'拒绝退票申请',
         ];
     }
     /**
@@ -99,7 +103,7 @@ class OrderTrack extends Model
      * @return mixed
      */
     public function addTrack($ordernum, $action, $tid, $tnum, $left_num, $source, $terminal_id=0,
-                             $branch_terminal=0, $id_card='', $oper=0,$salerid=0, $create_time='')
+        $branch_terminal=0, $id_card='', $oper=0,$salerid=0, $create_time='')
     {
         $oper = $oper ? $oper : 0;
         $data = [
@@ -130,6 +134,13 @@ class OrderTrack extends Model
         $this->table('pft_order_track')->addAll($data);
     }
 
+    public function getTnumByAction($ordernum, $action=5)
+    {
+        return $this->table('pft_order_track')
+                ->where(['ordernum'=>$ordernum, 'action'=>$action])
+                ->sum('tnum');
+    }
+
     public function getLog($ordernum)
     {
         $where['ordernum'] = ':ordernum';
@@ -144,6 +155,7 @@ class OrderTrack extends Model
     {
         $where['ordernum'] = ':ordernum';
         $where['action'] = array('neq', self::ORDER_EXPIRE);
+        $where['tnum'] = array('gt', 0);
         return $this->Table('pft_order_track')
             ->where($where)
             ->field('left_num')

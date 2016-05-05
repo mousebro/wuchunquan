@@ -11,8 +11,9 @@ use Library\Model;
 class MemberRelationship extends Model
 
 {
-    private $_memberTable = 'pft_member';
-    private $_memberRealtionTable = 'pft_member_relationship';
+    private $memberTable = 'pft_member';
+    private $memberRealtionTable = 'pft_member_relationship';
+    private $memberExtInfoTable = 'pft_member_extinfo';
     public $memberID;
 
     public function __construct($memberID)
@@ -24,24 +25,39 @@ class MemberRelationship extends Model
     /**
      * 根据名称或账号获取分销商
      * @param string $search
+     * @param        $page
+     * @param        $limit
+     * @param bool   $count
      *
      * @return mixed
      */
-    public function getDistributor($search = '',$page=1,$limit=20,$count=false)
+    public function getDispatchDistributor($search = '',$page,$limit)
     {
+        $limit = $page ? ($limit ? $limit : 20) : 9999;
         $page = $page ? $page : 1;
-        $limit = $limit ? $limit : 20;
-        $table = "{$this->_memberTable} AS m";
-        $join  = "LEFT JOIN {$this->_memberRealtionTable} AS mr ON m.id=mr.son_id";
+        $table = "{$this->memberRealtionTable} AS mr ";
+        $join  = [
+            "left join {$this->memberTable} AS m ON m.id=mr.son_id ",
+            "left join {$this->memberExtInfoTable} AS me ON me.fid=mr.son_id ",
+        ];
         $where = array(
             'mr.parent_id'   => $this->memberID,
             'mr.son_id_type' => 0,
+            'mr.ship_type'   => 0,
             'mr.status'      => 0,
+            'mr.son_id'      => array('not in',[1,$this->memberID]),
+            'm.dtype'=>array('in',[0,1,7]),
+            'm.status'=>array('in',[0,3]),
+            'length(m.account)' => 6,
+            'me.com_type' => array('not in',['电商','团购网','淘宝/天猫','电商/团购网']),
         );
         if ( ! empty($search)) {
-            if (intval($search)) {
-//                $where['m.account'] = intval($search);
-                $where['m.account'] = array("like", "%{$search}%");
+            if (is_numeric($search)) {
+                if(strlen($search)>6){
+                    $where['m.mobile'] = array("like", "%{$search}%");
+                }else{
+                    $where['m.account'] = array("like", "%{$search}%");
+                }
             } else {
                 $where['m.dname'] = array("like", "%{$search}%");
             }
@@ -57,22 +73,18 @@ class MemberRelationship extends Model
             'mr.status ASC',
             'mr.id DESC',
         );
-        if($count){
-            $field = "count(*) as total";
-            $result = $this->table($table)->join($join)->where($where)->field($field)->find();
-            $result = $result['total'];
-        }else{
-            $result = $this->table($table)
-                           ->join($join)
-                           ->where($where)
-                           ->field($field)
-                           ->order($order)
-                           ->page($page)
-                           ->limit($limit)
-                           ->select();
-        }
-//        $this->test();
-        return $result;
+
+        $total = $this->table($table)->join($join)->where($where)->count();
+        $data = $this->table($table)
+            ->join($join)
+            ->where($where)
+            ->field($field)
+            ->order($order)
+            ->page($page)
+            ->limit($limit)
+            ->select();
+        $data = is_array($data) ? $data : [];
+        return array($total,$data);
     }
 
     /**
@@ -82,7 +94,7 @@ class MemberRelationship extends Model
      * @return bool
      */
     public function isDistributor($distributorID){
-        $table = "$this->_memberRealtionTable AS mr";
+        $table = "$this->memberRealtionTable AS mr";
         $where = array(
             'mr.parent_id'   => $this->memberID,
             'mr.son_id'      => $distributorID,

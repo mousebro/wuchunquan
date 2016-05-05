@@ -251,7 +251,6 @@ class Model {
      * @return boolean
      */
      protected function _facade($data) {
-
         // 检查数据字段合法性
         if(!empty($this->fields)) {
             if(!empty($this->options['field'])) {
@@ -393,6 +392,13 @@ class Model {
      * @return boolean
      */
     public function save($data='',$options=array()) {
+        //更新-连贯操作_Guangpeng Chen
+        //$result1 = $this->Table('pft_member_credit')->where(['fid'=>$id,'aid'=>$aid])
+        //    ->data( ['basetime'      => date('Y-m-d H:i:s'),] )->setInc('basecredit', $Mmoney);
+        //if (!empty($this->data)) {
+        //    $data           = array_merge($data, $this->data);
+        //    $this->data     =   array();
+        //}
         if(empty($data)) {
             // 没有传递数据，获取当前数据对象的值
             if(!empty($this->data)) {
