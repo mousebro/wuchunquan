@@ -32,6 +32,7 @@ class PackTicket extends Model
     public $usedate = array();// 套票有效使用日期数组
     public $message = array();// 提示/错误消息记录
     public $attribute = array();// 景区套票属性
+    public $paymode_continer = array();//
 
     public function getChildTickets()
     {
@@ -96,18 +97,32 @@ class PackTicket extends Model
             ->where(['parent_tid'=>$this->parent_tid])->select();
         //echo $this->getLastSql();
         $this->childTickets = $data;
-        return $data;
+        return $this->ChkSales();
     }
 
-    private function ChkSales()
+    private function ChkSales($pid_list='')
     {
         // 获取关联子票
-        $child_pids = array();
-        foreach($this->childTickets as $child) $child_pids[] = $child['pid'];
-        $count = $this->relationChildCount = count($child_pids);
+        if (!$pid_list && count($this->childTickets))
+            foreach($this->childTickets as $child) $pid_list[] = $child['pid'];
 
-        $sql = "select p.p_name,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour from uu_products p left join uu_jq_ticket t on t.pid=p.id left join uu_land_f f on f.pid=p.id where p.apply_limit=1 and p.p_status<6 and p.id in ($child_pids_s) limit $count";
-
+        $count = $this->relationChildCount = count($pid_list);
+        $data = $this->table($this->ticket_table .' t')
+            ->field("l.title as ltitle,t.title as ttitle,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->join("left join {$this->land_table} l ON l.id=t.landid")
+            ->join("left join {$this->ticket_ext_table} f ON f.pid=t.pid")
+            ->join("left join {$this->products_table} p ON p.id=t.pid")
+            ->where([
+                't.pid'=>['in', $pid_list],
+                'p.apply_limit'=>1,
+                'p.p_status'=>['elt',6],
+            ])
+            ->limit($count)
+            ->select();
+        //var_dump($this->getDbError());
+        //var_dump($this->getLastSql());
+        $this->childTickets = $data;
+        return $data;
     }
 
     public function childTempTicketsInfo(){
@@ -119,15 +134,7 @@ class PackTicket extends Model
         foreach ($child_info as $info) {
             $pid_list[] = (int)$info['pid'];
         }
-        $data = $this->table($this->ticket_table .' t')
-            ->field("l.title as ltitle,t.title as ttitle,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
-            ->join("left join {$this->land_table} l ON l.id=t.landid")
-            ->join("left join {$this->ticket_ext_table} f ON f.pid=t.pid")
-            ->join("left join {$this->products_table} p ON p.id=t.pid")
-            ->where(['t.pid'=>['in', $pid_list]])->select();
-        //echo $this->getLastSql();
-        $this->childTickets = $data;
-        return $data;
+        return $this->ChkSales($pid_list);
     }
     /**
      * 保存套票子票数据
@@ -153,14 +160,11 @@ class PackTicket extends Model
     }
     // 检查套票是否合法有效
     public function checkEffectivePack(){
-        //var_dump($this->childTickets);
-
         if($this->relationChildCount!=count($this->childTickets))
         {
             $this->message[] = '子票非所有都可销售';
             return false;// 子票非所有都可销售
         }
-
         // 获取套票的有效时间段 如果开始时间大于结束时间，表示无效
         $useDate = $this->useDate();// 获取时间交集
         if($useDate['sDate']>$useDate['eDate'])
@@ -169,7 +173,6 @@ class PackTicket extends Model
             return false;
         }
         // 所有支付方式都必须一直
-        // print_r(array_count_values($this->paymode_continer));
         if(count(array_count_values($this->paymode_continer))>1)
         {
             $this->message[] = '支付方式存在不一致';
@@ -199,7 +202,6 @@ class PackTicket extends Model
             $this->paymode = $data['pay'];// 支付方式
             $this->paymode_continer[] = $data['pay'];
         }
-
         // 初始第一个子票信息
         $iniDate = $this->effectiveDateSection($this->childTickets[0], $orderDate, $playDate);
         foreach($this->childTickets as $key=>$data){
