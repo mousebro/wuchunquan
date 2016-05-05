@@ -52,9 +52,12 @@ class MemberRelationship extends Model
             'me.com_type' => array('not in',['电商','团购网','淘宝/天猫','电商/团购网']),
         );
         if ( ! empty($search)) {
-            if (intval($search)) {
-//                $where['m.account'] = intval($search);
-                $where['m.account'] = array("like", "%{$search}%");
+            if (is_numeric($search)) {
+                if(strlen($search)>6){
+                    $where['m.mobile'] = array("like", "%{$search}%");
+                }else{
+                    $where['m.account'] = array("like", "%{$search}%");
+                }
             } else {
                 $where['m.dname'] = array("like", "%{$search}%");
             }
