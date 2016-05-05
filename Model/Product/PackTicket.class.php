@@ -87,7 +87,8 @@ class PackTicket extends Model
     // 获取关联子票数据
     public function childTicketData(){
         $data = $this->table($this->package_ticket_table)
-            ->field("$this->package_ticket_table.*,p.p_name,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->field("$this->package_ticket_table.*,l.title as ltitle,t.title as ttitle,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->join("left join {$this->land_table} l ON l.id={$this->package_ticket_table}.lid")
             ->join("left join {$this->ticket_table} t ON t.pid={$this->package_ticket_table}.pid")
             ->join("left join {$this->ticket_ext_table} f ON f.pid={$this->package_ticket_table}.pid")
             ->join("left join {$this->products_table} p ON p.id={$this->package_ticket_table}.pid")
@@ -107,7 +108,8 @@ class PackTicket extends Model
             $pid_list[] = $info['pid'];
         }
         $data = $this->table($this->ticket_table .' t')
-            ->field("p.p_name,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->field("l.title as ltitle,t.title as ttitle,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->join("left join {$this->land_table} l ON l.id=t.landid")
             ->join("left join {$this->ticket_ext_table} f ON f.pid=t.pid")
             ->join("left join {$this->products_table} p ON p.id=t.pid")
             ->where(['t.pid'=>['in', $pid_list]])->select();
