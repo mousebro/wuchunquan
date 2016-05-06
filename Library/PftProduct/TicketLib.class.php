@@ -211,7 +211,7 @@ class TicketLib
             $sql = "select * from uu_jq_ticket t left join uu_products p on t.pid=p.id where t.id=$tid limit 1";
             $GLOBALS['le']->query($sql);// 缓存原设置
             if(($original_info = $GLOBALS['le']->fetch_assoc())){
-                $original_info['memberID'] = $_SESSION['memberID'];
+                $original_info['memberID'] = $memberId;
                 $original_info['REQUESTD'] = $_REQUEST;
                 // write_logs(json_encode($original_info), 'before_ticket_'.date('Ymd').'.txt');
             }else return array('status'=>'fail', 'msg'=>'票类不存在');
@@ -239,37 +239,25 @@ class TicketLib
         }
         else
         {
-
             // 以下新增操作
-            $sql = buildInsertSql($jData, 'uu_jq_ticket');
-            if(!$GLOBALS['le']->query($sql)) FinishExit('{"status":"fail", "msg":"操作失败,请重试"}');
-            // echo $sql;
+            $create_ret = $ticketObj->CreateTicket($jData);
+            if($create_ret['code']!=200) return $create_ret;
+            $tid =$create_ret['data']['lastid'];
+            $ret = $ticketObj->QueryTicketInfo("id=$tid",'pid');
+            $pid = $ret[0]['pid'];
 
-            $sql = "select last_insert_id() as lastid";
-            $GLOBALS['le']->query($sql); $GLOBALS['le']->fetch_assoc();
-            $tid = $GLOBALS['le']->f('lastid');
-
-            $sql = "SELECT pid FROM uu_jq_ticket WHERE id=$tid LIMIT 1";
-            $GLOBALS['le']->query($sql);
-            $GLOBALS['le']->fetch_assoc();
-            $pid = $GLOBALS['le']->f('pid');
-
-            // $tid = 0; $pid = 0;
             $fData['lid'] = $lid;
             $fData['pid'] = $pid;
             $fData['tid'] = $tid;
+            $extRet = $ticketObj->CreateTicketExtendInfo($fData);
 
-            $sql = buildInsertSql($fData, 'uu_land_f'); // echo $sql;
-            if(!$GLOBALS['le']->query($sql)) return array('status'=>'fail', 'msg'=>'其他错误,请联系客服');
+            if($extRet['code']!=200) return $extRet;
             $daction = '添加门票.'.$ltitle.$jData['title'];
         }
-
         $apply_limit = $ticketData['apply_limit']+0;
-        $sql ="update uu_products set apply_limit=$apply_limit,p_status=0 where id=$pid limit 1";
-        $GLOBALS['le']->query($sql);
+        $ticketObj->UpdateProducts(['id'=>$pid], ['apply_limit'=>$apply_limit, 'p_status'=>0]);
 
-        include_once BASE_WWW_DIR.'/class/MemberAccount.class.php';
-        if($_SESSION['dtype']==6) pft\Member\MemberAccount::StuffOptLog($_SESSION['memberID'], $_SESSION['sid'], $daction);
+
 
         // 保存或修改价格判断
         // print_r($original_price);
