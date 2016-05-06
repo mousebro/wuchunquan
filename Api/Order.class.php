@@ -88,14 +88,14 @@ class Order extends Controller
     }
 
     /**
-     * 现金支付/会员卡支付
+     * 现金支付/会员卡支付/拉卡拉支付
      */
     public function QuickPayOffline()
     {
         $ordernum       = I('post.ordernum');
         $pay_total_fee  = I('post.total_fee');;
         $pay_channel    = 4;
-        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡
+        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付
         $pay_to_pft     = false;
         $tradeno        = I('post.tradeno');//流水号
         $this->getSoap();
