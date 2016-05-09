@@ -54,8 +54,12 @@ class OrderQuery extends Model
     )
     {
         $where = array();
+        if ($seller_id>0 && $buyer_id>0) {
+            $where[] = '';
+        }
         if (count($timeParams)) {
-
+            $_time = $this->handlerTimeParams($timeParams);
+            $where = array_merge($where, $_time);
         }
         $fields = [
             's.ordernum', 's.remotenum', 's.lid', 's.tid',
