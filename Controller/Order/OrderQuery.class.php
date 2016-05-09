@@ -37,6 +37,7 @@ class OrderQuery extends Controller
             [sort] =>
             [amid] => 4
         )*/
+        $tid = 0;
         $page_size      = I('post.page_size',20, 'intval');
         $current_page   = I('post.current_page',1, 'intval');
         $offset         = ($current_page - 1) * $page_size;
@@ -62,7 +63,7 @@ class OrderQuery extends Controller
                 $order_num = $select_text;
                 break;
             case 2:
-                $lid      = $this->model->getLidByName($select_text);
+                $lid        = $this->model->getLidByName($select_text);
                 break;
             case 4:
                 $order_name = $select_text;
