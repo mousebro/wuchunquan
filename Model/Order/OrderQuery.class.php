@@ -64,7 +64,43 @@ class OrderQuery extends Model
     {
         return $this->table('uu_land')->where("title LIKE '%$name%'")->getField('id', true);
     }
+    public function getLandInfoById($id_list) {
+        $where = ['id'=>['in', $id_list]];
+        $data = $this->table('uu_land')->where($where)->getField('id,title,p_type', true);
+        return $data;
+    }
+    public function getTicketsInfoById($id_list) {
+        $where = ['id'=>['in', $id_list]];
+        $data = $this->table('uu_jq_ticket')->where($where)->getField('id,title', true);
+        return $data;
+    }
+    public function getMemberInfoById($id_list) {
+        $where = ['id'=>['in', $id_list]];
+        $data = $this->table('pft_member')->where($where)->getField('id,dname', true);
+        return $data;
+    }
+    public function sql_ids_M_A($amid,$maid){
+        if(!$amid) return $this->err3;
+        //array(array('gt',3),array('lt',10), 'or') ;
+        if($maid) return " and ((os.sellerid=$amid and os.buyerid=$maid) or (os.sellerid=$maid and os.buyerid=$amid))";
+        return " and (os.sellerid=$amid or os.buyerid=$amid) ";
+    }
 
+    /**
+     * @param int $seller_id 供应商ID
+     * @param int $buyer_id 分销商ID
+     * @param int $lid
+     * @param int $tid
+     * @param array $timeParams
+     * @param string $order_tel
+     * @param string $order_name
+     * @param string $remote_num
+     * @param int $pay_status
+     * @param int $order_status
+     * @param int $order_mode
+     * @param int $pay_mode
+     * @return array
+     */
     public function _where($seller_id, $buyer_id, $lid=0, $tid=0, $timeParams=[],
                            $order_tel='', $order_name='', $remote_num='',
                            $pay_status=-1, $order_status=-1, $order_mode=-1,
@@ -72,7 +108,10 @@ class OrderQuery extends Model
     {
         $where = array();
         if ($seller_id>0 && $buyer_id>0) {
-            $where[] = '';
+            $where['_string'] = "(os.sellerid=$buyer_id and os.buyerid=$seller_id) OR (os.sellerid=$seller_id and os.buyerid=$buyer_id)";
+        }
+        elseif($buyer_id>0) {
+            $where['_string'] = "os.sellerid=$buyer_id OR os.buyerid=$buyer_id";
         }
         if ($lid>0) $where['lid'] = $lid;
         if ($tid>0) $where['tid'] = $tid;
@@ -150,13 +189,14 @@ class OrderQuery extends Model
             $pay_mode);
 
         $fields = [
+            's.member',
             's.ordernum', 's.remotenum', 's.lid', 's.tid',
             's.begintime', 's.ordertime', 's.endtime', 's.tnum', 's.tprice',
             's.ordername', 's.ordertel', 's.status', 's.salerid',
             's.dtime', 's.totalmoney', 's.paymode AS pmode', 's.ordermode',
             's.ctime', 's.code', 's.contacttel', 's.member','s.aid',
             'n.ifpack', 'n.pack_order', 'n.tordernum', 's.aid', 'a.aprice',
-            'a.lprice', 'fd.concat_id', 'fd.aids', 'fd.aids_price','fd.aids_money',
+            'a.lprice', 'a.playtime','fd.concat_id', 'fd.aids', 'fd.aids_price','fd.aids_money',
             'os.buyerid AS buyid', 'os.sellerid AS sellid',
         ];
         $data = $this->table(self::__ORDER_TABLE__ . ' s')
@@ -168,8 +208,32 @@ class OrderQuery extends Model
             ->where($where)
             ->limit($offset, $length)
             ->select();
+        $output = array();
+        $lid_list = array();
+        $member_list = array();
+        foreach ($data as $item) {
+            $lid_list[] = $item['lid'];
+            $member_list[] = $item['member'];
+            $member_list[] = $item['aid'];
+            $tid_list[] = $item['tid'];
+            if ($item['aids']) {
+                foreach (explode(',', $item['aids']) as $_aid) $member_list[] = $_aid;
+            }
+            $output[$item['ordernum']]['main'] = $item;
+            //处理联票
+            if ($item['concat_id']!='' && $item['concat_id']!=$item['ordernum']) {
+                $output[$item['concat_id']]['links'][] = $item;
+            }
+        }
+        $lid_list       = array_unique($lid_list);
+        $tid_list       = array_unique($tid_list);
+        $member_list    = array_unique($member_list);
+
+        $lands   = $this->getLandInfoById($lid_list);
+        $tickets = $this->getTicketsInfoById($tid_list);
+        $members = $this->getMemberInfoById($member_list);
         //echo $this->getLastSql();
-        return $data;
+        return ['orders'=>$output, 'lands'=>$lands,'tickets'=>$tickets, 'members'=>$members];
     }
 
 }
