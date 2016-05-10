@@ -209,7 +209,7 @@ class OrderQuery extends Model
             ->limit($offset, $length)
             ->select();
         $output = array();
-        $lid_list = array();
+        $lid_list = $tid_list = array();
         $member_list = array();
         foreach ($data as $item) {
             $lid_list[] = $item['lid'];

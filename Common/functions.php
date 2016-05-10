@@ -694,15 +694,20 @@ if (!function_exists('curl_post')) {
      * @param string $logPath 错误日志文件
      * @return bool|mixed
      */
-    function curl_post($url,$postData, $port=80, $timeout=15, $logPath=BASE_LOG_DIR . '/api/curl_post.log') {
+    function curl_post($url,$postData, $port=80, $timeout=15, $logPath='/api/curl_post.log', $http_headers=[]) {
         $ch = curl_init();
-
+        $basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
+        $logPath = $basePath . $logPath;
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_PORT, $port);
         curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, 0);
+        if (count($http_headers)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $http_headers);
+        }
+
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
