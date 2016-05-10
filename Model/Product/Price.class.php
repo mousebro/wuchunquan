@@ -17,6 +17,10 @@ class Price extends Model {
     const __PRICE_CHG_NOTIFY_TABLE__= 'pft_price_change_notify';
     const __PRICE_GROUP__TABLE__    = 'pft_price_group';
 
+    const __MEMBER_RELATIONSHIP__   = 'pft_member_relationship';
+
+    const __MAX_PRICCE__            = 20000;
+
     protected $diff_mode            = false;  //当前传的价格是否是差价模式
 
     protected $soap_cli             = null;     //soap接口实例
@@ -134,8 +138,9 @@ class Price extends Model {
         }
         
 
-        //带配置的会员id数组
+        //待配置的会员id数组
         $did_arr = array_keys($priceset);   
+        $did_arr = $this->memberFilter($sid, $did_arr);
 
         //获取当前的差价
         $cur_priceset = $this->table(self::__PRICESET_TABLE__)
@@ -153,7 +158,7 @@ class Price extends Model {
 
         $todo_insert = $todo_update = array();
         foreach ($priceset as $did => $price) {
-            if ($did == $sid || $did == $aid || $price === '' || $price >= 10000 || $price < 0) {
+            if ($did == $sid || $did == $aid || $price === '' || $price > self::__MAX_PRICCE__ || $price < 0) {
                 continue;
             }
             //要设置的差价
@@ -215,6 +220,29 @@ class Price extends Model {
         return $result['js']['p'] == -1 ? false : $result['js']['p'];
 
     }
+
+    /**
+     * 分销商过滤
+     * @param  [type] $sid     [description]
+     * @param  [type] $did_arr [description]
+     * @return [type]          [description]
+     */
+    protected function memberFilter($sid, $did_arr) {
+        static $son_id_arr = [];
+
+        if (!$son_id_arr) {
+            $son_info = $this->table(self::__MEMBER_RELATIONSHIP__)
+                ->where(['parent_id' => $sid, 'status' => 0])
+                ->field('son_id')
+                ->select();
+            $son_id_arr = [];
+            foreach ($son_info as $son) {
+                $son_id_arr[] = $son['son_id'];
+            }
+        } 
+        
+        return array_intersect($did_arr, $son_id_arr);
+    } 
 
     /**
      * 真正执行价格配置的动作
