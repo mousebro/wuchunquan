@@ -46,7 +46,7 @@ class Member extends Controller
     {
         $p1 = strval($p1);
         $commonWeakPassword = array (
-            'a123456','a123456789','woaini1314','qq123456','abc123456',
+            '123456','a123456','a123456789','woaini1314','qq123456','abc123456',
             '123456a','123456789a','abc123','qq123456789','123456789.',
             'woaini','q123456','123456abc','123456.','0123456789',
             'asd123456','aa123456','q123456789','abcd123456','woaini520',
