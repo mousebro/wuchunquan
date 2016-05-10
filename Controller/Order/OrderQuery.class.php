@@ -16,12 +16,36 @@ class OrderQuery extends Controller
 {
     private $model;
     //$show_tel  = include_once 'saleProduct_showTel.php';
+    private $members;
+    private $lands;
+    private $tickets;
+    private $orders;
+    private $self;
+    private $memberId;
+    private $output;//最终输出的数据
 
     public function __construct()
     {
         $this->model = new \Model\Order\OrderQuery();
     }
-
+    public function __destruct()
+    {
+        unset($this->lands);
+        unset($this->members);
+        unset($this->tickets);
+        unset($this->orders);
+    }
+    /**
+     * 设置当前用户ID
+     *
+     * @param int $memberId
+     * @return void
+     */
+    public function setCurrentMember($memberId = -1)
+    {
+        if ($memberId>0) $this->memberId = $memberId;
+        else $this->memberId = $_SESSION['sid'];
+    }
     public function OrderList()
     {
         print_r($_POST);
@@ -111,90 +135,115 @@ class OrderQuery extends Controller
         $data = $this->model->OrderList($offset, $page_size, $serller_id, $buyer_id, $lid, $tid, $order_num,
             $time_praram, $order_tel, $order_name, $remote_num, $pay_status, $order_status,
             $order_mode, $pay_mode);
+        $this->tickets = $data['tickets'];
+        $this->members = $data['members'];
+        $this->lands   = $data['lands'];
+        $this->orders  = $data['orders'];
         print_r($data);
     }
 
-    private function priceHandler($orders, &$output)
+
+
+    /**
+     * 订单分销关系处理
+     *
+     * @param array $orderInfo 订单数据
+     * @return array
+     */
+    private function _priceOrderRelation($orderInfo, $is_main=false)
     {
-        //整合分销链
-        if ($orders['main']['aids'] != 0) {
-            $aids = $orders['main']['aids'] . ',' . $orders['main']['member'];
+        $row = array();
+        $_orderkey = $is_main ?  $orderInfo['ordernum'] : $orderInfo['concat_id'];
+        $this->output[$_orderkey]['tickets'][$orderInfo['tid']]  = [
+            'main'      => $is_main,
+            'id'        => $orderInfo['tid'],
+            'tnum'      => $orderInfo['tnum'],
+            'ordernum'  => $orderInfo['ordernum'],
+            'title'     => $this->tickets[$orderInfo['tid']],
+            'status'    => $orderInfo['status'],//使用状态
+            'status_txt'=> OrderDict::DictOrderStatus()[$orderInfo['status']],//使用状态
+        ];
+
+        if ($orderInfo['aids'] != 0) {
+            $aids = $orderInfo['aids'] . ',' . $orderInfo['member'];
         }
-        elseif ($orders['main']['aid'] !== $orders['main']['member']) {
-            $aids = $orders['main']['aid'] . ',' . $orders['main']['member'];
+        elseif ($orderInfo['aid'] !== $orderInfo['member']) {
+            $aids =$orderInfo['aid'] . ',' .$orderInfo['member'];
         }
         else {
-            $aids = $orders['main']['aid'];
+            $aids =$orderInfo['aid'];
         }
         //整合分销价格链
-        if ($orders['main']['aids_price'] != 0) {
-            $aids_price = $orders['main']['aids_price'] . ',' . $orders['main']['tprice'];
+        if ($orderInfo['aids_price'] != 0) {
+            $aids_price =$orderInfo['aids_price'] . ',' .$orderInfo['tprice'];
         } else {
-            $aids_price = $orders['main']['tprice'];
+            $aids_price =$orderInfo['tprice'];
         }
         $aids_price = explode(',', $aids_price);
-        $aids = explode(',', $aids);
-        $aid_money = unserialize($orders['main']['aids_money']);
+        $aids       = explode(',', $aids);
+        //$aid_money = unserialize($orderInfo['aids_money']);
         //array_walk($aids_price, 'walk_divide_100');
-        //$aids_price = $GLOBALS['tmp_price'];
         //如果是admin 那么就不是取当前用户的买入买出价了(是admin的时候本来就没有'当前用户的概念了')
         //而是把整条分销链都取出来
         if ($_SESSION['sid'] == 1) {
 
         }
         else {
-            if ($item['aprice'] < 0) {
-                $item['aprice'] = $item['n_price'];
+            if ($orderInfo['aprice'] < 0) {
+                //2016年5月10日17:20:54---数据待验证
+                $orderInfo['aprice'] = $orderInfo['tprice'];
             }
-            if ($item['lprice'] < 0) {
-                $item['lprice'] = $item['l_price'];
+            if ($orderInfo['lprice'] < 0) {
+                $orderInfo['lprice'] = $orderInfo['tprice'];
             }
-            $aids_price['lp'] = (int)$item['lprice'] / 100;
-            $aids_price['ap'] = (int)$item['aprice'] / 100;
+            $aids_price['lp'] = $orderInfo['lprice'] / 100;
+            $aids_price['ap'] = $orderInfo['aprice'] / 100;
             //不是admin
             //处理价钱 转分销上下级分别是谁
-            $key = array_search($self, $aids);
-            $row['sell_id'] = $aids[$key + 1] ? $aids[$key + 1] : (string)$item['member'];//卖给谁
-            $row['buy_id'] = $aids[$key - 1] ? $aids[$key - 1] : $self;//向谁买
-            $_tmp['seller'] = $data['members'][$row['sell_id']];//= $row['sell_id'];
-            $_tmp['buyer'] = $data['members'][$row['buy_id']];//  = $row['buy_id'];
+            $key = array_search($this->self, $aids);
+            $this->output[$_orderkey]['sell_id'] = $aids[$key + 1] ? $aids[$key + 1] : $orderInfo['member'];//卖给谁
+            $this->output[$_orderkey]['buy_id']  = $aids[$key - 1] ? $aids[$key - 1] : $this->self;//向谁买
+            $this->output[$_orderkey]['seller']  = $this->members[$row['sell_id']];
+            $this->output[$_orderkey]['buyer']   = $this->members[$row['buy_id']];
             //再次购买的权限
-            if ($_SESSION['sid'] == $item['mid']) {
-                $row['can_buy_again'] = 'pid=' . $item['pid'] . '&aid=' . $item['aid'];
+            if ($_SESSION['sid'] == $orderInfo['member']) {
+                $this->output[$_orderkey]['can_buy_again'] = 'pid=' . $orderInfo['pid'] . '&aid=' . $orderInfo['aid'];
             }
-
-            $tmp_time = explode('至', $row['begin_to_end']);
-
-            if ($tmp_time[0] === $tmp_time[1]) {
-                if (date('Y/m/d') == $tmp_time[0]) {
-                    if ($row['lid'] == 10820) {//刘三姐
-                        $today_avalid = 1;
-                    } else {
-                        $today_avalid = 0;
-                    }
-
-                } else {
-                    $today_avalid = 0;
-                }
-            } else {
-                $today_avalid = 0;
-            }
-            $row['today_avalid'] = $today_avalid;
-
             if (count($aids) == 1) {
                 $sell_price = $aids_price[$key];
-                $buy_price = $aids_price['ap'];
+                $buy_price  = $aids_price['ap'];
             }
             else {
-                $sell_price = $aids_price[$key] ? $aids_price[$key]
-                    : $aids_price['lp'];
-                $buy_price = $aids_price[$key - 1] ? $aids_price[$key - 1]
-                    : $aids_price['ap'];
+                $sell_price = $aids_price[$key] ? $aids_price[$key] : $aids_price['lp'];
+                $buy_price  = $aids_price[$key - 1] ? $aids_price[$key - 1] : $aids_price['ap'];
             }
-            $row['buy_price'][] = $buy_price;
-            $row['buy_money'] += $buy_price * $item['tnum'];
-            $row['sell_price'][] = $sell_price;
-            $row['sell_money'] += $sell_price * $item['tnum'];
+            $this->output[$_orderkey]['tickets']['buy_price'] = $buy_price;
+            $this->output[$_orderkey]['tickets']['sell_price'] = $sell_price;
+            $this->output[$_orderkey]['buy_money']  += $buy_price * $orderInfo['tnum'];
+            $this->output[$_orderkey]['sell_price'] += $sell_price * $orderInfo['tnum'];
+        }
+        return $row;
+    }
+
+
+    private function priceHandler($orders, &$output)
+    {
+        //整合分销链
+        $ret = $this->_priceOrderRelation($orders['main'], true);
+        $output['can_buy_again']  = $ret['can_buy_again'];
+        $output['can_buy_again']  = $ret['can_buy_again'];
+        $output['buy_money']  = $ret['buy_price'] * $orders['main']['tnum'];
+        $output['sell_money'] = $ret['sell_price'] *  $orders['main']['tnum'];
+        $output['buy_price'][] = $ret['buy_price'];
+        $output['sell_price'][] = $ret['sell_price'];
+        if (isset($orders['links'])) {
+            foreach ($orders['links'] as $order) {
+                $ret = $this->_priceOrderRelation($order);
+                $output['buy_price'][]  = $ret['buy_price'];
+                $output['sell_price'][] = $ret['sell_price'];
+                $output['buy_money']  += $ret['buy_price']  * $order['tnum'];
+                $output['sell_money'] += $ret['sell_price'] * $order['tnum'];
+            }
         }
     }
 
@@ -205,58 +254,64 @@ class OrderQuery extends Controller
      * @param bool|false $excel 如果是导出到EXCEL 那么要多取一些值
      * @return array
      */
-    public function row($data, $item, $self,  $excel = false)
+    private function format_order_data($data, $item, $excel = false)
     {
-        $output = [];
         foreach ($data['orders'] as $_ordernum=>$orders) {
             //main
+            $this->output[$_ordernum] = [];
             //判断订单取消\修改等权限 是否处理过一次 否则初始化权限变量 全部为没有
-            $_tmp['orderAlipay'] = 3;
-            $_tmp['orderCancel'] = 3;
-            $_tmp['orderAlter']  = 3;
-            $_tmp['orderResend'] = 3;
-            $_tmp['orderCheck']  = 3;
+            $this->output[$_ordernum]['orderAlipay'] = 3;
+            $this->output[$_ordernum]['orderCancel'] = 3;
+            $this->output[$_ordernum]['orderAlter']  = 3;
+            $this->output[$_ordernum]['orderResend'] = 3;
+            $this->output[$_ordernum]['orderCheck']  = 3;
 
-            $_tmp['ordernum'][]   = $orders['main']['ordernum'];
-            $_tmp['begintime']  = $orders['main']['begintime'];
-            $_tmp['endtime']    = $orders['main']['endtime'];
-            $_tmp['begin_to_end'] =  $_tmp['begintime'].'-'.$orders['main']['endtime'];
+            $this->output[$_ordernum]['ordernum'][]   = $orders['main']['ordernum'];
+            $this->output[$_ordernum]['begintime']  = $orders['main']['begintime'];
+            $this->output[$_ordernum]['endtime']    = $orders['main']['endtime'];
+            $this->output[$_ordernum]['begin_to_end'] =  $this->output[$_ordernum]['begintime'].'-'.$orders['main']['endtime'];
 
-            $_tmp['lid']        = $orders['main']['lid'];
-            $_tmp['ordertel']   = $orders['main']['ordertel'];
-            $_tmp['ordername']  = $orders['main']['ordername'];
+            $this->output[$_ordernum]['lid']        = $orders['main']['lid'];
+            $this->output[$_ordernum]['ordertel']   = $orders['main']['ordertel'];
+            $this->output[$_ordernum]['ordername']  = $orders['main']['ordername'];
             //下单时间 截取至分
-            $_tmp['ordertime'] = str_replace('-', '/', substr( $orders['main']['ordertime'], 0, 19));
+            $this->output[$_ordernum]['ordertime'] = str_replace('-', '/', substr( $orders['main']['ordertime'], 0, 19));
             //预计游玩时间
-            $_tmp['playtime']  = str_replace('-', '/', $orders['main']['playtime']);
-            $_tmp['_dtime']     = $orders['main']['dtime'];
-            $_tmp['ltitle']     = $data['lands'][$orders['main']['lid']];
-            $_tmp['ttitle'][]   = $data['tickets'][$orders['main']['tid']];
-            $_tmp['tid'][]      = $orders['main']['tid'];
-            $_tmp['paystatus']  = $orders['main']['paystatus'];
-            $_tmp['ordermode']  = $orders['main']['ordermode'];
-            $_tmp['tnum'][]     = $orders['main']['tnum'];
-            $_tmp['status'][] = OrderDict::DictOrderStatus()[$item['status']];
-            $_tmp['is_audit'] += (bool)($item['audit_id'] && in_array($item['status'], [0, 7])); //2016-3-29 14:41:40 未使用和部分使用的订单显示为退票中
-            if ( $_SESSION['sid'] != 1 && $_tmp['_dtime'] == '0000-00-00 00:00:00'
-                && $_SESSION['sid'] != (int)$orders['main']['member']
+            $this->output[$_ordernum]['playtime']  = str_replace('-', '/', $orders['main']['playtime']);
+            $this->output[$_ordernum]['_dtime']    = $orders['main']['dtime'];
+            $this->output[$_ordernum]['ltitle']    = $this->lands[$orders['main']['lid']];
+            $this->output[$_ordernum]['paystatus']  = $orders['main']['paystatus'];
+            $this->output[$_ordernum]['ordermode']  = $orders['main']['ordermode'];
+
+
+            //$this->output[$_ordernum]['is_audit'] += ($item['audit_id'] && in_array($item['status'], [0, 7])); //2016-3-29 14:41:40 未使用和部分使用的订单显示为退票中
+            if ( $this->memberId != 1 && $orders['main']['dtime'] == '0000-00-00 00:00:00'
+                && $this->memberId != $orders['main']['member']
                 && ! in_array($_SESSION['saccount'], $GLOBALS['show_tel']) )
             {
-                $_tmp['ordertel'] = substr_replace($orders['main']['ordermode']['ordertel'], "****", 3, 4);
+                $orders['main']['ordertel'] = substr_replace($orders['main']['ordermode']['ordertel'], "****", 3, 4);
             }
-            $row['ordertel']  = $_tmp['ordertel'] == '0' ? '空' : $_tmp['ordertel'];//游客电话
+            $this->output[$_ordernum]['ordertel']  = $orders['main']['ordertel'] == '0' ? '空' : $orders['main']['ordertel'];//游客电话
 
             //修改订单时需要用到的值
-            $_tmp['data_ticket'] = '【' . $data['tickets'][$orders['main']['tid']] . '】|'
+            $this->output[$_ordernum]['data_ticket'] = '【' . $data['tickets'][$orders['main']['tid']] . '】|'
                 . $orders['main']['tnum'] . '|' . $orders['main']['ordernum'] . '|';
-
+            $this->output[$_ordernum]['tickets'][$orders['main']['tid']]  = [
+                'main'      => true,
+                'id'        => $orders['main']['tid'],
+                'tnum'      => $orders['main']['tnum'],
+                'ordernum'  => $orders['main']['ordernum'],
+                'title'     => $this->tickets[$orders['main']['tid']],
+                'status'    => $orders['main']['status'],//使用状态
+                'status_txt'=> OrderDict::DictOrderStatus()[$orders['main']['status']],//使用状态
+            ];
             //links-处理联票订单
             if (isset($orders['links'])) {
                 foreach ($orders['links'] as $link) {
-                    $_tmp['ordernum'][] = $link['ordernum'];
-                    $_tmp['tnum'][]   = $link['tnum'];
-                    $_tmp['ttitle'][]  =  $data['tickets'][$link['tid']];
-                    $_tmp['data_ticket'] = '【' . $data['tickets'][$link['tid']] . '】|'
+                    $this->output[$_ordernum]['ordernum'][] = $link['ordernum'];
+                    $this->output[$_ordernum]['tnum'][]   = $link['tnum'];
+                    $this->output[$_ordernum]['ttitle'][]  =  $data['tickets'][$link['tid']];
+                    $this->output[$_ordernum]['data_ticket'] = '【' . $data['tickets'][$link['tid']] . '】|'
                         . $link['tnum'] . '|' . $link['ordernum'] . '|';
                 }
             }
