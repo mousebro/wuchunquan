@@ -64,26 +64,33 @@ class CacheRedis extends Cache
         return $this->enable;
     }
 
-    public function get($key, $type = ''){
+    public function get($key, $type = '', $unserizlize=false){
         $this->init_slave();
         if (!$this->enable) return false;
         $this->type = $type;
         $value = $this->handler->get($this->_key($key));
-
-        return unserialize($value);
+        return $unserizlize ? $value : unserialize($value);
     }
 
-    public function set($key, $value, $prefix = '', $expire = null) {
+    public function set($key, $value, $prefix = '', $expire = null, $unserizlize=false) {
         $this->init_master();
         if (!$this->enable) return false;
         $this->type = $prefix;
 
-        $value = serialize($value);
-
+        $value = $unserizlize ? $value : serialize($value);
         if(is_int($expire)) {
             $result = $this->handler->setex($this->_key($key), $expire, $value);
         }else{
             $result = $this->handler->set($this->_key($key), $value);
+        }
+        return $result;
+    }
+    public function incrBy($key)
+    {
+        if ($this->get($key, '', true) !== false) {;
+            $result = $this->handler->incr($this->_key($key));
+        } else {
+            $result = $this->set($key, 1, '', 1800, true);
         }
         return $result;
     }
