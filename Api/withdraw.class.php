@@ -131,7 +131,7 @@ class withdraw extends Controller{
             return false;
         }
 
-        $prefix    = 'pft_tx_' . @date('Ym');
+        $prefix    = 'pft01' . @date('Ym');
         $prefixLen =  strlen($prefix);
 
         if($type == 1) {
