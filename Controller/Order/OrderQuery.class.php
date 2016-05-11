@@ -14,6 +14,7 @@ use Library\Dict\OrderDict;
 
 class OrderQuery extends Controller
 {
+    const ADMINID = 1;
     private $model;
     //$show_tel  = include_once 'saleProduct_showTel.php';
     private $members;
@@ -23,7 +24,7 @@ class OrderQuery extends Controller
     private $self;
     private $memberId;
     private $output;//最终输出的数据
-
+    private $machine_order_mode = [10,12,15,16];
     public function __construct()
     {
         $this->model = new \Model\Order\OrderQuery();
@@ -150,9 +151,8 @@ class OrderQuery extends Controller
      * @param array $orderInfo 订单数据
      * @return array
      */
-    private function _priceOrderRelation($orderInfo, $is_main=false)
+    private function _orderTicketInfo($orderInfo, $is_main=false)
     {
-        $row = array();
         $_orderkey = $is_main ?  $orderInfo['ordernum'] : $orderInfo['concat_id'];
         $this->output[$_orderkey]['tickets'][$orderInfo['tid']]  = [
             'main'      => $is_main,
@@ -181,72 +181,151 @@ class OrderQuery extends Controller
         }
         $aids_price = explode(',', $aids_price);
         $aids       = explode(',', $aids);
-        //$aid_money = unserialize($orderInfo['aids_money']);
-        //array_walk($aids_price, 'walk_divide_100');
-        //如果是admin 那么就不是取当前用户的买入买出价了(是admin的时候本来就没有'当前用户的概念了')
         //而是把整条分销链都取出来
         if ($_SESSION['sid'] == 1) {
 
         }
         else {
-            if ($orderInfo['aprice'] < 0) {
-                //2016年5月10日17:20:54---数据待验证
-                $orderInfo['aprice'] = $orderInfo['tprice'];
-            }
-            if ($orderInfo['lprice'] < 0) {
-                $orderInfo['lprice'] = $orderInfo['tprice'];
-            }
-            $aids_price['lp'] = $orderInfo['lprice'] / 100;
-            $aids_price['ap'] = $orderInfo['aprice'] / 100;
-            //不是admin
             //处理价钱 转分销上下级分别是谁
             $key = array_search($this->self, $aids);
-            $this->output[$_orderkey]['sell_id'] = $aids[$key + 1] ? $aids[$key + 1] : $orderInfo['member'];//卖给谁
-            $this->output[$_orderkey]['buy_id']  = $aids[$key - 1] ? $aids[$key - 1] : $this->self;//向谁买
-            $this->output[$_orderkey]['seller']  = $this->members[$row['sell_id']];
-            $this->output[$_orderkey]['buyer']   = $this->members[$row['buy_id']];
+            $this->output[$_orderkey]['seller_id'] = $aids[$key + 1] ? $aids[$key + 1] : $orderInfo['member'];//卖给谁
+            $this->output[$_orderkey]['buyer_id']  = $aids[$key - 1] ? $aids[$key - 1] : $this->self;//向谁买
+            $this->output[$_orderkey]['seller_name']  = $this->members[$this->output[$_orderkey]['sell_id']];
+            $this->output[$_orderkey]['buyer_name']   = $this->members[$this->output[$_orderkey]['buy_id']];
             //再次购买的权限
             if ($_SESSION['sid'] == $orderInfo['member']) {
                 $this->output[$_orderkey]['can_buy_again'] = 'pid=' . $orderInfo['pid'] . '&aid=' . $orderInfo['aid'];
             }
+            //第一级供应商不显示买入价格,最末级分销商不显示卖出价格
             if (count($aids) == 1) {
                 $sell_price = $aids_price[$key];
-                $buy_price  = $aids_price['ap'];
+                $buy_price  = 0;
             }
             else {
-                $sell_price = $aids_price[$key] ? $aids_price[$key] : $aids_price['lp'];
-                $buy_price  = $aids_price[$key - 1] ? $aids_price[$key - 1] : $aids_price['ap'];
+                $sell_price = $aids_price[$key] ? $aids_price[$key] : 0;
+                $buy_price  = $aids_price[$key - 1] ? $aids_price[$key - 1] : 0;
             }
             $this->output[$_orderkey]['tickets']['buy_price'] = $buy_price;
             $this->output[$_orderkey]['tickets']['sell_price'] = $sell_price;
             $this->output[$_orderkey]['buy_money']  += $buy_price * $orderInfo['tnum'];
             $this->output[$_orderkey]['sell_price'] += $sell_price * $orderInfo['tnum'];
         }
-        return $row;
+        return true;
     }
 
 
-    private function priceHandler($orders, &$output)
+    private function orderTicketInfo($orders)
     {
-        //整合分销链
-        $ret = $this->_priceOrderRelation($orders['main'], true);
-        $output['can_buy_again']  = $ret['can_buy_again'];
-        $output['can_buy_again']  = $ret['can_buy_again'];
-        $output['buy_money']  = $ret['buy_price'] * $orders['main']['tnum'];
-        $output['sell_money'] = $ret['sell_price'] *  $orders['main']['tnum'];
-        $output['buy_price'][] = $ret['buy_price'];
-        $output['sell_price'][] = $ret['sell_price'];
+        //主票
+        $this->_orderTicketInfo($orders['main'], true);
         if (isset($orders['links'])) {
             foreach ($orders['links'] as $order) {
-                $ret = $this->_priceOrderRelation($order);
-                $output['buy_price'][]  = $ret['buy_price'];
-                $output['sell_price'][] = $ret['sell_price'];
-                $output['buy_money']  += $ret['buy_price']  * $order['tnum'];
-                $output['sell_money'] += $ret['sell_price'] * $order['tnum'];
+                $this->_orderTicketInfo($order);
             }
         }
     }
 
+    /**
+     * 支付权限:最末级购买者,未支付
+     *
+     * @param string $ordernum
+     * @param int $pay_status
+     * @param int $memberId
+     * @return bool
+     */
+    private function _pay($pay_status, $memberId)
+    {
+        return ($this->memberId == $memberId && $pay_status==2);
+    }
+
+    /**
+     * 验证权限:第一级供应商/管理员,已支付,未使用/过期/部分验证
+     *
+     * @param $ordernum
+     * @param $pay_status
+     * @param $memberId
+     * @param $status
+     * @return bool
+     */
+    private function _check( $pay_status, $aid, $status)
+    {
+        if ($pay_status!=1) return false;
+        if ($status==0 || $status==2 || $status==7 ) {
+            if ($this->memberId!=self::ADMINID || $this->memberId!=$aid) return false;
+        }
+        return true;
+    }
+
+    /**
+     * 取消订单
+     *
+     * @param int $order_mode
+     * @param int $status
+     * @param array $memberIdList
+     * @return bool
+     */
+    private function _cancel($order_mode, $status, $memberIdList)
+    {
+        if ($status!=0) return false;
+        if (in_array($status, [0,2,])) {
+
+            if (in_array($order_mode, $this->machine_order_mode)) {
+                return true;
+            }
+            if (!in_array($this->memberId, $memberIdList))
+                return false;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 订单修改权限:未使用的订单
+     *
+     * @param $status
+     * @param $memberIdList
+     * @return bool
+     */
+    private function _modify($status, $memberIdList)
+    {
+        if ($status==0) {
+            return in_array($this->memberId, $memberIdList);
+        }
+        return false;
+    }
+
+    /**
+     * 重发短信通知
+     *
+     * @param $status
+     * @param $memberIdList
+     * @return bool
+     */
+    private function _sms($status, $memberIdList)
+    {
+        if ($status!=0) return false;
+        if (!in_array($this->memberId, $memberIdList)) return false;
+        return true;
+    }
+    /**
+     * @param $order
+     */
+    private function orderHandlerPermission($order)
+    {
+        $permission = array();
+        if ($order['aids'] != 0) {
+            $apply_did = array_shift(explode(',', $order['aids']));
+        } else {
+            $apply_did = $order['aid'];
+        }
+        $permission['pay']      = $this->_pay($order['pay_status'], $order['member']);
+        $permission['check']    = $this->_check($order['pay_status'], $apply_did, $order['status']);
+        $permission['cancel']   = $this->_cancel($order['ordermode'], $order['status'],[self::ADMINID, $apply_did, $order['member']]);
+        $permission['modify']   = $this->_modify( $order['status'],[self::ADMINID, $apply_did, $order['member']]);
+        $permission['sms']      = $this->_sms($order['status'],[self::ADMINID, $apply_did, $order['aid'], $order['member']]);
+
+        $this->output[$order['ordernum']]['permissions'] = $permission;
+    }
     /**
      * @param array $item 订单数组
      * @param string $self 当查询人不是admin的时候的 param['self']
@@ -254,7 +333,7 @@ class OrderQuery extends Controller
      * @param bool|false $excel 如果是导出到EXCEL 那么要多取一些值
      * @return array
      */
-    private function format_order_data($data, $item, $excel = false)
+    private function format_order_data($data, $excel = false)
     {
         foreach ($data['orders'] as $_ordernum=>$orders) {
             //main
@@ -292,37 +371,12 @@ class OrderQuery extends Controller
                 $orders['main']['ordertel'] = substr_replace($orders['main']['ordermode']['ordertel'], "****", 3, 4);
             }
             $this->output[$_ordernum]['ordertel']  = $orders['main']['ordertel'] == '0' ? '空' : $orders['main']['ordertel'];//游客电话
-
-            //修改订单时需要用到的值
-            $this->output[$_ordernum]['data_ticket'] = '【' . $data['tickets'][$orders['main']['tid']] . '】|'
-                . $orders['main']['tnum'] . '|' . $orders['main']['ordernum'] . '|';
-            $this->output[$_ordernum]['tickets'][$orders['main']['tid']]  = [
-                'main'      => true,
-                'id'        => $orders['main']['tid'],
-                'tnum'      => $orders['main']['tnum'],
-                'ordernum'  => $orders['main']['ordernum'],
-                'title'     => $this->tickets[$orders['main']['tid']],
-                'status'    => $orders['main']['status'],//使用状态
-                'status_txt'=> OrderDict::DictOrderStatus()[$orders['main']['status']],//使用状态
-            ];
-            //links-处理联票订单
-            if (isset($orders['links'])) {
-                foreach ($orders['links'] as $link) {
-                    $this->output[$_ordernum]['ordernum'][] = $link['ordernum'];
-                    $this->output[$_ordernum]['tnum'][]   = $link['tnum'];
-                    $this->output[$_ordernum]['ttitle'][]  =  $data['tickets'][$link['tid']];
-                    $this->output[$_ordernum]['data_ticket'] = '【' . $data['tickets'][$link['tid']] . '】|'
-                        . $link['tnum'] . '|' . $link['ordernum'] . '|';
-                }
-            }
-            //处理分销价格数据
-            $this->priceHandler($orders, $output);
-
-
+            //订单票类数信息/价格据处理
+            $this->orderTicketInfo($orders);
+            //操作权限处理
+            $this->orderHandlerPermission($orders['main']);
             //price handler end
         }//End foreach
-
-
-        return $row;
+        return true;
     }
 }
