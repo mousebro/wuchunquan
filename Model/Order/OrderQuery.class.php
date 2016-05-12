@@ -71,7 +71,7 @@ class OrderQuery extends Model
     }
     public function getTicketsInfoById($id_list) {
         $where = ['id'=>['in', $id_list]];
-        $data = $this->table('uu_jq_ticket')->where($where)->getField('id,title', true);
+        $data = $this->table('uu_jq_ticket')->where($where)->getField('id,pid,title', true);
         return $data;
     }
     public function getMemberInfoById($id_list) {
@@ -196,7 +196,7 @@ class OrderQuery extends Model
             's.dtime', 's.totalmoney', 's.paymode AS pmode', 's.ordermode',
             's.ctime', 's.code', 's.contacttel', 's.member','s.aid',
             'n.ifpack', 'n.pack_order', 'n.tordernum', 's.aid', 'a.aprice',
-            'a.lprice', 'a.playtime','fd.concat_id', 'fd.aids', 'fd.aids_price','fd.aids_money',
+            'a.lprice', 'a.playtime','fd.pay_status','fd.concat_id', 'fd.aids', 'fd.aids_price','fd.aids_money',
             'os.buyerid AS buyid', 'os.sellerid AS sellid',
         ];
         $data = $this->table(self::__ORDER_TABLE__ . ' s')
@@ -208,6 +208,7 @@ class OrderQuery extends Model
             ->where($where)
             ->limit($offset, $length)
             ->select();
+        //echo $this->getLastSql(),"\n";
         $output = array();
         $lid_list = $tid_list = array();
         $member_list = array();
@@ -236,4 +237,43 @@ class OrderQuery extends Model
         return ['orders'=>$output, 'lands'=>$lands,'tickets'=>$tickets, 'members'=>$members];
     }
 
+    public function OrderSplitDiff($time_type,$startDate, $endDate,$lid=0, $tid=0 )
+    {
+        if (!$lid && !$tid) throw_exception('不能所有ID都为空');
+        $where = [];
+        switch ($time_type) {
+            case 1:
+                $col = 's.ordertime';
+                break;
+            case 2:
+                $col = 's.dtime';
+                break;
+            default:
+                $col = 's.dtime';
+                break;
+        }
+        $where[$col] = ['between', [$startDate, $endDate]];
+        if ($lid) $where['s.lid'] = $lid;
+        if ($tid) $where['s.tid'] = $tid;
+        $where['s.status'] = 1;
+        $apply_did = $this->table('uu_land')->where(['id'=>$lid])->getField('apply_did');
+        $dataOrder = $this->_OrderSplitDiff($where);
+        //echo count(array_unique($dataOrder)),"\n";
+        $where['os.sellerid'] = (int)$apply_did;
+        $dataOrderSplit = $this->_OrderSplitDiff($where);
+        //echo count(array_unique($dataOrderSplit)),"\n";
+        $diff = array_diff ( $dataOrder, $dataOrderSplit);
+        //var_dump($diff);
+        if (count($diff)) {
+            return $diff;
+        }
+    }
+    private function _OrderSplitDiff( Array $where )
+    {
+        $ret = $this->table(self::__ORDER_TABLE__ .' s')->join('LEFT JOIN '. self::__ORDER_SPLIT__ . ' os on os.orderid=s.ordernum')
+            ->where($where)
+            ->getField('s.id,s.ordernum', true);
+        echo $this->getLastSql();
+        return $ret;
+    }
 }

@@ -14,14 +14,14 @@ class OrderDict
     public static function DictOrderStatus()
     {
         return array(
-            0=> '<em style="color: #f07845">未使用</em>',
-            1=> '<em style="color: #3dba31">已验证</em>',
-            2=> '<em style="color: #92a0ab">已过期</em>',
-            3=> '<em style="color: #92a0ab">已取消</em>',
-            4=> '<em style="color: #92a0ab">凭证码被替代</em>',
-            5=> '<em style="color: #92a0ab">已撤改</em>',
-            6=> '<em style="color: #92a0ab">已撤销</em>',
-            7=> '<em style="color: #3dba31">部分使用</em>',
+            0=> '未使用',
+            1=> '已验证',
+            2=> '已过期',
+            3=> '已取消',
+            4=> '凭证码被替代',
+            5=> '已撤改',
+            6=> '已撤销',
+            7=> '部分使用',
         );
     }
     public static function DictOrderPayStatus()

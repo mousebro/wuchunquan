@@ -9,25 +9,28 @@
 namespace Controller\Order;
 
 
+use Library\Cache\Cache;
 use Library\Controller;
 use Library\Dict\OrderDict;
 
 class OrderQuery extends Controller
 {
-    const ADMINID = 1;
     private $model;
     //$show_tel  = include_once 'saleProduct_showTel.php';
+    const ADMIN_ID = 1;
+    const MAX_EXCEL_ROWS = 30000;//允许导出的最大Excel条数
     private $members;
     private $lands;
     private $tickets;
     private $orders;
-    private $self;
     private $memberId;
     private $output;//最终输出的数据
     private $machine_order_mode = [10,12,15,16];
+
     public function __construct()
     {
         $this->model = new \Model\Order\OrderQuery();
+        $this->setCurrentMember();
     }
     public function __destruct()
     {
@@ -47,9 +50,25 @@ class OrderQuery extends Controller
         if ($memberId>0) $this->memberId = $memberId;
         else $this->memberId = $_SESSION['sid'];
     }
+
+    /**
+     * 检测是否允许导出Excel：不能超过一个月的时间
+     *
+     * @return bool
+     */
+    private function _check_excel($time1, $time2)
+    {
+        if (I('get.export_excel',0, 'intval')==1) {
+            if ((strtotime($time2) - strtotime($time1)) / 86400 > 31)
+                return false;
+            return true;
+        }
+        return false;
+    }
     public function OrderList()
     {
-        print_r($_POST);
+        //print_r($_POST);
+
         /*Array
         (
             [current_page] => 1
@@ -75,17 +94,24 @@ class OrderQuery extends Controller
         $pmode          = I('post.pmode', -1, 'intval');
         $select_type    = I('post.select_type', 0, 'intval');
         $select_text    = I('post.select_text');
-        $btime          = I('post.btime', date('Y-m-d 00:00:00'));
-        $etime          = I('post.etime', date('Y-m-d 23:59:59'));
+        $btime          = I('post.btime');
+        $etime          = I('post.etime');
         $gmode          = I('post.gmode');
         $sort           = I('post.sort');
         $serller_id     = I('post.amid');
+        $btime          = $btime ? $btime : date('Y-m-d 00:00:00');
+        $etime          = $etime ? $etime : date('Y-m-d 23:59:59');
         $pay_status     = $order_status = $order_mode = $pay_mode   = -1;
         if ($pmode == 0 )  $pay_status = 2; //未支付
         elseif ($pmode ==5) $pay_status = 1; //已支付
         elseif ($pmode == 6) $pay_status = 0; //现场支付
         else $order_status = $pmode - 1;
 
+        $export_excel = $this->_check_excel($btime, $etime);//是否导出EXCEL
+        if ($export_excel) {
+            $offset     = 0;
+            $page_size  = self::MAX_EXCEL_ROWS;
+        }
         switch ($select_type) {
             case 1:
                 $order_num = $select_text;
@@ -124,6 +150,10 @@ class OrderQuery extends Controller
                 $timeStartKey = 'begintimeStart';
                 $timeEndKey   = 'begintimeEnd';
                 break;
+            default:
+                $timeStartKey = 'ordertimeStart';
+                $timeEndKey   = 'ordertimeEnd';
+                break;
         }
         if (isset($timeStartKey) && !empty($btime)) {
             $time_praram[$timeStartKey]  = $btime;
@@ -131,6 +161,7 @@ class OrderQuery extends Controller
         if (isset($timeEndKey) && !empty($etime)) {
             $time_praram[$timeEndKey]    = $etime;
         }
+
         $buyer_id = $_SESSION['sid'];
         //echo $buyer_id;exit;
         $data = $this->model->OrderList($offset, $page_size, $serller_id, $buyer_id, $lid, $tid, $order_num,
@@ -140,11 +171,13 @@ class OrderQuery extends Controller
         $this->members = $data['members'];
         $this->lands   = $data['lands'];
         $this->orders  = $data['orders'];
-        print_r($data);
+        //print_r($data);
+        $this->format_order_data($export_excel);
+        //print_r($this->output);
+        parent::ajaxReturn(array_values($this->output), 'JSON', JSON_UNESCAPED_UNICODE);
+        //echo json_encode($this->output, JSON_UNESCAPED_UNICODE);
+        //return $this->output;
     }
-
-
-
     /**
      * 订单分销关系处理
      *
@@ -153,13 +186,13 @@ class OrderQuery extends Controller
      */
     private function _orderTicketInfo($orderInfo, $is_main=false)
     {
-        $_orderkey = $is_main ?  $orderInfo['ordernum'] : $orderInfo['concat_id'];
-        $this->output[$_orderkey]['tickets'][$orderInfo['tid']]  = [
+        $_key = $is_main ?  $orderInfo['ordernum'] : $orderInfo['concat_id'];
+        $this->output[$_key]['tickets'][$orderInfo['tid']]  = [
             'main'      => $is_main,
             'id'        => $orderInfo['tid'],
             'tnum'      => $orderInfo['tnum'],
             'ordernum'  => $orderInfo['ordernum'],
-            'title'     => $this->tickets[$orderInfo['tid']],
+            'title'     => $this->tickets[$orderInfo['tid']]['title'],
             'status'    => $orderInfo['status'],//使用状态
             'status_txt'=> OrderDict::DictOrderStatus()[$orderInfo['status']],//使用状态
         ];
@@ -182,19 +215,19 @@ class OrderQuery extends Controller
         $aids_price = explode(',', $aids_price);
         $aids       = explode(',', $aids);
         //而是把整条分销链都取出来
-        if ($_SESSION['sid'] == 1) {
+        if ($_SESSION['sid'] == self::ADMIN_ID) {
 
         }
         else {
             //处理价钱 转分销上下级分别是谁
-            $key = array_search($this->self, $aids);
-            $this->output[$_orderkey]['seller_id'] = $aids[$key + 1] ? $aids[$key + 1] : $orderInfo['member'];//卖给谁
-            $this->output[$_orderkey]['buyer_id']  = $aids[$key - 1] ? $aids[$key - 1] : $this->self;//向谁买
-            $this->output[$_orderkey]['seller_name']  = $this->members[$this->output[$_orderkey]['sell_id']];
-            $this->output[$_orderkey]['buyer_name']   = $this->members[$this->output[$_orderkey]['buy_id']];
+            $key = array_search($this->memberId, $aids);
+            $this->output[$_key]['seller_id']      = isset($aids[$key + 1]) ? $aids[$key + 1] : $orderInfo['member'];//卖给谁
+            $this->output[$_key]['buyer_id']       = isset($aids[$key - 1]) ? $aids[$key - 1] : $this->memberId;//向谁买
+            $this->output[$_key]['seller_name']    = $this->members[$this->output[$_key]['seller_id']];
+            $this->output[$_key]['buyer_name']     = $this->members[$this->output[$_key]['buyer_id']];
             //再次购买的权限
-            if ($_SESSION['sid'] == $orderInfo['member']) {
-                $this->output[$_orderkey]['can_buy_again'] = 'pid=' . $orderInfo['pid'] . '&aid=' . $orderInfo['aid'];
+            if ($this->memberId == $orderInfo['member']) {
+                $this->output[$_key]['can_buy_again'] = 'pid=' . $this->tickets[$orderInfo['tid']]['pid'] . '&aid=' . $orderInfo['aid'];
             }
             //第一级供应商不显示买入价格,最末级分销商不显示卖出价格
             if (count($aids) == 1) {
@@ -205,10 +238,10 @@ class OrderQuery extends Controller
                 $sell_price = $aids_price[$key] ? $aids_price[$key] : 0;
                 $buy_price  = $aids_price[$key - 1] ? $aids_price[$key - 1] : 0;
             }
-            $this->output[$_orderkey]['tickets']['buy_price'] = $buy_price;
-            $this->output[$_orderkey]['tickets']['sell_price'] = $sell_price;
-            $this->output[$_orderkey]['buy_money']  += $buy_price * $orderInfo['tnum'];
-            $this->output[$_orderkey]['sell_price'] += $sell_price * $orderInfo['tnum'];
+            $this->output[$_key]['tickets'][$orderInfo['tid']]['buy_price'] = $buy_price;
+            $this->output[$_key]['tickets'][$orderInfo['tid']]['sell_price'] = $sell_price;
+            $this->output[$_key]['buy_money']  += $buy_price * $orderInfo['tnum'];
+            $this->output[$_key]['sell_price'] += $sell_price * $orderInfo['tnum'];
         }
         return true;
     }
@@ -224,16 +257,14 @@ class OrderQuery extends Controller
             }
         }
     }
-
     /**
      * 支付权限:最末级购买者,未支付
      *
-     * @param string $ordernum
      * @param int $pay_status
      * @param int $memberId
      * @return bool
      */
-    private function _pay($pay_status, $memberId)
+    protected function _pay($pay_status, $memberId)
     {
         return ($this->memberId == $memberId && $pay_status==2);
     }
@@ -241,34 +272,31 @@ class OrderQuery extends Controller
     /**
      * 验证权限:第一级供应商/管理员,已支付,未使用/过期/部分验证
      *
-     * @param $ordernum
      * @param $pay_status
-     * @param $memberId
+     * @param $aid
      * @param $status
      * @return bool
      */
-    private function _check( $pay_status, $aid, $status)
+    protected function _check( $pay_status, $aid, $status)
     {
         if ($pay_status!=1) return false;
         if ($status==0 || $status==2 || $status==7 ) {
-            if ($this->memberId!=self::ADMINID || $this->memberId!=$aid) return false;
+            if ($this->memberId!=self::ADMIN_ID || $this->memberId!=$aid) return false;
         }
         return true;
     }
 
     /**
-     * 取消订单
+     * 取消订单: 未使用/已过期，硬件（云票务）订单
      *
      * @param int $order_mode
      * @param int $status
      * @param array $memberIdList
      * @return bool
      */
-    private function _cancel($order_mode, $status, $memberIdList)
+    protected function _cancel($order_mode, $status, $memberIdList)
     {
-        if ($status!=0) return false;
         if (in_array($status, [0,2,])) {
-
             if (in_array($order_mode, $this->machine_order_mode)) {
                 return true;
             }
@@ -286,7 +314,7 @@ class OrderQuery extends Controller
      * @param $memberIdList
      * @return bool
      */
-    private function _modify($status, $memberIdList)
+    protected function _modify($status, $memberIdList)
     {
         if ($status==0) {
             return in_array($this->memberId, $memberIdList);
@@ -295,13 +323,13 @@ class OrderQuery extends Controller
     }
 
     /**
-     * 重发短信通知
+     * 重发短信通知：未使用的订单
      *
-     * @param $status
-     * @param $memberIdList
+     * @param int $status 订单状态
+     * @param array $memberIdList 会员ID列表
      * @return bool
      */
-    private function _sms($status, $memberIdList)
+    protected function _sms($status, $memberIdList)
     {
         if ($status!=0) return false;
         if (!in_array($this->memberId, $memberIdList)) return false;
@@ -310,7 +338,7 @@ class OrderQuery extends Controller
     /**
      * @param $order
      */
-    private function orderHandlerPermission($order)
+    protected function orderHandlerPermission($order)
     {
         $permission = array();
         if ($order['aids'] != 0) {
@@ -320,32 +348,24 @@ class OrderQuery extends Controller
         }
         $permission['pay']      = $this->_pay($order['pay_status'], $order['member']);
         $permission['check']    = $this->_check($order['pay_status'], $apply_did, $order['status']);
-        $permission['cancel']   = $this->_cancel($order['ordermode'], $order['status'],[self::ADMINID, $apply_did, $order['member']]);
-        $permission['modify']   = $this->_modify( $order['status'],[self::ADMINID, $apply_did, $order['member']]);
-        $permission['sms']      = $this->_sms($order['status'],[self::ADMINID, $apply_did, $order['aid'], $order['member']]);
+        $permission['cancel']   = $this->_cancel($order['ordermode'], $order['status'],[self::ADMIN_ID, $apply_did, $order['member']]);
+        $permission['modify']   = $this->_modify( $order['status'],[self::ADMIN_ID, $apply_did, $order['member']]);
+        $permission['sms']      = $this->_sms($order['status'],[self::ADMIN_ID, $apply_did, $order['aid'], $order['member']]);
 
         $this->output[$order['ordernum']]['permissions'] = $permission;
     }
     /**
-     * @param array $item 订单数组
-     * @param string $self 当查询人不是admin的时候的 param['self']
-     * @param array $row 因为订单要以购买者和出售者嵌套循环 所有如果之前$row里有值了 就再传到这个函数里继续添加值
+     * 处理订单数据
+     *
      * @param bool|false $excel 如果是导出到EXCEL 那么要多取一些值
      * @return array
      */
-    private function format_order_data($data, $excel = false)
+    protected function format_order_data( $excel = false )
     {
-        foreach ($data['orders'] as $_ordernum=>$orders) {
+        foreach ($this->orders as $_ordernum=>$orders) {
             //main
             $this->output[$_ordernum] = [];
             //判断订单取消\修改等权限 是否处理过一次 否则初始化权限变量 全部为没有
-            $this->output[$_ordernum]['orderAlipay'] = 3;
-            $this->output[$_ordernum]['orderCancel'] = 3;
-            $this->output[$_ordernum]['orderAlter']  = 3;
-            $this->output[$_ordernum]['orderResend'] = 3;
-            $this->output[$_ordernum]['orderCheck']  = 3;
-
-            $this->output[$_ordernum]['ordernum'][]   = $orders['main']['ordernum'];
             $this->output[$_ordernum]['begintime']  = $orders['main']['begintime'];
             $this->output[$_ordernum]['endtime']    = $orders['main']['endtime'];
             $this->output[$_ordernum]['begin_to_end'] =  $this->output[$_ordernum]['begintime'].'-'.$orders['main']['endtime'];
@@ -357,18 +377,20 @@ class OrderQuery extends Controller
             $this->output[$_ordernum]['ordertime'] = str_replace('-', '/', substr( $orders['main']['ordertime'], 0, 19));
             //预计游玩时间
             $this->output[$_ordernum]['playtime']  = str_replace('-', '/', $orders['main']['playtime']);
-            $this->output[$_ordernum]['_dtime']    = $orders['main']['dtime'];
-            $this->output[$_ordernum]['ltitle']    = $this->lands[$orders['main']['lid']];
-            $this->output[$_ordernum]['paystatus']  = $orders['main']['paystatus'];
-            $this->output[$_ordernum]['ordermode']  = $orders['main']['ordermode'];
-
-
+            $this->output[$_ordernum]['dtime']    = $orders['main']['dtime'];
+            $this->output[$_ordernum]['ltitle']    = $this->lands[$orders['main']['lid']]['title'];
+            $this->output[$_ordernum]['pay_status'] = $orders['main']['pay_status'];
+            $this->output[$_ordernum]['ordermode'] = $orders['main']['ordermode'];
+            //TODO::退票中状态如何处理？
             //$this->output[$_ordernum]['is_audit'] += ($item['audit_id'] && in_array($item['status'], [0, 7])); //2016-3-29 14:41:40 未使用和部分使用的订单显示为退票中
-            if ( $this->memberId != 1 && $orders['main']['dtime'] == '0000-00-00 00:00:00'
-                && $this->memberId != $orders['main']['member']
-                && ! in_array($_SESSION['saccount'], $GLOBALS['show_tel']) )
-            {
-                $orders['main']['ordertel'] = substr_replace($orders['main']['ordermode']['ordertel'], "****", 3, 4);
+            //显示完整手机号
+            if (!in_array($this->memberId, [ self::ADMIN_ID, $orders['main']['member'] ])) {
+                /** @var $file \Library\Cache\CacheFile*/
+                $file           = Cache::getInstance('file');
+                $order_tel_conf = $file->get('order_tel_display');
+                if (is_array($order_tel_conf) && !in_array($this->memberId, $order_tel_conf)) {
+                    $orders['main']['ordertel'] = substr_replace($orders['main']['ordertel'], "****", 3, 4);
+                }
             }
             $this->output[$_ordernum]['ordertel']  = $orders['main']['ordertel'] == '0' ? '空' : $orders['main']['ordertel'];//游客电话
             //订单票类数信息/价格据处理
