@@ -73,12 +73,10 @@ class PriceWrite extends Model
                 . "and string_bj(weekdays,'$ondays')=1";
         if ($mode==1 && $rid) $where.=" and id<>'$rid'";
         $_id = $this->table($this->price_table)->where($where)->limit(1)->getField('id');
-        if ($_id>0) return ['code'=>0, 'msg'=>'时间段价格存在交集'];
+        if ($_id>0) return 142;//['code'=>0, 'msg'=>'时间段价格存在交集'];
         //update
         if ($mode==1) {
-            $ret = $this->table($this->price_table)
-                ->where(['id'=>$rid])
-                ->save($price_data);
+            $ret = $this->table($this->price_table)->where(['id'=>$rid]) ->save($price_data);
         }
         else {
             $ret = $this->table($this->price_table)->data($price_data)->add();
@@ -86,11 +84,12 @@ class PriceWrite extends Model
         if ($ret===true || $ret>0) return 100;
         //write_log
         $msg = [
-            'msg'=>'修改或新增产品价格失败,原因:' . $this->getDbError(),
-            'data'=>$price_data,
-            'args'=>func_get_args(),
+            'log_type'  => 'create_price_error',
+            'msg'       => '修改或新增产品价格失败,原因:' . $this->getDbError(),
+            'data'      => $price_data,
+            'args'      => func_get_args(),
         ];
+        write_to_logstash('platform_app_log', $msg);
         return 0;
-        //create
     }
 }
