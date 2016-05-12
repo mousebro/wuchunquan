@@ -8,21 +8,21 @@
 
 namespace Controller\product;
 
-
-use Library\Controller;
 use Library\PftProduct\TicketLib;
 use Model\Member\Member;
 use Model\Product\Land;
 use Model\Product\Round;
 
-class ticket extends Controller
+class ticket extends ProductBasic
 {
+    private $memberID;
     //private $ticketObj = ;
     public function __construct()
     {
         if (!$_SESSION['memberID']) parent::apiReturn(self::CODE_AUTH_ERROR,[],'未登录');
         //$this->ticketObj = parent::model('\Product\Ticket');
         $this->ticketObj = new \Model\Product\Ticket();
+        $this->memberID = $_SESSION['sid'];
     }
 
     public function ticket_attribute()
@@ -137,8 +137,11 @@ class ticket extends Controller
             } else {
                 $child_ticket_data = $pack->getChildTickets();
             }
-            //var_dump($child_ticket_data);exit;
-            if(!$pack->checkEffectivePack()) $data['message'] = $pack->message;
+            //print_r($child_ticket_data);exit;
+            if(!$pack->checkEffectivePack()) {
+                //$data['message'] = $pack->message;
+                parent::apiReturn(self::CODE_INVALID_REQUEST,[], implode(',', $pack->message));
+            }
             $advance = $pack->advance;// 提前天数
             $paymode = $pack->paymode;// 支付方式
             $useDate = $pack->usedate;// 套票使用时间
@@ -151,19 +154,19 @@ class ticket extends Controller
             }
             $child_info = $pack->getCache();
             $child_info = json_decode($child_info, true);
-            foreach($child_ticket_data as $child)
-            {
-                foreach($child_info as $row)
-                {
-                    if($child['id']==$row['pid'])
-                        $data['childTicket'][] = array(
-                            'ltitle' => $child['ltitle'],
-                            'ttitle' => $child['ttitle'],
-                            'pid' => $child['pid'],
-                            'lid' => $child['lid'],
-                            'tid' => $child['tid'],
-                            'num' => $row['num'],
-                        );
+            if (is_array($child_info)) {
+                foreach($child_ticket_data as $child) {
+                    foreach($child_info as $row) {
+                        if($child['id']==$row['pid'])
+                            $data['childTicket'][] = array(
+                                'ltitle' => $child['ltitle'],
+                                'ttitle' => $child['ttitle'],
+                                'pid' => $child['pid'],
+                                'lid' => $child['lid'],
+                                'tid' => $child['tid'],
+                                'num' => $row['num'],
+                            );
+                    }
                 }
             }
             $data['ddays'] = $advance;
@@ -211,9 +214,8 @@ class ticket extends Controller
     public function Update()
     {
         $ticketData  = $_POST;
-        $ticketLib   = new TicketLib();
         $landModel   = new Land();
-        $ticketLib->Save($_SESSION['sid'], $ticketData,  $this->ticketObj, $landModel);
+        $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
     }
 
 
