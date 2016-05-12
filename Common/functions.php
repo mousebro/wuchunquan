@@ -38,6 +38,27 @@ function throw_exception($error) {
 function getReferer(){
     return empty($_SERVER['HTTP_REFERER'])?'':$_SERVER['HTTP_REFERER'];
 }
+
+/**
+ * 向elk日志系统记录日志[elk.12301dev.com]
+ *
+ * @author Guangpeng Chen
+ * @param string $log_name 日志文件名
+ * @param mixed $log_message 日志内容，可以为字符串或数组
+ */
+function write_to_logstash($log_name, $log_message)
+{
+    $log_dir = BASE_LOG_DIR . '/logstash/' . $log_name .'_' . date('ymd') .'.log';
+    $word = json_encode([
+        'time'  => date("Y-m-d H:i:s"),
+        'client'=> $_SERVER['REMOTE_ADDR'],
+        'domain'=> $_SERVER['HTTP_HOST'],
+        'status'=> 200,
+        'words' => $log_message,
+    ],JSON_UNESCAPED_UNICODE);
+    file_put_contents($log_dir, $word . "\n", FILE_APPEND);
+}
+
 /**
  * 输出信息
  *
@@ -694,8 +715,10 @@ if (!function_exists('curl_post')) {
      * @param string $logPath 错误日志文件
      * @return bool|mixed
      */
-    function curl_post($url,$postData, $port=80, $timeout=15, $logPath=BASE_LOG_DIR . '/api/curl_post.log') {
+    function curl_post($url,$postData, $port=80, $timeout=15, $logPath='/api/curl_post.log', $http_headers=[]) {
         $ch = curl_init();
+        $basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
+        $logPath = $basePath . $logPath;
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_PORT, $port);
@@ -703,6 +726,10 @@ if (!function_exists('curl_post')) {
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, 0);
+        if (count($http_headers)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $http_headers);
+        }
+
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);

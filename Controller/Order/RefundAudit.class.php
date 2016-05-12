@@ -451,7 +451,7 @@ class RefundAudit extends Controller
             $action = $auditResult==1 ? self::AGREE_AUDIT_CODE : self::REFUSE_AUDIT_CODE;
             $this->addRefundAuditOrderTrack($orderNum, $source, $operatorID, $action, $auditResult, $targetTnum);
             if ($ifpack != 2 && $auditResult==2 ) {
-                $this->noticeAuditResult('reject', $orderNum, $targetTnum, $auditResult);
+                $this->noticeAuditResult('reject', $orderNum, $targetTnum, $auditResult, $auditNote);
             }
         };
         $result = $return ? 200 : 241;
@@ -588,13 +588,15 @@ class RefundAudit extends Controller
         $action,
         $ordernum,
         $targetTicketNum,
-        $auditResult = null
+        $auditResult = null,
+        $auditNote = ''
     ) {
         $data   = array(
             'action'   => $action,
             'ordernum' => $ordernum,
             'num'      => $targetTicketNum,
             'dstatus'  => $auditResult,
+            'reason'  => $auditNote,
         );
         $url    = $this->noticeURL;
         $result = $this->raw_post($url, $data);

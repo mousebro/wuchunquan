@@ -12,6 +12,7 @@ if (ENV=='PRODUCTION') {
     define('MOBILE_DOMAIN', 'http://wx.12301.cc/');
     define('IMAGE_URL', 'http://images.12301.cc/');
     define('STATIC_URL', 'http://static.12301.cc/');
+    define('LOCAL_DIR', '');
     define('OPEN_URL', 'http://open.12301.cc/');
     define('MOBILE_URL', 'http://12301.cc/');
     define('IP_INSIDE', '10.132.33.244');//内网IP地址
@@ -28,6 +29,7 @@ elseif (ENV=='TEST') {
     define('MOBILE_DOMAIN', 'http://wx.12301dev.com/');
     define('IMAGE_URL', 'http://images.12301dev.com/');
     define('STATIC_URL', 'http://static.12301dev.com/');
+    define('LOCAL_DIR', '');
     define('OPEN_URL', 'http://open.12301dev.com/');
     define('MOBILE_URL', 'http://12301dev.com/');
     define('IP_INSIDE', '10.117.7.197');
@@ -44,6 +46,7 @@ elseif (ENV=='DEVELOP') {
         define('MOBILE_DOMAIN', 'http://wx.12301.test/');
         define('IMAGE_URL', 'http://images.12301.test/');
         define('STATIC_URL', 'http://static.12301.test/');
+        define('LOCAL_DIR', '');
         define('MOBILE_URL', 'http://12301.test/');
         define('OPEN_URL', 'http://open.12301.test/');
     }
@@ -52,6 +55,7 @@ elseif (ENV=='DEVELOP') {
         define('MAIN_DOMAIN', 'http://www.12301.local/');
         define('IMAGE_URL', 'http://images.12301.local/');
         define('STATIC_URL', 'http://static.12301.local/');
+        define('LOCAL_DIR', 'local/');
         define('MOBILE_URL', 'http://12301.local/');
         define('OPEN_URL', 'http://open.12301.local/');
     }
