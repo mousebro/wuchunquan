@@ -549,7 +549,7 @@ class RefundAuditModel extends Model
             ->page($page)
             ->limit($limit)
             ->select();
-        $this->test();
+//        $this->test();
         if(!$list){
             return false;
         }
