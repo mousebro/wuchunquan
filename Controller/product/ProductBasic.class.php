@@ -11,6 +11,7 @@ defined('PFT_INIT') or exit('Permission Denied');
 use Library\Controller;
 use Model\Member\Member;
 use Model\Product\Land;
+use Model\Product\PriceWrite;
 use Model\Product\Ticket;
 
 class ProductBasic extends Controller
@@ -261,14 +262,23 @@ class ProductBasic extends Controller
 
         // 保存或修改价格判断
         // print_r($original_price);
-        if(isset($ticketData['price_section']) && count($ticketData['price_section']) && $pid){
 
-            foreach($ticketData['price_section'] as $row)
-            {
+        return array('status'=>'success','data'=>array('lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$jData['title']));
+    }
 
-                if(($tableId = ($row['id']+0))>0)
-                {
-
+    /**
+     * 保存价格数据
+     *
+     * @param int $pid 产品ID
+     * @param array $price_section 区间价格
+     * @param array $original_price 修改前的价格,新增时可忽视
+     * @return array
+     */
+    public function SavePrice($pid, $price_section, $original_price=array() )
+    {
+        $priceWrite = new PriceWrite();
+            foreach($price_section as $row) {
+                if(($tableId = ($row['id']+0))>0) {
                     $intersect = array();
                     $intersect = array_diff_assoc($row, $original_price[$tableId]);
                     if(count($intersect)==0) continue;
@@ -276,12 +286,12 @@ class ProductBasic extends Controller
                 $action = ($tableId>0) ? 1:0;// 0 插入 1 修改
                 $sdate  = date('Y-m-d', strtotime($row['sdate']));
                 $edate  = date('Y-m-d', strtotime($row['edate']));
-                $apiret = $soap->In_Dynamic_Price_Merge($pid, $sdate, $edate, $row['js'], $row['ls'], 0, $action, $tableId, '', $row['weekdays'], ($row['storage']+0));
-                // print_r(array($pid, $sdate, $edate, $row['js'], $row['ls'], 0, $action, $tableId, '', $row['weekdays'], ($row['storage']+0)));
+                $apiret = $priceWrite->In_Dynamic_Price_Merge($pid, $sdate,
+                    $edate, $row['js'], $row['ls'], 0, $action, $tableId, '',
+                    $row['weekdays'], ($row['storage']+0));
                 if($apiret!=100) return array('status'=>'fail', 'msg'=>$apiret);
             }
-        }
-        return array('status'=>'success','data'=>array('lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$jData['title']));
+
     }
 
 }
