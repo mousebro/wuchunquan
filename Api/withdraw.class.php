@@ -140,7 +140,7 @@ class withdraw extends Controller{
         $prefix    = $this->typeArr[$type] . date('Ym');
         $prefixLen =  strlen($prefix);
 
-        if($type == 1) {
+        if($isRecover == 1) {
             $tmp = $prefix . $orderId;
             return $this->_cryptOrderId($tmp);
         } else {
@@ -187,6 +187,6 @@ class withdraw extends Controller{
         $res     = substr($tmpStr, strlen($tmpStr) - $flipNum) . substr($tmpStr, $flipNum, strlen($tmpStr) - 2 * $flipNum) . substr($tmpStr, 0, $flipNum);
 
         return $res;
-    }
+    } 
 
 }
