@@ -35,7 +35,7 @@ class withdraw extends Controller{
         $res = array();
         foreach($list as $item) {
             $tmp = array(
-                'order_id' => $this->_handleOrderId($item['id']),
+                'order_id' => $this->_handleOrderId($item['id'], 'withdraw', 1),
                 'acc_no'   => $item['bank_accuont'],
                 'acc_name' => $item['wd_name'],
                 'acc_type' => $item['accType'],
@@ -79,7 +79,7 @@ class withdraw extends Controller{
             $this->apiReturn(400, [], '参数错误');
         }
 
-        $platformOrderId = $this->_handleOrderId($orderId, 2);
+        $platformOrderId = $this->_handleOrderId($orderId, 'withdraw', 2);
         if(!$platformOrderId) {
             $this->apiReturn(400, [], '参数错误');
         }
