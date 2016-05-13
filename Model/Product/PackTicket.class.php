@@ -97,9 +97,16 @@ class PackTicket extends Model
             ->where(['parent_tid'=>$this->parent_tid])->select();
         //echo $this->getLastSql();
         $this->childTickets = $data;
-        return $this->ChkSales();
+        $this->ChkSales();
+        return $data;
     }
 
+    /**
+     * 检测门票是否在售
+     *
+     * @param string $pid_list
+     * @return mixed
+     */
     private function ChkSales($pid_list='')
     {
         // 获取关联子票
@@ -121,7 +128,7 @@ class PackTicket extends Model
             ->select();
         //var_dump($this->getDbError());
         //var_dump($this->getLastSql());
-        $this->childTickets = $data;
+        //$this->childTickets = $data;
         return $data;
     }
 

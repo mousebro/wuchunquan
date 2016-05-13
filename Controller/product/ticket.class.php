@@ -134,8 +134,39 @@ class ticket extends ProductBasic
 
             if (!$tid) {
                 $child_ticket_data = $pack->childTempTicketsInfo();
-            } else {
+                $child_info = $pack->getCache();
+                $child_info = json_decode($child_info, true);
+                if (is_array($child_info)) {
+                    foreach($child_ticket_data as $child) {
+                        foreach ($child_info as $row) {
+                            if ($row['pid']==$child['pid']) {
+                                $data['childTicket'][] = array(
+                                    'ltitle' => $child['ltitle'],
+                                    'ttitle' => $child['ttitle'],
+                                    'pid'   => $row['pid'],
+                                    'lid'   => $row['lid'],
+                                    'tid'   => $row['tid'],
+                                    'num'   => $row['num'],
+                                );
+                            }
+                        }
+
+                    }
+                }
+
+            }
+            else {
                 $child_ticket_data = $pack->getChildTickets();
+                foreach($child_ticket_data as $child) {
+                    $data['childTicket'][] = array(
+                        'ltitle' => $child['ltitle'],
+                        'ttitle' => $child['ttitle'],
+                        'pid'   => $child['pid'],
+                        'lid'   => $child['lid'],
+                        'tid'   => $child['tid'],
+                        'num'   => $child['num'],
+                    );
+                }
             }
             //print_r($child_ticket_data);exit;
             if(!$pack->checkEffectivePack()) {
@@ -152,23 +183,7 @@ class ticket extends ProductBasic
             if($paymode==0 && ($group_id!=4)) {
                 parent::apiReturn(self::CODE_INVALID_REQUEST,[], '现场支付不支持打包');
             }
-            $child_info = $pack->getCache();
-            $child_info = json_decode($child_info, true);
-            if (is_array($child_info)) {
-                foreach($child_ticket_data as $child) {
-                    foreach($child_info as $row) {
-                        if($child['id']==$row['pid'])
-                            $data['childTicket'][] = array(
-                                'ltitle' => $child['ltitle'],
-                                'ttitle' => $child['ttitle'],
-                                'pid' => $child['pid'],
-                                'lid' => $child['lid'],
-                                'tid' => $child['tid'],
-                                'num' => $row['num'],
-                            );
-                    }
-                }
-            }
+
             $data['ddays'] = $advance;
             $landData = $data;
         }
@@ -207,7 +222,7 @@ class ticket extends ProductBasic
             [
                 'attribute'     => $data,
                 'otherTicket'   => $other_tickets,
-                'land'          =>$landData,
+                'land'          => $landData,
             ],
             'success');
     }
