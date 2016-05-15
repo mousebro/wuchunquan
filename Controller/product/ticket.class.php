@@ -229,6 +229,7 @@ class ticket extends ProductBasic
     public function Update()
     {
         $ticketData  = $_POST;
+        //print_r($_POST);exit();
         $landModel   = new Land();
         $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
     }

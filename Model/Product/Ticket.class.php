@@ -545,6 +545,19 @@ class Ticket extends Model {
         return $this->table(self::__PRODUCT_TABLE__)->where($where)->save($params);
     }
 
+    /**
+     * 修改票类属性
+     *
+     * @param array $where
+     * @param array $params
+     * @param string $table
+     * @return bool
+     */
+    public function UpdateTicketAttributes($where, $params, $table='uu_jq_ticket')
+    {
+        return $this->table($table)->where($where)->save($params);
+    }
+
     public function CreateTicket($ticketData)
     {
         $lastid = $this->table(self::__TICKET_TABLE__)->data($ticketData)->add();

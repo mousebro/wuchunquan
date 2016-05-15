@@ -30,7 +30,8 @@ class ProductBasic extends Controller
             foreach($ticketData['price_section'] as $row)
             {
                 // 期票模式（有效期是时间段）只能全部有价格
-                if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6')) return ['code'=>0, 'msg'=>'期票模式必须每天都有价格'];
+                if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6'))
+                    parent::apiReturn(self::CODE_INVALID_REQUEST,[], '期票模式必须每天都有价格');
                 if(($tableId = ($row['id']+0))==0) continue; // 已存在表ID
                 $section = $row['sdate'].' 至 '.$row['edate'];
                 $diff_js = $original_price[$tableId]['js'] - $row['js'];
@@ -39,7 +40,6 @@ class ProductBasic extends Controller
                 if($diff_ls) $changeNote[] = $section.' 零售价变动，原:'.($original_price[$tableId]['ls']/100).'，现:'.($row['ls']/100);
             }
         }
-
         // 整合数据
         $jData = $fData = array();
         $jData['title']   = $ticketData['ttitle'];
@@ -55,7 +55,7 @@ class ProductBasic extends Controller
         $jData['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));
 
         if(($jData['buy_limit_up']>0) && $jData['buy_limit_low']>$jData['buy_limit_up'])
-            return ['code'=>0, 'msg'=>'最少购买张数不能大于最多购买张数'];
+            parent::apiReturn(self::CODE_INVALID_REQUEST,[], '最少购买张数不能大于最多购买张数');
 
         // 延迟验证
         $delaytime = array(0,0);
@@ -83,7 +83,7 @@ class ProductBasic extends Controller
 
 
 
-        if($jData['buy_limit_low']<=0) return array('status'=>'fail', 'msg'=>'购买下限不能小于0');
+        if($jData['buy_limit_low']<=0) self::apiReturn(self::CODE_INVALID_REQUEST, [], '购买下限不能小于0');
 
         $jData['max_order_days']    = isset($ticketData['max_order_days']) ? $ticketData['max_order_days']+0:'-1';// 提前预售天数
         $jData['cancel_auto_onMin'] = abs($ticketData['cancel_auto_onMin']); // 未支付多少分钟内自动取消
@@ -92,7 +92,7 @@ class ProductBasic extends Controller
         $jData['reb']      = $ticketData['reb']+0;   // 实际值以分为单位
         $jData['reb_type'] = $ticketData['reb_type'];// 取消费用类型 0 百分比 1 实际值
         if($jData['reb_type']==0) {
-            if($jData['reb']>100 || $jData['reb']<0) return ['code'=>0, 'msg'=>'取消费用百分比值不合法'];
+            if($jData['reb']>100 || $jData['reb']<0) self::apiReturn(self::CODE_INVALID_REQUEST, [], '取消费用百分比值不合法');
             $jData['reb'] = $jData['reb'] / 100;
         }
 
@@ -102,7 +102,8 @@ class ProductBasic extends Controller
             $c_days = array();
             foreach($ticketData['cancel_cost'] as $row)
             {
-                if(in_array($row['c_days'], $c_days)) return ['code'=>0, 'msg'=>'退票手续费日期重叠'];
+                if(in_array($row['c_days'], $c_days))
+                    self::apiReturn(self::CODE_INVALID_REQUEST, [], '退票手续费日期重叠');
                 $c_days[] = $row['c_days'];
             }
         }
@@ -117,7 +118,7 @@ class ProductBasic extends Controller
         $jData['order_end'] = $jData['order_start'] = '';
         if($ticketData['validTime']==2){
             if($ticketData['order_end']=='' || $ticketData['order_start']=='')
-                return ['code'=>0, 'msg'=>'有效期时间不能为空'];
+                self::apiReturn(self::CODE_INVALID_REQUEST, [], '有效期时间不能为空');
             $jData['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
             $jData['order_start'] = date('Y-m-d 00:00:00', strtotime($ticketData['order_start']));
         }
@@ -168,7 +169,7 @@ class ProductBasic extends Controller
         $lid = $ticketData['lid']+0;
         $landInfo = $landObj->getLandInfo($lid,false, 'title,p_type,apply_did');
         if (!$landInfo || ($landInfo['apply_did']!=$memberId && $memberId!=0)) {
-            return ['code'=>0, 'msg'=>'景区不存在'];
+            self::apiReturn(self::CODE_NO_CONTENT, [], '景区不存在');
         }
         $ltitle = $landInfo['title'];
         $p_type = $landInfo['p_type'];
@@ -207,34 +208,47 @@ class ProductBasic extends Controller
 
         if(isset($ticketData['tid']) && $ticketData['tid']>0)
         {   // 以下编辑操作
-
             $tid = $ticketData['tid']+0;
-            $sql = "select * from uu_jq_ticket t left join uu_products p on t.pid=p.id where t.id=$tid limit 1";
-            $GLOBALS['le']->query($sql);// 缓存原设置
-            if(($original_info = $GLOBALS['le']->fetch_assoc())){
-                $original_info['memberID'] = $memberId;
-                $original_info['REQUESTD'] = $_REQUEST;
-                // write_logs(json_encode($original_info), 'before_ticket_'.date('Ymd').'.txt');
-            }else return array('status'=>'fail', 'msg'=>'票类不存在');
 
-            $pid = $original_info['pid'];
-            $sql = buildUpdateSql($jData, 'uu_jq_ticket', "where id=$tid limit 1"); // echo $sql;
-            if(!$GLOBALS['le']->query($sql)) return array('status'=>'fail', 'msg'=>'其他错误,请联系客服');
-            $sql = buildUpdateSql($fData, 'uu_land_f', "where tid=$tid limit 1");
-            if(!$GLOBALS['le']->query($sql)) return array('status'=>'fail', 'msg'=>'其他错误,请联系客服');
+            $ticketOriginData = $ticketObj->getTicketInfoById($tid);
+            if (!$ticketOriginData) {
+                self::apiReturn(self::CODE_NO_CONTENT, [], '票类不存在,保存失败');
+            }
+            $diff_ticket_attr = array_diff($fData, $ticketOriginData);
+            $ret1 = $ticketObj->UpdateTicketAttributes(
+                ['id'=>$tid],
+                $diff_ticket_attr,
+                Ticket::__TICKET_TABLE__
+                );
+            $ret2 = $ret3 = true;
+            if ($ret1) {
+                $extAttributes = $ticketObj->getTicketExtInfoByTid($tid);
+                $diff_ticket_attr = array_diff($jData, $extAttributes);
+                $ret2 = $ticketObj->UpdateTicketAttributes(
+                    ['tid'=>$tid],
+                    $diff_ticket_attr,
+                    Ticket::__TICKET_TABLE_EXT__
+                );
+                $ret3 = $ticketObj->UpdateTicketAttributes(
+                    ['id'=>$ticketOriginData['pid']],
+                    ['verify_time'=>date('Y-m-d H:i:s')],
+                    Ticket::__PRODUCT_TABLE__
+                );
+            }
+            if (!$ret1 || !$ret2 || !$ret3) {
+                self::apiReturn(self::CODE_CREATED,[], '保存票类属性失败');
+            }
 
-            $sql = "UPDATE uu_products SET verify_time=now() WHERE id=$pid LIMIT 1";
-            $GLOBALS['le']->query($sql);
             $daction = "对 $ltitle".$jData['title']." 进行编辑";
 
             // 产品有效期监控
-            if(count($original_info))
+            if(count($ticketOriginData))
             {
-                $ticketData['pid']    = $pid;
+                $ticketData['pid']    = $ticketOriginData['pid'];
                 $ticketData['action'] = 'CreateNewTicket';
                 $ticketData['add_ticket']  = ($tid==0) ? 1:0;
                 $ticketData['validHtml_2'] = htmlValid($jData);
-                $ticketData['validHtml_1'] = htmlValid($original_info);
+                $ticketData['validHtml_1'] = htmlValid($ticketOriginData);
                 fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $ticketData);
             }
         }
@@ -242,7 +256,9 @@ class ProductBasic extends Controller
         {
             // 以下新增操作
             $create_ret = $ticketObj->CreateTicket($jData);
-            if($create_ret['code']!=200) return $create_ret;
+            if($create_ret['code']!=200)
+                self::apiReturn(self::CODE_CREATED, [], $create_ret['msg']);
+
             $tid =$create_ret['data']['lastid'];
             $ret = $ticketObj->QueryTicketInfo("id=$tid",'pid');
             $pid = $ret[0]['pid'];
@@ -252,18 +268,21 @@ class ProductBasic extends Controller
             $fData['tid'] = $tid;
             $extRet = $ticketObj->CreateTicketExtendInfo($fData);
 
-            if($extRet['code']!=200) return $extRet;
+            if($extRet['code']!=200) {
+                self::apiReturn(self::CODE_CREATED, [], $extRet['msg']);
+            }
             $daction = '添加门票.'.$ltitle.$jData['title'];
         }
-        $apply_limit = $ticketData['apply_limit']+0;
-        $ticketObj->UpdateProducts(['id'=>$pid], ['apply_limit'=>$apply_limit, 'p_status'=>0]);
+        $ticketObj->UpdateTicketAttributes(
+            ['id'=>$pid],
+            ['apply_limit'=>$ticketData['apply_limit']+0, 'p_status'=>0],
+            Ticket::__PRODUCT_TABLE__
+        );
 
-
-
-        // 保存或修改价格判断
-        // print_r($original_price);
-
-        return array('status'=>'success','data'=>array('lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$jData['title']));
+        self::apiReturn(self::CODE_SUCCESS,
+            array('lid'=>$lid, 'tid'=>$tid,
+                'pid'=>$pid, 'ttitle'=>$jData['title']),
+            'ok');
     }
 
     /**
