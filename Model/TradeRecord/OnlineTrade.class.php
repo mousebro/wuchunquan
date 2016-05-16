@@ -46,6 +46,9 @@ class OnlineTrade extends Model
         if (!$this->VerifyMoneyPay($out_trade_no, $total_fee_fen)) {
             return false;
         }
+        if ($this->getLog($out_trade_no, $sourceT)) {
+            return true;
+        }
         $data = [
             'out_trade_no'  => $out_trade_no,
             'total_fee'     => $total_fee,
