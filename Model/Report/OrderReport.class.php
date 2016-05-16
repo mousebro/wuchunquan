@@ -19,6 +19,7 @@ class OrderReport extends Model
         $this->dbConf = C('db');
         $this->db(1, $this->dbConf['summary'], true);
         $this->db(0, $this->dbConf['slave'], true);
+        parent::__construct('slave');
     }
 
     public function getMobileCode()
@@ -102,6 +103,72 @@ SQL;
     public function OrderCancel()
     {
 
+    }
+
+    public function OrderSummaryByLid($date)
+    {
+        /*CREATE TABLE `pft_applyer_order` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `lid` int(11) NOT NULL,
+  `tid` int(11) NOT NULL,
+  `sday` int(11) NOT NULL COMMENT '统计日期 Ymd格式',
+  `tnum` int(11) NOT NULL COMMENT '票数',
+  `total_money` int(11) NOT NULL COMMENT '订单总金额',
+  `onum` int(11) NOT NULL COMMENT '订单总数',
+  `apply_did` int(11) NOT NULL COMMENT '供应商ID',
+  `ltitle` varchar(50) COLLATE utf8_bin NOT NULL COMMENT '景区名称',
+  `ttitle` varchar(50) COLLATE utf8_bin NOT NULL COMMENT '门票名称',
+  `dname` varchar(50) COLLATE utf8_bin NOT NULL COMMENT '供应商名称',
+  PRIMARY KEY (`id`),
+  KEY `idx_day_aid` (`sday`,`apply_did`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_bin;*/
+        $startTime = $date . '000000';
+        $endTime   = $date . '235959';
+
+        $sql = <<<SQL
+SELECT tid,COUNT(*) AS cnt,SUM(tnum) AS tnum, SUM(totalmoney) AS totalmoney
+FROM uu_ss_order
+WHERE ordertime BETWEEN '$startTime' AND '$endTime'
+GROUP BY tid
+SQL;
+        //echo $sql;exit;
+        $orders = $this->db(0)->query($sql);
+        if (!$orders) return false;
+        $output = [];
+        foreach ($orders as $order) {
+            $output[$order['tid']] = $order;
+        }
+        $infos = $this->db(0)->table('uu_jq_ticket t')
+            ->join('left join uu_land l ON l.id=t.landid')
+            ->join('LEFT JOIN pft_member m ON m.id=l.apply_did')
+            ->where(['t.id'=>['in', array_keys($output)]])
+            ->field('l.id as lid,t.id as tid, m.id as mid,l.title as ltitle,t.title as ttitle, m.dname')
+            ->select();
+        //echo $this->getLastSql();
+        $save = array();
+        //print_r($infos);
+        //$sday = date('Ymd', strtotime($endTime));
+        foreach ($infos as $info)
+        {
+            //echo $info['tid'];
+            $save[] = [
+                'sday'      => $date,
+                'lid'       => $info['lid'],
+                'tid'       => $info['tid'],
+                'apply_did' => $info['mid'],
+                'ltitle'     => $info['ltitle'],
+                'ttitle'     => $info['ttitle'],
+                'dname'     => $info['dname'],
+                'onum'      =>$output[$info['tid']]['cnt'],
+                'tnum'      => $output[$info['tid']]['tnum'],
+                'total_money'=>$output[$info['tid']]['totalmoney'],
+            ];
+        }
+        //var_export($save);exit;
+        $res = $this->db(1)->table('pft_applyer_order')->addAll($save);
+        if ($res===false) {
+            echo $this->getDbError();
+        }
     }
 
     public function OrderConsume()
