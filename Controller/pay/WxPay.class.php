@@ -9,7 +9,7 @@ namespace Controller\pay;
  * 微信支付
  */
 use WeChat;
-class OrderWxPay
+class WxPay
 {
     /**
      * 订单支付
