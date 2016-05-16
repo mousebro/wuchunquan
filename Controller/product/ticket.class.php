@@ -233,11 +233,21 @@ class ticket extends ProductBasic
     }
     public function UpdateTicket()
     {
-        echo 'hi';exit;
+        //echo 'hi';
+        //print_r($_POST);
         $ticketData  = $_POST;
         //print_r($_POST);exit();
         $landModel   = new Land();
-        $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+        if (count($_POST)>1) {
+            foreach ($_POST as $tid=>$ticketData) {
+                $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+            }
+        }
+        else {
+            $ticketData = array_shift($_POST);
+            //print_r($ticketData);
+            $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+        }
     }
 
 

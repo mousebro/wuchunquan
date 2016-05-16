@@ -214,6 +214,10 @@ class ProductBasic extends Controller
             if (!$ticketOriginData) {
                 self::apiReturn(self::CODE_NO_CONTENT, [], '票类不存在,保存失败');
             }
+            print_r($jData);
+            print_r($ticketOriginData);
+            print_r(array_diff($jData, $ticketOriginData));
+            exit;
             $diff_ticket_attr = array_diff($fData, $ticketOriginData);
             $ret1 = $ticketObj->UpdateTicketAttributes(
                 ['id'=>$tid],
