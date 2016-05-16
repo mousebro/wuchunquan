@@ -9,14 +9,16 @@ namespace Controller\pay;
 ini_set('display_errors', 'on');
 
 include("/var/www/html/new/d/class/SubDomain.php");
-include "/var/www/html/alipay/lib/alipay_submit.class.php";
+include "/var/www/html/alipay/lib/alipay_submit_mobile.class.php";
 
 class Alipay
 {
     public function mobile_api()
     {
         define('BUYER', $_REQUEST['buy_id']);
-        include "/var/www/html/alipay/account.config.php";
+        //include "/var/www/html/alipay/account.config.php";
+        include("/var/www/html/alipay/alipay.config.world.php");
+        //print_r($alipay_config);exit;
         $host = $_SERVER['HTTP_HOST'];
         if (isset($_REQUEST['domain'])) {
             $domain = "{$_REQUEST['domain']}/wx/html/";
@@ -99,10 +101,8 @@ class Alipay
 
         //URLDECODE返回的信息
         $html_text = urldecode($html_text);
-
         //解析远程模拟提交后返回的信息
         $para_html_text = $alipaySubmit->parseResponse($html_text);
-
         //获取request_token
         $request_token = $para_html_text['request_token'];
 
@@ -125,7 +125,7 @@ class Alipay
             "_input_charset" => trim(strtolower($alipay_config['input_charset']))
         );
         //建立请求
-        //$alipaySubmit = new AlipaySubmit($alipay_config);
+        $alipaySubmit = new \AlipaySubmit($alipay_config);
         $html_text = $alipaySubmit->buildRequestForm($parameter, 'get', '确认');
         echo $html_text;
     }
