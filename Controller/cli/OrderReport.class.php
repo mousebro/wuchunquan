@@ -15,13 +15,14 @@ class OrderReport
     {
         $date = date('Ymd', strtotime('-1 days'));
         $model = new \Model\Report\OrderReport();
-        $startTime = strtotime('2016-01-01');
-        $endTime   = '2016-05-17';
-        $diff      = (strtotime($endTime) - $startTime) / 86400;
-        for ($i=0; $i< $diff; $i++) {
-            $date = date('Ymd', strtotime("+ $i days ", $startTime));
-            echo $date,"\n";
-            $model->OrderSummaryByLid($date);
-        }
+        $model->OrderSummaryByLid($date);
+        //$startTime = strtotime('2016-01-01');
+        //$endTime   = '2016-05-17';
+        //$diff      = (strtotime($endTime) - $startTime) / 86400;
+        //for ($i=0; $i< $diff; $i++) {
+        //    $date = date('Ymd', strtotime("+ $i days ", $startTime));
+        //    echo $date,"\n";
+        //
+        //}
     }
 }
