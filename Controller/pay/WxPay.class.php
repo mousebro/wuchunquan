@@ -54,7 +54,7 @@ class WxPay
         }
         $sourceT = 1;
         $model = new \Model\TradeRecord\OnlineTrade();
-        $ret = $model->addLog($out_trade_no, $total_fee, $body, $body, $sourceT);
+        $ret = $model->addLog($out_trade_no, $money, $body, $body, $sourceT);
         if ($ret===false) {
             echo '{"status":"fail","msg":"记录时错误"}';
             exit;
