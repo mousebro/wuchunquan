@@ -42,6 +42,13 @@ class OnlineTrade extends Model
      */
     public function addLog($out_trade_no, $total_fee, $body,$description, $sourceT)
     {
+        $total_fee_fen = $total_fee * 100;
+        if (!$this->VerifyMoneyPay($out_trade_no, $total_fee_fen)) {
+            return false;
+        }
+        if ($this->getLog($out_trade_no, $sourceT)) {
+            return true;
+        }
         $data = [
             'out_trade_no'  => $out_trade_no,
             'total_fee'     => $total_fee,
@@ -52,10 +59,22 @@ class OnlineTrade extends Model
         $id = $this->data($data)->add();
         if ($id>0) return $id;
         return $this->getDbError();
-        //INSERT pft_alipay_rec SET out_trade_no='$out_trade_no',subject='$body',
-//        total_fee='$money',description='$body',sourceT=$sourceT
     }
 
+    /**
+     * 校验支付的金额是否大于等于订单金额
+     *
+     * @param string $out_trade_no 订单号
+     * @param int $total_fee 金额：分
+     * @return bool
+     */
+    public function VerifyMoneyPay($out_trade_no, $total_fee)
+    {
+        $total_money = $this->table('uu_ss_order')
+            ->where(['ordernum'=>$out_trade_no])
+            ->getField('totalmoney');
+        return $total_fee >= $total_money;
+    }
     /**
      * 获取支付交易日志
      *
