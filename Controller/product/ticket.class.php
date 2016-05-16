@@ -217,6 +217,11 @@ class ticket extends ProductBasic
         if ($landData['p_type']!='F') {
             $other_ticket_ret = $this->ticketObj->GetLandTickets($lid);
             if ($other_ticket_ret['code']==200) $other_tickets = $other_ticket_ret['data'];
+        } else {
+            $other_tickets[] = [
+                "title"=>$data['ttitle'],
+                'tid'=>$tid,
+            ];
         }
         parent::apiReturn(200,
             [
@@ -226,8 +231,9 @@ class ticket extends ProductBasic
             ],
             'success');
     }
-    public function Update()
+    public function UpdateTicket()
     {
+        echo 'hi';exit;
         $ticketData  = $_POST;
         //print_r($_POST);exit();
         $landModel   = new Land();
