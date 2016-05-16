@@ -13,6 +13,11 @@ if(!defined('PFT_API')) {exit('Access Deny');}
 use Library\Controller;
 
 class withdraw extends Controller{
+    private $typeArr = array(
+        'withdraw' => 'PFT001', //提现的前缀
+        'check'    => 'PFT002'  //转账的前缀
+    );
+
     /**
      * 获取需要进行提现的列表
      * @author dwer
@@ -30,7 +35,7 @@ class withdraw extends Controller{
         $res = array();
         foreach($list as $item) {
             $tmp = array(
-                'order_id' => $this->_handleOrderId($item['id']),
+                'order_id' => $this->_handleOrderId($item['id'], 'withdraw', 1),
                 'acc_no'   => $item['bank_accuont'],
                 'acc_name' => $item['wd_name'],
                 'acc_type' => $item['accType'],
@@ -74,7 +79,7 @@ class withdraw extends Controller{
             $this->apiReturn(400, [], '参数错误');
         }
 
-        $platformOrderId = $this->_handleOrderId($orderId, 2);
+        $platformOrderId = $this->_handleOrderId($orderId, 'withdraw', 2);
         if(!$platformOrderId) {
             $this->apiReturn(400, [], '参数错误');
         }
@@ -122,23 +127,66 @@ class withdraw extends Controller{
      * @date   2016-04-20
      *
      * @param  $orderId 订单ID
-     * @param  $type 操作：1=平台订单处理成民生订单，2=民生订单处理成平台订单
+     * @param  $type 类型 : 参照typeArr的定义
+     * @param  $isRecover 操作：1=平台订单处理成民生订单，2=民生订单处理成平台订单
      * @return
      */
-    private function _handleOrderId($orderId, $type = 1) {
+    private function _handleOrderId($orderId, $type = 'withdraw', $isRecover = 1) {
         $orderId = strval($orderId);
-        if(!$orderId) {
+        if(!$orderId || !isset($this->typeArr[$type])) {
             return false;
         }
 
-        $prefix    = 'pft' . @date('Ym');
+        $prefix    = $this->typeArr[$type] . date('Ym');
         $prefixLen =  strlen($prefix);
 
-        if($type == 1) {
-            return $prefix . $orderId;
+        if($isRecover == 1) {
+            $tmp = $prefix . $orderId;
+            return $this->_cryptOrderId($tmp);
         } else {
-            return substr($orderId, $prefixLen);
+            $tmp = $this->_cryptOrderId($orderId, true);
+            return substr($tmp, $prefixLen);
         }
     }
+
+    /**
+     * 需要处理的字符串
+     * @author dwer
+     * @date   2016-05-12
+     *
+     * @param  $str
+     * @param  $isRecover
+     * @return string
+     */
+    private function _cryptOrderId($str, $isRecover = false) {
+        if(!$str) {
+            return false;
+        }
+
+        //映射数组
+        $codeMap = array(1 => 'a', 2 => 'b', 3 => 'c', 4 => 'd', 5 => 'e', 6 => 'f', 7 => 'g', 8 => 'z', 9 => 'i', 0 => 'm');
+        if($isRecover) {
+            $codeMap = array_flip($codeMap);
+        }
+
+        $orderTmp = str_split($str);
+        $orderRes = array();
+
+        //映射字符替换
+        foreach($orderTmp as $key => $val) {
+            if(array_key_exists($val, $codeMap)) {
+                $orderRes[$key] = $codeMap[$val];
+            } else {
+                $orderRes[$key] = $val;
+            }
+        }
+
+        //前后字符对调
+        $flipNum = 3;
+        $tmpStr  = implode('', $orderRes);
+        $res     = substr($tmpStr, strlen($tmpStr) - $flipNum) . substr($tmpStr, $flipNum, strlen($tmpStr) - 2 * $flipNum) . substr($tmpStr, 0, $flipNum);
+
+        return $res;
+    } 
 
 }
