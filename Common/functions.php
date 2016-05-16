@@ -38,27 +38,6 @@ function throw_exception($error) {
 function getReferer(){
     return empty($_SERVER['HTTP_REFERER'])?'':$_SERVER['HTTP_REFERER'];
 }
-
-/**
- * 向elk日志系统记录日志[elk.12301dev.com]
- *
- * @author Guangpeng Chen
- * @param string $log_name 日志文件名
- * @param mixed $log_message 日志内容，可以为字符串或数组
- */
-function write_to_logstash($log_name, $log_message)
-{
-    $log_dir = BASE_LOG_DIR . '/logstash/' . $log_name .'_' . date('ymd') .'.log';
-    $word = json_encode([
-        'time'  => date("Y-m-d H:i:s"),
-        'client'=> $_SERVER['REMOTE_ADDR'],
-        'domain'=> $_SERVER['HTTP_HOST'],
-        'status'=> 200,
-        'words' => $log_message,
-    ],JSON_UNESCAPED_UNICODE);
-    file_put_contents($log_dir, $word . "\n", FILE_APPEND);
-}
-
 /**
  * 输出信息
  *
@@ -124,7 +103,7 @@ function showMessage($msg,$url='',$show_type='html',$msg_type='succ',$is_show=1,
             exit();
             break;
         default:
-           break;
+            break;
     }
     exit;
 }
@@ -349,8 +328,8 @@ function array_map_recursive($filter, $data)
     $result = array();
     foreach ($data as $key => $val) {
         $result[$key] = is_array($val)
-        ? array_map_recursive($filter, $val)
-        : call_user_func($filter, $val);
+            ? array_map_recursive($filter, $val)
+            : call_user_func($filter, $val);
     }
     return $result;
 }
@@ -719,7 +698,6 @@ if (!function_exists('curl_post')) {
         $ch = curl_init();
         $basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
         $logPath = $basePath . $logPath;
-
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_PORT, $port);
         curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);

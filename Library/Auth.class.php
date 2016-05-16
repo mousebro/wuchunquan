@@ -23,8 +23,8 @@ class Auth {
      */
     public static function genPostData($appId, $secret, $method, $paramArr) {
         $timestamp = time();
-        $params     = base64_encode(json_encode($paramArr));
-        $signature  = self::genSignature($method, $secret, $timestamp, $params);
+        $params    = base64_encode(json_encode($paramArr));
+        $signature = self::genSignature($method, $secret, $timestamp, $params);
 
         $dataArr = array(
             'app_id'    => $appId,
