@@ -11,35 +11,19 @@ defined('PFT_INIT') or exit('Permission Denied');
 use Library\Controller;
 use Model\Member\Member;
 use Model\Product\Land;
+use Model\Product\PackTicket;
 use Model\Product\PriceWrite;
 use Model\Product\Ticket;
 
 class ProductBasic extends Controller
 {
+    private $packObj=null;
     public function SaveTicket($memberId,  $ticketData, Ticket $ticketObj, Land $landObj)
     {
         $isSectionTicket = false;// 是否是期票
         if($ticketData['order_start'] && $ticketData['order_end']) $isSectionTicket = true;
-
-        // 价格判断
-        if(isset($ticketData['price_section']) && count($ticketData['price_section']) )
-        {
-            $compareSec = array();
-            $changeNote = array();
-            $original_price = $ticketObj->getPriceSection($ticketData['pid']);
-            foreach($ticketData['price_section'] as $row)
-            {
-                // 期票模式（有效期是时间段）只能全部有价格
-                if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6'))
-                    parent::apiReturn(self::CODE_INVALID_REQUEST,[], '期票模式必须每天都有价格');
-                if(($tableId = ($row['id']+0))==0) continue; // 已存在表ID
-                $section = $row['sdate'].' 至 '.$row['edate'];
-                $diff_js = $original_price[$tableId]['js'] - $row['js'];
-                $diff_ls = $original_price[$tableId]['ls'] - $row['ls'];
-                if($diff_js) $changeNote[] = $section.' 供货价变动，原:'.($original_price[$tableId]['js']/100).'，现:'.($row['js']/100);
-                if($diff_ls) $changeNote[] = $section.' 零售价变动，原:'.($original_price[$tableId]['ls']/100).'，现:'.($row['ls']/100);
-            }
-        }
+        //价格校验
+        $this->VerifyPrice($ticketData['pid'], $ticketData['price_section'], $ticketObj, $isSectionTicket);
         // 整合数据
         $tkBaseAttr = array();
         $tkExtAttr = array();
@@ -290,7 +274,12 @@ class ProductBasic extends Controller
             ['apply_limit'=>$ticketData['apply_limit']+0, 'p_status'=>0],
             Ticket::__PRODUCT_TABLE__
         );
-        return ['lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title']];
+        $output = ['lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title']];
+        if ($ticketData['p_type']=='F') {
+            $packRet = $this->savePackage($tid);
+            $output['savePackResult'] = $packRet;
+        }
+        return $output;
 
         //self::apiReturn(self::CODE_SUCCESS,
         //    [
@@ -311,21 +300,56 @@ class ProductBasic extends Controller
     public function SavePrice($pid, $price_section, $original_price=array() )
     {
         $priceWrite = new PriceWrite();
-            foreach($price_section as $row) {
-                if(($tableId = ($row['id']+0))>0) {
-                    $intersect = array();
-                    $intersect = array_diff_assoc($row, $original_price[$tableId]);
-                    if(count($intersect)==0) continue;
-                }
-                $action = ($tableId>0) ? 1:0;// 0 插入 1 修改
-                $sdate  = date('Y-m-d', strtotime($row['sdate']));
-                $edate  = date('Y-m-d', strtotime($row['edate']));
-                $apiret = $priceWrite->In_Dynamic_Price_Merge($pid, $sdate,
-                    $edate, $row['js'], $row['ls'], 0, $action, $tableId, '',
-                    $row['weekdays'], ($row['storage']+0));
-                if($apiret!=100) return array('status'=>'fail', 'msg'=>$apiret);
+        foreach($price_section as $row) {
+            if(($tableId = ($row['id']+0))>0) {
+                $intersect = array();
+                $intersect = array_diff_assoc($row, $original_price[$tableId]);
+                if(count($intersect)==0) continue;
             }
-
+            $action = ($tableId>0) ? 1:0;// 0 插入 1 修改
+            $sdate  = date('Y-m-d', strtotime($row['sdate']));
+            $edate  = date('Y-m-d', strtotime($row['edate']));
+            $apiret = $priceWrite->In_Dynamic_Price_Merge($pid, $sdate,
+                $edate, $row['js'], $row['ls'], 0, $action, $tableId, '',
+                $row['weekdays'], ($row['storage']+0));
+            if($apiret!=100) return array('code'=>0, 'msg'=>$apiret);
+        }
+        return ['code'=>200, 'msg'=>'success'];
     }
 
+    private function VerifyPrice($pid, $price_section, Ticket $ticketObj, $isSectionTicket)
+    {
+        // 价格判断
+        $compareSec = array();
+        $changeNote = array();
+        $original_price = $ticketObj->getPriceSection($pid);
+        foreach($price_section as $row)
+        {
+            // 期票模式（有效期是时间段）只能全部有价格
+            if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6'))
+                parent::apiReturn(self::CODE_INVALID_REQUEST,[], '期票模式必须每天都有价格');
+            if(($tableId = ($row['id']+0))==0) continue; // 已存在表ID
+            $section = $row['sdate'].' 至 '.$row['edate'];
+            $diff_js = $original_price[$tableId]['js'] - $row['js'];
+            $diff_ls = $original_price[$tableId]['ls'] - $row['ls'];
+            if($diff_js) $changeNote[] = $section.' 供货价变动，原:'.($original_price[$tableId]['js']/100).'，现:'.($row['js']/100);
+            if($diff_ls) $changeNote[] = $section.' 零售价变动，原:'.($original_price[$tableId]['ls']/100).'，现:'.($row['ls']/100);
+        }
+    }
+
+    private function savePackage($parent_tid)
+    {
+        if (is_null($this->packObj)) {
+            $this->packObj = new PackTicket($parent_tid);
+        }
+        $child_info = $this->packObj->getCache();
+        if (empty($child_info)) return false;
+        $packData = json_decode($child_info, true);
+        foreach ($packData as $key => $item) {
+            $packData[$key]['parent_tid'] = $parent_tid;
+        }
+        $ret = $this->packObj->savePackageTickets($packData);
+        if ($ret!==false) $this->packObj->rmCache();
+        return $ret;
+    }
 }

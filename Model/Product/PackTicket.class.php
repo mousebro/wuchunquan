@@ -40,7 +40,7 @@ class PackTicket extends Model
         return $this->childTickets;
     }
 
-    public function __construct($parent_tid)
+    public function __construct($parent_tid=0)
     {
         parent::__construct('localhost', 'pft');
         $this->parent_tid = $parent_tid;

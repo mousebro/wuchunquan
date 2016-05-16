@@ -11,6 +11,7 @@ namespace Controller\product;
 use Library\PftProduct\TicketLib;
 use Model\Member\Member;
 use Model\Product\Land;
+use Model\Product\PackTicket;
 use Model\Product\Round;
 
 class ticket extends ProductBasic
@@ -137,7 +138,7 @@ class ticket extends ProductBasic
             }
             else {
                 $child_ticket_data = $pack->getChildTickets();
-                print_r($child_ticket_data);
+                //print_r($child_ticket_data);
                 foreach($child_ticket_data as $child) {
                     $data['childTicket'][] = array(
                         'ltitle' => $child['ltitle'],
@@ -222,13 +223,17 @@ class ticket extends ProductBasic
         $landModel   = new Land();
         if (count($_POST)>1) {
             foreach ($_POST as $tid=>$ticketData) {
-                $res[] = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+                $ret =  $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+                $this->SavePrice($ret['pid'], $ticketData['price_section']);
+                $res[] = $ret;
             }
         }
         else {
             $ticketData = array_shift($_POST);
-            print_r($ticketData);
-            $res[] = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+            //print_r($ticketData);exit;
+            $ret = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+            $this->SavePrice($ret['pid'], $ticketData['price_section']);
+            $res[] = $ret;
         }
         self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
     }
