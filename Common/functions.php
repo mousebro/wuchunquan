@@ -30,6 +30,25 @@ function throw_exception($error) {
     }
 }
 /**
+ * 向elk日志系统记录日志[elk.12301dev.com]
+ *
+ * @author Guangpeng Chen
+ * @param string $log_name 日志文件名
+ * @param mixed $log_message 日志内容，可以为字符串或数组
+ */
+function write_to_logstash($log_name, $log_message)
+{
+    $log_dir = BASE_LOG_DIR . '/logstash/' . $log_name .'_' . date('ymd') .'.log';
+    $word = json_encode([
+        'time'  => date("Y-m-d H:i:s"),
+        'client'=> $_SERVER['REMOTE_ADDR'],
+        'domain'=> $_SERVER['HTTP_HOST'],
+        'status'=> 200,
+        'words' => $log_message,
+    ],JSON_UNESCAPED_UNICODE);
+    file_put_contents($log_dir, $word . "\n", FILE_APPEND);
+}
+/**
  * 取上一步来源地址
  *
  * @param
