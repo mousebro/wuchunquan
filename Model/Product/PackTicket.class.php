@@ -115,7 +115,7 @@ class PackTicket extends Model
 
         $count = $this->relationChildCount = count($pid_list);
         $data = $this->table($this->ticket_table .' t')
-            ->field("l.title as ltitle,t.title as ttitle,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->field("l.title as ltitle,t.title as ttitle,p.id as pid,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
             ->join("left join {$this->land_table} l ON l.id=t.landid")
             ->join("left join {$this->ticket_ext_table} f ON f.pid=t.pid")
             ->join("left join {$this->products_table} p ON p.id=t.pid")
@@ -128,7 +128,7 @@ class PackTicket extends Model
             ->select();
         //var_dump($this->getDbError());
         //var_dump($this->getLastSql());
-        //$this->childTickets = $data;
+        //
         return $data;
     }
 
@@ -137,11 +137,27 @@ class PackTicket extends Model
         $child_info = $this->getCache();
         if (empty($child_info)) return [];
         $child_info = json_decode($child_info, true);
-        $pid_list = [];
+        $pid_list   = [];
         foreach ($child_info as $info) {
-            $pid_list[] = (int)$info['pid'];
+            $pid_list[(int)$info['pid']] = $info;
         }
-        return $this->ChkSales($pid_list);
+        $child_info = $this->ChkSales(array_keys($pid_list));
+        $data = [];
+        foreach ($child_info as $key => $row) {
+            $child_info[$key]['lid'] = $pid_list[$row['pid']]['lid'];
+            $child_info[$key]['tid'] = $pid_list[$row['pid']]['tid'];
+            $child_info[$key]['num'] = $pid_list[$row['pid']]['num'];
+            //$data[] = array(
+            //    'ltitle' => $row['ltitle'],
+            //    'ttitle' => $row['ttitle'],
+            //    'pid'   => $row['pid'],
+            //    'lid'   =>
+            //    'tid'   => $pid_list[$row['pid']]['tid'],
+            //    'num'   => $pid_list[$row['pid']]['num'],
+            //);
+        }
+        $this->childTickets = $child_info;
+        return $child_info;
     }
     /**
      * 保存套票子票数据

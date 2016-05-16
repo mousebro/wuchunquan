@@ -78,4 +78,9 @@ class Land extends Model
         $params['terminal_type'] = 1;
         return $this->table('uu_land')->data($params)->add();
     }
+
+    public function UpdateAttrbites(Array $where, Array $attrs)
+    {
+        return $this->table('uu_land')->where($where)->save($attrs);
+    }
 }

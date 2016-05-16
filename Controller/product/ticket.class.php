@@ -133,30 +133,11 @@ class ticket extends ProductBasic
             $pack = new \Model\Product\PackTicket($tid);
 
             if (!$tid) {
-                $child_ticket_data = $pack->childTempTicketsInfo();
-                $child_info = $pack->getCache();
-                $child_info = json_decode($child_info, true);
-                if (is_array($child_info)) {
-                    foreach($child_ticket_data as $child) {
-                        foreach ($child_info as $row) {
-                            if ($row['pid']==$child['pid']) {
-                                $data['childTicket'][] = array(
-                                    'ltitle' => $child['ltitle'],
-                                    'ttitle' => $child['ttitle'],
-                                    'pid'   => $row['pid'],
-                                    'lid'   => $row['lid'],
-                                    'tid'   => $row['tid'],
-                                    'num'   => $row['num'],
-                                );
-                            }
-                        }
-
-                    }
-                }
-
+                $data['childTicket'] = $pack->childTempTicketsInfo();
             }
             else {
                 $child_ticket_data = $pack->getChildTickets();
+                print_r($child_ticket_data);
                 foreach($child_ticket_data as $child) {
                     $data['childTicket'][] = array(
                         'ltitle' => $child['ltitle'],
@@ -217,7 +198,7 @@ class ticket extends ProductBasic
         if ($landData['p_type']!='F') {
             $other_ticket_ret = $this->ticketObj->GetLandTickets($lid);
             if ($other_ticket_ret['code']==200) $other_tickets = $other_ticket_ret['data'];
-        } else {
+        } elseif ($tid>0) {
             $other_tickets[] = [
                 "title"=>$data['ttitle'],
                 'tid'=>$tid,
@@ -235,19 +216,21 @@ class ticket extends ProductBasic
     {
         //echo 'hi';
         //print_r($_POST);
-        $ticketData  = $_POST;
+        //$ticketData  = $_POST;
         //print_r($_POST);exit();
+        $res = array();
         $landModel   = new Land();
         if (count($_POST)>1) {
             foreach ($_POST as $tid=>$ticketData) {
-                $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+                $res[] = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
             }
         }
         else {
             $ticketData = array_shift($_POST);
-            //print_r($ticketData);
-            $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
+            print_r($ticketData);
+            $res[] = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
         }
+        self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
     }
 
 

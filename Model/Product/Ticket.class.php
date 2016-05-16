@@ -553,13 +553,18 @@ class Ticket extends Model {
      * @param string $table
      * @return bool
      */
-    public function UpdateTicketAttributes($where, $params, $table='uu_jq_ticket')
+    public function UpdateTicketAttributes(Array $where, Array $params, $table='uu_jq_ticket')
     {
-        $res = $this->table($table)->where($where)->save($params);
-        if ($res===false) {
-            return false;
+        $res = true;
+        if (count($params)) {
+            $res = $this->table($table)->where($where)->save($params);
+            //var_dump($params);
+            //var_dump($res);
+            //echo $this->getLastSql();
+            //echo $this->getDbError();
         }
-        return true;
+        if ($res===false) echo $this->getDbError();
+        return $res;
     }
 
     public function CreateTicket($ticketData)

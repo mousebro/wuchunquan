@@ -41,36 +41,37 @@ class ProductBasic extends Controller
             }
         }
         // 整合数据
-        $jData = $fData = array();
-        $jData['title']   = $ticketData['ttitle'];
-        $jData['landid']  = $ticketData['lid']+0;
-        $jData['tprice']  = $ticketData['tprice']+0;    // 门市价
-        $jData['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
-        $jData['ddays']   = $ticketData['ddays']+0;     // 提前下单时间
-        $jData['getaddr'] = $ticketData['getaddr'];     // 取票信息
-        $jData['notes']   = $ticketData['notes'];       // 产品说明
+        $tkBaseAttr = array();
+        $tkExtAttr = array();
+        $tkBaseAttr['title']   = $ticketData['ttitle'];
+        $tkBaseAttr['landid']  = $ticketData['lid']+0;
+        $tkBaseAttr['tprice']  = $ticketData['tprice']+0;    // 门市价
+        $tkBaseAttr['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
+        $tkBaseAttr['ddays']   = $ticketData['ddays']+0;     // 提前下单时间
+        $tkBaseAttr['getaddr'] = $ticketData['getaddr'];     // 取票信息
+        $tkBaseAttr['notes']   = $ticketData['notes'];       // 产品说明
         // $jData['order_limit']   = $oneTicket['order_limit'];    // 验证限制
-        $jData['buy_limit_up']  = $ticketData['buy_limit_up']+0; // 购买上限
-        $jData['buy_limit_low'] = $ticketData['buy_limit_low']+0;
-        $jData['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));
+        $tkBaseAttr['buy_limit_up']  = $ticketData['buy_limit_up']+0; // 购买上限
+        $tkBaseAttr['buy_limit_low'] = $ticketData['buy_limit_low']+0;
+        $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));
 
-        if(($jData['buy_limit_up']>0) && $jData['buy_limit_low']>$jData['buy_limit_up'])
+        if(($tkBaseAttr['buy_limit_up']>0) && $tkBaseAttr['buy_limit_low']>$tkBaseAttr['buy_limit_up'])
             parent::apiReturn(self::CODE_INVALID_REQUEST,[], '最少购买张数不能大于最多购买张数');
 
         // 延迟验证
         $delaytime = array(0,0);
         if(!isset($ticketData['vtimehour']) && $ticketData['vtimehour']) $delaytime[0] = $ticketData['vtimehour']+0;
         if(!isset($ticketData['vtimeminu']) && $ticketData['vtimeminu']) $delaytime[1] = $ticketData['vtimeminu']+0;
-        $jData['delaytime'] = implode('|', $delaytime);
+        $tkBaseAttr['delaytime'] = implode('|', $delaytime);
 
 
         // 闸机绑定
-        $jData['uuid'] = isset($ticketData['uuid']) ? $ticketData['uuid']:'';
-        if($jData['uuid'])
+        $tkBaseAttr['uuid'] = isset($ticketData['uuid']) ? $ticketData['uuid']:'';
+        if($tkBaseAttr['uuid'])
         {
             $memberObj = new Member();
             $jiutian_auth = $memberObj->getMemberExtInfo($memberId, 'jiutian_auth');
-            if($jiutian_auth) $jData['sourceT'] = 1;
+            if($jiutian_auth) $tkBaseAttr['sourceT'] = 1;
         }
         //TODO::不知道做什么的代码
         /*if(isset($ticketData['tid']) && $ticketData['tid']>0)
@@ -83,17 +84,17 @@ class ProductBasic extends Controller
 
 
 
-        if($jData['buy_limit_low']<=0) self::apiReturn(self::CODE_INVALID_REQUEST, [], '购买下限不能小于0');
+        if($tkBaseAttr['buy_limit_low']<=0) self::apiReturn(self::CODE_INVALID_REQUEST, [], '购买下限不能小于0');
 
-        $jData['max_order_days']    = isset($ticketData['max_order_days']) ? $ticketData['max_order_days']+0:'-1';// 提前预售天数
-        $jData['cancel_auto_onMin'] = abs($ticketData['cancel_auto_onMin']); // 未支付多少分钟内自动取消
+        $tkBaseAttr['max_order_days']    = isset($ticketData['max_order_days']) ? $ticketData['max_order_days']+0:'-1';// 提前预售天数
+        $tkBaseAttr['cancel_auto_onMin'] = abs($ticketData['cancel_auto_onMin']); // 未支付多少分钟内自动取消
 
         // 取消费用（统一）
-        $jData['reb']      = $ticketData['reb']+0;   // 实际值以分为单位
-        $jData['reb_type'] = $ticketData['reb_type'];// 取消费用类型 0 百分比 1 实际值
-        if($jData['reb_type']==0) {
-            if($jData['reb']>100 || $jData['reb']<0) self::apiReturn(self::CODE_INVALID_REQUEST, [], '取消费用百分比值不合法');
-            $jData['reb'] = $jData['reb'] / 100;
+        $tkBaseAttr['reb']      = $ticketData['reb']+0;   // 实际值以分为单位
+        $tkBaseAttr['reb_type'] = $ticketData['reb_type'];// 取消费用类型 0 百分比 1 实际值
+        if($tkBaseAttr['reb_type']==0) {
+            if($tkBaseAttr['reb']>100 || $tkBaseAttr['reb']<0) self::apiReturn(self::CODE_INVALID_REQUEST, [], '取消费用百分比值不合法');
+            $tkBaseAttr['reb'] = $tkBaseAttr['reb'] / 100;
         }
 
         // 阶梯取消费用设置
@@ -108,25 +109,25 @@ class ProductBasic extends Controller
             }
         }
 
-        $jData['cancel_cost'] = (isset($ticketData['cancel_cost'])) ? json_encode($ticketData['cancel_cost']):'';
-        $jData['cancel_cost'] = addslashes($jData['cancel_cost']);
+        $tkBaseAttr['cancel_cost'] = (isset($ticketData['cancel_cost'])) ? json_encode($ticketData['cancel_cost']):'';
+        $tkBaseAttr['cancel_cost'] = addslashes($tkBaseAttr['cancel_cost']);
         // exit;
 
         // 订单有效期 类型 0 游玩时间 1 下单时间 2 区间
-        $jData['delaytype'] = $ticketData['validTime']+0;
-        $jData['delaydays'] = $ticketData['delaydays']+0;
-        $jData['order_end'] = $jData['order_start'] = '';
+        $tkBaseAttr['delaytype'] = $ticketData['validTime']+0;
+        $tkBaseAttr['delaydays'] = $ticketData['delaydays']+0;
+        $tkBaseAttr['order_end'] = $tkBaseAttr['order_start'] = '';
         if($ticketData['validTime']==2){
             if($ticketData['order_end']=='' || $ticketData['order_start']=='')
                 self::apiReturn(self::CODE_INVALID_REQUEST, [], '有效期时间不能为空');
-            $jData['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
-            $jData['order_start'] = date('Y-m-d 00:00:00', strtotime($ticketData['order_start']));
+            $tkBaseAttr['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
+            $tkBaseAttr['order_start'] = date('Y-m-d 00:00:00', strtotime($ticketData['order_start']));
         }
 
         // 退票规则 0 有效期内、过期可退 1 有效期内可退 2  不可退
-        $jData['refund_rule'] = $jData['refund_early_time'] = 0;
-        if(!isset($ticketData['refund_rule'])) $jData['refund_rule'] = $ticketData['refund_rule']+0;
-        if(!isset($ticketData['refund_early_time'])) $jData['refund_early_time'] = $ticketData['refund_early_time']+0;
+        $tkBaseAttr['refund_rule'] = $tkBaseAttr['refund_early_time'] = 0;
+        if(!isset($ticketData['refund_rule'])) $tkBaseAttr['refund_rule'] = $ticketData['refund_rule']+0;
+        if(!isset($ticketData['refund_early_time'])) $tkBaseAttr['refund_early_time'] = $ticketData['refund_early_time']+0;
 
         // 过期退票规则
         // $jData['overdue_refund'] = 0;// 不可退
@@ -135,35 +136,34 @@ class ProductBasic extends Controller
         // $jData['overdue_auto_cancel'] = isset($oneTicket['overdue_auto_cancel']) ? $oneTicket['overdue_auto_cancel']+0:0;
 
         // 退票审核
-        $jData['refund_audit'] = (isset($ticketData['refund_audit']) && $ticketData['refund_audit']) ? 1:0;
+        $tkBaseAttr['refund_audit'] = (isset($ticketData['refund_audit']) && $ticketData['refund_audit']) ? 1:0;
 
         $cancel_sms  = 0;// 取消是否通知游客
         $cancel_sms  = isset($ticketData['cancel_sms']) ? $ticketData['cancel_sms']+0:0;
         $confirm_sms = isset($ticketData['confirm_sms']) ? $ticketData['confirm_sms']+0:0;
-        $fData['confirm_sms']  = bindec($cancel_sms.$confirm_sms);
-
+        $tkExtAttr['confirm_sms']  = bindec($cancel_sms.$confirm_sms);
 
         // 取消通知供应商 0 不通知 1 通知
         if(isset($ticketData['cancel_notify_supplier']))
-            $jData['cancel_notify_supplier'] = $ticketData['cancel_notify_supplier']+0;
+            $tkBaseAttr['cancel_notify_supplier'] = $ticketData['cancel_notify_supplier']+0;
 
 
         // 分批验证设置
-        $jData['batch_check']       = $ticketData['batch_check']+0;
-        $jData['batch_day_check']   = $ticketData['batch_day_check']+0;
-        $jData['batch_diff_identities'] = $ticketData['batch_diff_identities']+0;
+        $tkBaseAttr['batch_check']       = $ticketData['batch_check']+0;
+        $tkBaseAttr['batch_day_check']   = $ticketData['batch_day_check']+0;
+        $tkBaseAttr['batch_diff_identities'] = $ticketData['batch_diff_identities']+0;
 
 
         // 景点类别属性（二次交互）
-        $jData['Mpath'] = '';
+        $tkBaseAttr['Mpath'] = '';
         if(isset($ticketData['mpath']) && $ticketData['mpath']!='') {
-            $jData['Mpath']     = $ticketData['mpath'];
-            $jData['Mdetails']  = 1;
+            $tkBaseAttr['Mpath']     = $ticketData['mpath'];
+            $tkBaseAttr['Mdetails']  = 1;
         }
 
-        if(isset($ticketData['re_integral'])) $jData['re_integral'] = $ticketData['re_integral'] + 0;
+        if(isset($ticketData['re_integral'])) $tkBaseAttr['re_integral'] = $ticketData['re_integral'] + 0;
 
-        $jData['apply_did'] = $memberId;// 产品供应商
+        $tkBaseAttr['apply_did'] = $memberId;// 产品供应商
 
         // 验证景区是否存在
         $lid = $ticketData['lid']+0;
@@ -174,36 +174,39 @@ class ProductBasic extends Controller
         $ltitle = $landInfo['title'];
         $p_type = $landInfo['p_type'];
 
+        if ($ticketData['fax']) {
+            $landObj->UpdateAttrbites(['id'=>$lid], ['fax'=>$ticketData['fax']]);
+        }
 
         // 扩展属性 uu_land_f
-        $fData['confirm_wx']   = $ticketData['confirm_wx']+0;
-        $fData['sendVoucher']  = $ticketData['sendVoucher']+0;
+        $tkExtAttr['confirm_wx']   = $ticketData['confirm_wx']+0;
+        $tkExtAttr['sendVoucher']  = $ticketData['sendVoucher']+0;
         // $fData['confirm_sms']  = $oneTicket['confirm_sms']+0;
-        $fData['tourist_info'] = $ticketData['tourist_info']+0;
+        $tkExtAttr['tourist_info'] = $ticketData['tourist_info']+0;
 
         // 提前预定小时  01:00:00 - 23:59:00
-        $fData['dhour'] = str_pad($ticketData['dhour'], 5, 0, STR_PAD_LEFT).':00';
-        if($p_type=='H') $fData['zone_id'] = $ticketData['zone_id']+0;
+        $tkExtAttr['dhour'] = str_pad($ticketData['dhour'], 5, 0, STR_PAD_LEFT).':00';
+        if($p_type=='H') $tkExtAttr['zone_id'] = $ticketData['zone_id']+0;
 
         // 验证时间 08:00|18:00
-        $fData['v_time_limit'] = 0;
+        $tkExtAttr['v_time_limit'] = 0;
         if(isset($ticketData['v_time_limit']) && $ticketData['v_time_limit'])
         {
             $arr1 = explode('|', $ticketData['v_time_limit']);
             $arr1[0] = str_pad($arr1[0], 5, 0, STR_PAD_LEFT);
             $arr1[1] = str_pad($arr1[1], 5, 0, STR_PAD_LEFT);
-            $fData['v_time_limit'] = implode('|', $arr1);
+            $tkExtAttr['v_time_limit'] = implode('|', $arr1);
         }
         //线路产品属性
         if($p_type=='B')
         {
-            $fData['rdays'] = $ticketData['rdays']+0;// 游玩天数
-            $fData['series_model'] = '';
-            if(isset($ticketData['g_number']) && $ticketData['g_number']) $fData['series_model'] = $ticketData['g_number'].'{fck_date}';
-            if(isset($ticketData['s_number']) && $ticketData['s_number'] && $fData['series_model']) $fData['series_model'].= '-'.$ticketData['s_number'];
+            $tkExtAttr['rdays'] = $ticketData['rdays']+0;// 游玩天数
+            $tkExtAttr['series_model'] = '';
+            if(isset($ticketData['g_number']) && $ticketData['g_number']) $tkExtAttr['series_model'] = $ticketData['g_number'].'{fck_date}';
+            if(isset($ticketData['s_number']) && $ticketData['s_number'] && $tkExtAttr['series_model']) $tkExtAttr['series_model'].= '-'.$ticketData['s_number'];
             $ass_station = $ticketData['ass_station'];
             $ass_station = str_replace('；', ';', $ass_station);
-            $fData['ass_station'] = addslashes(serialize(explode(';', $ass_station)));
+            $tkExtAttr['ass_station'] = addslashes(serialize(explode(';', $ass_station)));
         }
 
         if(isset($ticketData['tid']) && $ticketData['tid']>0)
@@ -214,20 +217,26 @@ class ProductBasic extends Controller
             if (!$ticketOriginData) {
                 self::apiReturn(self::CODE_NO_CONTENT, [], '票类不存在,保存失败');
             }
-            print_r($jData);
-            print_r($ticketOriginData);
-            print_r(array_diff($jData, $ticketOriginData));
-            exit;
-            $diff_ticket_attr = array_diff($fData, $ticketOriginData);
+            //print_r($tkBaseAttr);
+            //print_r($ticketOriginData);
+            //print_r(array_diff($tkBaseAttr, $ticketOriginData));
+            //exit;
+            $diff_ticket_attr = array_diff_assoc($tkBaseAttr, $ticketOriginData);
+             $ret2 = $ret3 = true;
             $ret1 = $ticketObj->UpdateTicketAttributes(
                 ['id'=>$tid],
                 $diff_ticket_attr,
                 Ticket::__TICKET_TABLE__
-                );
-            $ret2 = $ret3 = true;
-            if ($ret1) {
+            );
+
+            if ($ret1!==false) {
                 $extAttributes = $ticketObj->getTicketExtInfoByTid($tid);
-                $diff_ticket_attr = array_diff($jData, $extAttributes);
+                $diff_ticket_attr = array_diff_assoc($tkExtAttr, $extAttributes);
+                //print_r($extAttributes);
+                //print_r($tkExtAttr);
+                //print_r(array_diff_assoc( $tkExtAttr, $extAttributes));
+                //exit;
+
                 $ret2 = $ticketObj->UpdateTicketAttributes(
                     ['tid'=>$tid],
                     $diff_ticket_attr,
@@ -239,27 +248,26 @@ class ProductBasic extends Controller
                     Ticket::__PRODUCT_TABLE__
                 );
             }
-            if (!$ret1 || !$ret2 || !$ret3) {
+            if ($ret1===false || $ret2===false || $ret3===false) {
                 self::apiReturn(self::CODE_CREATED,[], '保存票类属性失败');
             }
 
-            $daction = "对 $ltitle".$jData['title']." 进行编辑";
-
+            $daction = "对 $ltitle".$tkBaseAttr['title']." 进行编辑";
+            $pid = $ticketOriginData['pid'];
             // 产品有效期监控
             if(count($ticketOriginData))
             {
                 $ticketData['pid']    = $ticketOriginData['pid'];
                 $ticketData['action'] = 'CreateNewTicket';
                 $ticketData['add_ticket']  = ($tid==0) ? 1:0;
-                $ticketData['validHtml_2'] = htmlValid($jData);
-                $ticketData['validHtml_1'] = htmlValid($ticketOriginData);
-                fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $ticketData);
+                //$ticketData['validHtml_2'] = htmlValid($tkBaseAttr);
+                //$ticketData['validHtml_1'] = htmlValid($ticketOriginData);
+                //fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $ticketData);
             }
         }
-        else
-        {
+        else {
             // 以下新增操作
-            $create_ret = $ticketObj->CreateTicket($jData);
+            $create_ret = $ticketObj->CreateTicket($tkBaseAttr);
             if($create_ret['code']!=200)
                 self::apiReturn(self::CODE_CREATED, [], $create_ret['msg']);
 
@@ -267,26 +275,29 @@ class ProductBasic extends Controller
             $ret = $ticketObj->QueryTicketInfo("id=$tid",'pid');
             $pid = $ret[0]['pid'];
 
-            $fData['lid'] = $lid;
-            $fData['pid'] = $pid;
-            $fData['tid'] = $tid;
-            $extRet = $ticketObj->CreateTicketExtendInfo($fData);
+            $tkExtAttr['lid'] = $lid;
+            $tkExtAttr['pid'] = $pid;
+            $tkExtAttr['tid'] = $tid;
+            $extRet = $ticketObj->CreateTicketExtendInfo($tkExtAttr);
 
             if($extRet['code']!=200) {
                 self::apiReturn(self::CODE_CREATED, [], $extRet['msg']);
             }
-            $daction = '添加门票.'.$ltitle.$jData['title'];
+            $daction = '添加门票.'.$ltitle.$tkBaseAttr['title'];
         }
         $ticketObj->UpdateTicketAttributes(
             ['id'=>$pid],
             ['apply_limit'=>$ticketData['apply_limit']+0, 'p_status'=>0],
             Ticket::__PRODUCT_TABLE__
         );
+        return ['lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title']];
 
-        self::apiReturn(self::CODE_SUCCESS,
-            array('lid'=>$lid, 'tid'=>$tid,
-                'pid'=>$pid, 'ttitle'=>$jData['title']),
-            'ok');
+        //self::apiReturn(self::CODE_SUCCESS,
+        //    [
+        //        array('lid'=>$lid, 'tid'=>$tid,
+        //        'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title'])
+        //    ],
+        //    'ok');
     }
 
     /**
