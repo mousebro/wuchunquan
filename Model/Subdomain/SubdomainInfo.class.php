@@ -15,6 +15,8 @@ class SubdomainInfo extends Model {
 
     const __DUBDOMAIN_TABLE__   = 'pft_member_domain_info'; //二级域名绑定信息表
 
+    const __WX_CONFIG_TABLE__   = 'pft_wx_shop_config'; //微商城配置表
+
     const __CHANNEL_TABLE__     = 'pft_sale_channel';   //销售渠道配置表
     
     /**
@@ -59,22 +61,14 @@ class SubdomainInfo extends Model {
 
     }
 
-    /**
-     * 获取二级店铺可销售的产品
-     * @param  [type] $memberid [description]
-     * @return [type]           [description]
-     */
-    public function getProductsForSubShop($memberid, $option = array()) {
-        // $shop_account = Member::getAccountById($memberid);
-        // var_dump($shop_account);
-        $channel_pids = $this->subdomainChannelPids(3385);
-        var_dump($channel_pids);die;
-    }
-
 
     public function subdomainChannelPids($memberid) {
         $where = "fid={$memberid} and find_in_set(2, channel)";
         return $this->table(self::__CHANNEL_TABLE__)->where($where)->field('pid,px')->select();
+    }
+
+    public function getMallConfig($memberid) {
+        return $this->table(self::__WX_CONFIG_TABLE__)->where(['member_id' => $memberid])->find();
     }
 
     
