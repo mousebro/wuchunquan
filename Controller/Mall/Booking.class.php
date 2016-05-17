@@ -46,7 +46,7 @@ class Booking extends Controller {
         $MemberModel = new Member();
 
         $account = explode('.', $_SERVER['HTTP_HOST'])[0];
-        $owner = $MemberModel->getMemberInfo($account, 'account');
+        $owner = $MemberModel->getMemberInfo((int)$account, 'account');
 
         if (!$owner) {
             $this->apiReturn(400, [], '我要报警了');
