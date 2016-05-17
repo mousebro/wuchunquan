@@ -401,6 +401,11 @@ abstract class Driver {
             $this->error .= "\n [ SQL语句 ] : ".$this->queryStr;
         }
 
+        //将错误信息写入日志
+        if(function_exists('pft_log')) {
+            pft_log('sql_error', $this->error);
+        }
+
         return $this->error;
     }
 
