@@ -18,6 +18,10 @@ use Model\Product\Ticket;
 class ProductBasic extends Controller
 {
     private $packObj=null;
+    private function _return($code, $msg)
+    {
+        return ['code'=>$code, 'msg'=>$msg];
+    }
     public function SaveTicket($memberId,  $ticketData, Ticket $ticketObj, Land $landObj)
     {
         $isSectionTicket = false;// 是否是期票
@@ -40,7 +44,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));
 
         if(($tkBaseAttr['buy_limit_up']>0) && $tkBaseAttr['buy_limit_low']>$tkBaseAttr['buy_limit_up'])
-            parent::apiReturn(self::CODE_INVALID_REQUEST,[], '最少购买张数不能大于最多购买张数');
+           self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数');
 
         // 延迟验证
         $delaytime = array(0,0);
@@ -68,7 +72,7 @@ class ProductBasic extends Controller
 
 
 
-        if($tkBaseAttr['buy_limit_low']<=0) self::apiReturn(self::CODE_INVALID_REQUEST, [], '购买下限不能小于0');
+        if($tkBaseAttr['buy_limit_low']<=0) self::_return(self::CODE_INVALID_REQUEST,  '购买下限不能小于0');
 
         $tkBaseAttr['max_order_days']    = isset($ticketData['max_order_days']) ? $ticketData['max_order_days']+0:'-1';// 提前预售天数
         $tkBaseAttr['cancel_auto_onMin'] = abs($ticketData['cancel_auto_onMin']); // 未支付多少分钟内自动取消
@@ -77,7 +81,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['reb']      = $ticketData['reb']+0;   // 实际值以分为单位
         $tkBaseAttr['reb_type'] = $ticketData['reb_type'];// 取消费用类型 0 百分比 1 实际值
         if($tkBaseAttr['reb_type']==0) {
-            if($tkBaseAttr['reb']>100 || $tkBaseAttr['reb']<0) self::apiReturn(self::CODE_INVALID_REQUEST, [], '取消费用百分比值不合法');
+            if($tkBaseAttr['reb']>100 || $tkBaseAttr['reb']<0) self::_return(self::CODE_INVALID_REQUEST,  '取消费用百分比值不合法');
             $tkBaseAttr['reb'] = $tkBaseAttr['reb'] / 100;
         }
 
@@ -88,7 +92,7 @@ class ProductBasic extends Controller
             foreach($ticketData['cancel_cost'] as $row)
             {
                 if(in_array($row['c_days'], $c_days))
-                    self::apiReturn(self::CODE_INVALID_REQUEST, [], '退票手续费日期重叠');
+                    self::_return(self::CODE_INVALID_REQUEST,  '退票手续费日期重叠');
                 $c_days[] = $row['c_days'];
             }
         }
@@ -103,7 +107,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['order_end'] = $tkBaseAttr['order_start'] = '';
         if($ticketData['validTime']==2){
             if($ticketData['order_end']=='' || $ticketData['order_start']=='')
-                self::apiReturn(self::CODE_INVALID_REQUEST, [], '有效期时间不能为空');
+                self::_return(self::CODE_INVALID_REQUEST,  '有效期时间不能为空');
             $tkBaseAttr['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
             $tkBaseAttr['order_start'] = date('Y-m-d 00:00:00', strtotime($ticketData['order_start']));
         }
@@ -153,7 +157,7 @@ class ProductBasic extends Controller
         $lid = $ticketData['lid']+0;
         $landInfo = $landObj->getLandInfo($lid,false, 'title,p_type,apply_did');
         if (!$landInfo || ($landInfo['apply_did']!=$memberId && $memberId!=0)) {
-            self::apiReturn(self::CODE_NO_CONTENT, [], '景区不存在');
+            self::_return(self::CODE_NO_CONTENT,  '景区不存在');
         }
         $ltitle = $landInfo['title'];
         $p_type = $landInfo['p_type'];
@@ -199,7 +203,7 @@ class ProductBasic extends Controller
 
             $ticketOriginData = $ticketObj->getTicketInfoById($tid);
             if (!$ticketOriginData) {
-                self::apiReturn(self::CODE_NO_CONTENT, [], '票类不存在,保存失败');
+                self::_return(self::CODE_NO_CONTENT,  '票类不存在,保存失败');
             }
             //print_r($tkBaseAttr);
             //print_r($ticketOriginData);
@@ -233,7 +237,7 @@ class ProductBasic extends Controller
                 );
             }
             if ($ret1===false || $ret2===false || $ret3===false) {
-                self::apiReturn(self::CODE_CREATED,[], '保存票类属性失败');
+                self::_return(self::CODE_CREATED, '保存票类属性失败');
             }
 
             $daction = "对 $ltitle".$tkBaseAttr['title']." 进行编辑";
@@ -253,7 +257,7 @@ class ProductBasic extends Controller
             // 以下新增操作
             $create_ret = $ticketObj->CreateTicket($tkBaseAttr);
             if($create_ret['code']!=200)
-                self::apiReturn(self::CODE_CREATED, [], $create_ret['msg']);
+                self::_return(self::CODE_CREATED,  $create_ret['msg']);
 
             $tid =$create_ret['data']['lastid'];
             $ret = $ticketObj->QueryTicketInfo("id=$tid",'pid');
@@ -265,7 +269,7 @@ class ProductBasic extends Controller
             $extRet = $ticketObj->CreateTicketExtendInfo($tkExtAttr);
 
             if($extRet['code']!=200) {
-                self::apiReturn(self::CODE_CREATED, [], $extRet['msg']);
+                self::_return(self::CODE_CREATED,  $extRet['msg']);
             }
             $daction = '添加门票.'.$ltitle.$tkBaseAttr['title'];
         }
@@ -274,19 +278,12 @@ class ProductBasic extends Controller
             ['apply_limit'=>$ticketData['apply_limit']+0, 'p_status'=>0],
             Ticket::__PRODUCT_TABLE__
         );
-        $output = ['lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title']];
+        $output = ['code'=>200, 'lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title']];
         if ($ticketData['p_type']=='F') {
             $packRet = $this->savePackage($tid);
             $output['savePackResult'] = $packRet;
         }
         return $output;
-
-        //self::apiReturn(self::CODE_SUCCESS,
-        //    [
-        //        array('lid'=>$lid, 'tid'=>$tid,
-        //        'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title'])
-        //    ],
-        //    'ok');
     }
 
     /**
@@ -327,7 +324,7 @@ class ProductBasic extends Controller
         {
             // 期票模式（有效期是时间段）只能全部有价格
             if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6'))
-                parent::apiReturn(self::CODE_INVALID_REQUEST,[], '期票模式必须每天都有价格');
+                parent::apiReturn(self::CODE_INVALID_REQUEST, '期票模式必须每天都有价格');
             if(($tableId = ($row['id']+0))==0) continue; // 已存在表ID
             $section = $row['sdate'].' 至 '.$row['edate'];
             $diff_js = $original_price[$tableId]['js'] - $row['js'];
