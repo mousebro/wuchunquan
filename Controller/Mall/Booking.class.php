@@ -18,8 +18,16 @@ class Booking extends Controller {
             $this->apiReturn(400, [], '参数错误');
         }
 
-        $TicketModel = new Ticket();
+        if (I('date')) {
+            $today_timestamp = strtotime(date('Y-m-d'));
+            $submit_timestamp = strtotime(I('date'));
 
+            if ($submit_timestamp < $today_timestamp) {
+                $this->apiReturn(400, [], '请选择正确的日期');
+            }
+        }
+
+        $TicketModel = new Ticket();
         $storages = $TicketModel->getMuchStorage($pids, I('date') ?: date('Y-m-d'));
 
         foreach ($pids as $key => $pid) {

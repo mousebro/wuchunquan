@@ -326,11 +326,20 @@ class Ticket extends Model {
 
         if ($pid_arr) {
             //时间段模式
+            $where = array(
+                'pid'           => array('in', implode(',', $pid_arr)),
+                'end_date'      => array('egt', $date),
+                'start_date'    => array('elt', $date),
+                'ptype'         => 0,
+                'status'        => 0
+            );
+            
             $storage_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
-                ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
+                ->where($where)
                 ->field('pid,storage,min(start_date) as start_date,min(end_date) as end_date')
                 ->group('pid')
                 ->select();
+
             if (!$storage_info) return false;
 
             foreach ($storage_info as $item) {
