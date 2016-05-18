@@ -18,9 +18,9 @@ use Model\Product\Ticket;
 class ProductBasic extends Controller
 {
     private $packObj=null;
-    private function _return($code, $msg)
+    private function _return($code, $msg, $title)
     {
-        return ['code'=>$code, 'msg'=>$msg];
+        return ['code'=>$code, 'data'=>['title'=>$title,'msg'=>$msg]];
     }
     public function SaveTicket($memberId,  $ticketData, Ticket $ticketObj, Land $landObj)
     {
@@ -44,7 +44,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));
 
         if(($tkBaseAttr['buy_limit_up']>0) && $tkBaseAttr['buy_limit_low']>$tkBaseAttr['buy_limit_up'])
-           self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数');
+           self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数', $ticketData['ttitle']);
 
         // 延迟验证
         $delaytime = array(0,0);
@@ -72,7 +72,7 @@ class ProductBasic extends Controller
 
 
 
-        if($tkBaseAttr['buy_limit_low']<=0) self::_return(self::CODE_INVALID_REQUEST,  '购买下限不能小于0');
+        if($tkBaseAttr['buy_limit_low']<=0) self::_return(self::CODE_INVALID_REQUEST,  '购买下限不能小于0',$ticketData['ttitle']);
 
         $tkBaseAttr['max_order_days']    = isset($ticketData['max_order_days']) ? $ticketData['max_order_days']+0:'-1';// 提前预售天数
         $tkBaseAttr['cancel_auto_onMin'] = abs($ticketData['cancel_auto_onMin']); // 未支付多少分钟内自动取消
@@ -81,7 +81,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['reb']      = $ticketData['reb']+0;   // 实际值以分为单位
         $tkBaseAttr['reb_type'] = $ticketData['reb_type'];// 取消费用类型 0 百分比 1 实际值
         if($tkBaseAttr['reb_type']==0) {
-            if($tkBaseAttr['reb']>100 || $tkBaseAttr['reb']<0) self::_return(self::CODE_INVALID_REQUEST,  '取消费用百分比值不合法');
+            if($tkBaseAttr['reb']>100 || $tkBaseAttr['reb']<0) self::_return(self::CODE_INVALID_REQUEST,  '取消费用百分比值不合法',$ticketData['ttitle']);
             $tkBaseAttr['reb'] = $tkBaseAttr['reb'] / 100;
         }
 
@@ -92,7 +92,7 @@ class ProductBasic extends Controller
             foreach($ticketData['cancel_cost'] as $row)
             {
                 if(in_array($row['c_days'], $c_days))
-                    self::_return(self::CODE_INVALID_REQUEST,  '退票手续费日期重叠');
+                    self::_return(self::CODE_INVALID_REQUEST,  '退票手续费日期重叠',$ticketData['ttitle']);
                 $c_days[] = $row['c_days'];
             }
         }
@@ -107,7 +107,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['order_end'] = $tkBaseAttr['order_start'] = '';
         if($ticketData['validTime']==2){
             if($ticketData['order_end']=='' || $ticketData['order_start']=='')
-                self::_return(self::CODE_INVALID_REQUEST,  '有效期时间不能为空');
+                self::_return(self::CODE_INVALID_REQUEST,  '有效期时间不能为空',$ticketData['ttitle']);
             $tkBaseAttr['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
             $tkBaseAttr['order_start'] = date('Y-m-d 00:00:00', strtotime($ticketData['order_start']));
         }
@@ -157,7 +157,7 @@ class ProductBasic extends Controller
         $lid = $ticketData['lid']+0;
         $landInfo = $landObj->getLandInfo($lid,false, 'title,p_type,apply_did');
         if (!$landInfo || ($landInfo['apply_did']!=$memberId && $memberId!=0)) {
-            self::_return(self::CODE_NO_CONTENT,  '景区不存在');
+            self::_return(self::CODE_NO_CONTENT,  '景区不存在',$ticketData['ttitle']);
         }
         $ltitle = $landInfo['title'];
         $p_type = $landInfo['p_type'];
@@ -203,7 +203,7 @@ class ProductBasic extends Controller
 
             $ticketOriginData = $ticketObj->getTicketInfoById($tid);
             if (!$ticketOriginData) {
-                self::_return(self::CODE_NO_CONTENT,  '票类不存在,保存失败');
+                self::_return(self::CODE_NO_CONTENT,  '票类不存在,保存失败',$ticketData['ttitle']);
             }
             //print_r($tkBaseAttr);
             //print_r($ticketOriginData);
@@ -237,7 +237,7 @@ class ProductBasic extends Controller
                 );
             }
             if ($ret1===false || $ret2===false || $ret3===false) {
-                self::_return(self::CODE_CREATED, '保存票类属性失败');
+                self::_return(self::CODE_CREATED, '保存票类属性失败',$ticketData['ttitle']);
             }
 
             $daction = "对 $ltitle".$tkBaseAttr['title']." 进行编辑";
@@ -257,7 +257,7 @@ class ProductBasic extends Controller
             // 以下新增操作
             $create_ret = $ticketObj->CreateTicket($tkBaseAttr);
             if($create_ret['code']!=200)
-                self::_return(self::CODE_CREATED,  $create_ret['msg']);
+                self::_return(self::CODE_CREATED,  $create_ret['msg'],$ticketData['ttitle']);
 
             $tid =$create_ret['data']['lastid'];
             $ret = $ticketObj->QueryTicketInfo("id=$tid",'pid');
@@ -269,7 +269,7 @@ class ProductBasic extends Controller
             $extRet = $ticketObj->CreateTicketExtendInfo($tkExtAttr);
 
             if($extRet['code']!=200) {
-                self::_return(self::CODE_CREATED,  $extRet['msg']);
+                self::_return(self::CODE_CREATED,  $extRet['msg'],$ticketData['ttitle']);
             }
             $daction = '添加门票.'.$ltitle.$tkBaseAttr['title'];
         }
@@ -278,10 +278,15 @@ class ProductBasic extends Controller
             ['apply_limit'=>$ticketData['apply_limit']+0, 'p_status'=>0],
             Ticket::__PRODUCT_TABLE__
         );
-        $output = ['code'=>200, 'lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title']];
+        $output = [
+            'code'=>200,
+            'data'=>[
+                'lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title']
+            ]
+        ];
         if ($ticketData['p_type']=='F') {
             $packRet = $this->savePackage($tid);
-            $output['savePackResult'] = $packRet;
+            $output['data']['savePackResult'] = $packRet;
         }
         return $output;
     }
@@ -296,6 +301,9 @@ class ProductBasic extends Controller
      */
     public function SavePrice($pid, $price_section, $original_price=array() )
     {
+        //if (!count($price_section)) {
+        //    return ['code'=>200, 'msg'=>'success'];
+        //}
         $priceWrite = new PriceWrite();
         foreach($price_section as $row) {
             if(($tableId = ($row['id']+0))>0) {
@@ -309,7 +317,7 @@ class ProductBasic extends Controller
             $apiret = $priceWrite->In_Dynamic_Price_Merge($pid, $sdate,
                 $edate, $row['js'], $row['ls'], 0, $action, $tableId, '',
                 $row['weekdays'], ($row['storage']+0));
-            if($apiret!=100) return array('code'=>0, 'msg'=>$apiret);
+            if($apiret!=100) return array('code'=>$apiret, 'msg'=>$apiret);
         }
         return ['code'=>200, 'msg'=>'success'];
     }

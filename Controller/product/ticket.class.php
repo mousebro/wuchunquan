@@ -69,8 +69,9 @@ class ticket extends ProductBasic
 
 
             // json 转义成 null 做的处理
-            if($data['order_end']=='') $data['order_end'] = '';
-            if($data['order_start']=='') $data['order_start'] = '';
+            //$_t = strtotime('2015-01-01 00:00:00');
+            if(strtotime($data['order_end']) < 1420041600) $data['order_end'] = '';
+            if(strtotime($data['order_start']) < 1420041600) $data['order_start'] = '';
 
             // 获取价格时间段
             $today  = date('Y-m-d');
@@ -225,7 +226,7 @@ class ticket extends ProductBasic
         if (count($_POST)>1) {
             foreach ($_POST as $tid=>$ticketData) {
                 $ret =  $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
-                $this->SavePrice($ret['pid'], $ticketData['price_section']);
+                $ret['data']['price'] = $this->SavePrice($ret['pid'], $ticketData['price_section']);
                 $res[] = $ret;
             }
         }
@@ -233,7 +234,9 @@ class ticket extends ProductBasic
             $ticketData = array_shift($_POST);
             //print_r($ticketData);exit;
             $ret = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
-            $this->SavePrice($ret['pid'], $ticketData['price_section']);
+            if (count($ticketData['price_section'])) {
+                $ret['data']['price'] = $this->SavePrice($ret['pid'], $ticketData['price_section']);
+            }
             $res[] = $ret;
         }
         self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
