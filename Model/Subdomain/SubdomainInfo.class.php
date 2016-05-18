@@ -17,6 +17,8 @@ class SubdomainInfo extends Model {
 
     const __WX_CONFIG_TABLE__   = 'pft_wx_shop_config'; //微商城配置表
 
+    const __WX_OPEN_TABLE__     = 'pft_wx_open';    //微信公众号授权信息表
+
     const __CHANNEL_TABLE__     = 'pft_sale_channel';   //销售渠道配置表
     
     /**
@@ -67,8 +69,26 @@ class SubdomainInfo extends Model {
         return $this->table(self::__CHANNEL_TABLE__)->where($where)->field('pid,px')->select();
     }
 
+    /**
+     * 获取微商城配置
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
     public function getMallConfig($memberid) {
         return $this->table(self::__WX_CONFIG_TABLE__)->where(['member_id' => $memberid])->find();
+    }
+
+
+    /**
+     * 获取微信公众号信息
+     * @return [type] [description]
+     */
+    public function getWechatOffiAccInfo($identify, $type = 'fid') {
+        if (!in_array($type, ['fid', 'account'])) {
+            return false;
+        }
+
+        return $this->table(self::__WX_OPEN_TABLE__)->where([$type => $identify])->find();
     }
 
     

@@ -36,4 +36,22 @@ class Common extends Controller {
         $this->apiReturn(200, $return, '');
 
     }
+
+    /**
+     * 获取微信公众号信息
+     * @return [type] [description]
+     */
+    public function getWechatOffiAccInfo() {
+        $SubdomainModel = new SubdomainInfo('remote_1');
+
+        $account = explode('.', $_SERVER['HTTP_HOST'])[0];
+
+        $info = $SubdomainModel->getWechatOffiAccInfo((int)$account, 'account');
+
+        if ($this->isAjax()) {
+            $this->apiReturn(200, $info, '');
+        }
+
+        return $info;
+    }
 }
