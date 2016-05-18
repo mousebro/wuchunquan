@@ -302,8 +302,8 @@ class ProductBasic extends Controller
         $priceWrite = new PriceWrite();
         foreach($price_section as $row) {
             if(($tableId = ($row['id']+0))>0) {
-                $intersect = array();
-                $intersect = array_diff_assoc($row, $original_price[$tableId]);
+                $intersect = isset($original_price[$tableId]) ?
+                    array_diff_assoc($row, $original_price[$tableId]) : [];
                 if(count($intersect)==0) continue;
             }
             $action = ($tableId>0) ? 1:0;// 0 插入 1 修改
