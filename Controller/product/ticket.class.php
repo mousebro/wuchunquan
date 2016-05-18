@@ -249,6 +249,6 @@ class ticket extends ProductBasic
             }
             $res[] = $ret;
         }
-        self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
+        self::apiReturn($flag, $res, 'ok');
     }
 }
