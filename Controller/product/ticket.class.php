@@ -85,6 +85,10 @@ class ticket extends ProductBasic
                 $arr1[1] = str_pad($arr1[1], 5, 0, STR_PAD_LEFT);
                 $data['v_time_limit'] = implode('|', $arr1);
             }
+            // 延迟验证
+            $delaytime = explode('|', $data['delaytime']);
+            $data['vtimehour'] = (isset($delaytime[0]) && $delaytime[0]) ? $delaytime[0]:0;
+            $data['vtimeminu'] = (isset($delaytime[1]) && $delaytime[1]) ? $delaytime[1]:0;
         }// $tid>0  End
 
         if(!isset($lid) || $lid==0) {
@@ -99,6 +103,8 @@ class ticket extends ProductBasic
         if($_SESSION['sid']!=1 && $landData['apply_did']!=$_SESSION['sid']) {
             parent::apiReturn(self::CODE_INVALID_REQUEST, [],"非自身供应产品，无权限查看");
         }
+
+
 
         // 线路属性
         if($landData['p_type']=='B' && $tid)
