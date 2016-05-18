@@ -103,9 +103,6 @@ class ticket extends ProductBasic
         if($_SESSION['sid']!=1 && $landData['apply_did']!=$_SESSION['sid']) {
             parent::apiReturn(self::CODE_INVALID_REQUEST, [],"非自身供应产品，无权限查看");
         }
-
-
-
         // 线路属性
         if($landData['p_type']=='B' && $tid)
         {
@@ -171,11 +168,9 @@ class ticket extends ProductBasic
             if($paymode==0 && ($group_id!=4)) {
                 parent::apiReturn(self::CODE_INVALID_REQUEST,[], '现场支付不支持打包');
             }
-
             $data['ddays'] = $advance;
-            $landData = $data;
         }
-
+        $landData = $data;
         // 闸机绑定
         $apply_did = $_SESSION['sid'];
         $jiutian_auth = $memberObj->getMemberExtInfo($apply_did, 'jiutian_auth');
@@ -213,9 +208,9 @@ class ticket extends ProductBasic
         }
         parent::apiReturn(200,
             [
-                'attribute'     => $data,
+                //'attribute'     => $data,
+                'attribute'     => $landData,
                 'otherTicket'   => $other_tickets,
-                'land'          => $landData,
             ],
             'success');
     }
