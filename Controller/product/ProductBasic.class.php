@@ -27,7 +27,9 @@ class ProductBasic extends Controller
         $isSectionTicket = false;// 是否是期票
         if($ticketData['order_start'] && $ticketData['order_end']) $isSectionTicket = true;
         //价格校验
-        $this->VerifyPrice($ticketData['pid'], $ticketData['price_section'], $ticketObj, $isSectionTicket);
+        if (!empty($ticketData['price_section'])) {
+            $this->VerifyPrice($ticketData['pid'], $ticketData['price_section'], $ticketObj, $isSectionTicket);
+        }
         // 整合数据
         $tkBaseAttr = array();
         $tkExtAttr = array();
@@ -301,9 +303,6 @@ class ProductBasic extends Controller
      */
     public function SavePrice($pid, $price_section, $original_price=array() )
     {
-        //if (!count($price_section)) {
-        //    return ['code'=>200, 'msg'=>'success'];
-        //}
         $priceWrite = new PriceWrite();
         foreach($price_section as $row) {
             if(($tableId = ($row['id']+0))>0) {
@@ -356,5 +355,20 @@ class ProductBasic extends Controller
         $ret = $this->packObj->savePackageTickets($packData);
         if ($ret!==false) $this->packObj->rmCache();
         return $ret;
+    }
+
+    /**
+     * 删除价格
+     */
+    public function remove_price()
+    {
+        $id     = I('post.id');
+        $pid    = I('post.pid');
+        $price  = new PriceWrite();
+        $res = $price->RemovePrice($id, $pid);
+        if ($res !== false) {
+            self::apiReturn(self::CODE_SUCCESS, [], '设置成功');
+        }
+        self::apiReturn(self::CODE_INVALID_REQUEST, [], '设置失败');
     }
 }

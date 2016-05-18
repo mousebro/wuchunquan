@@ -101,4 +101,9 @@ class PriceWrite extends Model
         write_to_logstash('platform_app_log', $msg);
         return 0;
     }
+
+    public function RemovePrice($id, $pid)
+    {
+        return $this->table($this->price_table)->where(['id'=>$id, 'pid'=>$pid])->delete();
+    }
 }
