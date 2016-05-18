@@ -15,6 +15,15 @@ class PriceWrite extends Model
 {
     private $price_table = 'uu_product_price';
 
+    public static function ErrorMsg($code)
+    {
+        $msgs = [
+            0   => '数据保存出错',
+            101 => '数据格式出错',
+            142 => '时间段价格存在交集',
+        ];
+        return isset($msgs[$code]) ? $msgs[$code] : '未知错误';
+    }
 
     /**
      * [综合]供应商产品动态价格插入或修改

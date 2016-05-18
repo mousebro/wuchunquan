@@ -317,7 +317,7 @@ class ProductBasic extends Controller
             $apiret = $priceWrite->In_Dynamic_Price_Merge($pid, $sdate,
                 $edate, $row['js'], $row['ls'], 0, $action, $tableId, '',
                 $row['weekdays'], ($row['storage']+0));
-            if($apiret!=100) return array('code'=>$apiret, 'msg'=>$apiret);
+            if($apiret!=100) return array('code'=>$apiret, 'msg'=>PriceWrite::ErrorMsg($apiret));
         }
         return ['code'=>200, 'msg'=>'success'];
     }
