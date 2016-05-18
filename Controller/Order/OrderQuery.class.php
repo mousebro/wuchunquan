@@ -29,6 +29,9 @@ class OrderQuery extends Controller
 
     public function __construct()
     {
+        if (!$_SESSION['memberID']) {
+            self::apiReturn(self::CODE_AUTH_ERROR,[], '登录超时或未登陆');
+        }
         $this->model = new \Model\Order\OrderQuery();
         $this->setCurrentMember();
     }
@@ -167,6 +170,10 @@ class OrderQuery extends Controller
         $data = $this->model->OrderList($offset, $page_size, $serller_id, $buyer_id, $lid, $tid, $order_num,
             $time_praram, $order_tel, $order_name, $remote_num, $pay_status, $order_status,
             $order_mode, $pay_mode);
+
+        $total = $this->model->OrderList($offset, $page_size, $serller_id, $buyer_id, $lid, $tid, $order_num,
+            $time_praram, $order_tel, $order_name, $remote_num, $pay_status, $order_status,
+            $order_mode, $pay_mode, \Model\Order\OrderQuery::GET_TOTAL_ROWS);
         $this->tickets = $data['tickets'];
         $this->members = $data['members'];
         $this->lands   = $data['lands'];
@@ -174,9 +181,12 @@ class OrderQuery extends Controller
         //print_r($data);
         $this->format_order_data($export_excel);
         //print_r($this->output);
-        parent::ajaxReturn(array_values($this->output), 'JSON', JSON_UNESCAPED_UNICODE);
-        //echo json_encode($this->output, JSON_UNESCAPED_UNICODE);
-        //return $this->output;
+        if (!empty($this->output)) {
+            self::apiReturn(200, ['list'=>array_values($this->output), 'total'=>$total]);
+            //parent::ajaxReturn(array_values($this->output), 'JSON', JSON_UNESCAPED_UNICODE);
+        }
+        self::apiReturn(self::CODE_NO_CONTENT);
+        //parent::ajaxReturn([], 'JSON', JSON_UNESCAPED_UNICODE);
     }
     /**
      * 订单分销关系处理

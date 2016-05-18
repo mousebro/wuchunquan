@@ -23,6 +23,8 @@ class OrderQuery extends Model
     const __ORDER_ADDON__           = 'uu_order_addon';
     const __ORDER_APPLY_INFO__      = 'uu_order_apply_info';
 
+    const GET_TOTAL_ROWS            = true;
+
     public function __construct()
     {
         parent::__construct('slave');
@@ -155,6 +157,16 @@ class OrderQuery extends Model
         return $where;
     }
 
+    public function TotalCount($where)
+    {
+        $total = $this->table(self::__ORDER_TABLE__ . ' s')
+            ->join('LEFT JOIN ' . self::__ORDER_DETAIL_TABLE__ .' fd ON s.ordernum=fd.orderid')
+            ->join('LEFT JOIN '. self::__ORDER_SPLIT__ . ' os ON s.ordernum=os.orderid' )
+            ->where($where)
+            ->getField('COUNT(*) AS cnt');
+        return $total;
+    }
+
     /**
      * 订单查询
      *
@@ -171,13 +183,14 @@ class OrderQuery extends Model
      * @param int $order_status
      * @param int $order_mode
      * @param int $pay_mode
-     * @param int $lid
-     * @param int $tid
+     * @param int $lid 景区ID
+     * @param int $tid 门票ID
+     * @param bool $total
      * @return array
      */
     public function OrderList($offset, $length, $seller_id, $buyer_id, $lid=0, $tid=0, $order_num='',
                               $timeParams=[], $order_tel='', $order_name='', $remote_num='',
-                              $pay_status=-1, $order_status=-1, $order_mode=-1, $pay_mode=-1
+                              $pay_status=-1, $order_status=-1, $order_mode=-1, $pay_mode=-1, $total=false
     )
     {
         if (is_numeric($order_num)) {
@@ -188,6 +201,11 @@ class OrderQuery extends Model
             $pay_status, $order_status, $order_mode,
             $pay_mode);
 
+        //获取总条数
+        if ($total) {
+            $total = $this->TotalCount($where);
+            return $total;
+        }
         $fields = [
             's.member',
             's.ordernum', 's.remotenum', 's.lid', 's.tid',
