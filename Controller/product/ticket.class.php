@@ -224,15 +224,12 @@ class ticket extends ProductBasic
         //print_r($_POST);exit();
         $res = array();
         $landModel   = new Land();
-        $flag = 200;
         if (count($_POST)>1) {
             foreach ($_POST as $tid=>$ticketData) {
                 $ret =  $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
-                if ($ret['code']!=200) $flag += 1;
                 $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
                 if (count($ticketData['price_section'])) {
                     $ret['data']['price'] = $this->SavePrice($ret['pid'], $ticketData['price_section']);
-                    if ($ret['data']['price']!=200) $flag += 1;
                 }
                 $res[] = $ret;
             }
@@ -241,14 +238,12 @@ class ticket extends ProductBasic
             $ticketData = array_shift($_POST);
             //print_r($ticketData);exit;
             $ret = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
-            if ($ret['code']!=200) $flag += 1;
             $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
             if (count($ticketData['price_section'])) {
                 $ret['data']['price'] = $this->SavePrice($ret['pid'], $ticketData['price_section']);
-                if ($ret['data']['price']!=200) $flag += 1;
             }
             $res[] = $ret;
         }
-        self::apiReturn($flag, $res, 'ok');
+        self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
     }
 }
