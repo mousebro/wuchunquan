@@ -64,7 +64,7 @@ class Order extends Controller
         $this->getSoap();
         $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, 0, $tid, '', '',
             $ordertime_begin, $ordertime_end,'','','', '',//13订单完成时间
-            $orderNum, '', $ordertel, $orderStatus, $payStatus, '',/*19排序*/ 1,/*20降序*/ 0, 100,
+            $orderNum, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
