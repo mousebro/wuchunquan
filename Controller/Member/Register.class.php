@@ -183,8 +183,47 @@ class Register extends Controller{
             $this->apiReturn(406, $res);
         }
 
-        
+        $status = $dtype == 0 ? 3 : 0;
 
+        //注册参数整理
+        $data = array(
+            'dname'    => $company,
+            'mobile'   => $mobile,
+            'password' => md5(md5($pwd)),
+            'dtype'    => $dtype,
+            'status'   => $status
+        );
+
+        //进行注册
+        $db = Helpers::getPrevDb();
+        Helpers::loadPrevClass('MemberAccount');
+        $memModel = new MemberAccount($db);
+
+        //获取介绍人
+        $inviterID = $memModel->getInviterId();
+        if($inviterID) {
+            $data['inviterID'] = $inviterID;
+        }
+
+        //扩展数据
+        $extData = array('com_name' => $dname);
+
+        $res = $memModel->register($data, $extData);
+
+        if($res['status'] == 'fail') {
+            $msg = $res['msg'];
+            $this->apiReturn(406, $msg);
+        } else {
+            $body = $res['body'];
+            $tmp = explode('|', $body);
+            $account = $tmp[1];
+
+            //在session里面记录第一步注册的数据
+            $tmpData = array('account' => $account, 'time' => time(), 'dtype' => $dtype);
+            $_SESSION['reg_data'] = json_encode($tmpData);
+
+            $this->apiReturn(200, '注册成功', array('account' => $account));
+        }
     }
 
     /**
@@ -194,7 +233,44 @@ class Register extends Controller{
      *
      */
     public function addInfo() {
+        $company = I('post.nickname ');
+        $companyType  = I('post.company_type');
 
+        $province = I('post.province');
+        $city     = I('post.city');
+        $address  = I('post.address');
+        $business = I('post.business');
+
+        $regData = I('session.reg_data');
+        if(!$regData) {
+            $this->apiReturn(406, '请先注册');
+        }
+
+        $regData = @json_decode($regData);
+        if(!$regData) {
+            $this->apiReturn(406, '请先注册');
+        }
+
+        $account = $regData['account'];
+        $dtype   = $regData['dtype'];
+        $regTime = $regData['time'];
+
+        $db = Helpers::getPrevDb();
+        Helpers::loadPrevClass('MemberAccount');
+        $memModel = new MemberAccount($db);
+
+        $id = $memModel->getIdByAccount($account);
+
+        $data = array();
+        $extData = array();
+
+        $res = $memModel->update($id, $data, $extData);
+        if($res['status'] == 'ok') {
+            $this->apiReturn(200, '更新成功', array('account' => $account));
+        } else {
+            $msg = $res['msg'];
+            $this->apiReturn(500, $msg);
+        }
     }
 
     /**
