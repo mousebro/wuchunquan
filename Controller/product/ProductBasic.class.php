@@ -179,7 +179,7 @@ class ProductBasic extends Controller
         if($p_type=='H') $tkExtAttr['zone_id'] = $ticketData['zone_id']+0;
 
         // 验证时间 08:00|18:00
-        $tkExtAttr['v_time_limit'] = '00:00|23:59';
+        $tkExtAttr['v_time_limit'] = '0';
         if(isset($ticketData['v_time_limit']) && $ticketData['v_time_limit'])
         {
             $arr1 = explode('|', $ticketData['v_time_limit']);
