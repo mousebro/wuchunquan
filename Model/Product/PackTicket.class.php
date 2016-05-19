@@ -305,11 +305,11 @@ class PackTicket extends Model
                 ->where(['id'=>['in', $tid_list]])
                 ->getField('pid', true);
 
-            $stateMsg['S:'.$row['id']] = array(
-                'timer'=>date('Y年m月d日 H:i:s'),
-                'message'=>'套票关联子票被下架或删除，系统自动下架该套票',
-            );
-            buildMess($stateMsg);
+            //$stateMsg['S:'.$row['id']] = array(
+            //    'timer'=>date('Y年m月d日 H:i:s'),
+            //    'message'=>'套票关联子票被下架或删除，系统自动下架该套票',
+            //);
+            //buildMess($stateMsg);
 
             return $this->table($this->products_table)
                 ->where(['id'=>$pid_list])

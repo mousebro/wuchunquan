@@ -4,6 +4,7 @@
  */
 
 namespace Model\Product;
+use Library\MessageNotify\OtaProductNotify;
 use Library\Model;
 use Model\SystemLog\OptLog;
 use pft\Member\MemberAccount;
@@ -607,39 +608,20 @@ class Ticket extends Model {
 
         $msText  = array(1=>'上架', 2=>'下架', 6=>'删除');
         $daction = $msText[$status].' '.$p_name;
-        if($_SESSION['dtype']==6) {
+        if(isset($_SESSION['dtype']) && $_SESSION['dtype']==6) {
             $optLog = new OptLog();
             $optLog->StuffOptLog($_SESSION['memberID'], $_SESSION['sid'], $daction);
         }
-
         // 套票产品连带关系检测
-        if($status==2 || $status==6)
-        {
-            include_once BASE_WWW_DIR.'/module/link_product/function.php';
-            include_once BASE_WWW_DIR.'/module/link_product/chkPackage.php';
-
-            // 获取包含该门票的所有套票
-            $package = getMainId($pid);
-            $package = array_unique($package);
-            if(count($package))
-            {
-                $sql = "SELECT id FROM uu_land WHERE status=1 AND id IN (".implode(',', $package).")";
-                $GLOBALS['le']->query($sql);
-                while($row=$GLOBALS['le']->fetch_assoc()){
-
-                    $stateMsg['S:'.$row['id']] = array(
-                        'timer'=>date('Y年m月d日 H:i:s'),
-                        'message'=>'套票关联子票被下架或删除，系统自动下架该套票',
-                    );
-                    buildMess($stateMsg);
-                }
-            }
+        if($status==2 || $status==6) {
+            $pack = new PackTicket();
+            $pack->PackageCheckByPid($pid);
         }
-
-        $_REQUEST['ids'] = $pid;
-        fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $_REQUEST);
-
-        FinishExit('{"status":"success", "msg":"设置成功"}');
+        //TODO::通知OTA
+        OtaProductNotify::notify($tid, $status);
+        return ['code'=>200];
+        //$_REQUEST['ids'] = $pid;
+        //fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $_REQUEST);
     }
 
     public function CreateTicket($ticketData)

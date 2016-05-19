@@ -18,8 +18,8 @@ class PriceWrite extends Model
     public static function ErrorMsg($code)
     {
         $msgs = [
-            0   => '数据保存出错',
-            101 => '数据格式出错',
+            0   => '价格数据保存出错',
+            101 => '价格数据格式出错',
             142 => '时间段价格存在交集',
         ];
         return isset($msgs[$code]) ? $msgs[$code] : '未知错误';

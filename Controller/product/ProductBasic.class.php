@@ -20,7 +20,7 @@ class ProductBasic extends Controller
     private $packObj=null;
     private function _return($code, $msg, $title)
     {
-        return ['code'=>$code, 'data'=>['title'=>$title,'msg'=>$msg]];
+        return ['code'=>$code, 'data'=>['ttitle'=>$title,'msg'=>$msg]];
     }
 
     /**
@@ -97,7 +97,8 @@ class ProductBasic extends Controller
         $tkBaseAttr['reb']      = $ticketData['reb']+0;   // 实际值以分为单位
         $tkBaseAttr['reb_type'] = $ticketData['reb_type'];// 取消费用类型 0 百分比 1 实际值
         if($tkBaseAttr['reb_type']==0) {
-            if($tkBaseAttr['reb']>100 || $tkBaseAttr['reb']<0)
+            $reb = $tkBaseAttr['reb'] / 100;
+            if($reb > 100 || $tkBaseAttr['reb']<0)
                 return self::_return(self::CODE_INVALID_REQUEST,  '取消费用百分比值不合法',$ticketData['ttitle']);
             $tkBaseAttr['reb'] = $tkBaseAttr['reb'] / 100;
         }

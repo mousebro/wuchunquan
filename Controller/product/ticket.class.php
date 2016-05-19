@@ -229,7 +229,7 @@ class ticket extends ProductBasic
                 $ret =  $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
                 $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
                 if (count($ticketData['price_section'])) {
-                    $ret['data']['price'] = $this->SavePrice($ret['pid'], $ticketData['price_section']);
+                    $ret['data']['price'] = $this->SavePrice($ret['data']['pid'], $ticketData['price_section']);
                 }
                 $res[] = $ret;
             }
@@ -240,7 +240,7 @@ class ticket extends ProductBasic
             $ret = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
             $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
             if (count($ticketData['price_section'])) {
-                $ret['data']['price'] = $this->SavePrice($ret['pid'], $ticketData['price_section']);
+                $ret['data']['price'] = $this->SavePrice($ret['data']['pid'], $ticketData['price_section']);
             }
             $res[] = $ret;
         }

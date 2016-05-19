@@ -14,28 +14,33 @@ use Library\Model;
 
 class OtaProductNotify
 {
-    public function __construct($tid,$action, $status)
+    public static function notify($tid, $status)
     {
         $model = new Model();
         $now   = date('Y-m-d H:i:s');
-        // $selids = "select tid_aid,DockingMode,cooperation_way,signkey,supplierIdentity from uu_qunar_use where tid=$tid";
         $otaInfo = $model->table('uu_qunar_use')->where(['tid'=>$tid])
             ->field('tid_aid,DockingMode,cooperation_way,signkey,supplierIdentity')
             ->select();
+        if (!$otaInfo) return true;
         foreach($otaInfo as $arr){
-            $tid_aid            = $arr['tid_aid'];
-            $signkey            = $arr['signkey'];
-            $supplierIdentity   = $arr['supplierIdentity'];
-            $cooperation_way    = $arr['cooperation_way'];
             if($arr['DockingMode'] == 0){ //去哪儿
-                $this->QunarNotify($arr['signkey'], $arr['supplierIdentity'], $now, $tid_aid);
+                self::QunarNotify($arr['signkey'], $arr['supplierIdentity'], $now, $arr['tid_aid']);
             }elseif($arr['DockingMode'] == 1){ //美团
-                file_get_contents("http://".IP_INSIDE."/new/d/module/api/meituanV2/MT_ChangeNotice.php?ids=$tid_aid&status=$status&signkey=$signkey&supplierIdentity=$supplierIdentity");
+                self::MtV2Notify($status, $arr['signkey'], $arr['supplierIdentity'], $arr['tid_aid']);
             }
         }
     }
 
-    public function QunarNotify($signkey, $supplierIdentity, $now, $tid_aid)
+    /**
+     * 去哪儿通知
+     *
+     * @param $signkey
+     * @param $supplierIdentity
+     * @param $now
+     * @param $tid_aid
+     * @return bool
+     */
+    public static function QunarNotify($signkey, $supplierIdentity, $now, $tid_aid)
     {
         $xml = <<<xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -69,8 +74,23 @@ xml;
         return true;
     }
 
-    public function MtV2Notify()
+    /**
+     * 美团通知
+     *
+     * @param $status
+     * @param $signkey
+     * @param $supplierIdentity
+     * @param $tid_aid
+     */
+    public static function MtV2Notify($status, $signkey, $supplierIdentity, $tid_aid)
     {
-        file_get_contents("http://".IP_INSIDE."/new/d/module/api/meituanV2/MT_ChangeNotice.php?ids=$tid_aid&status=$status&signkey=$signkey&supplierIdentity=$supplierIdentity");
+        $url = "http://ota.12301.cc/meituanV2/MT_ChangeNotice.php";
+        $data = [
+            'ids'       =>$tid_aid,
+            'status'    =>$status,
+            'signkey'   => $signkey,
+            'supplierIdentity' => $supplierIdentity,
+        ];
+        curl_post($url, $data);
     }
 }
