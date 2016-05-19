@@ -10,7 +10,7 @@ return array(
     'db'=> array(
         'localhost' => array(
             'db_type'=>'mysql',
-            'db_host' => '192.168.20.138',
+            'db_host' => '192.168.20.139',
             'db_user' => 'develop',
             'db_pwd'  => 'develop%',
             'db_port' => 3307,
@@ -18,7 +18,7 @@ return array(
         ),
         'localhost_wsdl' => array(
             'db_type'=>'mysql',
-            'db_host' => '192.168.20.138',
+            'db_host' => '192.168.20.139',
             'db_user' => 'develop',
             'db_pwd' => 'develop%',
             'db_port' => 3307,

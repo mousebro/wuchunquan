@@ -5,6 +5,7 @@
 
 namespace Model\Product;
 use Library\Model;
+use Model\SystemLog\OptLog;
 use pft\Member\MemberAccount;
 
 class Ticket extends Model {
@@ -565,6 +566,80 @@ class Ticket extends Model {
         }
         if ($res===false) echo $this->getDbError();
         return $res;
+    }
+
+    public function SetTicketStatus($tid, $status, $memberId)
+    {
+        $info = $this->QueryTicketInfo(
+            ['t.id'=>$tid],
+            'p.apply_limit,p.apply_did,p.id as pid,p.p_name',
+            'inner join uu_products p on t.pid=p.id'
+            );
+        if(!$info) return ['code'=>0, "msg"=>"门票不存在"];
+        $info = array_shift($info);
+        if($memberId!=$info['apply_did']) return ['code'=>0, "msg"=>"非自身供应产品"];
+
+        $pid     = $GLOBALS['le']->f('pid');
+        $p_name  = $GLOBALS['le']->f('p_name');
+        $dstatus = $GLOBALS['le']->f('apply_limit');
+
+        if($status==1 && $info['apply_limit']!=2) return ['code'=>0, "msg"=>"门票状态出错"];
+        if($status==2 && $info['apply_limit']!=1) return ['code'=>0, "msg"=>"门票状态出错"];
+        if($status==6 && $info['apply_limit']==6) return ['code'=>0, "msg"=>"门票状态出错"];
+
+        $save['verify_time'] = date('Y-m-d H:i:s');
+        $save['apply_limit'] = $status;
+        if ($status==6) {
+            $save['p_status']   = 6;
+            $save['trash_time'] = $save['verify_time'];
+        }
+        $res = $this->table(self::__PRODUCT_TABLE__)->where(['id'=>$pid])->save($save);
+        if($res===false) {
+            $msg = [
+                'log_type'  => 'set_ticket_status_error',
+                'msg'       => '设置票类状态出错,原因:' . $this->getDbError(),
+                'data'      => $save,
+                'args'      => func_get_args(),
+            ];
+            write_to_logstash('platform_app_log', $msg);
+            return ['code'=>0,'msg'=>'设置票类状态出错'];
+        }
+
+        $msText  = array(1=>'上架', 2=>'下架', 6=>'删除');
+        $daction = $msText[$status].' '.$p_name;
+        if($_SESSION['dtype']==6) {
+            $optLog = new OptLog();
+            $optLog->StuffOptLog($_SESSION['memberID'], $_SESSION['sid'], $daction);
+        }
+
+        // 套票产品连带关系检测
+        if($status==2 || $status==6)
+        {
+            include_once BASE_WWW_DIR.'/module/link_product/function.php';
+            include_once BASE_WWW_DIR.'/module/link_product/chkPackage.php';
+
+            // 获取包含该门票的所有套票
+            $package = getMainId($pid);
+            $package = array_unique($package);
+            if(count($package))
+            {
+                $sql = "SELECT id FROM uu_land WHERE status=1 AND id IN (".implode(',', $package).")";
+                $GLOBALS['le']->query($sql);
+                while($row=$GLOBALS['le']->fetch_assoc()){
+
+                    $stateMsg['S:'.$row['id']] = array(
+                        'timer'=>date('Y年m月d日 H:i:s'),
+                        'message'=>'套票关联子票被下架或删除，系统自动下架该套票',
+                    );
+                    buildMess($stateMsg);
+                }
+            }
+        }
+
+        $_REQUEST['ids'] = $pid;
+        fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $_REQUEST);
+
+        FinishExit('{"status":"success", "msg":"设置成功"}');
     }
 
     public function CreateTicket($ticketData)

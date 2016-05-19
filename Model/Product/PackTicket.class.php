@@ -287,4 +287,35 @@ class PackTicket extends Model
         }
         return $arr;
     }
+
+    /**
+     * 套票产品连带关系检测,若子票下架，主票会跟着下架
+     *
+     * @param $pid
+     * @return bool
+     */
+    public function PackageCheckByPid($pid)
+    {
+        $tid_list = $this->table($this->package_ticket_table)
+            ->where(['pid'=>$pid])
+            ->getField('parent_tid', true);
+        if ($tid_list) {
+            $tid_list = array_unique($tid_list);//去重
+            $pid_list = $this->table($this->ticket_table)
+                ->where(['id'=>['in', $tid_list]])
+                ->getField('pid', true);
+
+            $stateMsg['S:'.$row['id']] = array(
+                'timer'=>date('Y年m月d日 H:i:s'),
+                'message'=>'套票关联子票被下架或删除，系统自动下架该套票',
+            );
+            buildMess($stateMsg);
+
+            return $this->table($this->products_table)
+                ->where(['id'=>$pid_list])
+                ->limit(count($pid_list))
+                ->save(['apply_limit'=>2]);
+        }
+        return true;
+    }
 }
