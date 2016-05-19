@@ -362,8 +362,11 @@ class ProductBasic extends Controller
      */
     public function remove_price()
     {
-        $id     = I('post.id');
-        $pid    = I('post.pid');
+        $id     = I('post.id', 0, 'intval');
+        $pid    = I('post.pid', 0, 'intval');
+        if (!$pid || !$id) {
+            self::apiReturn(self::CODE_INVALID_REQUEST, [], '参数错误');
+        }
         $price  = new PriceWrite();
         $res = $price->RemovePrice($id, $pid);
         if ($res !== false) {
