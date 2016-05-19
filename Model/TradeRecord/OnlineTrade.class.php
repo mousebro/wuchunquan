@@ -73,7 +73,7 @@ class OnlineTrade extends Model
         $total_money = $this->table('uu_ss_order')
             ->where(['ordernum'=>$out_trade_no])
             ->getField('totalmoney');
-        return $total_fee >= $total_money;
+        return strval($total_fee) >= $total_money;
     }
     /**
      * 获取支付交易日志
