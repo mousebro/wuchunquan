@@ -33,8 +33,7 @@ class ticket extends ProductBasic
         $tid = I('post.tid', 0, 'intval');
         if($lid==0 && $tid==0) parent::apiReturn(self::CODE_INVALID_REQUEST, [], '参数错误');
         $data = $landData = array();
-        if($tid>0)
-        {
+        if($tid>0) {
             $fileds = ' t.tprice,t.reb,t.reb_type,t.rebp,t.landid as lid,t.title as ttitle,'
                 .'t.id as tid,t.delaydays,t.delaytype,t.pay,t.notes,t.ddays,t.getaddr,'
                 .'t.buy_limit_up,t.buy_limit_low,t.cancel_auto_onMin,t.re_integral,t.cancel_cost,t.max_order_days,'
