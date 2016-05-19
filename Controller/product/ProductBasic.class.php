@@ -50,8 +50,8 @@ class ProductBasic extends Controller
 
         // 延迟验证
         $delaytime = array(0,0);
-        if(!isset($ticketData['vtimehour']) && $ticketData['vtimehour']) $delaytime[0] = $ticketData['vtimehour']+0;
-        if(!isset($ticketData['vtimeminu']) && $ticketData['vtimeminu']) $delaytime[1] = $ticketData['vtimeminu']+0;
+        if(isset($ticketData['vtimehour']) && $ticketData['vtimehour']) $delaytime[0] = $ticketData['vtimehour']+0;
+        if(isset($ticketData['vtimeminu']) && $ticketData['vtimeminu']) $delaytime[1] = $ticketData['vtimeminu']+0;
         $tkBaseAttr['delaytime'] = implode('|', $delaytime);
 
 
@@ -116,8 +116,8 @@ class ProductBasic extends Controller
 
         // 退票规则 0 有效期内、过期可退 1 有效期内可退 2  不可退
         $tkBaseAttr['refund_rule'] = $tkBaseAttr['refund_early_time'] = 0;
-        if(!isset($ticketData['refund_rule'])) $tkBaseAttr['refund_rule'] = $ticketData['refund_rule']+0;
-        if(!isset($ticketData['refund_early_time'])) $tkBaseAttr['refund_early_time'] = $ticketData['refund_early_time']+0;
+        if(isset($ticketData['refund_rule'])) $tkBaseAttr['refund_rule'] = $ticketData['refund_rule']+0;
+        if(isset($ticketData['refund_early_time'])) $tkBaseAttr['refund_early_time'] = $ticketData['refund_early_time']+0;
 
         // 过期退票规则
         // $jData['overdue_refund'] = 0;// 不可退
