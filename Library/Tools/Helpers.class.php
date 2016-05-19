@@ -41,8 +41,8 @@ class Helpers {
      * @param  $cls
      * @return
      */
-    public static function loadClass($cls) {
-        $file = $this->_prevPath . 'd/class/' . $cls . '.class.php';
+    public static function loadPrevClass($cls) {
+        $file = self::$_prevPath . 'd/class/' . $cls . '.class.php';
         if(file_exists($file)) {
             include_once($file);
             return true;
@@ -59,16 +59,12 @@ class Helpers {
      * @return SoapClient
      */
     public static function GetSoapInside() {
-        if(!empty(self::$soapi)) {
-            return self::$soapi;
-        }
         $ac = '16ucom';
         $pw = 'c33367701511b4f6020ec61ded352059';
 
         $param = array(
-            "location" => "http://localhost/open/openService/pft_insideMX.php",
-            "uri" => "www.16u.com?ac_16u={$ac}|pw_16u={$pw}|auth_16u=true")
-        ;
+            "location"  => "http://localhost/open/openService/pft_insideMX.php",
+            "uri"       => "www.16u.com?ac_16u={$ac}|pw_16u={$pw}|auth_16u=true");
 
         return new SoapClient(null, $param);
     }
