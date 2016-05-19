@@ -54,7 +54,7 @@ class ticket extends ProductBasic
 
             // 数据二次处理
             if($data['reb_type']==0) $data['reb'] = $data['reb'] * 100;
-            $data['cancel_cost'] = json_decode($data['cancel_cost'], true);
+            $data['cancel_cost'] = json_decode(stripslashes($data['cancel_cost']), true);
 
             // 0 都不发  1 预定通知供应商 不通知取消  2 通知取消 预定不通知 3 都通知
             $data['confirm_sms'] = decbin($data['confirm_sms']);// 可能的值是 0 1 2 3 先转成2进制
