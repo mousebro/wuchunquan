@@ -316,13 +316,13 @@ class ProductBasic extends Controller
      * @param array $original_price 修改前的价格,新增时可忽视
      * @return array
      */
-    public function SavePrice($pid, $price_section, $original_price=array() )
+    public function SavePrice($pid, $price_section)
     {
         $priceWrite = new PriceWrite();
         foreach($price_section as $row) {
             if(($tableId = ($row['id']+0))>0) {
-                $intersect = isset($original_price[$tableId]) ?
-                    array_diff_assoc($row, $original_price[$tableId]) : [];
+                $intersect = isset($this->original_price[$tableId]) ?
+                    array_diff_assoc($row, $this->original_price[$tableId]) : $row;
                 if(count($intersect)==0) continue;
             }
             $action = ($tableId>0) ? 1:0;// 0 插入 1 修改
@@ -363,6 +363,7 @@ class ProductBasic extends Controller
             if($diff_js) $changeNote[] = $section.' 供货价变动，原:'.($original_price[$tableId]['js']/100).'，现:'.($row['js']/100);
             if($diff_ls) $changeNote[] = $section.' 零售价变动，原:'.($original_price[$tableId]['ls']/100).'，现:'.($row['ls']/100);
         }
+        $this->original_price = $original_price;
         return ['code'=>200];
     }
 
