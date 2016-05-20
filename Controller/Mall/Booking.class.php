@@ -37,7 +37,7 @@ class Booking extends Controller {
             $aid = I('aid', '', 'intval');
         }
 
-        $storages = $TicketModel->getMuchStorage($pids, I('date') ?: date('Y-m-d'), 81, 3385);
+        $storages = $TicketModel->getMuchStorage($pids, I('date') ?: date('Y-m-d'), $memberid, $aid);
 
         foreach ($pids as $key => $pid) {
             if (!isset($storages[$pid])) {
