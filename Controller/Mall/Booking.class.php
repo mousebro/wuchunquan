@@ -28,7 +28,16 @@ class Booking extends Controller {
         }
 
         $TicketModel = new Ticket();
-        $storages = $TicketModel->getMuchStorage($pids, I('date') ?: date('Y-m-d'));
+
+        $memberid = $aid = 0;
+
+        //分销商库存
+        if (isset($_SESSION['dtype']) && in_array($_SESSION['dtype'], [0,1])) {
+            $memberid = $_SESSION['memberID'];
+            $aid = I('aid', '', 'intval');
+        }
+
+        $storages = $TicketModel->getMuchStorage($pids, I('date') ?: date('Y-m-d'), $memberid, $aid);
 
         foreach ($pids as $key => $pid) {
             if (!isset($storages[$pid])) {
