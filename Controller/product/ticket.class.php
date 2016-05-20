@@ -246,4 +246,116 @@ class ticket extends ProductBasic
         }
         self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
     }
+
+    public function packTicketInfo()
+    {
+        /*token=<?=$token?>&appid=<?=$appid?>&signature=<?=md5($token.$appid.$pid);?>&pid=<?=$pid?>*/
+        $token   = I('get.token');
+        $tid   = I('get.tid',0, 'intval');
+        $pid   = I('get.pid',0, 'intval');
+        $sign  = I('get.signature');
+        $aid  = I('get.aid',0, 'intval');
+        $tnum  = I('get.tnum',0, 'intval');
+        $beginTime = I('getbeginTime', '', 'trim');
+
+        if ($sign != md5($token.$_GET['appid'].$pid)) {
+            exit('{"status":0,"msg":"Access Denied2!"}');
+        }
+        //token:6f0c6c49daa58b9d802189ac932dcd65
+        //appid:d3d3LjEyMzAxLmNj
+        //beginTime:2016-05-20
+        //signature:36b555bd50b564f5545485cbb8feecbf
+        //pid:24323
+        //aid:37849
+        //tnum:1
+        //showTicket:1
+
+        $chk_ret = $this->PackageTicketCheck($pid, $_SESSION['sid'], $aid, $beginTime, $tnum);
+        $child_invalid_msg = array();
+        if ($chk_ret['code']!==200) {
+            if ($chk_ret['code']>=909) {
+                $child_invalid_msg[$chk_ret['pid']] = $chk_ret['msg'];
+            }
+            else {
+                echo json_encode($chk_ret);
+                exit;
+            }
+        }
+        $pack = new PackTicket($tid, true);
+        $packInfo = $pack->getChildTickets();
+        //var_dump($packInfo);
+        $msg = '';
+        $m   = '';
+        if (isset($child_invalid_msg[$pid])) {
+            $msg = '<p class="pt-invalid-msg">'.$child_invalid_msg[$pid] .'</p>';
+            $m = $child_invalid_msg[$pid];
+        }
+        //$tickets[] = array(
+        //    'pid'       => $pid,
+        //    'l_title'   => $my_product['l_title'],
+        //    't_title'   => $my_product['t_title'],
+        //    'l_img'     => $my_product['l_img'],
+        //    'num'       => $my_product['num'],
+        //    'msg'       => $msg,
+        //    'm'         => $m,
+        //);
+        foreach ($packInfo as $key=>$prod) {
+            $c_msg = '';
+            $c_m   = '';
+            if (isset($child_invalid_msg[$key])) {
+                $c_msg = '<p class="pt-invalid-msg">'.$child_invalid_msg[$key] .'</p>';
+                $c_m = $child_invalid_msg[$key];
+            }
+            $tickets[] = array(
+                'pid'       => $key,
+                'l_title'   => $prod['ltitle'],
+                't_title'   => $prod['ttitle'],
+                'l_img'     => $prod['imgpath'],
+                'num'       => $prod['num'],
+                'msg'       => $c_msg,
+                'm'         => $c_m,
+            );
+        }
+        echo json_encode(array('code'=>$chk_ret['code'],'list'=>$tickets));
+    }
+    /**
+     * 套票下单检测
+     *
+     * @param int $pid 产品ID
+     * @param int $memberId 下单人ID
+     * @param int $aid 供应商ID
+     * @param string $beginTime 游玩时间
+     * @param int $tnum 预定数量
+     * @return array
+     */
+    private static function PackageTicketCheck( $pid, $memberId, $aid, $beginTime, $tnum )
+    {
+        $code     = self::getSoap()->PFT_Coupon_Pre_Check($pid, $memberId,$aid, $beginTime, $tnum);
+        $pid      = 0;
+        if ($code == 200) return array('code'=>200);
+        if (strpos($code, '|') !== false) {
+            $cs = explode('|', $code);
+            $code = $cs[0];
+            $pid  = $cs[1];
+        }
+        $arr = array(
+            901=>'抱歉，无此套票，无法提交订单',
+            902=>'抱歉，您没有权限购买该套票，无法提交订单',
+            903=>'抱歉，您没有转分销该套票的权限',
+            904=>'抱歉，此套票需提前预定，无法提交订单',
+            905=>'抱歉，此套票被限定了具体的购买时间，无法提交订单',
+            906=>'抱歉，此套票无此日期的价格，无法提交订单',
+            907=>'抱歉，此套票日库存已不足，无法提交订单',//ok
+            908=>'抱歉，此套票总库存已不足，无法提交订单',
+            909=>'已经下架或不存在',//子票ok
+            910=>'没有购买的权限',//子票ok
+            911=>'转分销没有购买的权限',
+            912=>'无此日期的价格',//ok
+            913=>'日库存已不足',//ok
+            914=>'总库存已不足',
+            915=>'需提前预定',
+            916=>'被限定了具体的购买时间',
+        );
+        return array('code'=>$code,'msg'=>$code.'-'.$arr[$code], 'pid'=>$pid);
+    }
 }
