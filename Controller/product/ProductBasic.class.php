@@ -212,9 +212,8 @@ class ProductBasic extends Controller
             if(isset($ticketData['s_number']) && $ticketData['s_number'] && $tkExtAttr['series_model']) $tkExtAttr['series_model'].= '-'.$ticketData['s_number'];
             $ass_station = $ticketData['ass_station'];
             $ass_station = str_replace('；', ';', $ass_station);
-            $tkExtAttr['ass_station'] = addslashes(serialize(explode(';', $ass_station)));
+            $tkExtAttr['ass_station'] = serialize(explode(';', $ass_station));
         }
-
         if(isset($ticketData['tid']) && $ticketData['tid']>0)
         {   // 以下编辑操作
             $tid = $ticketData['tid']+0;
@@ -228,7 +227,7 @@ class ProductBasic extends Controller
             //print_r(array_diff($tkBaseAttr, $ticketOriginData));
             //exit;
             $diff_ticket_attr = array_diff_assoc($tkBaseAttr, $ticketOriginData);
-             $ret2 = $ret3 = true;
+            $ret2 = $ret3 = true;
             $ret1 = $ticketObj->UpdateTicketAttributes(
                 ['id'=>$tid],
                 $diff_ticket_attr,
@@ -240,7 +239,7 @@ class ProductBasic extends Controller
                 $diff_ticket_attr = array_diff_assoc($tkExtAttr, $extAttributes);
                 //print_r($extAttributes);
                 //print_r($tkExtAttr);
-                //print_r(array_diff_assoc( $tkExtAttr, $extAttributes));
+                //print_r($diff_ticket_attr);
                 //exit;
 
                 $ret2 = $ticketObj->UpdateTicketAttributes(

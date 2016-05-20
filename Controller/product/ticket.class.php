@@ -43,9 +43,10 @@ class ticket extends ProductBasic
                 .'t.refund_audit,t.refund_rule,t.refund_early_time,t.delaytime,t.cancel_notify_supplier ';
             $join = 'left join uu_products p on t.pid=p.id left join uu_land_f f on t.id=f.tid';
             $data = $this->ticketObj->QueryTicketInfo(['t.id'=>$tid], $fileds, $join);
-
             if(!$data) parent::apiReturn(self::CODE_INVALID_REQUEST, [],'产品不存在');
             $data = array_shift($data);
+            //print_r($data);exit;
+
             if($_SESSION['sid']!=1 && $data['apply_did']!=$_SESSION['sid']) {
                 parent::apiReturn(self::CODE_INVALID_REQUEST, [],"非自身供应产品，无权限查看");
             }
@@ -112,7 +113,6 @@ class ticket extends ProductBasic
             $array1 = explode('{fck_date}', $data['series_model']);
             $data['g_number'] = isset($array1[0]) ? $array1[0]:'';// 团号
             $data['s_number'] = isset($array1[1]) ? $array1[1]:'';// 编号
-
             if($data['s_number']) $data['s_number'] = substr($data['s_number'], 1);
         }
 
