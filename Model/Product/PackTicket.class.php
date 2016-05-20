@@ -34,22 +34,26 @@ class PackTicket extends Model
     public $attribute = array();// 景区套票属性
     public $paymode_continer = array();//
 
+
+    public function __construct($parent_tid=0, $initData=true)
+    {
+        parent::__construct('localhost', 'pft');
+        $this->parent_tid = $parent_tid;
+        if ($parent_tid>0 && $initData===true) {
+            $this->childTicketData();
+        }
+        else {
+            $this->cacheKey   = "pkg:{$_SESSION['memberID']}";
+            /** @var $cache \Library\Cache\CacheRedis*/
+            $this->cache = Cache::getInstance('redis');
+        }
+    }
+
     public function getChildTickets()
     {
         if (!is_null($this->childTickets)) return $this->childTicketData();
         return $this->childTickets;
     }
-
-    public function __construct($parent_tid=0)
-    {
-        parent::__construct('localhost', 'pft');
-        $this->parent_tid = $parent_tid;
-        $this->cacheKey   = "pkg:{$_SESSION['memberID']}";
-        /** @var $cache \Library\Cache\CacheRedis*/
-        $this->cache = Cache::getInstance('redis');
-        if ($parent_tid>0 ) $this->childTicketData($parent_tid);
-    }
-
     /**
      * 检测套票数据是否合法
      *
@@ -286,6 +290,20 @@ class PackTicket extends Model
             $arr['mDate'] = $arr['mDate'];
         }
         return $arr;
+    }
+
+    /**
+     * 根据套票的门票ID获取拥有的子票
+     *
+     * @return mixed
+     */
+    public function getTickets()
+    {
+        $tickets = $this->table($this->package_ticket_table)
+            ->field('lid,pid,num,aid')
+            ->where(['parent_tid'=>$this->parent_tid])
+            ->select();
+        return $tickets;
     }
 
     /**
