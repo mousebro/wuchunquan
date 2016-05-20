@@ -62,13 +62,13 @@ class Register extends Controller{
     }
 
     /**
-     * 发送短信验证码
+     * 发送注冊短信验证码
      * @author dwer
      * @date   2016-05-18
      *
      * @return
      */
-    public function sendVcode() {
+    public function regVcode() {
         $mobile = I('post.mobile');
 
         if(!$mobile) {
@@ -139,6 +139,109 @@ class Register extends Controller{
             $this->apiReturn(500, '对不起，短信服务器发生故障，造成的不便我们感到十分抱歉。请联系我们客服人员。');
         }
     }
+
+
+    /**
+     * 发送注冊短信验证码
+     * @author dwer
+     * @date   2016-05-18
+     *
+     * @return
+     */
+    public function resetVcode() {
+        $mobile = I('post.mobile');
+
+        if(!$mobile) {
+            $this->apiReturn(406, '参数错误');
+        }
+
+        //手机号码验证
+        if(!ismibile($mobile)) {
+            $this->apiReturn(406, '手机号码不正确');
+        }
+
+        //图形验证码验证
+        // $isLegal = $this->_authImage();
+
+        // if(!$isLegal) {
+        //     $this->apiReturn(403, '图形验证码错误');
+        // }
+
+        $blackList   = load_config('black_list');
+        $blackMobile = $blackList['mobile'];
+        if (in_array($mobile, $blackMobile)) {
+            $this->apiReturn(403, '该手机号已经被加入黑名单。');
+        }
+
+        $cacheRedis = Cache::getInstance('redis');
+        $ip         = ip();
+        $cacheKey   = "mobile:$ip:$mobile";
+        $send_time  = $cacheRedis->get($cacheKey,'', true);
+        if ($send_time > 8) {
+            $this->apiReturn(403, '该手机号发送次数超出系统限制。');
+        }
+
+        //发送频率验证
+        if(I('session.timer')) {
+            $timeDiff = $_SERVER['REQUEST_TIME'] - I('session.timer');
+            if($timeDiff <= 5) {
+                $this->apiReturn(403, '发送间隔太短！请在60秒后再重试。');
+            }
+        }
+
+        //判断手机号码是不是已经注册了
+        $db = Helpers::getPrevDb();
+        Helpers::loadPrevClass('MemberAccount');
+        $memModel = new MemberAccount($db);
+
+        //判断手机号码是不是已经注册了
+        $res = $memModel->_chkPassport($mobile);
+        if($res) {
+            $this->apiReturn(403, '该手机号用户已注册票付通会员，请尝试更换其它号码，若有疑问请联系我们！');
+        }
+
+        //获取短信模板
+        $smsConfig = load_config('sms');
+        $registerTpl = $smsConfig['register'];
+        if(!$registerTpl) {
+            $this->apiReturn(403, '短信模板不存在！');
+        }
+
+        //发送短信
+        $soap = Helpers::GetSoapInside();
+        $res  = MemberAccount::sendVcode($mobile, $registerTpl, $soap, true);
+
+         if($res == 100) {
+            $res = $cacheRedis->incrBy($cacheKey);
+
+            $this->apiReturn(200, '发送验证码成功');
+        } else {
+            $this->apiReturn(500, '对不起，短信服务器发生故障，造成的不便我们感到十分抱歉。请联系我们客服人员。');
+        }
+    }
+
+    /**
+     * 检测验证码
+     * @author dwer
+     * @date   2016-05-20
+     *
+     * @return
+     */
+    public function checkVcode() {
+
+    }
+
+    /**
+     * 重置密码
+     * @author dwer
+     * @date   2016-05-20
+     *
+     * @return
+     */
+    public function reset() {
+
+    }
+
     /**
 
      * 注册保存账号等信息
@@ -272,6 +375,8 @@ class Register extends Controller{
             $this->apiReturn(500, $msg);
         }
     }
+
+
 
     /**
      * 手机短信验证码验证
