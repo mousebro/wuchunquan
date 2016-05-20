@@ -10,6 +10,7 @@
 
 namespace Model\Product;
 use Library\Model;
+use pft\Member;
 
 class Land extends Model
 {
@@ -76,6 +77,35 @@ class Land extends Model
     {
         $params['terminal']      = self::getTerminalId();
         $params['terminal_type'] = 1;
+        $memParams = array(
+            'dname'=>$params['title'],
+            'dtype'=>2,//直接供应方
+            'creattime'=> date('Y-m-d H:i:s'),
+            'password' => md5(md5('pft_'.mt_rand(10000,999999)))//md5(md5('uu654321'))
+        );
+        $mem = new Member\MemberAccount()
+        //生成直接供应商
+        $reg_res = $mem->register($memParams, array());
+
+        if($reg_res['status']=='ok') {
+            $res_account = explode('|', $reg_res['body']);
+            $params['salerid'] = $res_account[1];
+            if(strlen($params['salerid'])>6 || $params['salerid']>=self::MAX_SALER_ID) {
+                return array('errcode'=>1001,'msg'=>'添加失败，商户ID超出长度！');
+            }
+            //建立直接供应商与供应商关系,2014年12月11日16:12:46更新，之前的数据都是错误的，son_id存成了account！！！
+            $rel_res = $mem->createRelationship($params['apply_did'],
+                $res_account[0],1,1);
+            //TODO:建立直接供应方与直接供应方平级关系
+            if($parent_id>0) {
+                $res_res_p = $mem->createRelationship($parent_id,
+                    $res_account[0],1,2);
+            }
+            if($reg_res['status']!='ok'){
+                return $rel_res;
+            }
+        }
+
         return $this->table('uu_land')->data($params)->add();
     }
 

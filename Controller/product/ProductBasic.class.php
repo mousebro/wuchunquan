@@ -9,6 +9,7 @@ defined('PFT_INIT') or exit('Permission Denied');
  * 保存门票/景区数据公共类
  */
 use Library\Controller;
+use Library\Model;
 use Model\Member\Member;
 use Model\Product\Land;
 use Model\Product\PackTicket;
@@ -21,6 +22,20 @@ class ProductBasic extends Controller
     private function _return($code, $msg, $title)
     {
         return ['code'=>$code, 'data'=>['ttitle'=>$title,'msg'=>$msg]];
+    }
+
+    public function AreaList()
+    {
+        $area = array();
+        $m = new Model();
+        $list = $m->table('uu_area')
+            ->field('area_id as id, area_name as name, area_parent_id as pid')
+            ->select();
+
+        foreach ($list as $item) {
+            $area[$item['pid']]['cities'][] = ['id'=>$item['id'], 'name'=>$item['name']];
+        }
+        return $area;
     }
 
     public function SaveLandInfo( Land $landObj )
@@ -38,8 +53,7 @@ class ProductBasic extends Controller
         $params['tel']      = I('post.tel', '', 'strip_tags,addslashes');
 
         $params['salerid']  = '';
-
-        $landObj->data($params)->add();
+        $landObj->AddProduct($params);
     }
 
     /**
