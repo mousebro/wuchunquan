@@ -247,6 +247,9 @@ class ticket extends ProductBasic
         self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
     }
 
+    /**
+     * 获取子票信息-填写订单页面
+     */
     public function packTicketInfo()
     {
         /*token=<?=$token?>&appid=<?=$appid?>&signature=<?=md5($token.$appid.$pid);?>&pid=<?=$pid?>*/
@@ -283,22 +286,6 @@ class ticket extends ProductBasic
         }
         $pack = new PackTicket($tid, true);
         $packInfo = $pack->getChildTickets();
-        //var_dump($packInfo);
-        $msg = '';
-        $m   = '';
-        if (isset($child_invalid_msg[$pid])) {
-            $msg = '<p class="pt-invalid-msg">'.$child_invalid_msg[$pid] .'</p>';
-            $m = $child_invalid_msg[$pid];
-        }
-        //$tickets[] = array(
-        //    'pid'       => $pid,
-        //    'l_title'   => $my_product['l_title'],
-        //    't_title'   => $my_product['t_title'],
-        //    'l_img'     => $my_product['l_img'],
-        //    'num'       => $my_product['num'],
-        //    'msg'       => $msg,
-        //    'm'         => $m,
-        //);
         foreach ($packInfo as $key=>$prod) {
             $c_msg = '';
             $c_m   = '';

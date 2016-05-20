@@ -42,11 +42,9 @@ class PackTicket extends Model
         if ($parent_tid>0 && $initData===true) {
             $this->childTicketData();
         }
-        else {
-            $this->cacheKey   = "pkg:{$_SESSION['memberID']}";
-            /** @var $cache \Library\Cache\CacheRedis*/
-            $this->cache = Cache::getInstance('redis');
-        }
+        $this->cacheKey   = "pkg:{$_SESSION['memberID']}";
+        /** @var $cache \Library\Cache\CacheRedis*/
+        $this->cache = Cache::getInstance('redis');
     }
 
     public function getChildTickets()
