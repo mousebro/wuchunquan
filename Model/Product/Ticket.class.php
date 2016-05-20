@@ -338,6 +338,8 @@ class Ticket extends Model {
                 $result[$item['pid']] = $item['storage'];
             }
         }
+
+        $copy_pid_arr = $pid_arr;
         $pid_arr = array_diff($pid_arr, $find_pid);
 
         if ($pid_arr) {
@@ -370,7 +372,7 @@ class Ticket extends Model {
 
         //获取产品对应的tid
         $tids = $this->table(self::__TICKET_TABLE__)
-                    ->where(array('pid' => array('in', implode(',', $pid_arr))))
+                    ->where(array('pid' => array('in', implode(',', $copy_pid_arr))))
                     ->field('id,pid')
                     ->select();
         $p_t_map = array();
