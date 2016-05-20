@@ -23,6 +23,25 @@ class ProductBasic extends Controller
         return ['code'=>$code, 'data'=>['ttitle'=>$title,'msg'=>$msg]];
     }
 
+    public function SaveLandInfo( Land $landObj )
+    {
+        $params = [];
+        $params['title']    = I('post.product_name', '', 'strip_tags,addslashes');
+        $params['address']  = I('post.address', '', 'strip_tags,addslashes');
+        $params['ptype']    = I('post.product_type');
+        $params['area']     = I('post.city');
+        $params['jqts']     = I('post.notice', '', 'strip_tags,addslashes');
+        $params['bhjq']     = I('post.details','', 'htmlspecialchars,addslashes');
+        $params['jtzn']     = I('post.traffic','', 'strip_tags,addslashes');
+        $params['imgpath']  = I('post.img_path','', 'strip_tags,addslashes');
+        $params['opentime'] = I('post.opentime', '', 'strip_tags,addslashes');
+        $params['tel']      = I('post.tel', '', 'strip_tags,addslashes');
+
+        $params['salerid']  = '';
+
+        $landObj->data($params)->add();
+    }
+
     /**
      * 保存门票数据
      *
@@ -40,7 +59,7 @@ class ProductBasic extends Controller
         if (!empty($ticketData['price_section'])) {
             $ret = $this->VerifyPrice($ticketData['pid'], $ticketData['price_section'], $ticketObj, $isSectionTicket);
             if ($ret['code']!=200) {
-                return self::_return(self::CODE_INVALID_REQUEST, $ret['msg'], $ticketData['ttitle']);
+                return self::_return(self::CODE_INVALID_REQUEST, $ret['data']['msg'], $ticketData['ttitle']);
             }
         }
         // 整合数据
@@ -318,6 +337,9 @@ class ProductBasic extends Controller
      */
     public function SavePrice($pid, $price_section)
     {
+        if (!$pid || !is_array($price_section)) {
+            return array('code'=>0, 'msg'=>PriceWrite::ErrorMsg(0));
+        }
         $priceWrite = new PriceWrite();
         foreach($price_section as $row) {
             if(($tableId = ($row['id']+0))>0) {

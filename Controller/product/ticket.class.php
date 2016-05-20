@@ -236,7 +236,6 @@ class ticket extends ProductBasic
         }
         else {
             $ticketData = array_shift($_POST);
-            //print_r($ticketData);exit;
             $ret = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
             $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
             if (count($ticketData['price_section'])) {

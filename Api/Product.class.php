@@ -9,26 +9,25 @@
 namespace Api;
 
 
+use Controller\product\ProductBasic;
 use Library\Controller;
+use Model\Product\Land;
+use Model\Product\Ticket;
 
-class Product extends Controller
+class Product extends ProductBasic
 {
-    public function Create()
+
+    public function basicInfo()
     {
-        $params = [];
-        $params['title']    = I('post.product_name', '', 'strip_tags,addslashes');
-        $params['address']  = I('post.address', '', 'strip_tags,addslashes');
-        $params['ptype']    = I('post.product_type');
 
-        $params['area']     = I('post.city');
-
-        $params['jqts']     = I('post.notice', '', 'strip_tags,addslashes');
-        $params['bhjq']     = I('post.details','', 'htmlspecialchars,addslashes');
-        $params['jtzn']     = I('post.traffic','', 'strip_tags,addslashes');
-        $params['imgpath']  = I('post.img_path','', 'strip_tags,addslashes');
-        $params['opentime'] = I('post.opentime', '', 'strip_tags,addslashes');
-        $params['tel']      = I('post.tel', '', 'strip_tags,addslashes');
-
-        $params['salerid']  = '';
     }
+
+    public function ticketCreate()
+    {
+        $ticketData = $_POST;
+        $landModel   = new Land();
+        $ticketObj   = new Ticket();
+        $ret =  $this->SaveTicket($this->memberID, $ticketData, $ticketObj, $landModel);
+    }
+
 }
