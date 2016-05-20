@@ -5,6 +5,7 @@
 
 namespace Model\Product;
 use Library\Model;
+use Model\Product\SellerStorage;
 
 class Ticket extends Model {
 
@@ -308,9 +309,24 @@ class Ticket extends Model {
      * @param  string $date    日期
      * @return [type]          array(1 => 2, 2 => 3)
      */
-    public function getMuchStorage($pid_arr, $date = '') {
+    public function getMuchStorage($pid_arr, $date = '', $memberid = 0, $sapply_did = 0) {
         $date = $date ?: date('Y-m-d', time());
-        $result = $find_pid = array();
+        $result = $seller_storage_pid = $find_pid = array();
+
+        //分销商库存
+        if ($memberid && $sapply_did) {
+            $sellerStorageModel = new SellerStorage();
+            foreach ($pid_arr as $pid) {
+                $seller_storage = $sellerStorageModel->getLeftStorageNum($pid, $sapply_did, $memberid, $date);
+                if($seller_storage !== false && $seller_storage !== -1) {
+                    $result[$pid] = $seller_storage;
+                    $seller_storage_pid[] = $pid;
+                }
+            }
+        }
+
+        $pid_arr = array_diff($pid_arr, $seller_storage_pid);
+        
         //日历模式
         $storage = $this->table(self::__PRODUCT_PRICE_TABLE__)
                     ->where(['pid' => array('in', implode(',', $pid_arr)), 'start_date' => $date, 'ptype' => 1, 'status' => 0])
