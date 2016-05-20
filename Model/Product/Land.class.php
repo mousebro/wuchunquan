@@ -10,6 +10,7 @@
 
 namespace Model\Product;
 use Library\Model;
+use Library\Tools\Helpers;
 use pft\Member;
 
 class Land extends Model
@@ -83,7 +84,9 @@ class Land extends Model
             'creattime'=> date('Y-m-d H:i:s'),
             'password' => md5(md5('pft_'.mt_rand(10000,999999)))//md5(md5('uu654321'))
         );
-        $mem = new Member\MemberAccount()
+        $db = Helpers::getPrevDb();
+        Helpers::loadPrevClass('MemberAccount');
+        $mem = new Member\MemberAccount($db);
         //生成直接供应商
         $reg_res = $mem->register($memParams, array());
 
