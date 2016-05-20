@@ -120,7 +120,8 @@ class ticket extends ProductBasic
         if($landData['p_type']=='H')
         {
             $roundObj = new Round();
-            $data['venus_areas'] = $roundObj->GetRoundZoneInfo($landData['venus_id']);
+            $roundData = $roundObj->GetRoundZoneInfo($landData['venus_id']);
+            $data['venus_areas'] = $roundData['code']==200 ? $roundData['data'] : [];
             $data['mpath']       = 'http://'.IP_INSIDE.'/new/d/api/Product_check_h.php';
             $landData['mpath']       = $data['mpath'];
             $landData['venus_areas'] = $data['venus_areas'];
