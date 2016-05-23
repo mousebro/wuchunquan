@@ -19,11 +19,26 @@ class ApplyReport extends Controller
 
     private function monthCount()
     {
+        //{"status":"ok","xAxis":["iPad","HuaweiPE-CL00"," "],"series":[{"name":"\u6d3b\u8dc3\u73a9\u5bb6","type":"bar","smooth":true,"data":["1","2","9"]}],
+        //"legend":{"data":["iPad","HuaweiPE-CL00"," "]},"total":12}
         $top   = I('get.top', 10, 'intval');
         $group = I('get.group', 1, 'intval');
         $order = I('get.order', 1, 'intval');
         $data  = $this->model->MonthCount($top, $group, $order);
-        self::ajaxReturn($data, 'json', JSON_UNESCAPED_UNICODE);
+        $output = [
+            'series'=>[
+                'name'  =>'月销量统计',
+                'type'  =>'bar',
+                'smooth'=>true
+            ]
+        ];
+        foreach ($data as $item) {
+            $output['xAxis'][] = $item['title'];
+            $output['legend']['data'][] = $item['title'];
+            $output['series']['data'][] = $item['cnt'];
+        }
+
+        self::ajaxReturn($output, 'json', JSON_UNESCAPED_UNICODE);
     }
 
     public function index()

@@ -91,7 +91,7 @@ SQL;
      * @param int $top 取前几名的数据
      * @param int $group 分组依据，1：供应商，2：景点
      * @param int $order 排序依据，1:票数，2:订单数，3:订单总额
-     * @return bool
+     * @return bool|array
      */
     public function MonthCount($top=30, $group=1, $order=1)
     {
@@ -105,11 +105,11 @@ SQL;
         ];
         if ($group==1) {
             $group  ='apply_did';
-            $field = "dname,";
+            $field = "dname as title,";
         }
         elseif ($group==2){
             $group='lid';
-            $field = "ltitle,";
+            $field = "ltitle as title,";
         }
         else {
             return false;
@@ -118,7 +118,8 @@ SQL;
         if ($order==2)      $orderBy = 'onum';
         elseif ($order==3)  $orderBy = 'total_money';
 
-        $field .= "SUM(onum) as onum,SUM(tnum) as tnum, SUM(total_money) as total_money,`$group`";
+        //$field .= "SUM(onum) as onum,SUM(tnum) as tnum, SUM(total_money) as total_money,`$group`";
+        $field .= "SUM($orderBy) as cnt,`$group`";
         $data = $this->table(self::COUNT_TABLE)
             ->field($field)
             ->where($where)
