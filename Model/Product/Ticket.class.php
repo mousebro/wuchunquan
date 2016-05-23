@@ -23,7 +23,7 @@ class Ticket extends Model {
     const __ORDER_DETAIL_TABLE__    = 'uu_order_fx_details';
 
     private $ticket_filed = [
-        'landid', 'title', 'tprice', 'reb', 'discount', 'delaydays', 'status', 'pay',
+        'id', 'landid', 'title', 'tprice', 'reb', 'discount', 'delaydays', 'status', 'pay',
         'notes', 'ddays', 'getaddr', 'smslimit', 's_limit_up', 's_limit_low', 'buy_limit_up',
         'buy_limit_low', 'open_time', 'end_time', 'apply_did', 'pid', 'cancel_cost', 'reb_type',
         'order_start', 'max_order_days', 'Mdetails', 'Mpath', 'sourceT', 'cancel_auto_onMin',
