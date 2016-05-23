@@ -102,8 +102,8 @@ class Register extends Controller{
         //发送频率验证
         if(I('session.timer')) {
             $timeDiff = $_SERVER['REQUEST_TIME'] - I('session.timer');
-            if($timeDiff <= 60) {
-                $this->apiReturn(403, [], '发送间隔太短！请在60秒后再重试。');
+            if($timeDiff <= 120) {
+                $this->apiReturn(403, [], '发送间隔太短！请在120秒后再重试。');
             }
         }
 
@@ -147,15 +147,31 @@ class Register extends Controller{
      * @return
      */
     public function resetVcode() {
-        $mobile = I('post.mobile');
+        $passport = I('post.passport');
 
-        if(!$mobile) {
+        if(!$passport) {
             $this->apiReturn(406, [], '参数错误');
         }
 
-        //手机号码验证
-        if(!ismobile($mobile)) {
-            $this->apiReturn(406, [], '手机号码不正确');
+        //判断是手机号还是账号
+        if(strlen($passport) < 11) {
+            //账号，获取手机号码
+            $db = Helpers::getPrevDb();
+            Helpers::loadPrevClass('MemberAccount');
+            $memModel = new MemberAccount($db);
+
+            $mobile = $memModel->chkPassport($passport);
+            if(!$mobile) {
+                $this->apiReturn(406, [], '手机号码不正确');
+            }
+
+        } else {
+            $mobile = $passport;
+
+            //手机号码验证
+            if(!ismobile($mobile)) {
+                $this->apiReturn(406, [], '手机号码不正确');
+            }
         }
 
         //图形验证码验证
@@ -188,9 +204,11 @@ class Register extends Controller{
         }
 
         //判断手机号码是不是已经注册了
-        $db = Helpers::getPrevDb();
-        Helpers::loadPrevClass('MemberAccount');
-        $memModel = new MemberAccount($db);
+        if(!isset($memModel) || !$memModel) {
+            $db = Helpers::getPrevDb();
+            Helpers::loadPrevClass('MemberAccount');
+            $memModel = new MemberAccount($db);
+        }
 
         //判断手机号码是不是已经注册了
         $res = $memModel->_chkPassport($mobile);
@@ -212,6 +230,9 @@ class Register extends Controller{
          if($res == 100) {
             $res = $cacheRedis->incrBy($cacheKey);
 
+            //记录发送验证码的手机号
+            $_SESSION['reset_mobile'] = $mobile;
+
             $this->apiReturn(200, [], '发送验证码成功');
         } else {
             $this->apiReturn(500, [], '对不起，短信服务器发生故障，造成的不便我们感到十分抱歉。请联系我们客服人员。');
@@ -226,10 +247,10 @@ class Register extends Controller{
      * @return
      */
     public function checkVcode() {
-        $mobile = I('post.mobile');
+        $mobile = I('session.reset_mobile');
         $vcode  = I('post.vcode');
 
-        if(!$mobile || !$vcode) {
+        if(!$vcode || !$mobile) {
             $this->apiReturn(406, [], '参数错误');
         }
 
@@ -262,7 +283,7 @@ class Register extends Controller{
      * @return
      */
     public function resetPwd() {
-        $mobile = I('post.passport');
+        $mobile = I('session.reset_mobile');
         $pass1  = I('post.pass1');
         $pass2  = I('post.pass2');
 
