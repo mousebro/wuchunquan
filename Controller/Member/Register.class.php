@@ -99,14 +99,6 @@ class Register extends Controller{
             $this->apiReturn(403, [], '该手机号发送次数超出系统限制。');
         }
 
-        //发送频率验证
-        if(I('session.timer')) {
-            $timeDiff = $_SERVER['REQUEST_TIME'] - I('session.timer');
-            if($timeDiff <= 120) {
-                $this->apiReturn(403, [], '发送间隔太短！请在120秒后再重试。');
-            }
-        }
-
         //判断手机号码是不是已经注册了
         $db = Helpers::getPrevDb();
         Helpers::loadPrevClass('MemberAccount');
@@ -131,8 +123,10 @@ class Register extends Controller{
 
         if($res == 100) {
             $res = $cacheRedis->incrBy($cacheKey);
-
             $this->apiReturn(200, [], '发送验证码成功');
+
+        } else if($res == -1){
+            $this->apiReturn(403, [], '发送间隔太短！请在120秒后再重试。');
         } else {
             $this->apiReturn(500, [], '对不起，短信服务器发生故障，造成的不便我们感到十分抱歉。请联系我们客服人员。');
         }
@@ -195,14 +189,6 @@ class Register extends Controller{
             $this->apiReturn(403, [], '该手机号发送次数超出系统限制。');
         }
 
-        //发送频率验证
-        if(I('session.timer')) {
-            $timeDiff = $_SERVER['REQUEST_TIME'] - I('session.timer');
-            if($timeDiff <= 60) {
-                $this->apiReturn(403, [], '发送间隔太短！请在60秒后再重试。');
-            }
-        }
-
         //判断手机号码是不是已经注册了
         if(!isset($memModel) || !$memModel) {
             $db = Helpers::getPrevDb();
@@ -232,8 +218,10 @@ class Register extends Controller{
 
             //记录发送验证码的手机号
             $_SESSION['reset_mobile'] = $mobile;
-
             $this->apiReturn(200, [], '发送验证码成功');
+
+        } else if($res == -1){
+            $this->apiReturn(403, [], '发送间隔太短！请在120秒后再重试。');
         } else {
             $this->apiReturn(500, [], '对不起，短信服务器发生故障，造成的不便我们感到十分抱歉。请联系我们客服人员。');
         }
@@ -321,6 +309,8 @@ class Register extends Controller{
 
         $res = $memModel->resetPassword($authMobile, $pass1);
         if($res) {
+             unset( $_SESSION['reset_data']);
+
             $this->apiReturn(200, [], '密码重置成功');
         } else {
             $this->apiReturn(500, [], '密码重置失败');
@@ -335,7 +325,7 @@ class Register extends Controller{
      *
      * @return
      */
-    public function index() {
+    public function account() {
         //参数验证
         $company = I('post.company');
         $mobile  = I('post.mobile');
@@ -388,14 +378,13 @@ class Register extends Controller{
         $memModel   =  new MemberAccount($db);
 
         //获取介绍人
-        $inviterID = $memModel->getInviterId();
+        $inviterID = $memModel->getInviterId(1);
         if($inviterID) {
             $data['inviterID'] = $inviterID;
         }
 
         //扩展数据
-        $extData = array('com_name' => $dname);
-
+        $extData = array('com_name' => $company);
         $res = $memModel->register($data, $extData);
 
         if($res['status'] == 'fail') {
@@ -408,7 +397,7 @@ class Register extends Controller{
 
             //在session里面记录第一步注册的数据
             $tmpData = array('account' => $account, 'time' => time(), 'dtype' => $dtype);
-            $_SESSION['reg_data'] = json_encode($tmpData);
+            $_SESSION['reg_data'] = $tmpData;
 
             $this->apiReturn(200, '注册成功', array('account' => $account));
         }
@@ -420,22 +409,30 @@ class Register extends Controller{
      * @date   2016-05-18
      *
      */
-    public function addInfo() {
-        $company = I('post.nickname ');
-        $companyType  = I('post.company_type');
+    public function accountInfo() {
+        $nickname = safetxt(I('post.nickname'));
+        $companyType  = safetxt(I('post.company_type'));
 
-        $province = I('post.province');
-        $city     = I('post.city');
-        $address  = I('post.address');
-        $business = I('post.business');
-
-        $regData = I('session.reg_data');
-        if(!$regData) {
-            $this->apiReturn(406, [], '请先注册');
+        if(!$nickname || !$companyType) {
+            $this->apiReturn(406, [], '参数错误');
         }
 
-        $regData = @json_decode($regData);
-        if(!$regData) {
+        $typeArr = array(
+            0 => array('景区', '酒店','旅行社','其他'),
+            1 => array('加盟门店', '电商','团购网','旅行社','淘宝/天猫','其他')
+        );
+
+        if(!is_chinese($nickname)) {
+            $this->apiReturn(406, [], '姓名仅限中文汉字，请重新输入');
+        }
+
+        $province = intval(I('post.province'));
+        $city     = intval(I('post.city'));
+        $address  = safetxt(I('post.address'));
+        $business = safetxt(I('post.business'));
+
+        $regData = I('session.reg_data');
+        if(!$regData || !isset($regData['account'])) {
             $this->apiReturn(406, [], '请先注册');
         }
 
@@ -443,17 +440,50 @@ class Register extends Controller{
         $dtype   = $regData['dtype'];
         $regTime = $regData['time'];
 
+        //参数验证
+        $typeTmp = $typeArr[$dtype];
+        if(!in_array($companyType, $typeTmp)) {
+            $this->apiReturn(406, [], '公司类型错误');
+        }
+
         $db = Helpers::getPrevDb();
         Helpers::loadPrevClass('MemberAccount');
         $memModel = new MemberAccount($db);
 
         $id = $memModel->getIdByAccount($account);
+        if(!$id) {
+            $this->apiReturn(500, [], '完善资料失败');
+        }
 
-        $data = array();
-        $extData = array();
+        $data    = array(
+            'cname' => $nickname
+        );
 
+        $extData = array(
+            'com_type' => $companyType
+        );
+
+        if($province) {
+            $extData['province'] = $province;
+        }
+
+        if($city) {
+            $extData['city'] = $city;
+        }
+
+        if($address) {
+            $data['address'] = $address;
+        }
+
+        if($business) {
+            $extData['business'] = $business;
+        }
+
+        //修改
         $res = $memModel->update($id, $data, $extData);
         if($res['status'] == 'ok') {
+            unset($_SESSION['reg_data']);
+
             $this->apiReturn(200, '更新成功', array('account' => $account));
         } else {
             $msg = $res['msg'];
