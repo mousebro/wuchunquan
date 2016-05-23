@@ -79,9 +79,10 @@ class PriceWrite extends Model
         //查找是否有时间交集的记录
         $where  = "greatest(start_date,'$startdate')<=least(end_date,'$enddate')"
                 ." and pid=$pid and ptype=$ptype"
-                . "and string_bj(weekdays,'$ondays')=1";
+                . " and string_bj(weekdays,'$ondays')=1";
         if ($mode==1 && $rid) $where.=" and id<>'$rid'";
         $_id = $this->table($this->price_table)->where($where)->limit(1)->getField('id');
+
         if ($_id>0) return 142;//['code'=>0, 'msg'=>'时间段价格存在交集'];
         //update
         if ($mode==1) {
