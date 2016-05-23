@@ -22,7 +22,7 @@ class ProductBasic extends Controller
     private $packObj=null;
     public function __construct()
     {
-        $this->config = C(include  __DIR__ .'/Conf/product.conf.php');
+        $this->config = C(include  __DIR__ .'/../../Conf/product.conf.php');
     }
     private function _return($code, $msg, $title)
     {
@@ -49,7 +49,7 @@ class ProductBasic extends Controller
      * @param int $apply_did 供应商ID
      * @param Land $landObj
      */
-    public function SaveBasicInfo( $apply_did, Land $landObj )
+    protected function SaveBasicInfo( $apply_did, Land $landObj )
     {
         if (!$apply_did || !is_numeric($apply_did)) {
             self::apiReturn(self::CODE_INVALID_REQUEST,'', '供应商不能为空');
@@ -104,7 +104,7 @@ class ProductBasic extends Controller
      * @param Land $landObj 景区模型
      * @return array
      */
-    public function SaveTicket($memberId,  $ticketData, Ticket $ticketObj, Land $landObj)
+    protected function SaveTicket($memberId,  $ticketData, Ticket $ticketObj, Land $landObj)
     {
         $isSectionTicket = false;// 是否是期票
         if($ticketData['order_start'] && $ticketData['order_end']) $isSectionTicket = true;
@@ -388,7 +388,7 @@ class ProductBasic extends Controller
      * @param array $original_price 修改前的价格,新增时可忽视
      * @return array
      */
-    public function SavePrice($pid, $price_section)
+    protected function SavePrice($pid, $price_section)
     {
         if (!$pid || !is_array($price_section)) {
             return array('code'=>0, 'msg'=>PriceWrite::ErrorMsg(0));
@@ -467,7 +467,7 @@ class ProductBasic extends Controller
     /**
      * 删除价格
      */
-    public function remove_price()
+    protected function remove_price()
     {
         $id     = I('post.id', 0, 'intval');
         $pid    = I('post.pid', 0, 'intval');
@@ -482,7 +482,10 @@ class ProductBasic extends Controller
         self::apiReturn(self::CODE_INVALID_REQUEST, [], '设置失败');
     }
 
-    public function set_status()
+    /**
+     * 票类上下架
+     */
+    protected function set_status()
     {
 
     }

@@ -580,10 +580,6 @@ class Ticket extends Model {
         $info = array_shift($info);
         if($memberId!=$info['apply_did']) return ['code'=>0, "msg"=>"非自身供应产品"];
 
-        $pid     = $GLOBALS['le']->f('pid');
-        $p_name  = $GLOBALS['le']->f('p_name');
-        $dstatus = $GLOBALS['le']->f('apply_limit');
-
         if($status==1 && $info['apply_limit']!=2) return ['code'=>0, "msg"=>"门票状态出错"];
         if($status==2 && $info['apply_limit']!=1) return ['code'=>0, "msg"=>"门票状态出错"];
         if($status==6 && $info['apply_limit']==6) return ['code'=>0, "msg"=>"门票状态出错"];
@@ -594,7 +590,7 @@ class Ticket extends Model {
             $save['p_status']   = 6;
             $save['trash_time'] = $save['verify_time'];
         }
-        $res = $this->table(self::__PRODUCT_TABLE__)->where(['id'=>$pid])->save($save);
+        $res = $this->table(self::__PRODUCT_TABLE__)->where(['id'=>$info['pid']])->save($save);
         if($res===false) {
             $msg = [
                 'log_type'  => 'set_ticket_status_error',
@@ -607,7 +603,7 @@ class Ticket extends Model {
         }
 
         $msText  = array(1=>'上架', 2=>'下架', 6=>'删除');
-        $daction = $msText[$status].' '.$p_name;
+        $daction = $msText[$status].' '.$info['p_name'];
         if(isset($_SESSION['dtype']) && $_SESSION['dtype']==6) {
             $optLog = new OptLog();
             $optLog->StuffOptLog($_SESSION['memberID'], $_SESSION['sid'], $daction);
@@ -615,7 +611,7 @@ class Ticket extends Model {
         // 套票产品连带关系检测
         if($status==2 || $status==6) {
             $pack = new PackTicket();
-            $pack->PackageCheckByPid($pid);
+            $pack->PackageCheckByPid($info['pid']);
         }
         //TODO::通知OTA
         OtaProductNotify::notify($tid, $status);

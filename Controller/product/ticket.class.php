@@ -25,6 +25,18 @@ class ticket extends ProductBasic
         //$this->ticketObj = parent::model('\Product\Ticket');
         $this->ticketObj = new \Model\Product\Ticket();
         $this->memberID = $_SESSION['sid'];
+        parent::__construct();
+    }
+
+    public function set_status()
+    {
+        $tid    = I('post.tid', 0, 'intval');
+        $status = I('post.status', 0, 'intval');
+        $ret = $this->ticketObj->SetTicketStatus($tid, $status, $this->memberID);
+        self::apiReturn($ret['code'],[], $ret['msg']);
+        //parent::set_status();
+        //tid:28678
+        //status:6
     }
 
     public function ticket_attribute()
