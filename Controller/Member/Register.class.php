@@ -107,7 +107,7 @@ class Register extends Controller{
         //判断手机号码是不是已经注册了
         $res = $memModel->_chkPassport($mobile);
         if($res) {
-            $this->apiReturn(403, '该手机号用户已注册票付通会员，请尝试更换其它号码，若有疑问请联系我们！');
+            $this->apiReturn(403, [],'该手机号用户已注册票付通会员，请尝试更换其它号码，若有疑问请联系我们！');
         }
 
         //获取短信模板
