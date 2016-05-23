@@ -128,7 +128,8 @@ class Withdraws extends Model{
         $data = [
             'push_status' => 3,
             'wd_status'   => 1,
-            'memo'        => $errMsg
+            'memo'        => $errMsg,
+            'wd_time'     => date('Y-m-d H:i:s')
         ];
 
         $res = $this->table($this->_withdrawTable)->where(['id' => $orderId])->save($data);
