@@ -299,6 +299,9 @@ class ProductBasic extends Controller
             //print_r(array_diff($tkBaseAttr, $ticketOriginData));
             //exit;
             $diff_ticket_attr = array_diff_assoc($tkBaseAttr, $ticketOriginData);
+            if (isset($ticketData['pay'])) {
+                return self::_return(self::CODE_INVALID_REQUEST,  '票类支付方式属性不允许修改',$ticketData['ttitle']);
+            }
             $ret2 = $ret3 = true;
             $ret1 = $ticketObj->UpdateTicketAttributes(
                 ['id'=>$tid],
