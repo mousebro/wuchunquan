@@ -48,9 +48,12 @@ class Booking extends Controller {
                 if (isset($_SESSION['dtype']) && in_array($_SESSION['dtype'], [0,1])) {
                     $memberid = $_SESSION['memberID'];
                     $aid = I('aid', '', 'intval');
+
+                } else {
+                    $memberid = $aid = I('aid', '', 'intval');
                 }
             }
-            $storage = $TicketModel->getMuchStorage($pids, I('date') ?: date('Y-m-d'), $memberid, $aid);
+            $storage = $TicketModel->getMuchStorage([$pid], I('date') ?: date('Y-m-d'), $memberid, $aid);
             $storages[$pid] = (int)$storage[$pid];
 
         }
