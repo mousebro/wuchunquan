@@ -16,7 +16,8 @@ use pft\Member;
 class Land extends Model
 {
     private $_landExtTable = 'uu_land_f';
-
+    //TODO::SalerID绝对不能>=这个数字。否则整个系统会崩溃@2015年7月27日17:48:01
+    const MAX_SALER_ID = 987654;
     /**
      * 生成并获取终端ID
      * @author Guangpeng Chen
@@ -74,15 +75,21 @@ class Land extends Model
         return $this->table('uu_products')->where(['id' => $pid])->getField('contact_id');
     }
 
+    /**
+     * 保存产品基础数据
+     *
+     * @param array $params
+     * @return array
+     */
     public function AddProduct(Array $params)
     {
         $params['terminal']      = self::getTerminalId();
         $params['terminal_type'] = 1;
         $memParams = array(
-            'dname'=>$params['title'],
-            'dtype'=>2,//直接供应方
-            'creattime'=> date('Y-m-d H:i:s'),
-            'password' => md5(md5('pft_'.mt_rand(10000,999999)))//md5(md5('uu654321'))
+            'dname'     => $params['title'],
+            'dtype'     => 2,//直接供应方
+            'creattime' => date('Y-m-d H:i:s'),
+            'password'  => md5(md5('pft@'.mt_rand(10000,999999)))//随机密码
         );
         $db = Helpers::getPrevDb();
         Helpers::loadPrevClass('MemberAccount');
@@ -94,22 +101,18 @@ class Land extends Model
             $res_account = explode('|', $reg_res['body']);
             $params['salerid'] = $res_account[1];
             if(strlen($params['salerid'])>6 || $params['salerid']>=self::MAX_SALER_ID) {
-                return array('errcode'=>1001,'msg'=>'添加失败，商户ID超出长度！');
+                return array('code'=>0,'msg'=>'添加失败，商户ID超出长度！');
             }
             //建立直接供应商与供应商关系,2014年12月11日16:12:46更新，之前的数据都是错误的，son_id存成了account！！！
-            $rel_res = $mem->createRelationship($params['apply_did'],
-                $res_account[0],1,1);
+            $rel_res = $mem->createRelationship($params['apply_did'], $res_account[0],1,1);
             //TODO:建立直接供应方与直接供应方平级关系
-            if($parent_id>0) {
-                $res_res_p = $mem->createRelationship($parent_id,
-                    $res_account[0],1,2);
-            }
             if($reg_res['status']!='ok'){
-                return $rel_res;
+                return ['code'=>0, 'msg'=>$reg_res['msg']];
             }
         }
-
-        return $this->table('uu_land')->data($params)->add();
+        $res = $this->table('uu_land')->data($params)->add();
+        if (is_numeric($res) && $res>0) return ['code'=>200, 'data'=>['lastid'=>$res]];
+        return ['code'=>0, 'msg'=>'添加失败，服务器发生错误'];
     }
 
     public function UpdateAttrbites(Array $where, Array $attrs)

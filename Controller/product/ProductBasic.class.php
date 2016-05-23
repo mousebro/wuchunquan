@@ -10,6 +10,7 @@ defined('PFT_INIT') or exit('Permission Denied');
  */
 use Library\Controller;
 use Library\Model;
+use Library\Tools;
 use Model\Member\Member;
 use Model\Product\Land;
 use Model\Product\PackTicket;
@@ -19,6 +20,10 @@ use Model\Product\Ticket;
 class ProductBasic extends Controller
 {
     private $packObj=null;
+    public function __construct()
+    {
+        $this->config = C(include  __DIR__ .'/Conf/product.conf.php');
+    }
     private function _return($code, $msg, $title)
     {
         return ['code'=>$code, 'data'=>['ttitle'=>$title,'msg'=>$msg]];
@@ -38,22 +43,56 @@ class ProductBasic extends Controller
         return $area;
     }
 
-    public function SaveLandInfo( Land $landObj )
+    /**
+     * 保存产品基础数据
+     *
+     * @param int $apply_did 供应商ID
+     * @param Land $landObj
+     */
+    public function SaveBasicInfo( $apply_did, Land $landObj )
     {
-        $params = [];
+        if (!$apply_did || !is_numeric($apply_did)) {
+            self::apiReturn(self::CODE_INVALID_REQUEST,'', '供应商不能为空');
+        }
         $params['title']    = I('post.product_name', '', 'strip_tags,addslashes');
-        $params['address']  = I('post.address', '', 'strip_tags,addslashes');
+        if ( $params['title']=='' ) {
+            self::apiReturn(self::CODE_INVALID_REQUEST,'', '产品标题不能为空');
+        }
+        if(mb_strlen($params['title'],'utf8')>30){
+            self::apiReturn(self::CODE_INVALID_REQUEST, [], '景区名称不能超过 30 个字符');
+        }
         $params['ptype']    = I('post.product_type');
-        $params['area']     = I('post.city');
-        $params['jqts']     = I('post.notice', '', 'strip_tags,addslashes');
-        $params['bhjq']     = I('post.details','', 'htmlspecialchars,addslashes');
-        $params['jtzn']     = I('post.traffic','', 'strip_tags,addslashes');
-        $params['imgpath']  = I('post.img_path','', 'strip_tags,addslashes');
-        $params['opentime'] = I('post.opentime', '', 'strip_tags,addslashes');
-        $params['tel']      = I('post.tel', '', 'strip_tags,addslashes');
+        if (!in_array($params['ptype'], $this->config['LIMIT_TYPES']) ) {
+            self::apiReturn(self::CODE_INVALID_REQUEST, [], '产品类型不对');
+        }
 
-        $params['salerid']  = '';
-        $landObj->AddProduct($params);
+        $params = [];
+        $params['apply_did']    = $apply_did;
+        $params['address']  = I('post.address', '', 'strip_tags,addslashes');
+        $params['area']     = I('post.city');
+        //预订须知
+        $params['jqts']     = I('post.notice', '', 'strip_tags,addslashes');
+        //景点详情-图文
+        $params['bhjq']     = I('post.details','', 'htmlspecialchars,addslashes');
+        //交通指南
+        $params['jtzn']     = I('post.traffic','', 'strip_tags,addslashes');
+        //缩略图
+        $params['imgpath']  = I('post.img_path','', 'strip_tags,addslashes');
+        //营业时间
+        $params['opentime'] = I('post.opentime', '', 'strip_tags,addslashes');
+        //景区联系电话
+        $params['tel']      = I('post.tel', '', 'strip_tags,addslashes');
+        if($params['tel']!='') {
+            if ( !Tools::isphone($params['tel']) && !Tools::ismobile($params['tel']) ) {
+                parent::apiReturn(parent::CODE_INVALID_REQUEST,[],'联系电话格式不正确');
+            }
+        }
+        //景区旅游主题,多个主题用英文逗号分隔
+        if (isset($_POST['topics'])) {
+            $params['topic'] = I('post.topics','','strip_tags');
+        }
+        $result = $landObj->AddProduct($params);
+        self::apiReturn($result['code'], $result['data'], $result['msg']);
     }
 
     /**
@@ -86,10 +125,10 @@ class ProductBasic extends Controller
         $tkBaseAttr['ddays']   = $ticketData['ddays']+0;     // 提前下单时间
         $tkBaseAttr['getaddr'] = $ticketData['getaddr'];     // 取票信息
         $tkBaseAttr['notes']   = $ticketData['notes'];       // 产品说明
-        // $jData['order_limit']   = $oneTicket['order_limit'];    // 验证限制
         $tkBaseAttr['buy_limit_up']  = $ticketData['buy_limit_up']+0; // 购买上限
         $tkBaseAttr['buy_limit_low'] = $ticketData['buy_limit_low']+0;
-        $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));
+        //$tkBaseAttr['order_limit'] = $ticketData['order_limit'];// 验证限制
+        $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));// 验证限制
 
         if(($tkBaseAttr['buy_limit_up']>0) && $tkBaseAttr['buy_limit_low']>$tkBaseAttr['buy_limit_up'])
            return self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数', $ticketData['ttitle']);
