@@ -615,7 +615,7 @@ class Ticket extends Model {
         }
         //TODO::通知OTA
         OtaProductNotify::notify($tid, $status);
-        return ['code'=>200];
+        return ['code'=>200,'msg'=>'操作成功'];
         //$_REQUEST['ids'] = $pid;
         //fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $_REQUEST);
     }
