@@ -87,7 +87,6 @@ class TradeRecord extends Controller
                         foreach($items as $item){
                             $subtype = array_merge($subtype,array_keys(\Model\Finance\TradeRecord::getItemCat(),$item));
                         }
-
                         if($subtype){
                             $map['dtype'] = ['in', $subtype];
                         }
