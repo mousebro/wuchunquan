@@ -71,8 +71,14 @@ class ProductBasic extends Controller
         $params['apply_did']    = $apply_did;
         //详细地址
         $params['address']  = I('post.address', '', 'strip_tags,addslashes');
-        //所在地区，省|市|区
-        $params['area']     = I('post.city');
+        //所在地区，省|市|区,获取票付通地区数据：open.12301.cc/areas.json
+        $province = I('post.province');//省
+        $city     = I('post.city');//市
+        if (!is_numeric($province) || !$province) {
+            self::apiReturn(self::CODE_INVALID_REQUEST, [], '省份数据类型错误，');
+        }
+        $zone     = I('post.zone');//区，可为空
+        $params['area']     = "$province|$city|$zone";
         //预订须知
         $params['jqts']     = I('post.notice', '', 'strip_tags,addslashes');
         //景点详情-图文

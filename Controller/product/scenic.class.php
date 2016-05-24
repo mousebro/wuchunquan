@@ -5,10 +5,7 @@
  * Date: 5/23-023
  * Time: 17:22
  */
-
 namespace Controller\product;
-
-
 use Model\Product\Land;
 
 class scenic extends ProductBasic
