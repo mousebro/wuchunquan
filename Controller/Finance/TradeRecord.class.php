@@ -73,7 +73,7 @@ class TradeRecord extends Controller
                         $map['_complex'] = [
                             [
                                 'aid'   => $fid,
-                                'ptype' => 2,
+                                'ptype' => ['in', [2,3]],
                             ],
                             [
                                 'fid'   => $fid,
@@ -86,7 +86,7 @@ class TradeRecord extends Controller
                     }
                 } else {
                     if ($ptypes == 99) {
-                        $map['ptype'] = 2;
+                        $map['ptype'] = ['in', [2,3]];
                         $map['aid']   = $fid;
                     } else {
                         $map['ptype'] = $ptypes;
