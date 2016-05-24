@@ -74,14 +74,12 @@ class TradeRecord extends Controller
                     if ($items != array_intersect($items, array_keys(\Model\Finance\TradeRecord::getTradeItems()))) {
                         throw new Exception('交易类目错误', 202);
                     } else {
-                        $subtypes = '';
+                        $subtype = [];
                         foreach($items as $item){
-                            $subtypes .= \Model\Finance\TradeRecord::getItemCat()[$item];
+                            $subtype = array_merge($subtype,array_keys(\Model\Finance\TradeRecord::getItemCat(),$item));
                         }
 
-                        if($subtypes){
-                            $subtypes = rtrim($subtypes,',');
-                            $subtype = explode(',',$subtypes);
+                        if($subtype){
                             $map['dtype'] = ['in', $subtype];
                         }
                     }
@@ -91,7 +89,7 @@ class TradeRecord extends Controller
             //交易类型
             if (isset($_REQUEST['dtype'])) {
                 $dtype = \safe_str(I('dtype'));
-                if (is_numeric($dtype) && in_array($dtype,array_keys(\Model\Finance\TradeRecord::getTradeTypes())) ) {
+                if (is_numeric($dtype) && in_array($dtype,array_column(\Model\Finance\TradeRecord::getItemCat(),0)) ) {
                     if(isset($subtype)){
                         if(!in_array($dtype,$subtype)){
                             throw new Exception('交易类型与交易类目不符');
@@ -216,7 +214,7 @@ class TradeRecord extends Controller
 //            'ptype'   => '',
 //            'super'   => 1,
 //        ];
-//        $this->getList();
-        $this->getDetails();
+        $this->getList();
+//        $this->getDetails();
     }
 }

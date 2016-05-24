@@ -14,10 +14,10 @@ use Model\Member\Member;
 class TradeRecord extends Model
 {
     private $trade_record_table = 'pft_member_journal';
-    private $trade_item_table   = 'pft_trade_item';
-    private $product_table      = 'uu_products';
-    private $order_table        = 'uu_ss_order';
-    private $ticket_table       = 'uu_jq_ticket';
+//    private $trade_item_table = 'pft_trade_item';
+    private $product_table = 'uu_products';
+    private $order_table = 'uu_ss_order';
+    private $ticket_table = 'uu_jq_ticket';
 
     //交易大类
     public static function getTradeItems()
@@ -29,43 +29,33 @@ class TradeRecord extends Model
             4 => '佣金利润',
         );
     }
-    
-    public static function getItemCat(){
-        return array(
-            1=> '7,8,9,10,22,',
-            2=> '0,1,5,14,15,16,17,23,',
-            3=> '3,4,6,11,12,13,18,',
-            4=> '19,20,21,'
-        );
-    }
 
-    //交易明细分类
-    public static function getTradeTypes()
+    public static function getItemCat()
     {
         return array(
-            0  => '购买产品',
-            1  => '修改/取消订单',
-            3  => '充值/扣款',
-            4  => '供应商授信余额',
-            5  => '产品利润',
-            6  => '提现冻结',
-            7  => '电子凭证费',
-            8  => '短信息费',
-            9  => '银行交易手续费',
-            10 => '凭证费',
-            11 => '供应商信用额度变化',
-            12 => '取消提现',
-            13 => '拒绝提现',
-            14 => '退款手续费',
-            15 => '押金',
-            16 => '充值返现',
-            17 => '撤销/撤改订单',
-            18 => '转账',
-            19 => '佣金发放',
-            20 => '佣金提现',
-            21 => '获得佣金',
-            22 => '平台费',
-            23 => '出售产品',
+            0  => [2,'购买产品',],
+            1  => [2,'修改/取消订单',],
+            3  => [3,'充值/扣款',],
+            4  => [3,'供应商授信余额',],
+            5  => [2,'产品利润',],
+            6  => [3,'提现冻结',],
+            7  => [1,'电子凭证费',],
+            8  => [1,'短信息费',],
+            9  => [1,'银行交易手续费',],
+            10 => [1,'凭证费',],
+            11 => [3,'供应商信用额度变化',],
+            12 => [3,'取消提现',],
+            13 => [3,'拒绝提现',],
+            14 => [2,'退款手续费',],
+            15 => [2,'押金',],
+            16 => [2,'充值返现',],
+            17 => [2,'撤销/撤改订单',],
+            18 => [3,'转账',],
+            19 => [4,'佣金发放',],
+            20 => [4,'佣金提现',],
+            21 => [4,'获得佣金',],
+            22 => [1,'平台费',],
+            23 => [2,'出售产品',],
         );
     }
 
@@ -108,15 +98,13 @@ class TradeRecord extends Model
     {
         $table  = "{$this->trade_record_table} AS tr";
         $join   = [
-            "LEFT JOIN {$this->trade_item_table} AS ti ON tr.dtype=ti.dtype",
             "LEFT JOIN {$this->order_table} AS o ON tr.orderid=o.ordernum",
             "LEFT JOIN {$this->ticket_table} AS t ON t.id=o.tid",
             "LEFT JOIN {$this->product_table} AS p ON p.id=t.pid",
         ];
         $field  = [
-            'tr.rectime', //交易时间
-            'ti.item',            //交易大类
-            'ti.content',         //交易明细类别
+            'tr.rectime',        //交易时间
+            'tr.dtype',          //交易类型
             'tr.fid',             //主体商户
             'tr.aid',             //对方商户
             'tr.orderid',         //交易号
@@ -131,14 +119,14 @@ class TradeRecord extends Model
         $where  = ['tr.id' => $trade_id];
         $record = $this->table($table)->field($field)->where($where)->join($join)->find();
         //记录查询语句
-        \pft_log('trade_record/get_details/query',$this->getLastSql());
-        return $this->resolveRecord($record,0);
-//        return $this->getDbError();
-        //        var_dump($this->getLastSql());
+        \pft_log('trade_record/get_details/query', $this->getLastSql());
+
+        return $this->resolveRecord($record, 0);
     }
 
     /**
      * 获取交易记录列表
+     *
      * @param      $memberId
      * @param      $map
      * @param      $page
@@ -146,16 +134,16 @@ class TradeRecord extends Model
      *
      * @return array
      */
-    public function getList($memberId, $map, array $time, $page, $limit, $super=0)
+    public function getList($memberId, $map, array $time, $page, $limit, $super = 0)
     {
-        $table = "{$this->trade_record_table}";
-        $where = [];
-        $where['rectime'] = ['between',$time];
-        $where = array_merge($where, $map);
+        $table            = "{$this->trade_record_table}";
+        $where            = [];
+        $where['rectime'] = ['between', $time];
+        $where            = array_merge($where, $map);
 
-        $field   = [
+        $field = [
             'id as trade_id',
-//            'fid',
+            //            'fid',
             'rectime',
             'dtype',
             'orderid',
@@ -164,15 +152,15 @@ class TradeRecord extends Model
             'lmoney',
             'aid',
             'ptype',
-//            'opid',
+            //            'opid',
             'order_channel',
             'memo',
         ];
         //是否超级管理员查看会员记录
-        if($super){
-            $where['fid'] = ['neq',$memberId];
-            $field[] = 'fid';
-        }else{
+        if ($super) {
+            $where['fid'] = ['neq', $memberId];
+            $field[]      = 'fid';
+        } else {
             $where['fid'] = $memberId;
         }
 
@@ -181,8 +169,8 @@ class TradeRecord extends Model
         $order   = 'id desc';
         $records = $this->table($table)->field($field)->where($where)->page($page)->limit($limit)->order($order)->select();
         //记录查询语句
-        \pft_log('trade_record/get_list/query',$this->getLastSql());
-        
+        \pft_log('trade_record/get_list/query', $this->getLastSql());
+
         $data = [];
         if (is_array($records)) {
             foreach ($records as $record) {
@@ -190,29 +178,29 @@ class TradeRecord extends Model
             }
         }
 
-        $total                  = $this->table($table)->where($where)->count();
+        $total = $this->table($table)->where($where)->count();
 
         $return = [
-            'btime'   => $time[0],
-            'etime'   => $time[1],
-            'total'   => $total,
-            'page'    => $page,
-            'limit'   => $limit,
-            'list'    => $data,
+            'btime' => $time[0],
+            'etime' => $time[1],
+            'total' => $total,
+            'page'  => $page,
+            'limit' => $limit,
+            'list'  => $data,
         ];
 
-        if(!$super){
+        if ( ! $super) {
             $income_map             = $outcome_map = $where;
             $income_map['daction']  = 0;
             $outcome_map['daction'] = 1;
             $income                 = $this->table($table)->where($income_map)->getField('sum(dmoney)');
             $outcome                = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
-            $income = $income ? $income : 0;
-            $outcome = $outcome ? $outcome : 0;
-            $balance = strval(round(($income - $outcome) / 100, 2));
-            $income  = strval(round($income / 100, 2));
-            $outcome = strval(round($outcome / 100, 2));
-            $return['sum'] = [
+            $income                 = $income ? $income : 0;
+            $outcome                = $outcome ? $outcome : 0;
+            $balance                = strval(round(($income - $outcome) / 100, 2));
+            $income                 = strval(round($income / 100, 2));
+            $outcome                = strval(round($outcome / 100, 2));
+            $return['sum']          = [
                 'balance' => $balance,
                 'income'  => $income,
                 'outcome' => $outcome,
@@ -222,21 +210,22 @@ class TradeRecord extends Model
         return $return;
 
     }
-    
-    public function getExList($memberId, $map, array $time, $super=0){
-        $table = "{$this->trade_record_table}";
-        $where = [];
-        $where['rectime'] = ['between',$time];
-        $where = array_merge($where, $map);
+
+    public function getExList($memberId, $map, array $time, $super = 0)
+    {
+        $table            = "{$this->trade_record_table}";
+        $where            = [];
+        $where['rectime'] = ['between', $time];
+        $where            = array_merge($where, $map);
 
         //是否超级管理员查看会员记录
-        if($super){
-            $where['fid'] = ['neq',$memberId];
-        }else{
+        if ($super) {
+            $where['fid'] = ['neq', $memberId];
+        } else {
             $where['fid'] = $memberId;
         }
 
-        $field = [
+        $field   = [
             'fid',
             'rectime',
             'orderid',
@@ -252,16 +241,18 @@ class TradeRecord extends Model
         ];
         $order   = 'id asc';
         $records = $this->table($table)->field($field)->where($where)->order($order)->select();
-        \pft_log('trade_record/get_list/query',$this->getLastSql());
-        
+        \pft_log('trade_record/get_list/query', $this->getLastSql());
+
         $data = [];
         if (is_array($records)) {
             foreach ($records as $record) {
                 $data[] = $this->resolveRecord($record);
             }
         }
+
         return $data;
     }
+
     /**
      * 转化为可读数据
      *
@@ -269,7 +260,7 @@ class TradeRecord extends Model
      *
      * @return array
      */
-    protected function resolveRecord(array $record,$if_unset=1)
+    protected function resolveRecord(array $record, $if_unset = 1)
     {
         if (isset($record['dmoney'])) {
             $record['dmoney'] = strval(sprintf($record['dmoney'] / 100, 2));
@@ -280,35 +271,33 @@ class TradeRecord extends Model
         //查询会员名称
         $memberModel = new Member();
         if (isset($record['fid'])) {
-            if($record['fid']){
+            if ($record['fid']) {
                 $record['member'] = $memberModel->getMemberCacheById($record['fid'], 'dname');
             }
-            $record['member'] = !empty($record['member'])? $record['member'] :'';
-            if($if_unset) unset($record['fid']);
+            $record['member'] = ! empty($record['member']) ? $record['member'] : '';
+            if ($if_unset) {
+                unset($record['fid']);
+            }
         }
         if (isset($record['aid'])) {
-            if($record['aid']){
+            if ($record['aid']) {
                 $record['counter'] = $memberModel->getMemberCacheById($record['aid'], 'dname');
             }
-            $record['counter'] = !empty($record['counter'])?$record['counter']:'';
-            if($if_unset) unset($record['aid']);
+            $record['counter'] = ! empty($record['counter']) ? $record['counter'] : '';
+            if ($if_unset) {
+                unset($record['aid']);
+            }
         }
         if (isset($record['opid'])) {
-            if($record['opid']){
+            if ($record['opid']) {
                 $record['oper'] = $memberModel->getMemberCacheById($record['opid'], 'dname');
             }
-            $record['oper'] = !empty($record['oper'])?$record['oper']:'';
-            if($if_unset) unset($record['opid']);
+            $record['oper'] = ! empty($record['oper']) ? $record['oper'] : '';
+            if ($if_unset) {
+                unset($record['opid']);
+            }
         }
 
-        //交易记录对应分类
-        if (isset($record['content']) && isset($record['item'])) {
-            $item_list = self::getTradeItems();
-            if (array_key_exists($record['item'], $item_list)) {
-                $record['item'] = $item_list[$record['item']] . '-' . $record['content'];
-            }
-            unset($record['content']);
-        }
         //交易渠道
         if (isset($record['order_channel'])) {
             $channel_list = self::getOrderChannels();
@@ -318,33 +307,38 @@ class TradeRecord extends Model
         }
         //交易渠道
         if (isset($record['ptype'])) {
-            $ptype = $record['ptype'];
+            $ptype      = $record['ptype'];
             $ptype_list = self::getPayTypes();
             if (array_key_exists($ptype, $ptype_list)) {
                 $record['ptype'] = $ptype_list[$ptype];
             }
         }
         //区分账户余额与授信余额
-        if(isset($record['lmoney'])){
-            if(isset($ptype)){
-                if(in_array($ptype,[0,1,4,5,6])){
+        if (isset($record['lmoney'])) {
+            if (isset($ptype)) {
+                if (in_array($ptype, [0, 1, 4, 5, 6])) {
                     $record['cre_money'] = '';
                     $record['acc_money'] = $record['lmoney'];
-                }elseif(in_array($ptype,[2,3])){
+                } elseif (in_array($ptype, [2, 3])) {
                     $record['cre_money'] = $record['lmoney'];
                     $record['acc_money'] = '';
                 }
-            }else{
-                throw new Exception('支付数据缺失',301);
+            } else {
+                throw new Exception('支付数据缺失', 301);
             }
             unset($record['lmoney']);
         }
 
         //交易类型
-        if(isset($record['dtype'])){
-            $dtype_list = self::getTradeTypes();
+        if (isset($record['dtype'])) {
+            $dtype_list = array_column(self::getItemCat(),1);
             if (array_key_exists($record['dtype'], $dtype_list)) {
                 $record['dtype'] = $dtype_list[$record['dtype']];
+                //交易记录对应分类
+                $item_list = self::getTradeItems();
+                if (array_key_exists($record['item'], $item_list)) {
+                    $record['item'] = $item_list[$record['item']] . '-' . $record['dtype'];
+                }
             }
 
         }
