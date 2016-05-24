@@ -497,14 +497,15 @@ class Ticket extends Model {
      * 获取该景区底下其他门票
      *
      * @author Guangpeng Chen
-     * @param $lid
+     * @param int $lid 景点ID
+     * @param int $status 票状态
      * @return array
      */
-    public function GetLandTickets($lid)
+    public function GetLandTickets($lid, $status)
     {
         $where = [
             't.landid'=>$lid,
-            'p.apply_limit'=>['neq',6],
+            'p.apply_limit'=>['eq',$status],
         ];
         $data = $this->table(self::__TICKET_TABLE__ . ' t')->join(self::__PRODUCT_TABLE__ . " p on t.pid=p.id")
             ->where($where)

@@ -54,7 +54,7 @@ class ticket extends ProductBasic
                 .'t.overdue_auto_check,t.overdue_auto_cancel,t.batch_check,t.batch_day_check,t.batch_diff_identities,p.apply_limit,'
                 .'t.refund_audit,t.refund_rule,t.refund_early_time,t.delaytime,t.cancel_notify_supplier ';
             $join = 'left join uu_products p on t.pid=p.id left join uu_land_f f on t.id=f.tid';
-            $data = $this->ticketObj->QueryTicketInfo(['t.id'=>$tid,'p.apply_limit'=>1], $fileds, $join);
+            $data = $this->ticketObj->QueryTicketInfo(['t.id'=>$tid], $fileds, $join);
             if(!$data) parent::apiReturn(self::CODE_INVALID_REQUEST, [],'产品不存在');
             $data = array_shift($data);
             //print_r($data);exit;
@@ -212,7 +212,7 @@ class ticket extends ProductBasic
         $other_tickets = [];
         // 获取该景区底下其他门票，套票除外
         if ($landData['p_type']!='F') {
-            $other_ticket_ret = $this->ticketObj->GetLandTickets($lid);
+            $other_ticket_ret = $this->ticketObj->GetLandTickets($lid, $data['apply_limit']);
             if ($other_ticket_ret['code']==200) $other_tickets = $other_ticket_ret['data'];
         } elseif ($tid>0) {
             $other_tickets[] = [
