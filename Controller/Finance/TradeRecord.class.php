@@ -259,12 +259,12 @@ class TradeRecord extends Controller
         }
     }
 
-    //$url       = 'http://www.12301.local/route/?c=Finance_TradeRecord&a=test';
-    public function test()
-    {
-        $_SESSION['sid'] = 1;
-        $this->getList();
-        //            $this->srchMem();
-        //            $this->getDetails();
-    }
+//    //$url       = 'http://www.12301.local/route/?c=Finance_TradeRecord&a=test';
+//    public function test()
+//    {
+//        $_SESSION['sid'] = 1;
+//        $this->getList();
+//        //            $this->srchMem();
+//        //            $this->getDetails();
+//    }
 }
