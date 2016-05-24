@@ -188,7 +188,7 @@ class TradeRecord extends Controller
             'dtype'     => '交易类型',
             'ptype'     => '支付方式',
             'dmoney'    => '收支',
-            'body'      => '交易内容',
+//            'body'      => '交易内容',
             'memo'      => '备注',
             'member'    => '交易商户',
             'counter'   => '对方商户',

@@ -237,7 +237,7 @@ class TradeRecord extends Model
             'lmoney',
             'aid',
             'opid',
-            'body',
+//            'body',
             'memo',
         ];
         $order   = 'id asc';
