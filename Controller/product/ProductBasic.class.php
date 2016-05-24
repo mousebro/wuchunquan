@@ -197,7 +197,7 @@ class ProductBasic extends Controller
         }
 
         $tkBaseAttr['cancel_cost'] = (isset($ticketData['cancel_cost'])) ? json_encode($ticketData['cancel_cost']):'';
-        $tkBaseAttr['cancel_cost'] = addslashes($tkBaseAttr['cancel_cost']);
+        //$tkBaseAttr['cancel_cost'] = addslashes($tkBaseAttr['cancel_cost']);
         // exit;
 
         // 订单有效期 类型 0 游玩时间 1 下单时间 2 区间
