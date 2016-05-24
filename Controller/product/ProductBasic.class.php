@@ -67,8 +67,11 @@ class ProductBasic extends Controller
         }
 
         $params = [];
+        //供应商ID
         $params['apply_did']    = $apply_did;
+        //详细地址
         $params['address']  = I('post.address', '', 'strip_tags,addslashes');
+        //所在地区，省|市|区
         $params['area']     = I('post.city');
         //预订须知
         $params['jqts']     = I('post.notice', '', 'strip_tags,addslashes');
@@ -299,7 +302,7 @@ class ProductBasic extends Controller
             //print_r(array_diff($tkBaseAttr, $ticketOriginData));
             //exit;
             $diff_ticket_attr = array_diff_assoc($tkBaseAttr, $ticketOriginData);
-            if (isset($ticketData['pay'])) {
+            if (isset($diff_ticket_attr['pay'])) {
                 return self::_return(self::CODE_INVALID_REQUEST,  '票类支付方式属性不允许修改',$ticketData['ttitle']);
             }
             $ret2 = $ret3 = true;
