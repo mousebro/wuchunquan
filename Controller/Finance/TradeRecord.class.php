@@ -23,8 +23,17 @@ class TradeRecord extends Controller
 
             //超级管理员查看会员交易记录
             $super = (intval(I('super')) && $memberId == 1);
-
             $map = [];
+            if($_REQUEST['fid']) {
+                $fid = intval(I('fid'));
+                if ($fid) {
+                    if ($super || $memberId == $fid) {
+                        $map['fid'] = $fid;
+                    } else {
+                        throw new Exception("无权查看",211);
+                    }
+                }
+            }
             //订单号
             $orderid = \safe_str(I('ordreid'));
             if ($orderid) {
@@ -46,7 +55,7 @@ class TradeRecord extends Controller
             $etime = \safe_str(I('etime'));
 
             if ($etime && ! strtotime($etime)) {
-                throw new Exception('时间格式错误', 201);
+                throw new Exception('时间格式错误', 202);
             }
             if(!$etime){
                 $etime = "now";
@@ -59,7 +68,7 @@ class TradeRecord extends Controller
                 if ($ptypes != '') {
                     $ptypes = explode('|', $ptypes);
                     if ($ptypes != array_intersect($ptypes, array_keys(\Model\Finance\TradeRecord::getPayTypes()))) {
-                        throw new Exception('支付类型错误', 202);
+                        throw new Exception('支付类型错误', 203);
                     } else {
                         $map['ptype'] = ['in', $ptypes];
                     }
@@ -72,7 +81,7 @@ class TradeRecord extends Controller
                 if ($items != '') {
                     $items = explode('|', $items);
                     if ($items != array_intersect($items, array_keys(\Model\Finance\TradeRecord::getTradeItems()))) {
-                        throw new Exception('交易类目错误', 202);
+                        throw new Exception('交易类目错误', 204);
                     } else {
                         $subtype = [];
                         foreach($items as $item){
@@ -92,12 +101,12 @@ class TradeRecord extends Controller
                 if (is_numeric($dtype) && in_array($dtype,array_column(\Model\Finance\TradeRecord::getItemCat(),0)) ) {
                     if(isset($subtype)){
                         if(!in_array($dtype,$subtype)){
-                            throw new Exception('交易类型与交易类目不符');
+                            throw new Exception('交易类型与交易类目不符',205);
                         }
                     }
                     $map['dtype'] = $dtype;
                 }else{
-                    throw new Exception('交易类型错误:', 203);
+                    throw new Exception('交易类型错误:', 206);
                 }
             }
             $map['dmoney'] = ['gt', 0 ];
@@ -118,14 +127,14 @@ class TradeRecord extends Controller
                     $filename = date('YmdHis') . '交易记录';
                     $this->exportExcel($data, $filename);
                 } else {
-                    throw new Exception('查询失败', '203');
+                    throw new Exception('查询结果为空', 207);
                 }
             } else {
                 $data = $recordModel->getList($memberId, $map, $time, $page, $limit, $super);
                 if (is_array($data)) {
                     $this->apiReturn(200, $data);
                 } else {
-                    throw new Exception('查询失败', '203');
+                    throw new Exception('查询结果为空', 208);
                 }
             }
         } catch (Exception $e) {
@@ -198,23 +207,37 @@ class TradeRecord extends Controller
 
         );
     }
-    //$url       = 'http://www.12301.local/route/?c=Finance_TradeRecord&a=test';
-    public function test()
-    {
-        $_SESSION['sid'] = 1;
-//        $_REQUEST        = [
-//            'orderid' => '3306776',
-//            'item'    => '',
-//            'btime'   => '2015-05-01 99:00:00',
-//            'etime'   => '',
-//            'page'    => 1,
-//            'limit'   => 1,
-//            'excel'   => '',
-//            'dtype'   => '',
-//            'ptype'   => '',
-//            'super'   => 1,
-//        ];
-        $this->getList();
-//        $this->getDetails();
+    
+    public function srchMem(){
+        $memberId = $this->isLogin('ajax');
+        $srch = \safe_str(I('srch'));
+        try{
+            if($memberId!=1){
+                throw new Exception('无权查看',209);
+            }
+            if($srch){
+                $model = new \Model\Finance\TradeRecord();
+                $data = $model->getMember($srch);
+                if($data){
+                    $this->apiReturn(200,$data,'操作成功');
+                }else{
+                    throw new Exception('查询结果为空', 210);
+                }
+            }else{
+                throw new Exception('参数缺失', 212);
+            }
+        }catch (Exception $e) {
+            \pft_log('trade_record/srch_mem/err', $e->getCode() . "|" . $e->getMessage(), 'month');
+            $this->apiReturn($e->getCode(), [], $e->getMessage());
+        }
     }
+    
+    //$url       = 'http://www.12301.local/route/?c=Finance_TradeRecord&a=test';
+//    public function test()
+//    {
+//        $_SESSION['sid'] = 1;
+////        $this->getList();
+//        $this->srchMem();
+////        $this->getDetails();
+//    }
 }

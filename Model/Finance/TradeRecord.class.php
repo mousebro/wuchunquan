@@ -351,5 +351,12 @@ class TradeRecord extends Model
 
         return $record;
     }
-
+    
+    public function getMember($srch,$limit=10){
+        $where['dname'] = ['like', "%$srch%"];
+        $field = ['id as fid','account','dname'];
+        $return = $this->table('pft_member')->where($where)->field($field)->limit($limit)->select();
+        \pft_log('trade_record/srch_mem/query', $this->getLastSql());
+        return $return;
+    }
 }
