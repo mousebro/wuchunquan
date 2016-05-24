@@ -80,9 +80,25 @@ SQL;
         }
     }
 
-    public function GetOrderSummaryByLid($day1=0, $day2=0, $lid, $apply_did)
+    public function GetOrderSummaryById($day1=0, $day2=0, $lid=0, $apply_did=0, $group=0)
     {
-
+        $where = [];
+        if ($lid==0 && $apply_did==0) return false;
+        if ($lid>0) $where['lid']       = $lid;
+        if ($apply_did>0) $where['apply_did'] = $apply_did;
+        if ($day1>0) $where['sday'][]   = ['egt', $day1];
+        if ($day2>0) $where['sday'][]   = ['lgt', $day2];
+        $field = 'SUM(tnum) as tnum,SUM(onum) as onum,SUM(total_money) AS total_money';
+        if ($group==1) $field .= ",substr(sday,1,6) as sday";
+        else $field .= ",sday";
+        $data = $this->table(self::COUNT_TABLE)
+        ->field($field)
+        ->where($where)
+        ->group('sday')
+        ->order("sday ASC")
+        ->select();
+        //echo $this->getLastSql();
+        return $data;
     }
 
     /**

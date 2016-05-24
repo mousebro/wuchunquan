@@ -37,7 +37,6 @@ class ApplyReport extends Controller
             $output['legend']['data'][] = $item['title'];
             $output['series']['data'][] = $item['cnt'];
         }
-
         self::ajaxReturn($output, 'json', JSON_UNESCAPED_UNICODE);
     }
 
@@ -48,12 +47,30 @@ class ApplyReport extends Controller
         if ($dataType==1) {
             $this->monthCount();
         }
-        $day1       = I('get.start_day', 0, 'intval');
-        $day2       = I('get.end_day', 0, 'intval');
+        $day1       = I('get.start_day', date('Ymd', strtotime('-30 days')), 'intval');
+        $day2       = I('get.end_day', date('Ymd'), 'intval');
         $uid        = I('get.uid', 0,'intval');
         $lid        = I('get.lid',0, 'intval');
-        $dnames     = $this->model->GetTitleList(1, 20160501, 20160522);
-        $products   = $this->model->GetTitleList(2, 20160501, 20160522);
+        $group      = I('get.group', 0, 'intval');
+        $dnames     = $this->model->GetTitleList(1, $day1, $day2);
+        $products   = $this->model->GetTitleList(2, $day1, $day2);
+        $data       = $this->model->GetOrderSummaryById($day1, $day2, $lid, $uid, $group);
         //print_r($data);
+        $series = array();
+        $dt = ['onum'=>'总订单量','tnum'=>'票数','money'=>'总金额'];
+        foreach ($data as $item) {
+            $series['onum'][$item['sday']] = $item['onum'];
+            $series['tnum'][$item['sday']] = $item['tnum'];
+            $series['money'][$item['sday']] = $item['total_money'];
+        }
+        foreach ($series as $key=>$item) {
+            $legend['data'][] = $dt[$key];
+            $json_data[] = [
+                'name' => $dt[$key],
+                'type' => 'line',
+                'smooth'=> true,
+                'data'  => array_values($item),
+            ];
+        }
     }
 }
