@@ -98,6 +98,7 @@ class Order extends Controller
         $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付
         $pay_to_pft     = false;
         $tradeno        = I('post.tradeno');//流水号
+
         if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6) {
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，支付方式不对');
         }
