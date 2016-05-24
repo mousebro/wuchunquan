@@ -146,6 +146,7 @@ class YXStorage extends Model{
         $reserveNum = $info['reserve_num'];
 
         $resStorage = 0;
+
         if($sellerStorage == -1) {
             //使用未分配的库存
             $leftStorage = $this->_getLeftStorage($roundId, $areaId, $reserveNum);
@@ -817,9 +818,8 @@ class YXStorage extends Model{
         $where = array(
             'venue_id'    => $venusId,
             'zone_id'     => $areaId,
-            'seat_status' => array('neq', 5)
+            'seat_status' => array(array('neq', 1),array('neq', 5), 'and'),
         );
-
         $allSeats = $this->table($this->_seatsTable)->where($where)->count();
         $allSeats = $allSeats === false ? 0 : intval($allSeats);
 
@@ -858,14 +858,15 @@ class YXStorage extends Model{
             'status'   => array('in', '2, 3')
         );
 
+        //获取的是一级分销商的数据
         if($resellerId) {
-            $where['opid'] = $resellerId;
+            $where['top_reseller_id'] = $resellerId;
         }
 
         $sales = $this->table($this->_dynTable)->where($where)->count();
         $sales = $sales === false ? 0 : intval($sales);
 
-        return $sales;
+        return $sales; 
     }
 
     /**

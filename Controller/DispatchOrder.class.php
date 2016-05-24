@@ -16,7 +16,7 @@ class DispatchOrder extends Controller
     public function __construct()
     {
         $this->memberId = $this->isLogin('ajax');
-        $this->checkAuth($this->memberId);
+        //        $this->checkAuth($this->memberId);
     }
 
     /**
@@ -32,13 +32,10 @@ class DispatchOrder extends Controller
         }
         $limit         = $page ? ($limit ? $limit : 20) : 9999;
         $relationModel = new MemberRelationship($this->memberId);
-        $distributor   = $relationModel->getDistributor($search, $page, $limit);
-        $total         = $relationModel->getDistributor($search, $page, $limit, true);
-        if (is_array($distributor) && count($distributor) > 0) {
-            $data = array("page" => $page, "limit" => $limit, "total" => $total, "list" => $distributor);
-        } else {
-            $data = array("page" => $page, "limit" => $limit, "total" => 0, "list" => []);
-        }
+        $result  = $relationModel->getDispatchDistributor($search, $page, $limit);
+        $total = reset($result);
+        $distributor= end($result);
+        $data = array("page" => $page, "limit" => $limit, "total" => $total, "list" => $distributor);
         $this->apiReturn(200, $data, '操作成功');
     }
 
@@ -46,19 +43,19 @@ class DispatchOrder extends Controller
      * 检查是否有计调下单权限
      * @param $memberId
      */
-    private function checkAuth($memberId)
-    {
-        if (in_array($memberId, [3385, 6197,57675])) {
-            return;
-        }
-        $memberModel = new Member();
-        $member_info = $memberModel->getMemberInfo($memberId);
-        if ($member_info) {
-            $member_group = $member_info['group_id'];
-            if (in_array($member_group, [2,4])) {
-                return;
-            }
-        }
-        $this->apiReturn(204,[],'当前账号无计调下单权限');
-    }
+    //    private function checkAuth($memberId)
+    //    {
+    //        if (in_array($memberId, [3385, 6197,57675])) {
+    //            return;
+    //        }
+    //        $memberModel = new Member();
+    //        $member_info = $memberModel->getMemberInfo($memberId);
+    //        if ($member_info) {
+    //            $member_group = $member_info['group_id'];
+    //            if (in_array($member_group, [2,4])) {
+    //                return;
+    //            }
+    //        }
+    //        $this->apiReturn(204,[],'当前账号无计调下单权限');
+    //    }
 }

@@ -13,7 +13,119 @@
  * Think 系统函数库
  */
 
+function utf8Length($str)
+{
+    $length = strlen(preg_replace('/[\x00-\x7F]/', '', $str));
+    if ($length) {
+        return strlen($str) - $length + intval($length / 3);
+    }
+    return strlen($str);
+}
 
+function throw_exception($error) {
+    if (!defined('IGNORE_EXCEPTION')) {
+        showmessage($error, '', 'exception');
+    } else {
+        exit();
+    }
+}
+/**
+ * 向elk日志系统记录日志[elk.12301dev.com]
+ *
+ * @author Guangpeng Chen
+ * @param string $log_name 日志文件名
+ * @param mixed $log_message 日志内容，可以为字符串或数组
+ */
+function write_to_logstash($log_name, $log_message)
+{
+    $log_dir = BASE_LOG_DIR . '/logstash/' . $log_name .'_' . date('ymd') .'.log';
+    $word = json_encode([
+        'time'  => date("Y-m-d H:i:s"),
+        'client'=> $_SERVER['REMOTE_ADDR'],
+        'domain'=> $_SERVER['HTTP_HOST'],
+        'status'=> 200,
+        'words' => $log_message,
+    ],JSON_UNESCAPED_UNICODE);
+    file_put_contents($log_dir, $word . "\n", FILE_APPEND);
+}
+/**
+ * 取上一步来源地址
+ *
+ * @param
+ * @return string 字符串类型的返回结果
+ */
+function getReferer(){
+    return empty($_SERVER['HTTP_REFERER'])?'':$_SERVER['HTTP_REFERER'];
+}
+/**
+ * 输出信息
+ *
+ * @param string $msg 输出信息
+ * @param string/array $url 跳转地址 当$url为数组时，结构为 array('msg'=>'跳转连接文字','url'=>'跳转连接');
+ * @param string $show_type 输出格式 默认为html
+ * @param string $msg_type 信息类型 succ 为成功，error为失败/错误
+ * @param string $is_show  是否显示跳转链接，默认是为1，显示
+ * @param int $time 跳转时间，默认为2秒
+ * @return string 字符串类型的返回结果
+ */
+function showMessage($msg,$url='',$show_type='html',$msg_type='succ',$is_show=1,$time=2000){
+    /**
+     * 如果默认为空，则跳转至上一步链接
+     */
+    $url = ($url!='' ? $url : getReferer());
+    $msg_type = in_array($msg_type,array('succ','error')) ? $msg_type : 'error';
+    /**
+     * 输出类型
+     */
+    switch ($show_type) {
+        case 'json':
+            $return = '{';
+            $return.= '"msg":"' . $msg . '",';
+            $return.= '"url":"' . $url . '"';
+            $return.= '}';
+            echo $return;
+            break;
+
+        case 'exception':
+            echo '<!DOCTYPE html>';
+            echo '<html>';
+            echo '<head>';
+            echo '<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />';
+            echo '<title></title>';
+            echo '<style type="text/css">';
+            echo 'body { font-family: "Verdana";padding: 0; margin: 0;}';
+            echo 'h2 { font-size: 12px; line-height: 30px; border-bottom: 1px dashed #CCC; padding-bottom: 8px;width:800px; margin: 20px 0 0 150px;}';
+            echo 'dl { float: left; display: inline; clear: both; padding: 0; margin: 10px 20px 20px 150px;}';
+            echo 'dt { font-size: 14px; font-weight: bold; line-height: 40px; color: #333; padding: 0; margin: 0; border-width: 0px;}';
+            echo 'dd { font-size: 12px; line-height: 40px; color: #333; padding: 0px; margin:0;}';
+            echo '</style>';
+            echo '</head>';
+            echo '<body>';
+            echo '<h2>' . $lang['error_info'] . '</h2>';
+            echo '<dl>';
+            echo '<dd>' . $msg . '</dd>';
+            echo '<dt><p /></dt>';
+            echo '<dd>' . $lang['error_notice_operate'] . '</dd>';
+            echo '<dd><p /><p /><p /><p /></dd>';
+            echo '<dd><p /><p /><p /><p />Copyright 2013-2016 www.12301.cc , All Rights Reserved </dd>';
+            echo '</dl>';
+            echo '</body>';
+            echo '</html>';
+            exit();
+            break;
+
+        case 'javascript':
+            echo '<script>';
+            echo 'alert(\'' . $msg . '\');';
+            echo 'location.href=\'' . $url . '\'';
+            echo '</script>';
+            exit();
+            break;
+        default:
+            break;
+    }
+    exit;
+}
 if (!function_exists('C')) {
     /**
      * 获取和设置配置参数 支持批量定义
@@ -235,8 +347,8 @@ function array_map_recursive($filter, $data)
     $result = array();
     foreach ($data as $key => $val) {
         $result[$key] = is_array($val)
-        ? array_map_recursive($filter, $val)
-        : call_user_func($filter, $val);
+            ? array_map_recursive($filter, $val)
+            : call_user_func($filter, $val);
     }
     return $result;
 }
@@ -601,15 +713,20 @@ if (!function_exists('curl_post')) {
      * @param string $logPath 错误日志文件
      * @return bool|mixed
      */
-    function curl_post($url,$postData, $port=80, $timeout=15, $logPath=BASE_LOG_DIR . '/api/curl_post.log') {
+    function curl_post($url,$postData, $port=80, $timeout=15, $logPath='/api/curl_post.log', $http_headers=[]) {
         $ch = curl_init();
-
+        $basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
+        $logPath = $basePath . $logPath;
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_PORT, $port);
         curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, 0);
+        if (count($http_headers)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $http_headers);
+        }
+
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);

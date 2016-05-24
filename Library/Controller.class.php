@@ -170,10 +170,6 @@ class Controller {
                 // 返回JSON数据格式到客户端 包含状态信息
                 header('Content-Type:application/json; charset=utf-8');
                 exit(json_encode($data, $json_option));
-//            case 'XML'  :
-//                // 返回xml格式数据
-//                header('Content-Type:text/xml; charset=utf-8');
-//                exit(xml_encode($data));
             case 'JSONP':
                 // 返回JSON数据格式到客户端 包含状态信息
                 header('Content-Type:application/json; charset=utf-8');
@@ -188,6 +184,40 @@ class Controller {
             default     :
                 exit;
         }
+    }
+
+    /**
+     * 判断是否ajax请求
+     * @return boolean [description]
+     */
+    protected function isAjax() {
+       if ( (isset($_SERVER['HTTP_X_REQUESTED_WITH']) 
+            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') 
+            || !empty($_POST[C('VAR_AJAX_SUBMIT')]) 
+            || !empty($_GET[C('VAR_AJAX_SUBMIT')]) ) {
+
+            return true;
+       }
+       return false;
+    }
+
+    /**
+     * 通过curl提交数据
+     * @param $url
+     * @param $data
+     *
+     * @return mixed
+     */
+    public function raw_post($url,$data){
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_URL,$url);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+        $rt=curl_exec($ch);
+        curl_close($ch);
+        return $rt;
     }
 }
 ?>

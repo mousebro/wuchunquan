@@ -6,6 +6,7 @@
  * Time: 11:57
  */
 return array(
+    'DEFAULT_FILTER' => 'htmlspecialchars', // 默认参数过滤方法 用于I函数...
     'db'=> array(
         'localhost' => array(
             'db_type'=>'mysql',
@@ -51,7 +52,7 @@ return array(
         'summary'   => array(//统计数据库
             'db_type'   => 'mysql',
             'db_host'   => '127.0.0.1',
-            'db_user'   => 'admin',
+            'db_user'   => 'admin_sum',
             'db_pwd'    => 'adm*753951',
             'db_port'   => 3307,
             'db_name'   => 'summary',
@@ -67,9 +68,10 @@ return array(
     ),
     'redis'=>array(
         'main'=> array(
-            'db_host'=>'127.0.0.1',
-            'db_port'=> 6379,
-            'db_pwd' => 'pft666',
+            'db_host'  =>'127.0.0.1',
+            'db_port'  => 6379,
+            'db_pwd'   => 'pft666',
+            'db_queue' => 10, //队列使用的数据库
         ),
         'master'=> array(
             'db_host'=>'127.0.0.1',

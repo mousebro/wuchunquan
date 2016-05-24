@@ -33,9 +33,11 @@ class Order extends Controller
     {
         $tid        = I('post.tid');
         $auth_code  = I('post.auth_code');
+
         if (!$tid>0  || empty($auth_code)) {
             parent::apiReturn(401, [],'参数错误');
         }
+        //echo $tid;exit;
         $this->getSoap();
         $res        = $this->soap->QuickOrder($tid, $auth_code);
         if ($res==100) {
@@ -62,25 +64,43 @@ class Order extends Controller
         $this->getSoap();
         $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, 0, $tid, '', '',
             $ordertime_begin, $ordertime_end,'','','', '',//13订单完成时间
-            $orderNum, '', $ordertel, $orderStatus, $payStatus, '',/*19排序*/ 1,/*20降序*/ 0, 100,
+            $orderNum, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
     }
 
+    public function QuickVerify()
+    {
+        include '/var/www/html/new/d/class/Terminal_Check_Socket.class.php';
+        $tc = new \Terminal_Check_Socket();
+        $salerid       = I('post.salerid');
+        $terminal_id   = I('post.terminal_id');
+        $code          = I('post.code');
+
+        $chkIns        = '499';
+        $actiontime    = '2016-04-19 00:00:00';
+        $terminal = $tc->Terminal_Check_In_Voucher($terminal_id,
+            $salerid,$code,array(
+                "vMode"=>7,
+                "vCmd"=>$chkIns,
+                'vCheckDate'=>$actiontime));
+    }
+
     /**
-     * 现金支付/会员卡支付
+     * 现金支付/会员卡支付/拉卡拉支付
      */
     public function QuickPayOffline()
     {
         $ordernum       = I('post.ordernum');
         $pay_total_fee  = I('post.total_fee');;
         $pay_channel    = 4;
-        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡
+        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付
         $pay_to_pft     = false;
+        $tradeno        = I('post.tradeno');//流水号
         $this->getSoap();
         //$soap = new \ServerInside();
-        $res = $this->soap->Change_Order_Pay($ordernum,-1, $sourceT, $pay_total_fee, 1,'','',1,
+        $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
             parent::apiReturn(parent::CODE_SUCCESS, [], '支付成功');
