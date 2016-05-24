@@ -80,6 +80,14 @@ SQL;
         }
     }
 
+    /**
+     * @param int $day1
+     * @param int $day2
+     * @param int $lid
+     * @param int $apply_did
+     * @param int $group
+     * @return bool| array
+     */
     public function GetOrderSummaryById($day1=0, $day2=0, $lid=0, $apply_did=0, $group=0)
     {
         $where = [];
@@ -87,7 +95,7 @@ SQL;
         if ($lid>0) $where['lid']       = $lid;
         if ($apply_did>0) $where['apply_did'] = $apply_did;
         if ($day1>0) $where['sday'][]   = ['egt', $day1];
-        if ($day2>0) $where['sday'][]   = ['lgt', $day2];
+        if ($day2>0) $where['sday'][]   = ['elt', $day2];
         $field = 'SUM(tnum) as tnum,SUM(onum) as onum,SUM(total_money) AS total_money';
         if ($group==1) $field .= ",substr(sday,1,6) as sday";
         else $field .= ",sday";
@@ -121,11 +129,11 @@ SQL;
         ];
         if ($group==1) {
             $group  ='apply_did';
-            $field = "dname as title,";
+            $field = "apply_did as gid,dname as title,";
         }
         elseif ($group==2){
             $group='lid';
-            $field = "ltitle as title,";
+            $field = "lid as gid, ltitle as title,";
         }
         else {
             return false;
@@ -134,8 +142,8 @@ SQL;
         if ($order==2)      $orderBy = 'onum';
         elseif ($order==3)  $orderBy = 'total_money';
 
-        //$field .= "SUM(onum) as onum,SUM(tnum) as tnum, SUM(total_money) as total_money,`$group`";
-        $field .= "SUM($orderBy) as cnt,`$group`";
+        $field .= "SUM(onum) as onum,SUM(tnum) as tnum, SUM(total_money) as total_money,`$group`";
+        //$field .= "SUM($orderBy) as cnt,`$group`";
         $data = $this->table(self::COUNT_TABLE)
             ->field($field)
             ->where($where)
@@ -161,12 +169,12 @@ SQL;
                     ]
                 ]
             );
-        if ($type==1) $query->field('dname,apply_did ')->group('apply_did');
-        elseif ($type==2) $query->field('ltitle,lid ')->group('lid');
+        if ($type==1) $query->field('dname as name,apply_did as id')->group('apply_did');
+        elseif ($type==2) $query->field('ltitle as name,lid as id')->group('lid');
         $data =  $query->select();
         //echo $this->getLastSql();
         foreach ($data as $item) {
-            $output[$item['apply_did']] = $item['dname'];
+            $output[$item['id']] = $item['name'];
         }
         return $output;
     }
