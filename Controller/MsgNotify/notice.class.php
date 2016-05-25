@@ -22,6 +22,7 @@ class notice extends Controller
             $ntcModel = new Announce();
             $ntc      = $ntcModel->get_rcnt_nts();
             if ($ntc && ! $ntcModel->is_read($memberId, $ntc['an_id'])) {
+                $ntcModel->add_read($memberId, $ntc['an_id']);
                 $data = [
                     'an_id'   => $ntc['an_id'],
                     'title'   => $ntc['title'],
@@ -39,17 +40,17 @@ class notice extends Controller
     }
 
     //已读重要公告
-    public function read_nts()
-    {
-        $this->isLogin('ajax');
-        $memberId = session('memberID');
-        $an_id    = intval(I('an_id'));
-        if ($an_id && $memberId) {
-            $ntcModel = new Announce();
-            $ntcModel->add_read($memberId, $an_id);
-        }
-        $this->apiReturn('200');
-    }
+//    public function read_nts()
+//    {
+//        $this->isLogin('ajax');
+//        $memberId = session('memberID');
+//        $an_id    = intval(I('an_id'));
+//        if ($an_id && $memberId) {
+//            $ntcModel = new Announce();
+//            $ntcModel->add_read($memberId, $an_id);
+//        }
+//        $this->apiReturn('200');
+//    }
 
 //done：测试专用，必删
 // http://www.12301.test/route/?c=MsgNotify_notice&a=test
