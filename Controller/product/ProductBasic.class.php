@@ -307,7 +307,6 @@ class ProductBasic extends Controller
         if(isset($ticketData['tid']) && $ticketData['tid']>0)
         {   // 以下编辑操作
             $tid = $ticketData['tid']+0;
-
             $ticketOriginData = $ticketObj->getTicketInfoById($tid);
             if (!$ticketOriginData) {
                 return self::_return(self::CODE_NO_CONTENT,  '票类不存在,保存失败',$ticketData['ttitle']);
@@ -364,6 +363,7 @@ class ProductBasic extends Controller
             }
         }
         else {
+            $create_flag = 1;
             // 以下新增操作
             $create_ret = $ticketObj->CreateTicket($tkBaseAttr);
             if($create_ret['code']!=200)
@@ -394,7 +394,7 @@ class ProductBasic extends Controller
                 'lid'=>$lid, 'tid'=>$tid, 'pid'=>$pid, 'ttitle'=>$tkBaseAttr['title']
             ]
         ];
-        if ($ticketData['p_type']=='F') {
+        if ($ticketData['p_type']=='F' && isset($create_flag)) {
             $packRet = $this->savePackage($tid);
             $output['data']['savePackResult'] = $packRet;
         }
