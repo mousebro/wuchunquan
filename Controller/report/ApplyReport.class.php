@@ -59,6 +59,7 @@ class ApplyReport extends Controller
     {
         include __DIR__ . '/../../Views/crm/applyer_report.html';
     }
+
     public function index()
     {
         //统计的数据，1：30日销量排行
