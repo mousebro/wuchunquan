@@ -24,6 +24,7 @@ class Announce extends Model
     public function get_rcnt_nts()
     {
         $rcnt   = strtotime("-1 week");
+//        $rcnt   = date('Y-m-d H:i:s', strtotime("-1 week"));
         $where  = [
             'create_time' => ['gt', $rcnt],
             'status'      => 0, //0-已发布 1-草稿 4-删除
@@ -35,8 +36,9 @@ class Announce extends Model
             'details',
             'create_time',
         ];
-        $result = $this->table("pft_announce")->where($where)->field($field)->find();
-
+        $order = 'id desc';
+        $result = $this->table("pft_announce")->where($where)->field($field)->order($order)->find();
+//        \pft_log('notice/sql', 'get_nts' . ' # ' . $this->getLastSql());
         return $result;
     }
 
@@ -67,7 +69,9 @@ class Announce extends Model
     {
         $data = ['mid' => $mid, 'an_id' => $an_id];
 
-        return $this->table('pft_announce_ext')->add($data);
+        $result =  $this->table('pft_announce_ext')->add($data);
+//        \pft_log('notice/sql', 'add_read' . ' # ' . $this->getLastSql());
+        return $result;
     }
 
 }
