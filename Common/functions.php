@@ -10,6 +10,17 @@
 // +----------------------------------------------------------------------
 
 /**
+ * 为了兼容之前的类库，在这里统一载入之前的全局函数
+ *
+ * @author dwer
+ * @date   2016-05-19
+ */
+$prevFunctionsFile = '/var/www/html/new/d/common/func.inc.php';
+if(file_exists($prevFunctionsFile)) {
+    include_once($prevFunctionsFile);
+}
+
+/**
  * Think 系统函数库
  */
 
@@ -168,6 +179,48 @@ if (!function_exists('C')) {
             return null;
         }
         return null; // 避免非法参数
+    }
+}
+
+
+if (!function_exists('load_config')) {
+    /**
+     * 动态加载业务配置数据
+     * @param $key 配置的键
+     * @param $type 配置文件类型，默认business，业务配置
+
+     * @return mixed
+     */
+    function load_config($key, $type = 'business') {
+        static $_load_config = array();
+
+        $key  = strval($key);
+        $type = strval($type);
+
+        // 无参数时获取所有
+        if (empty($key) || empty($type)) {
+            return null;
+        }
+
+        //获取配置文件的所有配置
+        if(isset($_load_config[$type])) {
+            $configArr = $_load_config[$type];
+        } else {
+            $configFile = HTML_DIR . "/Service/Conf/{$type}.conf.php";
+            if(file_exists($configFile)) {
+                $configArr = include($configFile);
+            } else {
+                $configArr = array();
+            }
+
+            $_load_config[$type] = $configArr;
+        }
+
+        if(isset($configArr[$key])) {
+            return $configArr[$key];
+        } else {
+            return null;
+        }
     }
 }
 
