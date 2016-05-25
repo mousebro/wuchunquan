@@ -5,6 +5,7 @@
 
 namespace Model\Product;
 use Library\Model;
+use Model\Product\SellerStorage;
 
 class Ticket extends Model {
 
@@ -22,7 +23,7 @@ class Ticket extends Model {
     const __ORDER_DETAIL_TABLE__    = 'uu_order_fx_details';
 
     private $ticket_filed = [
-        'landid', 'title', 'tprice', 'reb', 'discount', 'delaydays', 'status', 'pay',
+        'id', 'landid', 'title', 'tprice', 'reb', 'discount', 'delaydays', 'status', 'pay',
         'notes', 'ddays', 'getaddr', 'smslimit', 's_limit_up', 's_limit_low', 'buy_limit_up',
         'buy_limit_low', 'open_time', 'end_time', 'apply_did', 'pid', 'cancel_cost', 'reb_type',
         'order_start', 'max_order_days', 'Mdetails', 'Mpath', 'sourceT', 'cancel_auto_onMin',
@@ -31,17 +32,17 @@ class Ticket extends Model {
         'batch_diff_identities', 'refund_audit', 'refund_rule', 'refund_early_time',
         'cancel_notify_supplier',
     ];
-	/**
-	 * 根据票类id获取票类信息
+    /**
+     * 根据票类id获取票类信息
      * @author wengbin 
-	 * @param  int $id 票类id
-	 * @return array   
-	 */
-	public function getTicketInfoById($id) {
-		return $this->table(self::__TICKET_TABLE__)
+     * @param  int $id 票类id
+     * @return array   
+     */
+    public function getTicketInfoById($id) {
+        return $this->table(self::__TICKET_TABLE__)
             ->field($this->ticket_filed)
             ->find($id);
-	}
+    }
 
     /**
      * 获取门票扩展属性
@@ -51,12 +52,12 @@ class Ticket extends Model {
      * @return mixed
      */
     public function getTicketExtInfoByTid($tid, $field="*") {
-		return $this->table(self::__TICKET_TABLE_EXT__)
+        return $this->table(self::__TICKET_TABLE_EXT__)
             ->field($field)
             ->where(['tid'=>':tid'])
             ->bind([':tid'=>$tid])
             ->find();
-	}
+    }
 
     /**
      * 根据productid获取票类信息
@@ -308,54 +309,58 @@ class Ticket extends Model {
      * @param  string $date    日期
      * @return [type]          array(1 => 2, 2 => 3)
      */
-    public function getMuchStorage($pid_arr, $date = '') {
+    public function getMuchStorage($pid_arr, $date = '', $memberid = 0, $sapply_did = 0) {
         $date = $date ?: date('Y-m-d', time());
-        $result = $find_pid = array();
-        //日历模式
-        $storage = $this->table(self::__PRODUCT_PRICE_TABLE__)
-                    ->where(['pid' => array('in', implode(',', $pid_arr)), 'start_date' => $date, 'ptype' => 1, 'status' => 0])
-                    ->field('pid,storage')->select();
-        
-        if ($storage) {
-            foreach ($storage as $item) {
-                $find_pid[] = $item['pid'];
-                $result[$item['pid']] = $item['storage'];
-            }
+        $result = $seller_storage_pid = $find_pid = array();
+
+
+        //分销商库存
+        if ($memberid && $sapply_did) {
+            $find_pid = $this->_getStorageForSallerType($pid_arr, $memberid, $sapply_did, $date, $result);
         }
+
         $pid_arr = array_diff($pid_arr, $find_pid);
+        $find_pid = [];
 
+        //总库存模式
         if ($pid_arr) {
-            //时间段模式
-            $storage_info = $this->table(self::__PRODUCT_PRICE_TABLE__)
-                ->where(['pid' => array('in', implode(',', $pid_arr)), 'end_date' => ['egt', $date], 'ptype' => 0, 'status' => 0])
-                ->field('pid,storage,min(start_date) as start_date,min(end_date) as end_date')
-                ->group('pid')
-                ->select();
-            if (!$storage_info) return false;
-
-            foreach ($storage_info as $item) {
-                $start_time = strtotime($item['start_date']);
-                $end_time   = strtotime($item['end_date']);
-                $cur_time   = strtotime($date);
-                if ($end_time >= $cur_time) {
-                    $result[$item['pid']] = $item['storage'];
-                }
-            }
+            $find_pid = $this->getStorageForAllStoType($pid_arr, $result);
         }
+        // var_dump($find_pid);die;
+        $pid_arr = $copy_pid_arr = array_diff($pid_arr, $find_pid);
+        $find_pid = [];
+
+        //日历库存模式
+        if ($pid_arr) {
+            $find_pid = $this->_getStorageForDateType($pid_arr, $date, $result);
+        }
+        // echo aaa;die;
+
+        $pid_arr = array_diff($pid_arr, $find_pid);
+        $find_pid = [];
+
+        //时间段库存模式
+        if ($pid_arr) {
+            $find_pid = $this->_getStorageForRangeType($pid_arr, $date, $result);
+        }
+
+        if (!$copy_pid_arr) return $result;
+
+        //日库存和时间段库存，还需要减去当天已经消耗的库存
 
         //获取产品对应的tid
         $tids = $this->table(self::__TICKET_TABLE__)
-                    ->where(array('pid' => array('in', implode(',', $pid_arr))))
-                    ->field('id,pid')
-                    ->select();
-        $p_t_map = array();
+            ->where(array('pid' => array('in', implode(',', $copy_pid_arr))))
+            ->field('id,pid')
+            ->select();
+
+
+        $p_t_map = [];
         foreach ($tids as $item) {
-            if ($result[$item['pid']] == -1) {
-                continue;
-            }
+            if ($result[$item['pid']] == -1) continue;
             $p_t_map[$item['id']] = $item['pid'];
         }
-        //TODO:判断是否使用分销库存
+
         //获取指定日期已使用库存
         $use_storage = $this->getUseStorage(array_keys($p_t_map), $date);
         $p_storage_map = array();
@@ -373,13 +378,149 @@ class Ticket extends Model {
     }
 
     /**
+     * 分销商库存模式
+     * @param  [type] $pid_arr    [description]
+     * @param  [type] $memberid   [description]
+     * @param  [type] $sapply_did [description]
+     * @param  [type] $date       [description]
+     * @param  [type] &$result    [description]
+     * @return [type]             [description]
+     */
+    private function _getStorageForSallerType($pid_arr, $memberid, $sapply_did, $date, &$result) {
+        $sellerStorageModel = new SellerStorage();
+
+        $find_pid = [];
+        foreach ($pid_arr as $pid) {
+            $seller_storage = $sellerStorageModel->getLeftStorageNum($pid, $sapply_did, $memberid, $date);
+            if($seller_storage !== false && $seller_storage !== -1) {
+                $result[$pid] = $seller_storage;
+                $find_pid[] = $pid;
+            }
+        }
+
+        return $find_pid;
+    }
+
+    /**
+     * 总库存模式
+     * @param  [type] $pid_arr [description]
+     * @param  [type] &$result [description]
+     * @return [type]          [description]
+     */
+    public function getStorageForAllStoType($pid_arr, &$result) {
+        $where = array(
+            'pid'       => array('in', implode(',', $pid_arr)),
+            'storage'   => array('neq', -1)
+        );
+        $opens = $this->table(self::__TICKET_TABLE__)
+            ->where($where)
+            ->field('id,pid,storage,storage_open')
+            ->select();
+
+        $find_pid = [];
+
+        if (!$opens) return $find_pid;
+
+        foreach ($opens as $item) {
+
+            if (strtotime($item['storage_open']) > time()) {
+                continue;
+            }
+
+            $find_pid[] = $item['pid'];
+
+            $tmp_use_storage = $this->getUseStorage([$item['id']], $item['storage_open'], 'range');
+            if ($tmp_use_storage[0]['tid']) {
+                $result[$item['pid']] = $item['storage'] - (int)$tmp_use_storage[0]['tnum'];
+            } else {
+                $result[$item['pid']] = $item['storage'];
+            }
+        }
+
+        return $find_pid;
+
+    }
+
+    /**
+     * 日历库存模式
+     * @param  [type] $pid_arr [description]
+     * @param  [type] $date    [description]
+     * @param  [type] &$result [description]
+     * @return [type]          [description]
+     */
+    private function _getStorageForDateType($pid_arr, $date, &$result) {
+        $find_pid = [];
+
+        $where = array(
+            'pid'           => array('in', implode(',', $pid_arr)),
+            'start_date'    => $date,
+            'ptype'         => 1,
+            'status'        => 0
+        );
+
+        $storage = $this->table(self::__PRODUCT_PRICE_TABLE__)
+            ->where($where)
+            ->field('pid,storage')
+            ->select();
+
+        if (!$storage) return $find_pid;
+        
+        foreach ($storage as $item) {
+            $find_pid[] = $item['pid'];
+            $result[$item['pid']] = $item['storage'];
+        }
+
+        return $find_pid;
+    }
+
+    /**
+     * 时间段库存模式
+     * @param  [type] $pid_arr [description]
+     * @param  [type] $date    [description]
+     * @param  [type] &$result [description]
+     * @return [type]          [description]
+     */
+    private function _getStorageForRangeType($pid_arr, $date, &$result) {
+        $find_pid = [];
+
+        $where = array(
+            'pid'           => array('in', implode(',', $pid_arr)),
+            'end_date'      => array('egt', $date),
+            'start_date'    => array('elt', $date),
+            'ptype'         => 0,
+            'status'        => 0
+        );
+        
+        $storage = $this->table(self::__PRODUCT_PRICE_TABLE__)
+            ->where($where)
+            ->field('pid,storage,min(start_date) as start_date,min(end_date) as end_date')
+            ->group('pid')
+            ->select();
+
+        if (!$storage) return $find_pid;
+
+        foreach ($storage as $item) {
+            $start_time = strtotime($item['start_date']);
+            $end_time   = strtotime($item['end_date']);
+            $cur_time   = strtotime($date);
+            if ($end_time >= $cur_time) {
+                $result[$item['pid']] = $item['storage'];
+            }
+        }
+
+        return $find_pid;
+    }
+
+    /**
      * 获取指定日期已使用库存
      * @param  [type] $tid_arr [description]
      * @param  string $date    [description]
      * @return [type]          [description]
      */
-    public function getUseStorage($tid_arr, $date = '') {
+    public function getUseStorage($tid_arr, $date = '', $type = 'day') {
         $date = $date ?: date('Y-m-d', time());
+
+        $date = $type == 'day' ? $date : array('egt', $date);
 
         $use_storage = $this->table(self::__ORDER_TABLE__)
             ->join(' s left join '.self::__ORDER_DETAIL_TABLE__.' fx on s.ordernum=fx.orderid')
@@ -409,14 +550,14 @@ class Ticket extends Model {
             $sort = 'desc';
         }
         $daily_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
-                    ->where(['pid' => $pid, 'start_date' => array('egt', date('Y-m-d')), 'ptype' => 1, 'status' => 0])
-                    ->order('start_date '.$sort)
-                    ->getField($date_type);
+            ->where(['pid' => $pid, 'start_date' => array('egt', date('Y-m-d')), 'ptype' => 1, 'status' => 0])
+            ->order('start_date '.$sort)
+            ->getField($date_type);
 
         $period_date = $this->table(self::__PRODUCT_PRICE_TABLE__)
-                    ->where(['pid' => $pid, 'end_date' => array('egt', date('Y-m-d')), 'ptype' => 0, 'status' => 0])
-                    ->order('start_date '.$sort)
-                    ->getField($date_type);
+            ->where(['pid' => $pid, 'end_date' => array('egt', date('Y-m-d')), 'ptype' => 0, 'status' => 0])
+            ->order('start_date '.$sort)
+            ->getField($date_type);
 
         if ($type == 'min') {
             if (strtotime($period_date) < strtotime(date('Y-m-d'))) {

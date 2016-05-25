@@ -93,11 +93,24 @@ class Order extends Controller
     public function QuickPayOffline()
     {
         $ordernum       = I('post.ordernum');
-        $pay_total_fee  = I('post.total_fee');;
+        $pay_total_fee  = I('post.total_fee') + 0;
         $pay_channel    = 4;
         $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付
         $pay_to_pft     = false;
         $tradeno        = I('post.tradeno');//流水号
+
+        if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，支付方式不对');
+        }
+        if (empty($ordernum)) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单号不能为空');
+        }
+        if (empty($pay_total_fee) || !$pay_total_fee) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单金额格式不对');
+        }
+        //if (empty($tradeno)) {
+        //    parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，流水号格式不对');
+        //}
         $this->getSoap();
         //$soap = new \ServerInside();
         $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
@@ -105,7 +118,7 @@ class Order extends Controller
         if ($res==100) {
             parent::apiReturn(parent::CODE_SUCCESS, [], '支付成功');
         }
-        parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败');
+        parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单号:' . $ordernum);
     }
 
     /**

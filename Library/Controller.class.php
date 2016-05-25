@@ -185,6 +185,22 @@ class Controller {
                 exit;
         }
     }
+
+    /**
+     * 判断是否ajax请求
+     * @return boolean [description]
+     */
+    protected function isAjax() {
+       if ( (isset($_SERVER['HTTP_X_REQUESTED_WITH']) 
+            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') 
+            || !empty($_POST[C('VAR_AJAX_SUBMIT')]) 
+            || !empty($_GET[C('VAR_AJAX_SUBMIT')]) ) {
+
+            return true;
+       }
+       return false;
+    }
+
     /**
      * 通过curl提交数据
      * @param $url
