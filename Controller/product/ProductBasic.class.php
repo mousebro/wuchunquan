@@ -479,7 +479,7 @@ class ProductBasic extends Controller
     /**
      * 删除价格
      */
-    protected function remove_price()
+    public function remove_price()
     {
         $id     = I('post.id', 0, 'intval');
         $pid    = I('post.pid', 0, 'intval');
