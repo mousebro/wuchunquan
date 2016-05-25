@@ -172,7 +172,7 @@ class ticket extends ProductBasic
                 //$data['message'] = $pack->message;
                 parent::apiReturn(self::CODE_INVALID_REQUEST,[], implode(',', $pack->message));
             }
-            $advance = $pack->advance;// 提前天数
+            $advance = $pack->advance > $data['ddays'] ? $pack->advance : $data['ddays'];// 提前天数
             $paymode = $pack->paymode;// 支付方式
             $useDate = $pack->usedate;// 套票使用时间
             if($useDate['section']==0) $data['minActive'] = floor((strtotime($useDate['eDate']) - strtotime($useDate['sDate'])) / 86400);
