@@ -324,7 +324,7 @@ class Ticket extends Model {
 
         //总库存模式
         if ($pid_arr) {
-            $find_pid = $this->getStorageForAllStoType($pid_arr, $result);
+            $find_pid = $this->getStorageForAllStoType($pid_arr, $result, $date);
         }
         // var_dump($find_pid);die;
         $pid_arr = $copy_pid_arr = array_diff($pid_arr, $find_pid);
@@ -407,7 +407,8 @@ class Ticket extends Model {
      * @param  [type] &$result [description]
      * @return [type]          [description]
      */
-    public function getStorageForAllStoType($pid_arr, &$result) {
+    public function getStorageForAllStoType($pid_arr, &$result, $date = '') {
+        $date = $date ?: date('Y-m-d');
         $where = array(
             'pid'       => array('in', implode(',', $pid_arr)),
             'storage'   => array('neq', -1)
@@ -423,7 +424,7 @@ class Ticket extends Model {
 
         foreach ($opens as $item) {
 
-            if (strtotime($item['storage_open']) > time()) {
+            if (strtotime($item['storage_open']) > strtotime($date)) {
                 continue;
             }
 
