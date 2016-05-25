@@ -293,6 +293,19 @@ class ProductBasic extends Controller
             $arr1[1] = str_pad($arr1[1], 5, 0, STR_PAD_LEFT);
             $tkExtAttr['v_time_limit'] = implode('|', $arr1);
         }
+
+        //套票产品的提前预定时间必须大于等于子票
+        $PackModel = new PackTicket($ticketData['tid'] + 0);
+        if ($p_type == 'F') {
+            $child_ticket = $PackModel->childTicketData();
+            foreach ($child_ticket as $item) {
+                if($item['dhour'] < date('H:i:s')) $item['ddays'] += 1;
+                if ($tkBaseAttr['ddays'] < $item['ddays']) {
+                    return self::_return(self::CODE_INVALID_REQUEST,  '套票的提前预定时间不能小于子票的提前预定时间',$ticketData['ttitle']);
+                }
+            }
+        }
+
         //线路产品属性
         if($p_type=='B')
         {
@@ -388,6 +401,10 @@ class ProductBasic extends Controller
             ['apply_limit'=>$ticketData['apply_limit']+0, 'p_status'=>0],
             Ticket::__PRODUCT_TABLE__
         );
+
+        //监听子票的提前预定时间的变化
+        $PackModel->updateParentAdvanceAttr($pid, $tkBaseAttr['ddays']);
+
         $output = [
             'code'=>200,
             'data'=>[
