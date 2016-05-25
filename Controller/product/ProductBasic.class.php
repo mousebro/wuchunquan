@@ -124,6 +124,14 @@ class ProductBasic extends Controller
                 return self::_return(self::CODE_INVALID_REQUEST, $ret['data']['msg'], $ticketData['ttitle']);
             }
         }
+        $lid = $ticketData['lid']+0;
+        $landInfo = $landObj->getLandInfo($lid,false, 'title,p_type,apply_did');
+        $ltitle = $landInfo['title'];
+        $p_type = $landInfo['p_type'];
+        // 验证景区是否存在
+        if (!$landInfo || ($landInfo['apply_did']!=$memberId && $memberId!=0)) {
+            return self::_return(self::CODE_NO_CONTENT,  '景区不存在',$ticketData['ttitle']);
+        }
         // 整合数据
         $tkBaseAttr = array();
         $tkExtAttr = array();
@@ -131,6 +139,15 @@ class ProductBasic extends Controller
         $tkBaseAttr['landid']  = $ticketData['lid']+0;
         $tkBaseAttr['tprice']  = $ticketData['tprice']+0;    // 门市价
         $tkBaseAttr['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
+        //套票只允许在线支付
+        if ($p_type=='F' && $tkBaseAttr['pay']==0) {
+            return self::_return(self::CODE_INVALID_REQUEST,  '套票产品只允许在线支付',$ticketData['ttitle']);
+        }
+
+
+        if ($ticketData['fax']) {
+            $landObj->UpdateAttrbites(['id'=>$lid], ['fax'=>$ticketData['fax']]);
+        }
         $tkBaseAttr['ddays']   = $ticketData['ddays']+0;     // 提前下单时间
         $tkBaseAttr['getaddr'] = $ticketData['getaddr'];     // 取票信息
         $tkBaseAttr['notes']   = $ticketData['notes'];       // 产品说明
@@ -247,23 +264,15 @@ class ProductBasic extends Controller
             $tkBaseAttr['Mpath']     = $ticketData['mpath'];
             $tkBaseAttr['Mdetails']  = 1;
         }
-
+        if ($p_type=='H') {
+            $tkBaseAttr['Mpath']     = MAIN_DOMAIN . '/api/Product_check_h.php';
+            $tkBaseAttr['Mdetails']  = 1;
+        }
         if(isset($ticketData['re_integral'])) $tkBaseAttr['re_integral'] = $ticketData['re_integral'] + 0;
 
         $tkBaseAttr['apply_did'] = $memberId;// 产品供应商
 
-        // 验证景区是否存在
-        $lid = $ticketData['lid']+0;
-        $landInfo = $landObj->getLandInfo($lid,false, 'title,p_type,apply_did');
-        if (!$landInfo || ($landInfo['apply_did']!=$memberId && $memberId!=0)) {
-            return self::_return(self::CODE_NO_CONTENT,  '景区不存在',$ticketData['ttitle']);
-        }
-        $ltitle = $landInfo['title'];
-        $p_type = $landInfo['p_type'];
 
-        if ($ticketData['fax']) {
-            $landObj->UpdateAttrbites(['id'=>$lid], ['fax'=>$ticketData['fax']]);
-        }
 
         // 扩展属性 uu_land_f
         $tkExtAttr['confirm_wx']   = $ticketData['confirm_wx']+0;
