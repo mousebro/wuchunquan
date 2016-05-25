@@ -334,4 +334,48 @@ class PackTicket extends Model
         }
         return true;
     }
+
+    /**
+     * 子票提前预定时间更新后,同时更新套票的提前预定时间属性
+     * @param  [type] $pid [description]
+     * @param  [type] $day [description]
+     * @return [type]      [description]
+     */
+    public function updateParentAdvanceAttr($pid, $day) {
+        $parents = $this->table($this->package_ticket_table)
+            ->where(['pid' => $pid])
+            ->field('parent_tid')
+            ->select();
+
+        $parents_tid = [];
+        foreach ($parents as $item) {
+            $parents_tid[] = $item['parent_tid'];
+        }
+
+        $where = [
+            't.id'          => ['in', implode(',', $parents_tid)],
+            'p.p_status'    => ['in', [0,3,4,5]]
+        ];
+
+        $parent_ddays = $this->table($this->ticket_table)
+            ->join('t left join '.$this->products_table.' p on t.pid=p.id')
+            ->where($where)
+            ->field('t.id,t.ddays')
+            ->select();
+
+        $to_update = [];
+        foreach ($parent_ddays as $item) {
+            if ($item['ddays'] < $day) {
+                $to_update[] = $item['id'];
+            }
+        }
+
+        if (count($to_update) == 0) return true;
+
+        return $this->table($this->ticket_table)
+            ->where(['id' => ['in', implode(',', $to_update)]])
+            ->save(['ddays' => $day]);
+
+
+    }
 }
