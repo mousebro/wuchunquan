@@ -300,8 +300,11 @@ class ProductBasic extends Controller
             $child_ticket = $PackModel->childTicketData();
             foreach ($child_ticket as $item) {
                 if($item['dhour'] < date('H:i:s')) $item['ddays'] += 1;
+                if ($item['dhour'] < $ticketData['dhour']) {
+                    return self::_return(self::CODE_INVALID_REQUEST,  '套票的提前时间不能小于'.$item['dhour'],$ticketData['ttitle']);
+                }
                 if ($tkBaseAttr['ddays'] < $item['ddays']) {
-                    return self::_return(self::CODE_INVALID_REQUEST,  '套票的提前预定时间不能小于子票的提前预定时间',$ticketData['ttitle']);
+                    return self::_return(self::CODE_INVALID_REQUEST,  '套票的提前预定天数不能小于'.$item['ddays'],$ticketData['ttitle']);
                 }
             }
         }
