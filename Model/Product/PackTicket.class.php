@@ -222,7 +222,7 @@ class PackTicket extends Model
             );
         }
         foreach($this->childTickets as $key=>$data){
-            if($data['dhour'] < date('H:i:s'))   $data['ddays'] += 1;
+            // if($data['dhour'] < date('H:i:s'))   $data['ddays'] += 1;
             if($data['ddays'] > $this->advance)  $this->advance = $data['ddays'];// 提前天数最大值
             $this->paymode = $data['pay'];// 支付方式
             $this->paymode_continer[] = $data['pay'];
