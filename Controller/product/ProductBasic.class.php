@@ -265,6 +265,7 @@ class ProductBasic extends Controller
             $tkBaseAttr['Mdetails']  = 1;
         }
         if ($p_type=='H') {
+            $tkBaseAttr['order_limit'] = '';//演出类产品不限制验证日期
             $tkBaseAttr['Mpath']     = MAIN_DOMAIN . '/api/Product_check_h.php';
             $tkBaseAttr['Mdetails']  = 1;
         }
