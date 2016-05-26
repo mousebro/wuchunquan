@@ -341,19 +341,46 @@ class PackTicket extends Model
      * @param  [type] $day [description]
      * @return [type]      [description]
      */
-    public function updateParentAdvanceAttr($pid, $day) {
+    public function updateParentAdvanceAttr($pid, $day, $hour) {
+
         $parents = $this->table($this->package_ticket_table)
             ->where(['pid' => $pid])
             ->field('parent_tid')
             ->select();
+
+        if (!$parents) return true;
 
         $parents_tid = [];
         foreach ($parents as $item) {
             $parents_tid[] = $item['parent_tid'];
         }
 
+        $this->startTrans();
+
+        if (!$this->_updateDdaysAttr($parents_tid, $day)) {
+            $this->rollback();
+            return false;
+        }
+
+        if (!$this->_updateDhourAttr($parents_tid, $hour)) {
+            $this->rollback();
+            return false;
+        }
+
+        $this->commit();
+
+        return true;
+    }
+
+    /**
+     * 更新ddays字段
+     * @param  [type] $tid_arr [description]
+     * @param  [type] $day     [description]
+     * @return [type]          [description]
+     */
+    private function _updateDdaysAttr($tid_arr, $day) {
         $where = [
-            't.id'          => ['in', implode(',', $parents_tid)],
+            't.id'          => ['in', implode(',', $tid_arr)],
             'p.p_status'    => ['in', [0,3,4,5]]
         ];
 
@@ -375,7 +402,38 @@ class PackTicket extends Model
         return $this->table($this->ticket_table)
             ->where(['id' => ['in', implode(',', $to_update)]])
             ->save(['ddays' => $day]);
+    }
 
 
+    /**
+     * 更新dhour字段
+     * @param  [type] $tid_arr [description]
+     * @param  [type] $hour    [description]
+     * @return [type]          [description]
+     */
+    private function _updateDhourAttr($tid_arr, $hour) {
+        $where = [
+            'f.tid'          => ['in', implode(',', $tid_arr)],
+            'p.p_status'    => ['in', [0,3,4,5]]
+        ];
+
+        $parent_dhours = $this->table($this->ticket_ext_table)
+            ->join('f left join '.$this->products_table.' p on f.pid=p.id')
+            ->where($where)
+            ->field('f.id,f.dhour')
+            ->select();
+
+        $to_update = [];
+        foreach ($parent_dhours as $item) {
+            if ($item['dhour'] > $hour) {
+                $to_update[] = $item['id'];
+            }
+        }
+
+        if (count($to_update) == 0) return true;
+
+        return $this->table($this->ticket_ext_table)
+            ->where(['id' => ['in', implode(',', $to_update)]])
+            ->save(['dhour' => $hour]);
     }
 }
