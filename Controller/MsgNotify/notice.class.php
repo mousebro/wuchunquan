@@ -26,7 +26,7 @@ class notice extends Controller
                 $data = [
                     'an_id'   => $ntc['an_id'],
                     'title'   => $ntc['title'],
-                    'details' => $ntc['details'],
+                    'details' => htmlspecialchars_decode($ntc['details']),
                 ];
                 $this->apiReturn('200', $data, '有重要公告');
             } else {
