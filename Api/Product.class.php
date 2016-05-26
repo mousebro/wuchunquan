@@ -9,26 +9,51 @@
 namespace Api;
 
 
+use Controller\product\ProductBasic;
 use Library\Controller;
+use Library\Model;
+use Model\Product\Land;
+use Model\Product\Ticket;
 
-class Product extends Controller
+class Product extends ProductBasic
 {
-    public function Create()
+
+    public function basicInfo()
     {
-        $params = [];
-        $params['title']    = I('post.product_name', '', 'strip_tags,addslashes');
-        $params['address']  = I('post.address', '', 'strip_tags,addslashes');
-        $params['ptype']    = I('post.product_type');
 
-        $params['area']     = I('post.city');
-
-        $params['jqts']     = I('post.notice', '', 'strip_tags,addslashes');
-        $params['bhjq']     = I('post.details','', 'htmlspecialchars,addslashes');
-        $params['jtzn']     = I('post.traffic','', 'strip_tags,addslashes');
-        $params['imgpath']  = I('post.img_path','', 'strip_tags,addslashes');
-        $params['opentime'] = I('post.opentime', '', 'strip_tags,addslashes');
-        $params['tel']      = I('post.tel', '', 'strip_tags,addslashes');
-
-        $params['salerid']  = '';
     }
+
+    /**
+     * 获取票付通地区数据
+     */
+    public function areas()
+    {
+        $province_id = I('post.province', 0, 'intval');
+        if (!$province_id) {
+            $provinces = C(dirname(__FILE__) . '/../Conf/province.conf.php');
+            parent::apiReturn(self::CODE_SUCCESS, $provinces);
+        }
+        $sql = <<<SQL
+select b.area_id as city_id, b.area_name as city_name,
+a.area_id as zone_id, a.area_name as zone_name
+from uu_area b
+LEFT JOIN uu_area a ON a.area_parent_id=b.area_id
+where b.area_parent_id=$province_id
+SQL;
+        $m = new Model();
+        $data = $m->query($sql);
+        if ($data) {
+            parent::apiReturn(self::CODE_SUCCESS, $data);
+        }
+        parent::apiReturn(self::CODE_NO_CONTENT, [], '查不到相应省份的数据');
+    }
+
+    public function ticketCreate()
+    {
+        $ticketData = $_POST;
+        $landModel   = new Land();
+        $ticketObj   = new Ticket();
+        $ret =  $this->SaveTicket($this->memberID, $ticketData, $ticketObj, $landModel);
+    }
+
 }
