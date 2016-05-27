@@ -164,6 +164,10 @@ class ticket extends ProductBasic
                         'tid'   => $child['tid'],
                         'num'   => $child['num'],
                     );
+
+                    if ($child['refund_rule'] > $data['refund_rule']) {
+                        $data['refund_rule'] = $child['refund_rule'];
+                    }
                 }
             }
             //print_r($child_ticket_data);exit;
