@@ -155,7 +155,6 @@ class ticket extends ProductBasic
             }
             else {
                 $child_ticket_data = $pack->getChildTickets();
-                //print_r($child_ticket_data);
                 foreach($child_ticket_data as $child) {
                     $data['childTicket'][] = array(
                         'ltitle' => $child['ltitle'],
