@@ -271,7 +271,8 @@ class ticket extends ProductBasic
         $aid  = I('get.aid',0, 'intval');
         $tnum  = I('get.tnum',0, 'intval');
         $beginTime = I('getbeginTime', '', 'trim');
-
+        $session_sid = I('memberSID',0,'intval');
+        $session_sid = $session_sid ? $session_sid : $_SESSION['sid'];
         if ($sign != md5($token.$_GET['appid'].$pid)) {
             exit('{"status":0,"msg":"Access Denied2!"}');
         }
@@ -284,7 +285,7 @@ class ticket extends ProductBasic
         //tnum:1
         //showTicket:1
 
-        $chk_ret = $this->PackageTicketCheck($pid, $_SESSION['sid'], $aid, $beginTime, $tnum);
+        $chk_ret = $this->PackageTicketCheck($pid, $session_sid, $aid, $beginTime, $tnum);
         $child_invalid_msg = array();
         if ($chk_ret['code']!==200) {
             if ($chk_ret['code']>=909) {
