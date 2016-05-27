@@ -375,6 +375,7 @@ class OrderQuery extends Controller
         foreach ($this->orders as $_ordernum=>$orders) {
             //main
             $this->output[$_ordernum] = [];
+            $this->output[$_ordernum]['ordernum'] = $_ordernum;
             //判断订单取消\修改等权限 是否处理过一次 否则初始化权限变量 全部为没有
             $this->output[$_ordernum]['begintime']  = $orders['main']['begintime'];
             $this->output[$_ordernum]['endtime']    = $orders['main']['endtime'];
