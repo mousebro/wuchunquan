@@ -220,9 +220,9 @@ class ProductBasic extends Controller
         // 订单有效期 类型 0 游玩时间 1 下单时间 2 区间
         $tkBaseAttr['delaytype'] = $ticketData['validTime']+0;
         $tkBaseAttr['delaydays'] = $ticketData['delaydays']+0;
-
+        $tkBaseAttr['order_end'] = $tkBaseAttr['order_start'] = '';
         if($ticketData['validTime']==2){
-            //$tkBaseAttr['order_end'] = $tkBaseAttr['order_start'] = '';
+            //
             if($ticketData['order_end']=='' || $ticketData['order_start']=='')
                 return self::_return(self::CODE_INVALID_REQUEST,  '有效期时间不能为空',$ticketData['ttitle']);
             $tkBaseAttr['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
