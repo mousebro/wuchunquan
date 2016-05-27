@@ -533,6 +533,7 @@ class RefundAuditModel extends Model
             'a.stype as change_type',
             'a.stime as apply_time',
             'a.dstatus as handle_res',
+            'a.reason',
             'm.dname as ota_name',
 //            'a.dtime as push_time',
 //            'a.fxid',

@@ -62,3 +62,6 @@ elseif (ENV=='DEVELOP') {
     define('IP_INSIDE', '192.168.20.138');
     define('IP_TERMINAL', '192.168.20.138');
 }
+
+//定义html目录的路径，方便后面的文件查找
+define('HTML_DIR', '/var/www/html');
