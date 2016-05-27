@@ -308,6 +308,15 @@ class ProductBasic extends Controller
                 if ($tkBaseAttr['ddays'] < $item['ddays']) {
                     return self::_return(self::CODE_INVALID_REQUEST,  '套票的提前预定天数不能小于'.$item['ddays'],$ticketData['ttitle']);
                 }
+
+                if ($item['refund_rule'] > $tkBaseAttr['refund_rule']) {
+                    if ($item['refund_rule'] == 1) {
+                        $warning = '您只能选择[游玩日期前可退]或者[不可退]';
+                    } else {
+                        $warning = '您只能选择[不可退]';
+                    }
+                    return self::_return(self::CODE_INVALID_REQUEST,  '由于子票的限制，'.$warning,$ticketData['ttitle']);
+                }
             }
         }
 
@@ -409,6 +418,9 @@ class ProductBasic extends Controller
 
         //监听子票的提前预定时间的变化
         $PackModel->updateParentAdvanceAttr($pid, $tkBaseAttr['ddays'], $tkExtAttr['dhour']);
+
+        //监听子票退票规则的变化
+        $PackModel->updateParentRefundRuleAttr($pid, $tkBaseAttr['refund_rule'], $tkBaseAttr['refund_early_time']);
 
         $output = [
             'code'=>200,

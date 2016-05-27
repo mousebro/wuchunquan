@@ -91,7 +91,7 @@ class PackTicket extends Model
     // 获取关联子票数据
     public function childTicketData(){
         $data = $this->table($this->package_ticket_table)
-            ->field("$this->package_ticket_table.*,l.title as ltitle,l.imgpath,t.title as ttitle,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->field("$this->package_ticket_table.*,l.title as ltitle,l.imgpath,t.title as ttitle,p.id,t.refund_rule,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
             ->join("left join {$this->land_table} l ON l.id={$this->package_ticket_table}.lid")
             ->join("left join {$this->ticket_table} t ON t.pid={$this->package_ticket_table}.pid")
             ->join("left join {$this->ticket_ext_table} f ON f.pid={$this->package_ticket_table}.pid")
@@ -435,5 +435,49 @@ class PackTicket extends Model
         return $this->table($this->ticket_ext_table)
             ->where(['id' => ['in', implode(',', $to_update)]])
             ->save(['dhour' => $hour]);
+    }
+
+    /**
+     * 子票退票规则更新后,同时更新套票的退票规则
+     * @param  [type] $pid  [description]
+     * @param  [type] $rule [description]
+     * @return [type]       [description]
+     */
+    public function updateParentRefundRuleAttr($pid, $rule, $early_time = 0) {
+        $parents = $this->table($this->package_ticket_table)
+            ->where(['pid' => $pid])
+            ->field('parent_tid')
+            ->select();
+
+        if (!$parents) return true;
+
+        $parents_tid = [];
+        foreach ($parents as $item) {
+            $parents_tid[] = $item['parent_tid'];
+        }
+
+        $where = [
+            't.id'          => ['in', implode(',', $parents_tid)],
+            'p.p_status'    => ['in', [0,3,4,5]]
+        ];
+
+        $parent_rules = $this->table($this->ticket_table)
+            ->join('t left join '.$this->products_table.' p on t.pid=p.id')
+            ->where($where)
+            ->field('t.id,t.refund_rule')
+            ->select();
+
+        $to_update = [];
+        foreach ($parent_rules as $item) {
+            if ($rule > $item['refund_rule']) {
+                $to_update[] = $item['id'];
+            }
+        }
+
+        if (count($to_update) == 0) return true;
+
+        return $this->table($this->ticket_table)
+            ->where(['id' => ['in', implode(',', $to_update)]])
+            ->save(['refund_rule' => $rule, 'refund_early_time' => $early_time]);
     }
 }
