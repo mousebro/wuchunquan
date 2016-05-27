@@ -74,6 +74,14 @@ class CacheRedis extends Cache
         return $unserizlize ? unserialize($value) :  $value;
     }
 
+    public function lock($key, $val, $expire=60)
+    {
+        $this->init_master();
+        $ret = $this->handler->setnx($key, $val);
+        if ($ret) $this->handler->expire($key, $expire);
+        return $ret;
+    }
+
     public function set($key, $value, $prefix = '', $expire = null, $unserizlize=false) {
         $this->init_master();
         if (!$this->enable) return false;
