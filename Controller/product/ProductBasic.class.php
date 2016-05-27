@@ -222,6 +222,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['delaydays'] = $ticketData['delaydays']+0;
         $tkBaseAttr['order_end'] = $tkBaseAttr['order_start'] = '';
         if($ticketData['validTime']==2){
+            //
             if($ticketData['order_end']=='' || $ticketData['order_start']=='')
                 return self::_return(self::CODE_INVALID_REQUEST,  '有效期时间不能为空',$ticketData['ttitle']);
             $tkBaseAttr['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
@@ -265,6 +266,7 @@ class ProductBasic extends Controller
             $tkBaseAttr['Mdetails']  = 1;
         }
         if ($p_type=='H') {
+            $tkBaseAttr['order_limit'] = '';//演出类产品不限制验证日期
             $tkBaseAttr['Mpath']     = MAIN_DOMAIN . '/api/Product_check_h.php';
             $tkBaseAttr['Mdetails']  = 1;
         }

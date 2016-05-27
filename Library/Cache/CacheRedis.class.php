@@ -68,8 +68,10 @@ class CacheRedis extends Cache
         $this->init_slave();
         if (!$this->enable) return false;
         $this->type = $type;
+        //var_dump($this->_key($key));
         $value = $this->handler->get($this->_key($key));
-        return $unserizlize ? $value : unserialize($value);
+        //var_dump($value);
+        return $unserizlize ? unserialize($value) :  $value;
     }
 
     public function set($key, $value, $prefix = '', $expire = null, $unserizlize=false) {
@@ -77,12 +79,15 @@ class CacheRedis extends Cache
         if (!$this->enable) return false;
         $this->type = $prefix;
 
-        $value = $unserizlize ? $value : serialize($value);
+        $value = $unserizlize ? serialize($value) :$value;
         if(is_int($expire)) {
             $result = $this->handler->setex($this->_key($key), $expire, $value);
         }else{
             $result = $this->handler->set($this->_key($key), $value);
         }
+        //echo $this->_key($key);
+        //echo $value,'---';
+        //echo $this->handler->get($this->_key($key));exit;
         return $result;
     }
     public function incrBy($key)
