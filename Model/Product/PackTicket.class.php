@@ -10,6 +10,7 @@
 namespace Model\Product;
 
 
+use Library\Cache\Cache;
 use Library\Model;
 
 class PackTicket extends Model
@@ -18,10 +19,12 @@ class PackTicket extends Model
     private $ticket_ext_table       = 'uu_land_f';
     private $package_ticket_table   = 'pft_package_tickets';
     private $products_table         = 'uu_products';
+    private $land_table             = 'uu_land';
 
     private $parent_tid             = 0;
     private $childTickets           = null;
-
+    private $cacheKey              = '';
+    private $cache  = null;
     public $paymode = 0;// 支付方式
     public $advance = 0;// 套票需要提前多少天购买
     public $section = 0;// 是否存在验证区间，1 存在
@@ -29,31 +32,134 @@ class PackTicket extends Model
     public $usedate = array();// 套票有效使用日期数组
     public $message = array();// 提示/错误消息记录
     public $attribute = array();// 景区套票属性
+    public $paymode_continer = array();//
 
-    public function getChildTickets()
-    {
-        if (!is_null($this->childTickets)) return $this->childTicketData($this->parent_tid);
-        return $this->childTickets;
-    }
 
-    public function __construct($parent_tid)
+    public function __construct($parent_tid=0, $initData=true)
     {
         parent::__construct('localhost', 'pft');
         $this->parent_tid = $parent_tid;
-        if ($parent_tid>0 ) $this->childTicketData($parent_tid);
+        if ($parent_tid>0 && $initData===true) {
+            $this->childTicketData();
+        }
+        $this->cacheKey   = "pkg:{$_SESSION['memberID']}";
+        /** @var $cache \Library\Cache\CacheRedis*/
+        $this->cache = Cache::getInstance('redis');
     }
 
+    public function getChildTickets()
+    {
+        if (!is_null($this->childTickets)) return $this->childTicketData();
+        return $this->childTickets;
+    }
+    /**
+     * 检测套票数据是否合法
+     *
+     * @param $json
+     * @return bool
+     */
+    public function checkPackData($json)
+    {
+        $arr_list = json_decode($json, true);
+        //[{"lid":"8264","pid":"14624","aid":"3385","num":"1"},{"lid":"8264","pid":"21656","aid":"3385","num":"1"}]﻿
+        $limit_key_list = ['lid','pid','aid','num'];
+        foreach ($arr_list as $arr) {
+            foreach ($arr as $key=>$val) {
+                if(!in_array($key, $limit_key_list) || !is_numeric($val)) {
+                    echo $key, $val;
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public function getCache()
+    {
+        return $this->cache->get($this->cacheKey);
+    }
+
+    public function setCache($json)
+    {
+        return $this->cache->set($this->cacheKey, $json, '', 1800);
+    }
+
+    public function rmCache()
+    {
+        return $this->cache->rm($this->cacheKey);
+    }
     // 获取关联子票数据
     public function childTicketData(){
         $data = $this->table($this->package_ticket_table)
-            ->field("$this->package_ticket_table.*,p.p_name,p.id,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->field("$this->package_ticket_table.*,l.title as ltitle,l.imgpath,t.title as ttitle,p.id,t.refund_rule,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->join("left join {$this->land_table} l ON l.id={$this->package_ticket_table}.lid")
             ->join("left join {$this->ticket_table} t ON t.pid={$this->package_ticket_table}.pid")
             ->join("left join {$this->ticket_ext_table} f ON f.pid={$this->package_ticket_table}.pid")
             ->join("left join {$this->products_table} p ON p.id={$this->package_ticket_table}.pid")
             ->where(['parent_tid'=>$this->parent_tid])->select();
         //echo $this->getLastSql();
         $this->childTickets = $data;
+        $this->ChkSales();
         return $data;
+    }
+
+    /**
+     * 检测门票是否在售
+     *
+     * @param string $pid_list
+     * @return mixed
+     */
+    private function ChkSales($pid_list='')
+    {
+        // 获取关联子票
+        if (!$pid_list && count($this->childTickets))
+            foreach($this->childTickets as $child) $pid_list[] = $child['pid'];
+
+        $count = $this->relationChildCount = count($pid_list);
+        $data = $this->table($this->ticket_table .' t')
+            ->field("l.title as ltitle,t.title as ttitle,p.id as pid,t.ddays,t.pay,t.order_start,t.order_end,t.delaytype,t.delaydays,f.dhour")
+            ->join("left join {$this->land_table} l ON l.id=t.landid")
+            ->join("left join {$this->ticket_ext_table} f ON f.pid=t.pid")
+            ->join("left join {$this->products_table} p ON p.id=t.pid")
+            ->where([
+                't.pid'=>['in', $pid_list],
+                'p.apply_limit'=>1,
+                'p.p_status'=>['elt',6],
+            ])
+            ->limit($count)
+            ->select();
+        //var_dump($this->getDbError());
+        //var_dump($this->getLastSql());
+        //
+        return $data;
+    }
+
+    public function childTempTicketsInfo(){
+        //[{"lid":"8264","pid":"14624","aid":"3385","num":"1"},{"lid":"8264","pid":"21656","aid":"3385","num":"1"}]﻿
+        $child_info = $this->getCache();
+        if (empty($child_info)) return [];
+        $child_info = json_decode($child_info, true);
+        $pid_list   = [];
+        foreach ($child_info as $info) {
+            $pid_list[(int)$info['pid']] = $info;
+        }
+        $child_info = $this->ChkSales(array_keys($pid_list));
+        $data = [];
+        foreach ($child_info as $key => $row) {
+            $child_info[$key]['lid'] = $pid_list[$row['pid']]['lid'];
+            $child_info[$key]['tid'] = $pid_list[$row['pid']]['tid'];
+            $child_info[$key]['num'] = $pid_list[$row['pid']]['num'];
+            //$data[] = array(
+            //    'ltitle' => $row['ltitle'],
+            //    'ttitle' => $row['ttitle'],
+            //    'pid'   => $row['pid'],
+            //    'lid'   =>
+            //    'tid'   => $pid_list[$row['pid']]['tid'],
+            //    'num'   => $pid_list[$row['pid']]['num'],
+            //);
+        }
+        $this->childTickets = $child_info;
+        return $child_info;
     }
     /**
      * 保存套票子票数据
@@ -79,9 +185,7 @@ class PackTicket extends Model
     }
     // 检查套票是否合法有效
     public function checkEffectivePack(){
-        //var_dump($this->childTicketDatas);
-
-        if($this->relationChildCount!=count($this->childTicketDatas))
+        if($this->relationChildCount!=count($this->childTickets))
         {
             $this->message[] = '子票非所有都可销售';
             return false;// 子票非所有都可销售
@@ -94,7 +198,6 @@ class PackTicket extends Model
             return false;
         }
         // 所有支付方式都必须一直
-        // print_r(array_count_values($this->paymode_continer));
         if(count(array_count_values($this->paymode_continer))>1)
         {
             $this->message[] = '支付方式存在不一致';
@@ -106,9 +209,8 @@ class PackTicket extends Model
     public function useDate($playDate=''){
         //var_dump( $this->childTickets);
         $this->paymode = $this->childTickets[0]['pay'];// 支付方式
-        $this->advance = $this->childTicketDatas[0]['ddays'];// 提前购买天数
+        $this->advance = $this->childTickets[0]['ddays'];// 提前购买天数
         $orderDate = date('Y-m-d 00:00:00');// 下单时间
-
         // 获取最大提前天数
         if(is_null($this->childTickets)){
             return array(
@@ -120,12 +222,11 @@ class PackTicket extends Model
             );
         }
         foreach($this->childTickets as $key=>$data){
-            if($data['dhour'] < date('H:i:s'))   $data['ddays'] += 1;
+            // if($data['dhour'] < date('H:i:s'))   $data['ddays'] += 1;
             if($data['ddays'] > $this->advance)  $this->advance = $data['ddays'];// 提前天数最大值
             $this->paymode = $data['pay'];// 支付方式
             $this->paymode_continer[] = $data['pay'];
         }
-
         // 初始第一个子票信息
         $iniDate = $this->effectiveDateSection($this->childTickets[0], $orderDate, $playDate);
         foreach($this->childTickets as $key=>$data){
@@ -187,5 +288,196 @@ class PackTicket extends Model
             $arr['mDate'] = $arr['mDate'];
         }
         return $arr;
+    }
+
+    /**
+     * 根据套票的门票ID获取拥有的子票
+     *
+     * @return mixed
+     */
+    public function getTickets()
+    {
+        $tickets = $this->table($this->package_ticket_table)
+            ->field('lid,pid,num,aid')
+            ->where(['parent_tid'=>$this->parent_tid])
+            ->select();
+        return $tickets;
+    }
+
+    /**
+     * 套票产品连带关系检测,若子票下架，主票会跟着下架
+     *
+     * @param $pid
+     * @return bool
+     */
+    public function PackageCheckByPid($pid)
+    {
+        $tid_list = $this->table($this->package_ticket_table)
+            ->where(['pid'=>$pid])
+            ->getField('parent_tid', true);
+        if ($tid_list) {
+            $tid_list = array_unique($tid_list);//去重
+            $pid_list = $this->table($this->ticket_table)
+                ->where(['id'=>['in', $tid_list]])
+                ->getField('pid', true);
+
+            //$stateMsg['S:'.$row['id']] = array(
+            //    'timer'=>date('Y年m月d日 H:i:s'),
+            //    'message'=>'套票关联子票被下架或删除，系统自动下架该套票',
+            //);
+            //buildMess($stateMsg);
+
+            return $this->table($this->products_table)
+                ->where(['id'=>$pid_list])
+                ->limit(count($pid_list))
+                ->save(['apply_limit'=>2]);
+        }
+        return true;
+    }
+
+    /**
+     * 子票提前预定时间更新后,同时更新套票的提前预定时间属性
+     * @param  [type] $pid [description]
+     * @param  [type] $day [description]
+     * @return [type]      [description]
+     */
+    public function updateParentAdvanceAttr($pid, $day, $hour) {
+
+        $parents = $this->table($this->package_ticket_table)
+            ->where(['pid' => $pid])
+            ->field('parent_tid')
+            ->select();
+
+        if (!$parents) return true;
+
+        $parents_tid = [];
+        foreach ($parents as $item) {
+            $parents_tid[] = $item['parent_tid'];
+        }
+
+        $this->startTrans();
+
+        if (!$this->_updateDdaysAttr($parents_tid, $day)) {
+            $this->rollback();
+            return false;
+        }
+
+        if (!$this->_updateDhourAttr($parents_tid, $hour)) {
+            $this->rollback();
+            return false;
+        }
+
+        $this->commit();
+
+        return true;
+    }
+
+    /**
+     * 更新ddays字段
+     * @param  [type] $tid_arr [description]
+     * @param  [type] $day     [description]
+     * @return [type]          [description]
+     */
+    private function _updateDdaysAttr($tid_arr, $day) {
+        $where = [
+            't.id'          => ['in', implode(',', $tid_arr)],
+            'p.p_status'    => ['in', [0,3,4,5]]
+        ];
+
+        $parent_ddays = $this->table($this->ticket_table)
+            ->join('t left join '.$this->products_table.' p on t.pid=p.id')
+            ->where($where)
+            ->field('t.id,t.ddays')
+            ->select();
+
+        $to_update = [];
+        foreach ($parent_ddays as $item) {
+            if ($item['ddays'] < $day) {
+                $to_update[] = $item['id'];
+            }
+        }
+
+        if (count($to_update) == 0) return true;
+
+        return $this->table($this->ticket_table)
+            ->where(['id' => ['in', implode(',', $to_update)]])
+            ->save(['ddays' => $day]);
+    }
+
+
+    /**
+     * 更新dhour字段
+     * @param  [type] $tid_arr [description]
+     * @param  [type] $hour    [description]
+     * @return [type]          [description]
+     */
+    private function _updateDhourAttr($tid_arr, $hour) {
+        $where = [
+            'f.tid'          => ['in', implode(',', $tid_arr)],
+            'p.p_status'    => ['in', [0,3,4,5]]
+        ];
+
+        $parent_dhours = $this->table($this->ticket_ext_table)
+            ->join('f left join '.$this->products_table.' p on f.pid=p.id')
+            ->where($where)
+            ->field('f.id,f.dhour')
+            ->select();
+
+        $to_update = [];
+        foreach ($parent_dhours as $item) {
+            if ($item['dhour'] > $hour) {
+                $to_update[] = $item['id'];
+            }
+        }
+
+        if (count($to_update) == 0) return true;
+
+        return $this->table($this->ticket_ext_table)
+            ->where(['id' => ['in', implode(',', $to_update)]])
+            ->save(['dhour' => $hour]);
+    }
+
+    /**
+     * 子票退票规则更新后,同时更新套票的退票规则
+     * @param  [type] $pid  [description]
+     * @param  [type] $rule [description]
+     * @return [type]       [description]
+     */
+    public function updateParentRefundRuleAttr($pid, $rule, $early_time = 0) {
+        $parents = $this->table($this->package_ticket_table)
+            ->where(['pid' => $pid])
+            ->field('parent_tid')
+            ->select();
+
+        if (!$parents) return true;
+
+        $parents_tid = [];
+        foreach ($parents as $item) {
+            $parents_tid[] = $item['parent_tid'];
+        }
+
+        $where = [
+            't.id'          => ['in', implode(',', $parents_tid)],
+            'p.p_status'    => ['in', [0,3,4,5]]
+        ];
+
+        $parent_rules = $this->table($this->ticket_table)
+            ->join('t left join '.$this->products_table.' p on t.pid=p.id')
+            ->where($where)
+            ->field('t.id,t.refund_rule')
+            ->select();
+
+        $to_update = [];
+        foreach ($parent_rules as $item) {
+            if ($rule > $item['refund_rule']) {
+                $to_update[] = $item['id'];
+            }
+        }
+
+        if (count($to_update) == 0) return true;
+
+        return $this->table($this->ticket_table)
+            ->where(['id' => ['in', implode(',', $to_update)]])
+            ->save(['refund_rule' => $rule, 'refund_early_time' => $early_time]);
     }
 }

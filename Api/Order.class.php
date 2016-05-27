@@ -17,12 +17,13 @@ class Order extends Controller
 {
     private $soap;
 
-    private function getSoap()
+    public function soap()
     {
+        $this->soap  = parent::getSoap();
         //$this->verify();
-        $this->soap  = new \SoapClient(null,array(
-            "location" => "http://localhost/open/openService/pft_insideMX.php",
-            "uri" => "www.16u.com?ac_16u=16ucom|pw_16u=c33367701511b4f6020ec61ded352059|auth_16u=true"));
+        //$this->soap  = new \SoapClient(null,array(
+        //    "location" => "http://localhost/open/openService/pft_insideMX.php",
+        //    "uri" => "www.16u.com?ac_16u=16ucom|pw_16u=c33367701511b4f6020ec61ded352059|auth_16u=true"));
     }
 
     /**
@@ -38,7 +39,7 @@ class Order extends Controller
             parent::apiReturn(401, [],'参数错误');
         }
         //echo $tid;exit;
-        $this->getSoap();
+        $this->soap();
         $res        = $this->soap->QuickOrder($tid, $auth_code);
         if ($res==100) {
             parent::apiReturn(200, [],'下单成功');
@@ -61,7 +62,7 @@ class Order extends Controller
         $tid = 0;
         $member             = I('post.member');
         $aid                = I('post.aid');
-        $this->getSoap();
+        $this->soap();
         $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, 0, $tid, '', '',
             $ordertime_begin, $ordertime_end,'','','', '',//13订单完成时间
             $orderNum, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
@@ -111,7 +112,7 @@ class Order extends Controller
         //if (empty($tradeno)) {
         //    parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，流水号格式不对');
         //}
-        $this->getSoap();
+        $this->soap();
         //$soap = new \ServerInside();
         $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);

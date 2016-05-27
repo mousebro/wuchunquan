@@ -219,5 +219,15 @@ class Controller {
         curl_close($ch);
         return $rt;
     }
+
+    public static function getSoap()
+    {
+        $ac     = '16ucom';
+        $pw     = 'c33367701511b4f6020ec61ded352059';
+        $soap = new \SoapClient(null,array(
+            "location" => "http://localhost/open/openService/pft_insideMX.php",
+            "uri" => "www.16u.com?ac_16u={$ac}|pw_16u={$pw}|auth_16u=true"));
+        return $soap;
+    }
 }
 ?>
