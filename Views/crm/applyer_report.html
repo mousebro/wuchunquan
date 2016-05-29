@@ -3,20 +3,100 @@
 <head>
   <meta charset="UTF-8">
   <title>供应商销售报表</title>
+  <link rel="stylesheet" href="/css/aliceui.min.css"/>
+    <style>
+        .wrap{width: 98%;padding: 10px ;}
+        .rank{width: 30px;font-weight: bold;color:#FF2F2F;}
+        form{padding:4px 10px; border-bottom: 1px dashed #eee;}
+        .ui-box{margin-top: 10px;}
+    </style>
 </head>
 <body>
-<form>
-
-</form>
-<div id="chart1" style="height: 300px;height: 500px; margin: 0 auto;"></div>
+<div class="wrap">
+    <div class="ui-box">
+      <div class="ui-box-head">
+        <h3 class="ui-box-head-title">30日销量排行</h3>
+      </div>
+      <div class="ui-box-container">
+          <form class="form">
+             <p>
+                 <span>统计前 <input class="rank" type="number" value="30" name="top" /> 名的销量</span>
+                 <span>
+                     统计方式:
+                      <label><input type="radio" name="group" value="1"/>按供应商统计</label>
+                      <label><input type="radio" name="group" value="2"/>按供景点统计</label>
+                     </span>
+                <span>排序依据:
+                  <label><input type="radio" name="order" value="1"/>票数</label>
+                  <label><input type="radio" name="order" value="2"/>订单数</label>
+                  <label><input type="radio" name="order" value="3"/>订单总额</label>
+                     </span>
+                 <button type="button" id="btn-rank" class="ui-button ui-button-sorange">提交</button>
+             </p>
+          </form>
+          <div id="chart1" style="height: 300px;height: 500px; margin: 0 auto;"></div>
+      </div>
+    </div>
+    <div class="ui-box">
+      <div class="ui-box-head">
+        <h3 class="ui-box-head-title">景点/供应商销量汇总</h3>
+      </div>
+      <div class="ui-box-container">
+          <form class="ui-form" name="" method="post" action="#" id="">
+              <p>
+                  <span> 开始时间:
+                      <input type="date" name="start_day" value="<?=date('Y-m-d', strtotime('-1 mouth'))?>" id=""start_time/> </span>
+                  <span> 结束时间: <input type="date" name="end_day" value="<?=date('Y-m-d')?>" id="end_time"/> </span>
+                  汇总方式:
+                  <label><input type="radio" name="group" value="0"/>每日</label>
+                  <label><input type="radio" name="group" value="1"/>每月</label>
+              </p>
+              <p>
+                  供应商: <select name="uid" id="applyer_list"></select>
+                  景点: <select name="lid" id="scenic"></select>
+                  <button type="button" class="ui-button ui-button-sorange" id="btn-detail">提交</button>
+              </p>
+          </form>
+          <div id="chart2" style="height: 300px;height: 500px; margin: 0 auto;"></div>
+      </div>
+    </div>
+</div>
 <script src="//cdn.bootcss.com/jquery/1.9.0/jquery.min.js"></script>
 <script src="//cdn.bootcss.com/echarts/3.1.10/echarts.common.min.js"></script>
 <script>
   $(document).ready(function(){
+      var api = 'index.php?c=report_ApplyReport&a=index';
+      var get_select_data = function(){
+          var params = {
+              data_type:2,
+              start_day: $("input[name='start_day").val(),
+              end_day: $("input[name='end_day']").val()
+          }
+          $.getJSON(api, params, function(json){
+              if (json.code!=200) {
+                  alert('获取初始化数据失败');
+                  return false;
+              }
+              console.log(json.data);
+              var p_options = '<option value="0">--选择产品--</option>';
+              var m_options = '<option value="0">--选择产品--</option>';
+              for ( var i in json.data.products) {
+                  p_options += "<option value="+i+">"+json.data.products[i]+"</option>";
+              }
+              for ( var j in json.data.members) {
+                  m_options += "<option value="+j+">"+json.data.members[j]+"</option>";
+              }
+              $("select#applyer_list").html(m_options);
+              $("select#scenic").html(p_options);
+          })
+      };
+      get_select_data();
+      $("input[name='start_day").on('change', get_select_data);
+      $("input[name='end_day").on('change', get_select_data);
     var myChart = echarts.init(document.getElementById('chart1'));
     var option = {
       title: {
-        text: '供应商/景点销售统计',
+        text: '月销量排行',
         subtext: '30日数据'
       },
       tooltip : {
