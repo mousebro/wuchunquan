@@ -193,7 +193,7 @@ class TradeRecord extends Controller
 
         $record = $recordModel->getDetails($trade_id);
 
-        if ( ! empty($record['fid']) && ! empty($record['aid'])) {
+        if ( ! empty($record['fid']) || ! empty($record['aid'])) {
             if ( ! in_array($memberId, [1, $record['fid'], $record['aid']])) {
                 $this->apiReturn(201, [], '无权查看');
             } else {
@@ -273,7 +273,8 @@ class TradeRecord extends Controller
     {
         if(ENV == 'DEVELOP'){
             $_SESSION['sid'] = 1;
-            $this->getList();
+//            $this->getList();
+            $this->getDetails();
         }else{
             $this->apiReturn(213);
         }

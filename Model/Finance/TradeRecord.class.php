@@ -78,14 +78,25 @@ class TradeRecord extends Model
     public static function getPayTypes()
     {
         return array(
-            0 => '平台账本',
-            1 => '支付宝',
-            2 => '授信支付',
-            3 => '供应商信用额度设置',
-            4 => '微信',
-            5 => '银联',
-            6 => '环迅',
+            0 => [0,'平台账本'],
+            1 => [1,'支付宝'],
+            2 => [2,'授信支付'],
+            3 => [2,'供应商信用额度设置'],
+            4 => [3,'微信'],
+            5 => [4,'银联'],
+            6 => [5,'环迅'],
         );
+    }
+
+    public static function getAccTypes(){
+       return array(
+           '平台账户',
+           '支付宝',
+           '授信账户',
+           '微信',
+           '银联',
+           '环迅',
+       );
     }
 
     /**
@@ -120,8 +131,7 @@ class TradeRecord extends Model
         $where  = ['tr.id' => $trade_id];
         $record = $this->table($table)->field($field)->where($where)->join($join)->find();
         //记录查询语句
-        \pft_log('trade_record/query', 'get_details|'. $this->getLastSql());
-
+        $this->logSql('get_details');
         return $this->resolveRecord($record, 0);
     }
 
@@ -153,10 +163,7 @@ class TradeRecord extends Model
             'dmoney',
             'daction',
             'lmoney',
-            'aid',
             'ptype',
-            //            'opid',
-            'order_channel',
             'memo',
         ];
 
@@ -169,7 +176,7 @@ class TradeRecord extends Model
         $data = [];
         if (is_array($records)) {
             foreach ($records as $record) {
-                $data[] = $this->resolveRecord($record);
+                $data[] = $this->resolveRecord($record,1,0);
             }
         }
 
@@ -239,7 +246,7 @@ class TradeRecord extends Model
      *
      * @return array
      */
-    protected function resolveRecord(array $record, $if_unset = 1)
+    protected function resolveRecord(array $record, $if_unset = 1,$parse_lmoney = 1)
     {
         if (isset($record['dmoney'])) {
             $record['dmoney'] = strval(sprintf($record['dmoney'] / 100, 2));
@@ -289,11 +296,16 @@ class TradeRecord extends Model
             $ptype      = $record['ptype'];
             $ptype_list = self::getPayTypes();
             if (array_key_exists($ptype, $ptype_list)) {
-                $record['ptype'] = $ptype_list[$ptype];
+                $record['ptype'] = $ptype_list[$ptype][1];
+                $p_acc =$ptype_list[$ptype][0];
+                $acc_type_list = self::getAccTypes();
+                if(array_key_exists($p_acc, self::getAccTypes())){
+                    $record['taccount'] =  $acc_type_list[$p_acc];
+                }
             }
         }
         //区分账户余额与授信余额
-        if (isset($record['lmoney'])) {
+        if (isset($record['lmoney']) && $parse_lmoney) {
             if (isset($ptype)) {
                 if (in_array($ptype, [0, 1, 4, 5, 6])) {
                     $record['cre_money'] = '';
