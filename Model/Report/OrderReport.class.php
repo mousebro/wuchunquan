@@ -252,11 +252,11 @@ SQL;
         }
 
         if($lid) {
-            $where['_string'] = "s.lid = {$lid}";
+            $where['_string'] = $where['_string'] ? $where['_string'] . " and s.lid = {$lid}" : "s.lid = {$lid}";
         }
 
         if($ticketId) {
-            $where['_string'] = "s.tid = {$ticketId}";
+            $where['_string'] = $where['_string'] ? $where['_string'] . " and s.tid = {$ticketId}" : "s.tid = {$ticketId}";
         }
 
 
@@ -265,7 +265,7 @@ SQL;
                 $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
             }
 
-            $where['_string'] = "os.buyerid = {$fid}";
+            $where['_string'] = $where['_string'] ? $where['_string'] . " and os.buyerid = {$fid}" : "os.buyerid = {$fid}";
         }
 
         if($aid) {
@@ -273,8 +273,10 @@ SQL;
                 $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
             }
 
+            $where['_string'] = $where['_string'] ? $where['_string'] . " and os.sellerid = {$aid}" : "os.sellerid = {$aid}";
+
             if(!$includeMy) {
-                $where['_string'] = "os.sellerid = {$aid} AND os.sellerid<>os.buyerid ";
+                $where['_string'] = $where['_string'] ? $where['_string'] . " and os.sellerid<>os.buyerid" : "os.sellerid<>os.buyerid";
             }
         }
 
@@ -285,6 +287,8 @@ SQL;
             ->group($group)
             ->where($where)
             ->select();
+
+            echo $this->getLastSql();
 
         //返回的数据
         $resData   = array();
