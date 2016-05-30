@@ -175,4 +175,221 @@ SQL;
     {
 
     }
+
+
+    /**
+     * 统计报表数据聚合
+     * @author dwer
+     * @date   2016-05-30
+     *
+     * @param $timeType 1：下单时间，2：预计游玩， 3：完成时间
+     * @param $beginTime 开始时间 2016-10-23 00:00:00
+     * @param $endTime 结束时间 2016-10-24 23:59:59
+     * @param $orderBy 统计方式 lid：按景区统计，tid：按门票统计， mid：按分销商统计， aid：按供应商统计
+     * @param $statusArr 订单状态 
+     * @param $aid 供应商ID
+     * @param $lid 景区ID
+     * @param $ticketId 门票ID
+     * @param $fid 分销商ID
+     * @retur
+     */
+    public function summary($timeType, $beginTime, $endTime, $orderBy, $statusArr, $aid = '', $lid = '', $ticketId = '', $fid = '') {
+        if(!in_array($timeType, [1, 2, 3]) || !in_array($orderBy, ['lid', 'tid', 'mid', 'aid']) || !$beginTime || !$endTime) {
+            return [];
+        }
+
+        $field = 'count(s.id) as torder,sum(s.tnum) as ttnum,sum(s.tnum * s.tprice) as money, sum(totalmoney) as realmoney, paymode as pmode';
+        $table = 'uu_ss_order as s';
+        $where = [];
+        $join  = '';
+        $group = '';
+
+        switch($timeType){
+            case '1':
+            default:
+                $where['ordertime'] = [['egt',$beginTime], ['elt',$endTime]];
+                break;
+            case '2':
+                $where['begintime'] = [['egt',$beginTime], ['elt',$endTime]];
+                break;
+            case '3':
+                $where['dtime'] = [['egt',$beginTime], ['elt',$endTime]];
+                break;
+        }
+
+        if(!$statusArr || !is_array($statusArr)) {
+            //默认查询已经完成订单
+            $statusArr = [1, 2, 3, 4, 5, 6, 7];
+        }
+
+        $statusStr       = implode(',', $statusArr);
+        $statusStr       = trim($statusStr, ',');
+        $where['s.status'] = ['in', $statusStr];
+
+        switch($orderBy){
+            case 'lid':
+            default:
+                $join  = " left join uu_land l on s.lid=l.id ";
+                $field .= ",l.title as ltitle,lid ";
+                $group = "s.lid";
+                break;
+                case 'tid':
+                $join  = " left join uu_land l on s.lid=l.id left join uu_jq_ticket t on s.tid=t.id";
+                $field .= ",l.title  as ltitle,t.title  as ttitle,tid ";
+                $group = "s.tid";
+                break;
+            case 'mid':
+                $join  = " left join order_aids_split os on s.ordernum=os.orderid left join pft_member d on os.buyerid=d.id";
+                $field .= ",os.buyerid,d.dname";
+                $group = "os.buyerid";
+                break;
+            case 'aid':
+                $join  = "  left join order_aids_split os on s.ordernum=os.orderid left join pft_member d on os.sellerid=d.id";
+                $field .= ",os.sellerid,d.dname";
+                $group = "os.sellerid";
+                break;
+        }
+
+        if($lid) {
+            $where['_string'] = "s.lid = {$lid}";
+        }
+
+        if($ticketId) {
+            $where['_string'] = "s.tid = {$ticketId}";
+        }
+
+        if(!$lid) {
+            if($fid) {
+                if($orderBy!='mid' && $orderBy!='aid'){
+                    $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
+                }
+
+                $where['_string'] = "os.buyerid = {$fid}";
+            }
+
+            if($aid) {
+                if($orderBy!='mid' && $orderBy!='aid' && !$fid){
+                    $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
+                }
+
+                $where['_string'] = "os.sellerid = {$aid} AND os.sellerid<>os.buyerid ";
+
+            }
+        }
+
+
+
+        $res = $this->table($table)
+            ->field($field)
+            ->join($join)
+            ->group($group)
+            ->where($where)
+            ->select();
+
+        //返回的数据
+        $resData   = array();
+        $totalData = array();
+
+        if($res) {
+            //数据处理
+            switch($orderBy){
+                case 'lid':
+                default:
+                    foreach($res as $row) {
+                        $row['money']       = number_format($row['money'],2,'.','');
+                        $row['realmoney']   = number_format($row['realmoney'],2,'.','');
+
+                        $resData[$row['lid']]['title']     = $row['ltitle'];
+                        $resData[$row['lid']]['order']    += $row['torder'];
+                        $resData[$row['lid']]['tnum']     += $row['ttnum'];
+                        $resData[$row['lid']]['money']     += $row['money'];
+                        $resData[$row['lid']]['realmoney'] += $row['realmoney'];
+
+                        $totalData['order']    += $row['torder'];
+                        $totalData['tnum']     += $row['ttnum'];
+                        $totalData['money']     += $row['money'];
+                        $totalData['realmoney'] += $row['realmoney'];
+
+                        $resData[$row['lid']]['pmode'.$row['pmode']] +=  $row['money'];
+                        $totalData['pmode'.$row['pmode']] +=  $row['money'];
+
+                        $resData[$row['lid']]['realpmode'.$row['pmode']] +=  $row['realmoney'];
+                        $totalData['realpmode'.$row['pmode']] +=  $row['realmoney'];
+                    }
+                    break;
+                case 'tid':
+                    foreach($res as $row) {
+                        $row['money']       = number_format($row['money'],2,'.','');  
+                        $row['realmoney']   = number_format($row['realmoney'],2,'.','');
+
+                        $resData[$row['tid']]['order']    += $row['torder'];
+                        $resData[$row['tid']]['title']     = $row['ltitle'].$row['ttitle'];
+                        $resData[$row['tid']]['tnum']     += $row['ttnum'];
+                        $resData[$row['tid']]['money']     += $row['money'];
+                        $resData[$row['tid']]['realmoney'] += $row['realmoney'];
+
+                        $totalData['order']    += $row['torder'];
+                        $totalData['tnum']     += $row['ttnum'];
+                        $totalData['money']     += $row['money'];
+                        $totalData['realmoney'] += $row['realmoney'];
+
+                        $resData[$row['tid']]['pmode'.$row['pmode']] +=  $row['money'];
+                        $totalData['pmode'.$row['pmode']] +=  $row['money'];
+
+                        $resData[$row['tid']]['realpmode'.$row['pmode']] +=  $row['realmoney'];
+                        $totalData['realpmode'.$row['pmode']] +=  $row['realmoney'];
+                    }
+                    break;
+                case 'mid':
+                    foreach($res as $row) {
+                        $row['money']     = number_format($row['money'],2,'.','');
+                        $row['realmoney'] = number_format($row['realmoney'],2,'.','');
+
+                        $resData[$row['buyerid']]['order']    += $row['torder'];
+                        $resData[$row['buyerid']]['title']     = $row['dname'];
+                        $resData[$row['buyerid']]['tnum']     += $row['ttnum'];
+                        $resData[$row['buyerid']]['money']     += $row['money'];
+                        $resData[$row['buyerid']]['realmoney'] += $row['realmoney'];
+
+                        $totalData['order']    += $row['torder'];
+                        $totalData['tnum']     += $row['ttnum'];
+                        $totalData['money']     += $row['money'];
+                        $totalData['realmoney'] += $row['realmoney'];
+
+                        $resData[$row['buyerid']]['pmode'.$row['pmode']] +=  $row['money'];
+                        $totalData['pmode'.$row['pmode']] +=  $row['money'];
+                        
+                        $resData[$row['buyerid']]['realpmode'.$row['pmode']] +=  $row['realmoney'];
+                        $totalData['realpmode'.$row['pmode']] +=  $row['realmoney'];
+                    }
+                    break;
+                case 'aid':
+                    foreach($res as $row) {
+                        $row['money']     = number_format($row['money'],2,'.','');
+                        $row['realmoney'] = number_format($row['realmoney'],2,'.','');
+                        
+                        $resData[$row['sellerid']]['order']    += $row['torder'];
+                        $resData[$row['sellerid']]['title']     = $row['dname'];
+                        $resData[$row['sellerid']]['tnum']     += $row['ttnum'];
+                        $resData[$row['sellerid']]['money']     += $row['money'];
+                        $resData[$row['sellerid']]['realmoney'] += $row['realmoney'];
+
+                        $totalData['order']    += $row['torder'];
+                        $totalData['tnum']     += $row['ttnum'];
+                        $totalData['money']     += $row['money'];
+                        $totalData['realmoney'] += $row['realmoney'];
+
+                        $resData[$row['sellerid']]['pmode'.$row['pmode']] +=  $row['money'];
+                        $totalData['pmode'.$row['pmode']] +=  $row['money'];
+
+                        $resData[$row['sellerid']]['realpmode'.$row['pmode']] +=  $row['money'];
+                        $totalData['realpmode'.$row['pmode']] +=  $row['money'];
+                    }
+                    break;
+            }
+        }
+
+        //返回处理过的数据
+        return ['res_data' => $resData, 'total_data' => $totalData];
+    }
 }
