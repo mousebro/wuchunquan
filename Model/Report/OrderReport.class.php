@@ -191,9 +191,10 @@ SQL;
      * @param $lid 景区ID
      * @param $ticketId 门票ID
      * @param $fid 分销商ID
+     * @param $includeMy 是否包含自己购买的产品
      * @retur
      */
-    public function summary($timeType, $beginTime, $endTime, $orderBy, $statusArr, $aid = '', $lid = '', $ticketId = '', $fid = '') {
+    public function summary($timeType, $beginTime, $endTime, $orderBy, $statusArr, $aid = '', $lid = '', $ticketId = '', $fid = '', $includeMy = '') {
         if(!in_array($timeType, [1, 2, 3]) || !in_array($orderBy, ['lid', 'tid', 'mid', 'aid']) || !$beginTime || !$endTime) {
             return [];
         }
@@ -272,12 +273,11 @@ SQL;
                     $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
                 }
 
-                $where['_string'] = "os.sellerid = {$aid} AND os.sellerid<>os.buyerid ";
-
+                if(!$includeMy) {
+                    $where['_string'] = "os.sellerid = {$aid} AND os.sellerid<>os.buyerid ";
+                }
             }
         }
-
-
 
         $res = $this->table($table)
             ->field($field)
