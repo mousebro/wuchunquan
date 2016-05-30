@@ -88,20 +88,20 @@ class OrderQuery extends Controller
             [amid] => 4
         )*/
         $tid = 0;
-        $page_size      = I('post.page_size',20, 'intval');
-        $current_page   = I('post.current_page',1, 'intval');
+        $page_size      = I('get.page_size',20, 'intval');
+        $current_page   = I('get.current_page',1, 'intval');
         $offset         = ($current_page - 1) * $page_size;
 
-        $time_type      = I('post.time_type', 1, 'intval');
-        $sale_mode      = I('post.sale_mode',0, 'intval');
-        $pmode          = I('post.pmode', -1, 'intval');
-        $select_type    = I('post.select_type', 0, 'intval');
-        $select_text    = I('post.select_text');
-        $btime          = I('post.btime');
-        $etime          = I('post.etime');
-        $gmode          = I('post.gmode');
-        $sort           = I('post.sort');
-        $serller_id     = I('post.amid');
+        $time_type      = I('get.time_type', 1, 'intval');
+        $sale_mode      = I('get.sale_mode',0, 'intval');
+        $pmode          = I('get.pmode', -1, 'intval');
+        $select_type    = I('get.select_type', 0, 'intval');
+        $select_text    = I('get.select_text');
+        $btime          = I('get.btime');
+        $etime          = I('get.etime');
+        $gmode          = I('get.gmode');
+        $sort           = I('get.sort');
+        $serller_id     = I('get.amid');
         $btime          = $btime ? $btime : date('Y-m-d 00:00:00');
         $etime          = $etime ? $etime : date('Y-m-d 23:59:59');
         $pay_status     = $order_status = $order_mode = $pay_mode   = -1;
@@ -166,7 +166,7 @@ class OrderQuery extends Controller
         }
 
         $buyer_id = $_SESSION['sid'];
-        //echo $buyer_id;exit;
+        //echo $order_num;exit;
         $data = $this->model->OrderList($offset, $page_size, $serller_id, $buyer_id, $lid, $tid, $order_num,
             $time_praram, $order_tel, $order_name, $remote_num, $pay_status, $order_status,
             $order_mode, $pay_mode);
@@ -174,6 +174,7 @@ class OrderQuery extends Controller
         $total = $this->model->OrderList($offset, $page_size, $serller_id, $buyer_id, $lid, $tid, $order_num,
             $time_praram, $order_tel, $order_name, $remote_num, $pay_status, $order_status,
             $order_mode, $pay_mode, \Model\Order\OrderQuery::GET_TOTAL_ROWS);
+        $total = ceil($total / $page_size);
         $this->tickets = $data['tickets'];
         $this->members = $data['members'];
         $this->lands   = $data['lands'];
@@ -248,10 +249,10 @@ class OrderQuery extends Controller
                 $sell_price = $aids_price[$key] ? $aids_price[$key] : 0;
                 $buy_price  = $aids_price[$key - 1] ? $aids_price[$key - 1] : 0;
             }
-            $this->output[$_key]['tickets'][$orderInfo['tid']]['buy_price'] = $buy_price;
-            $this->output[$_key]['tickets'][$orderInfo['tid']]['sell_price'] = $sell_price;
-            $this->output[$_key]['buy_money']  += $buy_price * $orderInfo['tnum'];
-            $this->output[$_key]['sell_price'] += $sell_price * $orderInfo['tnum'];
+            $this->output[$_key]['tickets'][$orderInfo['tid']]['buy_price'] = $buy_price / 100;
+            $this->output[$_key]['tickets'][$orderInfo['tid']]['sell_price'] = $sell_price / 100;
+            $this->output[$_key]['buy_money']  += ($buy_price * $orderInfo['tnum']) / 100;
+            $this->output[$_key]['sell_money'] += ($sell_price * $orderInfo['tnum']) / 100;
         }
         return true;
     }
@@ -324,9 +325,9 @@ class OrderQuery extends Controller
      * @param $memberIdList
      * @return bool
      */
-    protected function _modify($status, $memberIdList)
+    protected function _modify($status, $tnum, $memberIdList)
     {
-        if ($status==0) {
+        if ($status==0 && $tnum>1) {
             return in_array($this->memberId, $memberIdList);
         }
         return false;
@@ -359,7 +360,7 @@ class OrderQuery extends Controller
         $permission['pay']      = $this->_pay($order['pay_status'], $order['member']);
         $permission['check']    = $this->_check($order['pay_status'], $apply_did, $order['status']);
         $permission['cancel']   = $this->_cancel($order['ordermode'], $order['status'],[self::ADMIN_ID, $apply_did, $order['member']]);
-        $permission['modify']   = $this->_modify( $order['status'],[self::ADMIN_ID, $apply_did, $order['member']]);
+        $permission['modify']   = $this->_modify( $order['status'], $order['tnum'], [self::ADMIN_ID, $apply_did, $order['member']]);
         $permission['sms']      = $this->_sms($order['status'],[self::ADMIN_ID, $apply_did, $order['aid'], $order['member']]);
 
         $this->output[$order['ordernum']]['permissions'] = $permission;

@@ -81,6 +81,26 @@ class OrderQuery extends Model
         $data = $this->table('pft_member')->where($where)->getField('id,dname', true);
         return $data;
     }
+
+    /**
+     * 获取分批验证的票数
+     *
+     * @param array $ordernum_list 订单号
+     * @return array
+     */
+    public function getCheckedTnum(Array $ordernum_list) {
+        $where = ['ordernum'=>['in', $ordernum_list], 'action'=>5];
+        $data  = $this->table('pft_order_track')->where($where)
+            ->getField('tid,ordernum, tnum,left_num', true);
+        if (!$data) return [];
+        $ret = [];
+        foreach ($data as $item) {
+            $_k = $item['ordernum'];
+            unset($item['ordernum']);
+            $ret[$_k] = $item;
+        }
+        return $ret;
+    }
     public function sql_ids_M_A($amid,$maid){
         if(!$amid) return $this->err3;
         //array(array('gt',3),array('lt',10), 'or') ;
@@ -103,7 +123,7 @@ class OrderQuery extends Model
      * @param int $pay_mode
      * @return array
      */
-    public function _where($seller_id, $buyer_id, $lid=0, $tid=0, $timeParams=[],
+    public function _where($seller_id, $buyer_id, $order_num='', $lid=0, $tid=0, $timeParams=[],
                            $order_tel='', $order_name='', $remote_num='',
                            $pay_status=-1, $order_status=-1, $order_mode=-1,
                            $pay_mode=-1)
@@ -114,6 +134,10 @@ class OrderQuery extends Model
         }
         elseif($buyer_id>0) {
             $where['_string'] = "os.sellerid=$buyer_id OR os.buyerid=$buyer_id";
+        }
+        if (is_numeric($order_num)) {
+            $where['ordernum'] = $order_num;
+            return $where;
         }
         if ($lid>0) $where['lid'] = $lid;
         if ($tid>0) $where['tid'] = $tid;
@@ -193,10 +217,8 @@ class OrderQuery extends Model
                               $pay_status=-1, $order_status=-1, $order_mode=-1, $pay_mode=-1, $total=false
     )
     {
-        if (is_numeric($order_num)) {
-            return $this->OrderDetail($order_num);
-        }
-        $where = $this->_where($seller_id, $buyer_id, $lid, $tid, $timeParams,
+
+        $where = $this->_where($seller_id, $buyer_id, $order_num, $lid, $tid, $timeParams,
             $order_tel, $order_name, $remote_num,
             $pay_status, $order_status, $order_mode,
             $pay_mode);
@@ -224,35 +246,50 @@ class OrderQuery extends Model
             ->join('LEFT JOIN '. self::__ORDER_SPLIT__ . ' os ON s.ordernum=os.orderid' )
             ->field($fields)
             ->where($where)
+            ->order('ordertime desc')
             ->limit($offset, $length)
             ->select();
         //echo $this->getLastSql(),"\n";
         $output = array();
-        $lid_list = $tid_list = array();
+        $lid_list = $tid_list = $part_list = array();
         $member_list = array();
-        foreach ($data as $item) {
+        foreach ($data as $key=>$item) {
             $lid_list[] = $item['lid'];
             $member_list[] = $item['member'];
             $member_list[] = $item['aid'];
             $tid_list[] = $item['tid'];
+            //部分验证的订单
+            if ($item['status']==7) {
+                $part_list[] = "'{$item['ordernum']}'";
+            }
             if ($item['aids']) {
                 foreach (explode(',', $item['aids']) as $_aid) $member_list[] = $_aid;
             }
             $output[$item['ordernum']]['main'] = $item;
             //处理联票
             if ($item['concat_id']!='' && $item['concat_id']!=$item['ordernum']) {
+                unset($output[$item['ordernum']]);//删除联票数据
                 $output[$item['concat_id']]['links'][] = $item;
             }
+
         }
         $lid_list       = array_unique($lid_list);
         $tid_list       = array_unique($tid_list);
         $member_list    = array_unique($member_list);
+        //print_r($output);exit;
+        //echo $this->getLastSql();
 
         $lands   = $this->getLandInfoById($lid_list);
         $tickets = $this->getTicketsInfoById($tid_list);
         $members = $this->getMemberInfoById($member_list);
-        //echo $this->getLastSql();
-        return ['orders'=>$output, 'lands'=>$lands,'tickets'=>$tickets, 'members'=>$members];
+        $checked = $this->getCheckedTnum($part_list);
+        return [
+            'orders'    => $output,
+            'lands'     => $lands,
+            'tickets'   => $tickets,
+            'members'   => $members,
+            'checked'   => $checked,
+        ];
     }
 
     public function OrderSplitDiff($time_type,$startDate, $endDate,$lid=0, $tid=0 )
