@@ -9,30 +9,37 @@
         .rank{width: 30px;font-weight: bold;color:#FF2F2F;}
         form{padding:4px 10px; border-bottom: 1px dashed #eee;}
         .ui-box{margin-top: 10px;}
+        .form-query-wrap{margin-top: 6px;}
+        .form-query-params{margin-right: 10px;}
     </style>
 </head>
 <body>
 <div class="wrap">
+    <ul class="tab">
+        <li data-tab="rank" class="active">30日销量排行</li>
+        <li data-tab="detail">景点/供应商销量汇总</li>
+    </ul>
     <div class="ui-box">
       <div class="ui-box-head">
         <h3 class="ui-box-head-title">30日销量排行</h3>
       </div>
       <div class="ui-box-container">
-          <form class="form">
-             <p>
-                 <span>统计前 <input class="rank" type="number" value="30" name="top" /> 名的销量</span>
-                 <span>
+          <form class="form" id="form-rank">
+              <input name="data_type" value="1" type="hidden"/>
+             <div class="form-query-wrap">
+                 <span class="form-query-params">统计前 <input class="rank" type="number" value="30" name="top" /> 名的销量</span>
+                 <span class="form-query-params">
                      统计方式:
-                      <label><input type="radio" name="group" value="1"/>按供应商统计</label>
+                      <label><input type="radio" checked name="group" value="1"/>按供应商统计</label>
                       <label><input type="radio" name="group" value="2"/>按供景点统计</label>
                      </span>
-                <span>排序依据:
-                  <label><input type="radio" name="order" value="1"/>票数</label>
+                <span class="form-query-params">排序依据:
+                  <label><input type="radio" checked name="order" value="1"/>票数</label>
                   <label><input type="radio" name="order" value="2"/>订单数</label>
                   <label><input type="radio" name="order" value="3"/>订单总额</label>
                      </span>
                  <button type="button" id="btn-rank" class="ui-button ui-button-sorange">提交</button>
-             </p>
+             </div>
           </form>
           <div id="chart1" style="height: 300px;height: 500px; margin: 0 auto;"></div>
       </div>
@@ -42,20 +49,22 @@
         <h3 class="ui-box-head-title">景点/供应商销量汇总</h3>
       </div>
       <div class="ui-box-container">
-          <form class="ui-form" name="" method="post" action="#" id="">
-              <p>
-                  <span> 开始时间:
-                      <input type="date" name="start_day" value="<?=date('Y-m-d', strtotime('-1 mouth'))?>" id=""start_time/> </span>
-                  <span> 结束时间: <input type="date" name="end_day" value="<?=date('Y-m-d')?>" id="end_time"/> </span>
-                  汇总方式:
+          <form class="ui-form"  id="form-detail">
+              <input name="data_type" value="3" type="hidden"/>
+              <div class="form-query-wrap">
+                  <span class="form-query-params"> 开始时间:
+                      <input type="date" name="start_day" value="<?=date('Y-m-d', strtotime('-1 month'))?>" id=""start_time/> </span>
+                  <span class="form-query-params"> 结束时间: <input type="date" name="end_day" value="<?=date('Y-m-d')?>" id="end_time"/> </span>
+                  <span class="form-query-params">汇总方式:
                   <label><input type="radio" name="group" value="0"/>每日</label>
                   <label><input type="radio" name="group" value="1"/>每月</label>
-              </p>
-              <p>
-                  供应商: <select name="uid" id="applyer_list"></select>
-                  景点: <select name="lid" id="scenic"></select>
+                      </span>
+              </div>
+              <div class="form-query-wrap">
+                  <span class="form-query-params">供应商: <select name="uid" id="applyer_list"></select></span>
+                   <span class="form-query-params">景点: <select name="lid" id="scenic"></select></span>
                   <button type="button" class="ui-button ui-button-sorange" id="btn-detail">提交</button>
-              </p>
+              </div>
           </form>
           <div id="chart2" style="height: 300px;height: 500px; margin: 0 auto;"></div>
       </div>
@@ -93,11 +102,12 @@
       get_select_data();
       $("input[name='start_day").on('change', get_select_data);
       $("input[name='end_day").on('change', get_select_data);
-    var myChart = echarts.init(document.getElementById('chart1'));
+    var chart_rank   = echarts.init(document.getElementById('chart1'));
+    var chart_detail = echarts.init(document.getElementById('chart2'));
     var option = {
       title: {
-        text: '月销量排行',
-        subtext: '30日数据'
+        text: '',
+        subtext: ''
       },
       tooltip : {
         trigger: 'axis',
@@ -123,47 +133,43 @@
       ],
     };
 
-    var load_data = function(t1, t2) {
-      //var t1 = t1 || $("input[name='t1']").val(),
-      //    t2 = t2 || $("input[name='t2']").val();
-      //var server_id = $("select[name=server_id]").find('option:selected').val();
+    var load_data = function(param, chart) {
+        chart.clear();
       $.ajax({
         type : "get",
         async : false, //同步执行
         url : 'index.php?c=report_ApplyReport&a=index',
-        data : {uid:650,data_type:3},
+        data : param,
         dataType : "json", //返回数据形式为json
         before: function(){
-          myChart.showLoading();
+            chart.showLoading();
         },
         success : function(result) {
-          if (result) {
-            myChart.hideLoading();
+            if (result) {
+                chart.hideLoading();
             if (result.code!=200) {
-              alert("客官,不好意思，没有查到数据!");
+                alert("客官,不好意思，没有查到数据!");
             }
-            //options.legend.data = result.legend;
-            //options.xAxis[0].data = result.category;
             option.xAxis['data'] = result.data.xAxis;
             option.legend = result.data.legend;
             option.series = result.data.series;
-            console.log(option);
-            myChart.setOption(option);
+            chart.setOption(option);
           }
         },
         error : function(errorMsg) {
-          alert("客官,不好意思，图表请求数据失败啦!");
-          myChart.hideLoading();
+            alert("客官,不好意思，图表请求数据失败啦!");
+            chart.hideLoading();
         }
       });
     };
-    load_data();
-    $("#submit").on('click', function(){
-      //myChart.resetOption();
-      myChart.clear();
-      var t1 = $("input[name='t1']").val(),
-          t2 = $("input[name='t2']").val();
-      load_data(t1, t2);
+    $("#btn-rank").on('click', function(){
+        var params = $("form#form-rank").serialize();
+        //console.log(params);
+        load_data(params ,chart_rank);
+    });
+    $("#btn-detail").on('click', function(){
+        var params = $("form#form-detail").serialize();
+        load_data(params ,chart_detail);
     });
     //myChart.setOption(option);
   });

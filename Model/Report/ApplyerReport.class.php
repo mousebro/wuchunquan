@@ -96,13 +96,18 @@ SQL;
         if ($apply_did>0) $where['apply_did'] = $apply_did;
         if ($day1>0) $where['sday'][]   = ['egt', $day1];
         if ($day2>0) $where['sday'][]   = ['elt', $day2];
+        $groupby = 'sday';
+
         $field = 'SUM(tnum) as tnum,SUM(onum) as onum,SUM(total_money) AS total_money';
-        if ($group==1) $field .= ",substr(sday,1,6) as sday";
+        if ($group==1) {
+            $groupby = 'mon';
+            $field .= ",CONCAT(substr(sday, 1, 6),'01') AS mon";
+        }
         else $field .= ",sday";
         $data = $this->table(self::COUNT_TABLE)
         ->field($field)
         ->where($where)
-        ->group('sday')
+        ->group($groupby)
         ->order("sday ASC")
         ->select();
         //echo $this->getLastSql();
@@ -129,11 +134,11 @@ SQL;
         ];
         if ($group==1) {
             $group  ='apply_did';
-            $field = "apply_did as gid,dname as title,";
+            $field = "apply_did as gid,concat(dname,'(',apply_did,')') as title,";
         }
         elseif ($group==2){
             $group='lid';
-            $field = "lid as gid, ltitle as title,";
+            $field = "lid as gid, concat(ltitle,'(',lid,')') as title,";
         }
         else {
             return false;

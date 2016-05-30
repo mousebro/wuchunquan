@@ -35,7 +35,7 @@ class ApplyReport extends Controller
             $titles[] = $item['title'];
             $series['onum'][$item['gid']] = $item['onum'];
             $series['tnum'][$item['gid']] = $item['tnum'];
-            $series['money'][$item['gid']] = $item['total_money'] / 100;
+            $series['money'][$item['gid']] = $item['total_money'] / 100 / 100;
         }
         foreach ($series as $key=>$item) {
             $legend['data'][] = $this->dt[$key];
@@ -86,14 +86,16 @@ class ApplyReport extends Controller
         $uid        = I('get.uid', 0,'intval');
         $lid        = I('get.lid',0, 'intval');
         $group      = I('get.group', 0, 'intval');
+        $_date_format = $group == 0 ? 'm/d' : 'm';
+        $_date_key    = $group == 0 ? 'sday': 'mon';
         $data       = $this->model->GetOrderSummaryById($day1, $day2, $lid, $uid, $group);
-        //print_r($data);
+        //print_r($data);exit;
         $legend = $series = $date = $json_data = [];
         foreach ($data as $item) {
-            $date[] = date('m/d', strtotime($item['sday']));
-            $series['onum'][$item['sday']] = $item['onum'];
-            $series['tnum'][$item['sday']] = $item['tnum'];
-            $series['money'][$item['sday']] = $item['total_money'] / 100 / 100;
+            $date[] = date($_date_format, strtotime($item[$_date_key]));
+            $series['onum'][$item[$_date_key]] = $item['onum'];
+            $series['tnum'][$item[$_date_key]] = $item['tnum'];
+            $series['money'][$item[$_date_key]] = $item['total_money'] / 100 / 100;
         }
         foreach ($series as $key=>$item) {
             $legend['data'][] = $this->dt[$key];
