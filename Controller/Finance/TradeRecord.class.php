@@ -143,10 +143,17 @@ class TradeRecord extends Controller
             $limit = ($limit > 0) ? $limit : 15;
 
             //是否导出excel
-            $excel = intval(I('excel'));
-
+            $form = intval(I('form'));
             $recordModel = new \Model\Finance\TradeRecord();
-            if ($excel) {
+            if ($form == 0) {
+                $data = $recordModel->getList($map, $time, $page, $limit);
+                if (is_array($data)) {
+                    $this->apiReturn(200, $data);
+                } else {
+                    throw new Exception('查询结果为空', 208);
+                }
+
+            } elseif($form == 1) {
                 $data = $recordModel->getExList($map, $time);
 
                 if (is_array($data)) {
@@ -155,13 +162,15 @@ class TradeRecord extends Controller
                 } else {
                     throw new Exception('查询结果为空', 207);
                 }
-            } else {
-                $data = $recordModel->getList($map, $time, $page, $limit);
+            } elseif($form == 2){
+                $data = $recordModel->getSummary($map, $time);
                 if (is_array($data)) {
                     $this->apiReturn(200, $data);
                 } else {
-                    throw new Exception('查询结果为空', 208);
+                    throw new Exception('查询结果为空', 209);
                 }
+            }else{
+                throw new Exception('传入参数错误', 210);
             }
         } catch (Exception $e) {
             \pft_log('trade_record/err', 'get_list|'. $e->getCode() . "|" . $e->getMessage(), 'month');
@@ -260,11 +269,16 @@ class TradeRecord extends Controller
     }
 
 //    //$url       = 'http://www.12301.local/route/?c=Finance_TradeRecord&a=test';
-//    public function test()
-//    {
-//        $_SESSION['sid'] = 1;
-//        $this->getList();
-//        //            $this->srchMem();
-//        //            $this->getDetails();
-//    }
+    public function test()
+    {
+        if(ENV == 'DEVELOP'){
+            $_SESSION['sid'] = 1;
+            $this->getList();
+        }else{
+            $this->apiReturn(213);
+        }
+
+        //            $this->srchMem();
+        //            $this->getDetails();
+    }
 }

@@ -136,7 +136,7 @@ class TradeRecord extends Model
      *
      * @return array
      */
-    public function getList($map, array $time, $page, $limit, $super = 0)
+    public function getList($map, array $time, $page, $limit)
     {
         $table            = "{$this->trade_record_table}";
         $where            = [];
@@ -165,8 +165,7 @@ class TradeRecord extends Model
         $order   = 'id desc';
         $records = $this->table($table)->field($field)->where($where)->page($page)->limit($limit)->order($order)->select();
         //记录查询语句
-        \pft_log('trade_record/query', 'get_list|'. $this->getLastSql());
-
+        $this->logSql('get_list');
         $data = [];
         if (is_array($records)) {
             foreach ($records as $record) {
@@ -184,24 +183,6 @@ class TradeRecord extends Model
             'limit' => $limit,
             'list'  => $data,
         ];
-
-        if ( ! $super && ! isset($map['_complex'])) {
-            $income_map             = $outcome_map = $where;
-            $income_map['daction']  = 0;
-            $outcome_map['daction'] = 1;
-            $income                 = $this->table($table)->where($income_map)->getField('sum(dmoney)');
-            $outcome                = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
-            $income                 = $income ? $income : 0;
-            $outcome                = $outcome ? $outcome : 0;
-            $balance                = strval(round(($income - $outcome) / 100, 2));
-            $income                 = strval(round($income / 100, 2));
-            $outcome                = strval(round($outcome / 100, 2));
-            $return['sum']          = [
-                'balance' => $balance,
-                'income'  => $income,
-                'outcome' => $outcome,
-            ];
-        }
 
         return $return;
 
@@ -238,8 +219,7 @@ class TradeRecord extends Model
         ];
         $order   = 'id asc';
         $records = $this->table($table)->field($field)->where($where)->order($order)->select();
-        \pft_log('trade_record/query', 'get_excel|'. $this->getLastSql());
-
+        $this->logSql('get_excel');
         $data = [];
         if (is_array($records)) {
             foreach ($records as $record) {
@@ -363,8 +343,46 @@ class TradeRecord extends Model
         $where['dname'] = ['like', "%$srch%"];
         $field          = ['id as fid', 'account', 'dname'];
         $return         = $this->table('pft_member')->where($where)->field($field)->limit($limit)->select();
-        \pft_log('trade_record/query', 'srch_mem|'. $this->getLastSql());
-
+        $this->logSql('srch_mem');
         return $return;
+    }
+
+    /**
+     * 获取统计记录
+     *
+     * @param $map
+     * @param $time
+     *
+     * @return array
+     */
+    public function getSummary($map, $time){
+        $table            = "{$this->trade_record_table}";
+        $where            = [];
+        $where['rectime'] = ['between', $time];
+
+        $where = array_merge($where, $map);
+        $income_map             = $outcome_map = $where;
+        $income_map['daction']  = 0;
+        $outcome_map['daction'] = 1;
+        $income                 = $this->table($table)->where($income_map)->getField('sum(dmoney)');
+        $outcome                = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
+        $income                 = $income ? $income : 0;
+        $outcome                = $outcome ? $outcome : 0;
+        $balance                = strval(round(($income - $outcome) / 100, 2));
+        $income                 = strval(round($income / 100, 2));
+        $outcome                = strval(round($outcome / 100, 2));
+        $return                 = [
+            'balance' => $balance,
+            'income'  => $income,
+            'outcome' => $outcome,
+        ];
+        return $return;
+    }
+
+    public function logSql($operation){
+        if(ENV == 'DEVELOP'){
+            \pft_log('trade_record/query', $operation . "#" . $this->getLastSql());
+        }
+
     }
 }
