@@ -288,8 +288,6 @@ SQL;
             ->where($where)
             ->select();
 
-            echo $this->getLastSql();
-
         //返回的数据
         $resData   = array();
         $totalData = array();
