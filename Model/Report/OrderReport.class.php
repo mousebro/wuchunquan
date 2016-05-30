@@ -259,25 +259,25 @@ SQL;
             $where['_string'] = "s.tid = {$ticketId}";
         }
 
-        if(!$lid) {
-            if($fid) {
-                if($orderBy!='mid' && $orderBy!='aid'){
-                    $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
-                }
 
-                $where['_string'] = "os.buyerid = {$fid}";
+        if($fid) {
+            if($orderBy!='mid' && $orderBy!='aid'){
+                $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
             }
 
-            if($aid) {
-                if($orderBy!='mid' && $orderBy!='aid' && !$fid){
-                    $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
-                }
+            $where['_string'] = "os.buyerid = {$fid}";
+        }
 
-                if(!$includeMy) {
-                    $where['_string'] = "os.sellerid = {$aid} AND os.sellerid<>os.buyerid ";
-                }
+        if($aid) {
+            if($orderBy!='mid' && $orderBy!='aid' && !$fid){
+                $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
+            }
+
+            if(!$includeMy) {
+                $where['_string'] = "os.sellerid = {$aid} AND os.sellerid<>os.buyerid ";
             }
         }
+
 
         $res = $this->table($table)
             ->field($field)
