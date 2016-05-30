@@ -22,6 +22,7 @@ class OrderQuery extends Controller
     private $members;
     private $lands;
     private $tickets;
+    private $pt_chk;//部分验证的订单
     private $orders;
     private $memberId;
     private $output;//最终输出的数据
@@ -41,6 +42,7 @@ class OrderQuery extends Controller
         unset($this->members);
         unset($this->tickets);
         unset($this->orders);
+        unset($this->pt_chk);
     }
     /**
      * 设置当前用户ID
@@ -179,6 +181,7 @@ class OrderQuery extends Controller
         $this->members = $data['members'];
         $this->lands   = $data['lands'];
         $this->orders  = $data['orders'];
+        $this->pt_chk  = $data['checked'];
         //print_r($data);
         $this->format_order_data($export_excel);
         //print_r($this->output);
