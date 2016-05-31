@@ -186,7 +186,8 @@ class TradeRecord extends Model
             'btime' => $time[0],
             'etime' => $time[1],
             'total' => $total,
-            'page'  => $page,
+            'page'  => $page + 1,
+            'total_page' => ceil($total / $limit),
             'limit' => $limit,
             'list'  => $data,
         ];
