@@ -109,27 +109,22 @@ class TradeRecord extends Model
     public function getDetails($trade_id)
     {
         $table  = "{$this->trade_record_table} AS tr";
-        $join   = [
-            "LEFT JOIN {$this->order_table} AS o ON tr.orderid=o.ordernum",
-            "LEFT JOIN {$this->ticket_table} AS t ON t.id=o.tid",
-            "LEFT JOIN {$this->product_table} AS p ON p.id=t.pid",
-        ];
         $field  = [
-            'tr.rectime',        //交易时间
-            'tr.dtype',          //交易类型
-            'tr.fid',             //主体商户
-            'tr.aid',             //对方商户
-            'tr.orderid',         //交易号
-            'p.p_name',           //交易内容
-            'tr.order_channel',   //交易渠道
-            'tr.dmoney',          //本次交易金额（分）
-            'tr.ptype',           //支付方式
-            'tr.trade_no',        //交易流水
-            'tr.memo',            //备注
-            'tr.daction',         //收支
+            'rectime',        //交易时间
+            'dtype',          //交易类型
+            'fid',             //主体商户
+            'aid',             //对方商户
+            'orderid',         //交易号
+            'body',            //交易内容
+            'order_channel',   //交易渠道
+            'dmoney',          //本次交易金额（分）
+            'ptype',           //支付方式
+            'trade_no',        //交易流水
+            'memo',            //备注
+            'daction',         //收支
         ];
-        $where  = ['tr.id' => $trade_id];
-        $record = $this->table($table)->field($field)->where($where)->join($join)->find();
+        $where  = ['id' => $trade_id];
+        $record = $this->table($table)->field($field)->where($where)->find();
         //记录查询语句
         $this->logSql('get_details');
         return $this->resolveRecord($record, 0);
