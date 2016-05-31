@@ -26,7 +26,7 @@ class ApplyReport extends Controller
         $group = I('get.group', 1, 'intval');
         $order = I('get.order', 1, 'intval');
         $data  = $this->model->MonthCount($top, $group, $order);
-        $titles = $series = $json_data = [];
+        $legend = $titles = $series = $json_data = [];
         foreach ($data as $item) {
             //$output['xAxis'][] = $item['title'];
             //$output['legend']['data'][] = $item['title'];
@@ -50,9 +50,11 @@ class ApplyReport extends Controller
         }
         //$xAxis = array_unique($date);
         self::apiReturn(self::CODE_SUCCESS, [
-                'xAxis' =>$titles,
-                'series'=>$json_data,
-                'legend'=>$legend]
+                'xAxis' => $titles,
+                'series'=> $json_data,
+                'legend'=> $legend,
+                'raw'   => $data,
+            ]
         );
     }
     public function view()
