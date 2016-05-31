@@ -208,9 +208,15 @@ class OrderQuery extends Controller
             'ordernum'  => $orderInfo['ordernum'],
             'title'     => $this->tickets[$orderInfo['tid']]['title'],
             'status'    => $orderInfo['status'],//使用状态
+            'left_num'  => 0,
             'status_txt'=> OrderDict::DictOrderStatus()[$orderInfo['status']],//使用状态
         ];
-
+        //TODO::分批验证的数据，需要测试
+        if ( isset($this->pt_chk[$orderInfo['ordernum']])
+            && !$this->output[$_key]['tickets'][$orderInfo['tid']]['left_num'])
+        {
+            $this->output[$_key]['tickets'][$orderInfo['tid']]['left_num'] = $this->pt_chk[$orderInfo['ordernum']]['left_num'];
+        }
         if ($orderInfo['aids'] != 0) {
             $aids = $orderInfo['aids'] . ',' . $orderInfo['member'];
         }

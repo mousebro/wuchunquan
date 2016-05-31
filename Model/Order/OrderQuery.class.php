@@ -91,6 +91,7 @@ class OrderQuery extends Model
     public function getCheckedTnum(Array $ordernum_list) {
         $where = ['ordernum'=>['in', $ordernum_list], 'action'=>5];
         $data  = $this->table('pft_order_track')->where($where)
+            ->order('id desc')
             ->getField('tid,ordernum, tnum,left_num', true);
         if (!$data) return [];
         $ret = [];
