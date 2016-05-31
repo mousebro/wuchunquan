@@ -56,10 +56,11 @@ class Ticket extends Model {
      */
     public function allowOfflinePackage($apply_did)
     {
-        $allow_list = [4];
+        $allow_list     = [4];
+        $member_list    = [94, 3385];
         $member = new Member();
         $group_id = $member->getMemberCacheById($apply_did, 'group_id');
-        if (in_array($group_id, $allow_list)) {
+        if (in_array($group_id, $allow_list) || in_array($apply_did, $member_list)) {
             return true;
         }
         return false;
