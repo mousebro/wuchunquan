@@ -373,7 +373,9 @@ class TradeRecord extends Model
         $income_map['daction']  = 0;
         $outcome_map['daction'] = 1;
         $income                 = $this->table($table)->where($income_map)->getField('sum(dmoney)');
+        $this->logSql('get_income');
         $outcome                = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
+        $this->logSql('get_outcome');
         $income                 = $income ? $income : 0;
         $outcome                = $outcome ? $outcome : 0;
         $balance                = strval(round(($income - $outcome) / 100, 2));
