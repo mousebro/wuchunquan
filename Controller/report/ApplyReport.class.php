@@ -16,6 +16,8 @@ class ApplyReport extends Controller
 
     public function __construct()
     {
+        parent::isLogin();
+        if ($_SESSION['sid']!=1) $this->apiReturn(102, array(), '非法身份');
         $this->model = new ApplyerReport();
     }
 
