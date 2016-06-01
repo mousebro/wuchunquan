@@ -490,7 +490,7 @@ class Price extends Model {
             'pid' => $did,
             'aid' => 0
         ];
-        $result = $this->table(self::__PRICESET_TABLE__)->where($where)->delete();
+        $result = $this->table(self::__PRICESET_TABLE__)->where($where)->limit(1)->delete();
         $this->recordLog($sid,  $result . $this->_sql());
     }
 
