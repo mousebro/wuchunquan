@@ -113,11 +113,7 @@ class Order extends Controller
         if (empty($pay_total_fee) || !$pay_total_fee) {
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单金额格式不对');
         }
-        //if (empty($tradeno)) {
-        //    parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，流水号格式不对');
-        //}
         $this->soap();
-        //$soap = new \ServerInside();
         $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
