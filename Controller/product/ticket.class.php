@@ -113,7 +113,7 @@ class ticket extends ProductBasic
         $data['fax']    = $landData['fax'];
         $data['ltitle'] = $landData['title'];
         $data['p_type'] = $landData['p_type'];
-
+        $data['pay_offline'] = true;// 是否允许现场执法
         if($_SESSION['sid']!=1 && $landData['apply_did']!=$_SESSION['sid']) {
             parent::apiReturn(self::CODE_INVALID_REQUEST, [],"非自身供应产品，无权限查看");
         }
@@ -148,6 +148,7 @@ class ticket extends ProductBasic
         // 套票属性
         if($landData['p_type']=='F')
         {
+            $data['pay_offline'] = false;
             $pack = new \Model\Product\PackTicket($tid);
 
             if (!$tid) {
@@ -212,6 +213,7 @@ class ticket extends ProductBasic
         if(isset($data['jiutian']))
             $landData['jiutian'] = $data['jiutian'];
         $landData['needBindGate'] = $data['needBindGate'];
+
         $other_tickets = [];
         // 获取该景区底下其他门票，套票除外
         if ($landData['p_type']!='F') {
@@ -223,13 +225,15 @@ class ticket extends ProductBasic
                 'tid'=>$tid,
             ];
         }
-        parent::apiReturn(200,
-            [
-                //'attribute'     => $data,
-                'attribute'     => $landData,
-                'otherTicket'   => $other_tickets,
-            ],
-            'success');
+        $output =  [
+            //'attribute'     => $data,
+            'attribute'     => $landData,
+            'otherTicket'   => $other_tickets,
+        ];
+        if ($this->ticketObj->allowOfflinePackage($apply_did)) {
+            $output['attribute']['pay_offline'] = 1;
+        }
+        parent::apiReturn(200,$output,'success');
     }
     public function UpdateTicket()
     {
