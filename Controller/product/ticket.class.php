@@ -231,7 +231,7 @@ class ticket extends ProductBasic
             'otherTicket'   => $other_tickets,
         ];
         if ($this->ticketObj->allowOfflinePackage($apply_did)) {
-            $output['attribute']['pay_offline'] = true;
+            $output['attribute']['pay_offline'] = 1;
         }
         parent::apiReturn(200,$output,'success');
     }
