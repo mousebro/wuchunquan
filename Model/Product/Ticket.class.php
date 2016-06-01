@@ -7,6 +7,7 @@ namespace Model\Product;
 use Library\MessageNotify\OtaProductNotify;
 use Library\Model;
 
+use Model\Member\Member;
 use Model\Product\SellerStorage;
 use Model\SystemLog\OptLog;
 use pft\Member\MemberAccount;
@@ -46,6 +47,24 @@ class Ticket extends Model {
         return $this->table(self::__TICKET_TABLE__)
             ->field($this->ticket_filed)
             ->find($id);
+    }
+
+    /**
+     * 判断供应商是否可以发布现场支付的套票
+     *
+     * @param int $apply_did 供应商ID
+     * @return bool
+     */
+    public function allowOfflinePackage($apply_did)
+    {
+        $allow_list     = [4];
+        $member_list    = [94, 3385];
+        $member = new Member();
+        $group_id = $member->getMemberCacheById($apply_did, 'group_id');
+        if (in_array($group_id, $allow_list) || in_array($apply_did, $member_list)) {
+            return true;
+        }
+        return false;
     }
 
     /**

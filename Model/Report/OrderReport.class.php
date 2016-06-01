@@ -169,31 +169,31 @@ SQL;
             default:
                 $join  = " left join uu_land l on s.lid=l.id ";
                 $field .= ",l.title as ltitle,lid ";
-                $group = "s.lid";
+                $group = "s.lid,pmode";
                 break;
                 case 'tid':
                 $join  = " left join uu_land l on s.lid=l.id left join uu_jq_ticket t on s.tid=t.id";
                 $field .= ",l.title  as ltitle,t.title  as ttitle,tid ";
-                $group = "s.tid";
+                $group = "s.tid,pmode";
                 break;
             case 'mid':
                 $join  = " left join order_aids_split os on s.ordernum=os.orderid left join pft_member d on os.buyerid=d.id";
                 $field .= ",os.buyerid,d.dname";
-                $group = "os.buyerid";
+                $group = "os.buyerid,pmode";
                 break;
             case 'aid':
                 $join  = "  left join order_aids_split os on s.ordernum=os.orderid left join pft_member d on os.sellerid=d.id";
                 $field .= ",os.sellerid,d.dname";
-                $group = "os.sellerid";
+                $group = "os.sellerid,pmode";
                 break;
         }
 
         if($lid) {
-            $where['_string'] = $where['_string'] ? $where['_string'] . " and s.lid = {$lid}" : "s.lid = {$lid}";
+            $where['s.lid'] =  $lid;
         }
 
         if($ticketId) {
-            $where['_string'] = $where['_string'] ? $where['_string'] . " and s.tid = {$ticketId}" : "s.tid = {$ticketId}";
+            $where['s.tid'] =  $ticketId;
         }
 
 
@@ -202,7 +202,7 @@ SQL;
                 $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
             }
 
-            $where['_string'] = $where['_string'] ? $where['_string'] . " and os.buyerid = {$fid}" : "os.buyerid = {$fid}";
+            $where['os.buyerid'] =  $fid;
         }
 
         if($aid) {
@@ -210,13 +210,12 @@ SQL;
                 $join .= ' left join order_aids_split os on s.ordernum=os.orderid ';
             }
 
-            $where['_string'] = $where['_string'] ? $where['_string'] . " and os.sellerid = {$aid}" : "os.sellerid = {$aid}";
+            $where['os.sellerid'] =  $aid;
 
             if(!$includeMy) {
-                $where['_string'] = $where['_string'] ? $where['_string'] . " and os.sellerid<>os.buyerid" : "os.sellerid<>os.buyerid";
+                $where['_string'] = "os.sellerid<>os.buyerid";
             }
         }
-
 
         $res = $this->table($table)
             ->field($field)
