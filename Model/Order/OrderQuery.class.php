@@ -405,14 +405,14 @@ class OrderQuery extends Model
         //{"付款方式":1,"money":2459,"tnum":23,"fee":14},{"付款方式":1,"money":2459,"tnum":23,"fee":14}
         $pay_mode_list = OrderDict::DictOrderPayMode();
         foreach ($data as $pay_mode => $item) {
-            $output[$pay_mode] = [
+            $output[] = [
                 'mode'   => $pay_mode,
                 'name'   => $pay_mode_list[$pay_mode],
-                'tk'     => isset($item[0]) ? $item[0] : [],
+                'tk'     => isset($item[0]) ? $item[0] : ['tnum'=>0, 'money'=>0],
                 'sk'     => $item[1],
                 'sxf'    => isset($item[2]) ? $item[2] : 0,
             ];
         }
-        return array_values($output);
+        return $output;
     }
 }
