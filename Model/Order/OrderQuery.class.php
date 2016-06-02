@@ -10,6 +10,7 @@
 namespace Model\Order;
 
 
+use Library\Dict\OrderDict;
 use Library\Model;
 
 class OrderQuery extends Model
@@ -352,26 +353,18 @@ class OrderQuery extends Model
         $ordernum_list = $this->table('pft_ordercustomer')
             ->where($where)
             ->getField('ordernum', true);
-        //echo $this->getLastSql();
-        //echo $this->getDbError();
-        //var_dump($ordernum_list);
-        //exit;
-        //print_r($ordernum_list);
-        $ordernum_str = "'" . implode("','", $ordernum_list) . "'";
-        //echo $ordernum_str;exit;
+        if (!$ordernum_list) {
+            return false;
+        }
 
-        //$ordernum_str = rtrim($ordernum_str,",'");
         $orders = $this->table(self::__ORDER_TABLE__)
-            ->where(['ordernum'=>['in', $ordernum_list]])
-            ->field('ordernum,paymode,status,tnum,totalmoney,tid,tprice')
-            ->select();
-        //echo $this->getLastSql();
-        //exit;
-        //echo $this->getDbError();
+        ->where(['ordernum'=>['in', $ordernum_list]])
+        ->field('ordernum,paymode,status,tnum,totalmoney,tid,tprice')
+        ->select();
         $data = array();
         //修改的票数
         $orders_modify = $this->table(self::__ORDER_TRACK__)
-            ->where(['ordernum'=>['in', $ordernum_list], 'action'=>1])
+            ->where(['ordernum'=>['in', $ordernum_list], 'action'=>['in', [1, 7] ] ])
             ->field('SUM(tnum) AS tnum,tid')
             ->group('tid')
             ->select();
@@ -382,31 +375,42 @@ class OrderQuery extends Model
         $fee_order = [];
         foreach ($orders as $order) {
             if (isset($modify[$order['tid']])) {
-                $fee_order[$order['ordernum']] = $order['paymode'];
-                $data[$order['paymode']][2]['money'] += $modify[$order['tid']] * $order['tprice'];
-                $data[$order['paymode']][2]['tnum']  += $modify[$order['tid']];
+                $fee_order[$order['ordernum']]= $order['paymode'];
+                $data[$order['paymode']][0]['money'] += $modify[$order['tid']] * $order['tprice'];
+                $data[$order['paymode']][0]['tnum']  += $modify[$order['tid']];
             }
+            //退款取消/撤销
             if ($order['status']==3 || $order['status']==5 ) {
-                $fee_order[$order['ordernum']] = $order['paymode'];
-                $data[$order['paymode']][2]['money'] += $order['totalmoney'];
-                $data[$order['paymode']][2]['tnum']  += $order['tnum'];
+                $fee_order[$order['ordernum']]= $order['paymode'];
+                $data[$order['paymode']][0]['money'] += $order['totalmoney'];
+                $data[$order['paymode']][0]['tnum']  += $order['tnum'];
             }
-            else {
-                $data[$order['paymode']][1]['tnum']  += $order['tnum'];
-                $data[$order['paymode']][1]['money'] += $order['totalmoney'];
-            }
+            //else {
+            $data[$order['paymode']][1]['tnum']  += $order['tnum'];
+            $data[$order['paymode']][1]['money'] += $order['totalmoney'];
+            //}
         }
-        //  `paymode` tinyint(1) unsigned NOT NULL,/* 票付通 0=>"账户余额",1=>"支付宝",2=>"授信支付",3=>"产品自销",4=>"现场支付",5=>微信支付,6=>'会员卡支付',7=>'银联支付',8=>'环迅支付',9=>现金支付，10=>会员卡，11卡拉卡*/
         //手续费
-        if (count($fee_order)) {
+        if (count($fee_order)>0) {
             $cancel_fee = $this->table('pft_member_journal')
-                ->where(['orderid'=>['in', array_keys($fee_order)], 'dtype'=>14])
+                ->where(['orderid'=>['in', $ordernum_list], 'dtype'=>14])
                 ->field('orderid,dmoney')
                 ->select();
             foreach ($cancel_fee as $fee) {
-                $data[$fee_order[$fee['orderid']]]['fee'] += $fee['dmoney'];
+                $data[$fee_order[$fee['orderid']]][2] += $fee['dmoney'];
             }
         }
-        return $data;
+        //{"付款方式":1,"money":2459,"tnum":23,"fee":14},{"付款方式":1,"money":2459,"tnum":23,"fee":14}
+        $pay_mode_list = OrderDict::DictOrderPayMode();
+        foreach ($data as $pay_mode => $item) {
+            $output[$pay_mode] = [
+                'mode'   => $pay_mode,
+                'name'   => $pay_mode_list[$pay_mode],
+                'tk'     => $item[0],
+                'sk'     => $item[1],
+                'sxf'    => $item[2],
+            ];
+        }
+        return array_values($output);
     }
 }

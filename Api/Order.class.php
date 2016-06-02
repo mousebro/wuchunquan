@@ -11,6 +11,7 @@ namespace Api;
 
 use Library\Controller;
 use Model\Order\OrderCommon;
+use Model\Order\OrderQuery;
 use Model\Order\OrderTools;
 
 class Order extends Controller
@@ -128,25 +129,10 @@ class Order extends Controller
     public function OrderSaleLog()
     {
         $oc = new OrderCommon();
-        $data = [
-            'sale_op'=>'',
-            'op_id'  => '',
-            'ad_flag'=>'',
-            'sale_type'=>'',
-            'orders'=>[
-                ['111'=> '1'],
-                ['222'=>'2'],
-                ['333'=>'3'],
-                ['444'=>'4'],
-            ]
-        ];
-        $ordernum   = I('post.ordernum');
-        $sale_price = I('post.sale_price');
         $sale_op    = I('post.sale_op');
         $op_id      = I('post.op_id');
         $ad_flag    = I('post.ad_flag');
         $sale_type  = I('post.sale_type');
-        //print_r($_POST['orders']);exit;
         $orders     = (array)$_POST['orders'];
         //if (!is_numeric($ordernum) || !$ordernum) {
         //    parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '订单号格式错误');
@@ -174,6 +160,12 @@ class Order extends Controller
         $end_date   = strtotime(I('post.end_date'));
         $op_id      = I('post.op_id');//操作员ID
 
+        $query = new OrderQuery();
+        $data  = $query->CTS_SaleSummary($start_date, $end_date,$op_id);
+        if (is_array($data)) {
+            parent::apiReturn(parent::CODE_SUCCESS,$data,'success');
+        }
+        parent::apiReturn(parent::CODE_NO_CONTENT, 'fail');
 
     }
     public function PackageOrderCheck($args)
