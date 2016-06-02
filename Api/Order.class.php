@@ -158,6 +158,10 @@ class Order extends Controller
      */
     public function Summary()
     {
+        $start_date = strtotime(I('post.start_date'));
+        $end_date   = strtotime(I('post.end_date'));
+        $op_id      = I('post.op_id');//操作员ID
+
 
     }
     public function PackageOrderCheck($args)

@@ -34,9 +34,11 @@ class OrderCommon extends Model
             'op_id'     => $op_id,
             'ad_flag'   => $ad_flag,
             'sale_type' => $sale_type,
+            'created_time'=>time(),
         ];
         return $this->table('pft_ordercustomer')->data($data)->add();
     }
+
 
 
 }
