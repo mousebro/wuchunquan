@@ -408,9 +408,9 @@ class OrderQuery extends Model
             $output[$pay_mode] = [
                 'mode'   => $pay_mode,
                 'name'   => $pay_mode_list[$pay_mode],
-                'tk'     => $item[0],
+                'tk'     => isset($item[0]) ? $item[0] : [],
                 'sk'     => $item[1],
-                'sxf'    => $item[2],
+                'sxf'    => isset($item[2]) ? $item[2] : 0,
             ];
         }
         return array_values($output);
