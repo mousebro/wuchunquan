@@ -342,9 +342,10 @@ class OrderQuery extends Model
      * @param int $unix_tm_start 查询开始时间-时间戳
      * @param int $unix_tm_end 查询结束时间-时间戳
      * @param int $op_id 操作员ID
+     * @param int $lid 景点ID
      * @return array
      */
-    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id)
+    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id, $lid=0)
     {
         $where = [
             'op_id'=>$op_id,
@@ -356,9 +357,10 @@ class OrderQuery extends Model
         if (!$ordernum_list) {
             return false;
         }
-
+        $where = ['ordernum'=>['in', $ordernum_list]];
+        if (is_numeric($lid) && $lid>0) $where['lid'] = $lid;
         $orders = $this->table(self::__ORDER_TABLE__)
-        ->where(['ordernum'=>['in', $ordernum_list]])
+        ->where($where)
         ->field('ordernum,paymode,status,tnum,totalmoney,tid,tprice')
         ->select();
         $data = array();

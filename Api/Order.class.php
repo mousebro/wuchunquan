@@ -159,9 +159,10 @@ class Order extends Controller
         $start_date = strtotime(I('post.start_date'));
         $end_date   = strtotime(I('post.end_date'));
         $op_id      = I('post.op_id');//操作员ID
+        $lid      = I('post.lid');//景点ID
 
         $query = new OrderQuery();
-        $data  = $query->CTS_SaleSummary($start_date, $end_date,$op_id);
+        $data  = $query->CTS_SaleSummary($start_date, $end_date,$op_id, $lid);
         if (is_array($data)) {
             parent::apiReturn(parent::CODE_SUCCESS,$data,'success');
         }
