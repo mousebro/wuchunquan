@@ -22,12 +22,14 @@ class OrderQuery extends Model
     const __ORDER_SPLIT__           = 'order_aids_split';
     const __ORDER_ADDON__           = 'uu_order_addon';
     const __ORDER_APPLY_INFO__      = 'uu_order_apply_info';
+    const __ORDER_TRACK__           = 'pft_order_track';
 
     const GET_TOTAL_ROWS            = true;
 
     public function __construct()
     {
-        parent::__construct('slave');
+        if (ENV=='PRODUCTION') parent::__construct('slave');
+        else parent::__construct('localhost');
     }
     private function handlerTimeParams($timeParams)
     {
@@ -331,5 +333,80 @@ class OrderQuery extends Model
             ->getField('s.id,s.ordernum', true);
         echo $this->getLastSql();
         return $ret;
+    }
+
+    /**
+     * 云票务订单汇总
+     *
+     * @param int $unix_tm_start 查询开始时间-时间戳
+     * @param int $unix_tm_end 查询结束时间-时间戳
+     * @param int $op_id 操作员ID
+     * @return array
+     */
+    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id)
+    {
+        $where = [
+            'op_id'=>$op_id,
+            'created_time'=>['between', [$unix_tm_start, $unix_tm_end]]
+        ];
+        $ordernum_list = $this->table('pft_ordercustomer')
+            ->where($where)
+            ->getField('ordernum', true);
+        //echo $this->getLastSql();
+        //echo $this->getDbError();
+        //var_dump($ordernum_list);
+        //exit;
+        //print_r($ordernum_list);
+        $ordernum_str = "'" . implode("','", $ordernum_list) . "'";
+        //echo $ordernum_str;exit;
+
+        //$ordernum_str = rtrim($ordernum_str,",'");
+        $orders = $this->table(self::__ORDER_TABLE__)
+            ->where(['ordernum'=>['in', $ordernum_list]])
+            ->field('ordernum,paymode,status,tnum,totalmoney,tid,tprice')
+            ->select();
+        //echo $this->getLastSql();
+        //exit;
+        //echo $this->getDbError();
+        $data = array();
+        //修改的票数
+        $orders_modify = $this->table(self::__ORDER_TRACK__)
+            ->where(['ordernum'=>['in', $ordernum_list], 'action'=>1])
+            ->field('SUM(tnum) AS tnum,tid')
+            ->group('tid')
+            ->select();
+        $modify = [];
+        foreach ($orders_modify as $item) {
+            $modify[$item['tid']] = $item['tnum'];
+        }
+        $fee_order = [];
+        foreach ($orders as $order) {
+            if (isset($modify[$order['tid']])) {
+                $fee_order[$order['ordernum']] = $order['paymode'];
+                $data[$order['paymode']][2]['money'] += $modify[$order['tid']] * $order['tprice'];
+                $data[$order['paymode']][2]['tnum']  += $modify[$order['tid']];
+            }
+            if ($order['status']==3 || $order['status']==5 ) {
+                $fee_order[$order['ordernum']] = $order['paymode'];
+                $data[$order['paymode']][2]['money'] += $order['totalmoney'];
+                $data[$order['paymode']][2]['tnum']  += $order['tnum'];
+            }
+            else {
+                $data[$order['paymode']][1]['tnum']  += $order['tnum'];
+                $data[$order['paymode']][1]['money'] += $order['totalmoney'];
+            }
+        }
+        //  `paymode` tinyint(1) unsigned NOT NULL,/* 票付通 0=>"账户余额",1=>"支付宝",2=>"授信支付",3=>"产品自销",4=>"现场支付",5=>微信支付,6=>'会员卡支付',7=>'银联支付',8=>'环迅支付',9=>现金支付，10=>会员卡，11卡拉卡*/
+        //手续费
+        if (count($fee_order)) {
+            $cancel_fee = $this->table('pft_member_journal')
+                ->where(['orderid'=>['in', array_keys($fee_order)], 'dtype'=>14])
+                ->field('orderid,dmoney')
+                ->select();
+            foreach ($cancel_fee as $fee) {
+                $data[$fee_order[$fee['orderid']]]['fee'] += $fee['dmoney'];
+            }
+        }
+        return $data;
     }
 }

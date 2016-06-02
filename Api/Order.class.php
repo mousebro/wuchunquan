@@ -128,26 +128,38 @@ class Order extends Controller
     public function OrderSaleLog()
     {
         $oc = new OrderCommon();
-
+        $data = [
+            'sale_op'=>'',
+            'op_id'  => '',
+            'ad_flag'=>'',
+            'sale_type'=>'',
+            'orders'=>[
+                ['111'=> '1'],
+                ['222'=>'2'],
+                ['333'=>'3'],
+                ['444'=>'4'],
+            ]
+        ];
         $ordernum   = I('post.ordernum');
         $sale_price = I('post.sale_price');
         $sale_op    = I('post.sale_op');
         $op_id      = I('post.op_id');
         $ad_flag    = I('post.ad_flag');
         $sale_type  = I('post.sale_type');
-
-        if (!is_numeric($ordernum) || !$ordernum) {
-            parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '订单号格式错误');
-        }
-        if (!is_numeric($sale_price) || !$sale_price) {
-            parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '销售价格式错误');
-        }
+        //print_r($_POST['orders']);exit;
+        $orders     = (array)$_POST['orders'];
+        //if (!is_numeric($ordernum) || !$ordernum) {
+        //    parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '订单号格式错误');
+        //}
+        //if (!is_numeric($sale_price) || !$sale_price) {
+        //    parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '销售价格式错误');
+        //}
         if (!is_numeric($sale_op) || !$sale_op) {
             parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '销售员ID格式错误');
         }
         $ad_flag    = $ad_flag ? $ad_flag+0 : 0;
         $sale_type  = $sale_type ? $sale_type+0 : 0;
-        $res = $oc->OrderSaleLog($ordernum, $sale_price, $sale_op, $op_id, $ad_flag, $sale_type);
+        $res = $oc->OrderSaleLog($orders, $sale_op, $op_id, $ad_flag, $sale_type);
         if ($res) {
             parent::apiReturn(parent::CODE_SUCCESS,[],'操作成功');
         }
