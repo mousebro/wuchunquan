@@ -28,17 +28,21 @@ class OrderCommon extends Model
     public function OrderSaleLog(Array $orders, $sale_op, $op_id, $ad_flag=0, $sale_type=0)
     {
         $tm = time();
-        foreach ($orders as $ordernum=>$sale_price) {
-            $data[] = [
-                'ordernum'  => $ordernum,
-                'sale_price'=> $sale_price,
-                'sale_op'   => $sale_op,
-                'op_id'     => $op_id,
-                'ad_flag'   => $ad_flag,
-                'sale_type' => $sale_type,
-                'created_time'=>$tm,
-            ];
+        $data = [];
+        foreach ($orders as $items) {
+            foreach($items as $ordernum=>$sale_price) {
+                $data[] = [
+                    'ordernum' => $ordernum,
+                    'sale_price' => $sale_price,
+                    'sale_op' => $sale_op,
+                    'op_id' => $op_id,
+                    'ad_flag' => $ad_flag,
+                    'sale_type' => $sale_type,
+                    'created_time' => $tm,
+                ];
+            }
         }
-        return $this->table('pft_ordercustomer')->addAll($data);
+        $r = $this->table('pft_ordercustomer')->addAll($data);
+        return $r;
     }
 }
