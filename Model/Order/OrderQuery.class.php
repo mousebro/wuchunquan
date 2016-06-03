@@ -362,7 +362,7 @@ class OrderQuery extends Model
         if (is_numeric($lid) && $lid>0) $where['lid'] = $lid;
         $orders = $this->table(self::__ORDER_TABLE__)
         ->where($where)
-        ->field('ordernum,paymode,status,tnum,totalmoney,tid,tprice')
+        ->field('ordernum,paymode,status,tnum,totalmoney,tid,tprice,aid')
         ->select();
         if (defined('DEBUG')) echo "\n",$this->_sql(),"\n";
         $data = array();
@@ -378,7 +378,7 @@ class OrderQuery extends Model
         foreach ($orders_modify as $item) {
             $modify[$item['ordernum'].'_'.$item['tid']] = $item['tnum'];
         }
-        $fee_order = [];
+        $fee_order = $ticket_ids = [];
         foreach ($orders as $order) {
             $_k = "{$order['ordernum']}_{$order['tid']}";
             //门票ID列表
@@ -389,7 +389,7 @@ class OrderQuery extends Model
             //退款
             if (isset($modify[$_k])) {
                 if (defined('DEBUG')) echo '退款:',$modify[$_k],'--', $order['paymode'],'---', $order['ordernum'],'--',$order['tid'],"\n";
-                $fee_order[$order['ordernum']]= [$order['paymode'], $order['tid']];
+                $fee_order[$order['ordernum']]= [$order['paymode'], $order['tid'],$order['aid']];
                 $data[$order['paymode']][$order['tid']][0]['tnum']  += $modify[$_k];
                 $data[$order['paymode']][$order['tid']][0]['money'] += $modify[$_k] * $order['tprice'];
 
@@ -400,7 +400,7 @@ class OrderQuery extends Model
             if ($order['status']==3 || $order['status']==6 ) {
                 if (defined('DEBUG')) echo '退款:' ,$order['status'],'---',$order['ordernum'],'--',$order['tid'],"\n";
                 //echo $order['status'],'---',$order['ordernum'],'--',$order['tid'],"\n";
-                $fee_order[$order['ordernum']]= [$order['paymode'], $order['tid']];
+                $fee_order[$order['ordernum']]= [$order['paymode'], $order['tid'],$order['aid']];
                 $data[$order['paymode']][$order['tid']][0]['tnum']  += $order['tnum'];
                 $data[$order['paymode']][$order['tid']][0]['money'] += $order['totalmoney'];
             }
@@ -415,11 +415,12 @@ class OrderQuery extends Model
         if (count($fee_order)>0) {
             $cancel_fee = $this->table('pft_member_journal')
                 ->where(['orderid'=>['in', $ordernum_list], 'dtype'=>14])
-                ->field('orderid,dmoney')
-                ->group('orderid')
+                ->field('fid,orderid,SUM(dmoney) AS dmoney')
+                ->group('orderid,fid')
                 ->select();
 
             foreach ($cancel_fee as $fee) {
+                if ($fee_order[$fee['orderid']][2]!=$fee['fid']) continue;
                 $mode = $fee_order[$fee['orderid']][0];
                 $tid  = $fee_order[$fee['orderid']][1];
                 if (!$mode) {
