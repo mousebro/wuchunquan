@@ -367,31 +367,41 @@ class OrderQuery extends Model
         //修改的票数
         $orders_modify = $this->table(self::__ORDER_TRACK__)
             ->where(['ordernum'=>['in', $ordernum_list], 'action'=>['in', [1, 7] ] ])
-            ->field('SUM(tnum) AS tnum,tid')
+            ->field('SUM(tnum) AS tnum,tid,ordernum')
             ->group('tid')
             ->select();
         $modify = [];
         foreach ($orders_modify as $item) {
-            $modify[$item['tid']] = $item['tnum'];
+            $modify[$item['ordernum'].'_'.$item['tid']] = $item['tnum'];
         }
         $fee_order = [];
         foreach ($orders as $order) {
-            if (isset($modify[$order['tid']])) {
-                $fee_order[$order['ordernum']]= $order['paymode'];
-                $data[$order['paymode']][0]['money'] += $modify[$order['tid']] * $order['tprice'];
-                $data[$order['paymode']][0]['tnum']  += $modify[$order['tid']];
+            //门票ID列表
+            $ticket_ids[] = $order['tid'];
+            //收款
+            $data[$order['paymode']][$order['tid']][1]['tnum']  += $order['tnum'];
+            $data[$order['paymode']][$order['tid']][1]['money'] += $order['totalmoney'];
+            //退款
+            if (isset($modify[$order['ordernum'].'_'.$order['tid']])) {
+                //echo $order['ordernum'],'--',$order['tid'],"\n";
+                $fee_order[$order['ordernum']]= [$order['paymode'], $order['tid']];
+                $data[$order['paymode']][$order['tid']][0]['tnum']  += $modify[$order['tid']];
+                $data[$order['paymode']][$order['tid']][0]['money'] += $modify[$order['tid']] * $order['tprice'];
             }
             //退款取消/撤销
-            if ($order['status']==3 || $order['status']==5 ) {
-                $fee_order[$order['ordernum']]= $order['paymode'];
-                $data[$order['paymode']][0]['money'] += $order['totalmoney'];
-                $data[$order['paymode']][0]['tnum']  += $order['tnum'];
+            if ($order['status']==3 || $order['status']==6 ) {
+                //echo $order['status'],'---',$order['ordernum'],'--',$order['tid'],"\n";
+                $fee_order[$order['ordernum']]= [$order['paymode'], $order['tid']];
+                $data[$order['paymode']][$order['tid']][0]['tnum']  += $order['tnum'];
+                $data[$order['paymode']][$order['tid']][0]['money'] += $order['totalmoney'];
             }
-            //else {
-            $data[$order['paymode']][1]['tnum']  += $order['tnum'];
-            $data[$order['paymode']][1]['money'] += $order['totalmoney'];
-            //}
         }
+        $ticket_names = $this->table('uu_jq_ticket t')
+            ->join('uu_land l ON l.id=t.landid')
+            ->where(['t.id'=>['in', array_unique($ticket_ids)]])
+            ->getField('t.id, t.title as ttitle, l.title as ltitle', true);
+        //print_r($ticket_names);exit;
+        //return $data;
         //手续费
         if (count($fee_order)>0) {
             $cancel_fee = $this->table('pft_member_journal')
@@ -399,20 +409,44 @@ class OrderQuery extends Model
                 ->field('orderid,dmoney')
                 ->select();
             foreach ($cancel_fee as $fee) {
-                $data[$fee_order[$fee['orderid']]][2] += $fee['dmoney'];
+                $mode = $fee_order[$fee['orderid']][0];
+                $tid  = $fee_order[$fee['orderid']][1];
+                if (!$mode) {
+                    print_r($fee);exit;
+                }
+                $data[$mode][$tid][2] += $fee['dmoney'];
             }
         }
         //{"付款方式":1,"money":2459,"tnum":23,"fee":14},{"付款方式":1,"money":2459,"tnum":23,"fee":14}
         $pay_mode_list = OrderDict::DictOrderPayMode();
-        foreach ($data as $pay_mode => $item) {
-            $output[] = [
+        $output = array();
+        //return $data;
+        foreach ($data as $pay_mode => $tickets) {
+            $output[$pay_mode] = [
                 'mode'   => $pay_mode,
                 'name'   => $pay_mode_list[$pay_mode],
-                'tk'     => isset($item[0]) ? $item[0] : ['tnum'=>0, 'money'=>0],
-                'sk'     => $item[1],
-                'sxf'    => isset($item[2]) ? $item[2] : 0,
+                'tk'     => ['tnum'=>0, 'money'=>0],
+                'sk'     => ['tnum'=>0, 'money'=>0],
+                'sxf'    => 0,
             ];
+            foreach ($tickets as $tid=>$item) {
+                $output[$pay_mode]['tk']['tnum']    += $item[0]['tnum'];
+                $output[$pay_mode]['tk']['money']   += $item[0]['money'];
+
+                $output[$pay_mode]['sk']['tnum']    += $item[1]['tnum'];
+                $output[$pay_mode]['sk']['money']   += $item[1]['money'];
+
+                $output[$pay_mode]['tickets'][] = [
+                    'id'    => $tid,
+                    'scenic'=> $ticket_names[$tid]['ltitle'],
+                    'ticket'=> $ticket_names[$tid]['ttitle'],
+                    'tk'    => isset($item[0]) ? $item[0] : ['tnum'=>0, 'money'=>0],
+                    'sk'    => $item[1],
+                    'sxf'   => isset($item[2]) ? $item[2] : 0,
+                ];
+            }
+
         }
-        return $output;
+        return array_values($output);
     }
 }
