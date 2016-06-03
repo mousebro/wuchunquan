@@ -447,6 +447,7 @@ class OrderQuery extends Model
 
                 $output[$pay_mode]['sk']['tnum']    += $item[1]['tnum'];
                 $output[$pay_mode]['sk']['money']   += $item[1]['money'];
+                $output[$pay_mode]['sxf']           += $item[2];
 
                 $output[$pay_mode]['tickets'][] = [
                     'id'    => $tid,
