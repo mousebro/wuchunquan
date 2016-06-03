@@ -354,6 +354,7 @@ class OrderQuery extends Model
         $ordernum_list = $this->table('pft_ordercustomer')
             ->where($where)
             ->getField('ordernum', true);
+        if (defined('DEBUG')) echo $this->_sql();
         if (!$ordernum_list) {
             return false;
         }
@@ -363,33 +364,41 @@ class OrderQuery extends Model
         ->where($where)
         ->field('ordernum,paymode,status,tnum,totalmoney,tid,tprice')
         ->select();
+        if (defined('DEBUG')) echo "\n",$this->_sql(),"\n";
         $data = array();
         //修改的票数
         $orders_modify = $this->table(self::__ORDER_TRACK__)
             ->where(['ordernum'=>['in', $ordernum_list], 'action'=>['in', [1, 7] ] ])
             ->field('SUM(tnum) AS tnum,tid,ordernum')
-            ->group('tid')
+            ->group('tid,ordernum')
             ->select();
+        if (defined('DEBUG')) echo "\n",$this->_sql(),"\n";
+
         $modify = [];
         foreach ($orders_modify as $item) {
             $modify[$item['ordernum'].'_'.$item['tid']] = $item['tnum'];
         }
         $fee_order = [];
         foreach ($orders as $order) {
+            $_k = "{$order['ordernum']}_{$order['tid']}";
             //门票ID列表
             $ticket_ids[] = $order['tid'];
             //收款
             $data[$order['paymode']][$order['tid']][1]['tnum']  += $order['tnum'];
             $data[$order['paymode']][$order['tid']][1]['money'] += $order['totalmoney'];
             //退款
-            if (isset($modify[$order['ordernum'].'_'.$order['tid']])) {
-                //echo $order['ordernum'],'--',$order['tid'],"\n";
+            if (isset($modify[$_k])) {
+                if (defined('DEBUG')) echo '退款:',$modify[$_k],'--', $order['paymode'],'---', $order['ordernum'],'--',$order['tid'],"\n";
                 $fee_order[$order['ordernum']]= [$order['paymode'], $order['tid']];
-                $data[$order['paymode']][$order['tid']][0]['tnum']  += $modify[$order['tid']];
-                $data[$order['paymode']][$order['tid']][0]['money'] += $modify[$order['tid']] * $order['tprice'];
+                $data[$order['paymode']][$order['tid']][0]['tnum']  += $modify[$_k];
+                $data[$order['paymode']][$order['tid']][0]['money'] += $modify[$_k] * $order['tprice'];
+
+                $data[$order['paymode']][$order['tid']][1]['tnum'] += $modify[$_k];
+                $data[$order['paymode']][$order['tid']][1]['money'] += $modify[$_k] * $order['tprice'];
             }
             //退款取消/撤销
             if ($order['status']==3 || $order['status']==6 ) {
+                if (defined('DEBUG')) echo '退款:' ,$order['status'],'---',$order['ordernum'],'--',$order['tid'],"\n";
                 //echo $order['status'],'---',$order['ordernum'],'--',$order['tid'],"\n";
                 $fee_order[$order['ordernum']]= [$order['paymode'], $order['tid']];
                 $data[$order['paymode']][$order['tid']][0]['tnum']  += $order['tnum'];
@@ -407,12 +416,15 @@ class OrderQuery extends Model
             $cancel_fee = $this->table('pft_member_journal')
                 ->where(['orderid'=>['in', $ordernum_list], 'dtype'=>14])
                 ->field('orderid,dmoney')
+                ->group('orderid')
                 ->select();
+
             foreach ($cancel_fee as $fee) {
                 $mode = $fee_order[$fee['orderid']][0];
                 $tid  = $fee_order[$fee['orderid']][1];
                 if (!$mode) {
-                    print_r($fee);exit;
+                    if (defined('DEBUG')) echo 'fee:',$fee['orderid'],"\n";
+                    continue;
                 }
                 $data[$mode][$tid][2] += $fee['dmoney'];
             }
