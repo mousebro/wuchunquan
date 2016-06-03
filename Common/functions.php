@@ -10,6 +10,17 @@
 // +----------------------------------------------------------------------
 
 /**
+ * 为了兼容之前的类库，在这里统一载入之前的全局函数
+ *
+ * @author dwer
+ * @date   2016-05-19
+ */
+$prevFunctionsFile = '/var/www/html/new/d/common/func.inc.php';
+if(file_exists($prevFunctionsFile)) {
+    include_once($prevFunctionsFile);
+}
+
+/**
  * Think 系统函数库
  */
 
@@ -28,6 +39,25 @@ function throw_exception($error) {
     } else {
         exit();
     }
+}
+/**
+ * 向elk日志系统记录日志[elk.12301dev.com]
+ *
+ * @author Guangpeng Chen
+ * @param string $log_name 日志文件名
+ * @param mixed $log_message 日志内容，可以为字符串或数组
+ */
+function write_to_logstash($log_name, $log_message)
+{
+    $log_dir = BASE_LOG_DIR . '/logstash/' . $log_name .'_' . date('ymd') .'.log';
+    $word = json_encode([
+        'time'  => date("Y-m-d H:i:s"),
+        'client'=> $_SERVER['REMOTE_ADDR'],
+        'domain'=> $_SERVER['HTTP_HOST'],
+        'status'=> 200,
+        'words' => $log_message,
+    ],JSON_UNESCAPED_UNICODE);
+    file_put_contents($log_dir, $word . "\n", FILE_APPEND);
 }
 /**
  * 取上一步来源地址
@@ -149,6 +179,48 @@ if (!function_exists('C')) {
             return null;
         }
         return null; // 避免非法参数
+    }
+}
+
+
+if (!function_exists('load_config')) {
+    /**
+     * 动态加载业务配置数据
+     * @param $key 配置的键
+     * @param $type 配置文件类型，默认business，业务配置
+
+     * @return mixed
+     */
+    function load_config($key, $type = 'business') {
+        static $_load_config = array();
+
+        $key  = strval($key);
+        $type = strval($type);
+
+        // 无参数时获取所有
+        if (empty($key) || empty($type)) {
+            return null;
+        }
+
+        //获取配置文件的所有配置
+        if(isset($_load_config[$type])) {
+            $configArr = $_load_config[$type];
+        } else {
+            $configFile = HTML_DIR . "Service/Conf/{$type}.conf.php";
+            if(file_exists($configFile)) {
+                $configArr = include($configFile);
+            } else {
+                $configArr = array();
+            }
+
+            $_load_config[$type] = $configArr;
+        }
+
+        if(isset($configArr[$key])) {
+            return $configArr[$key];
+        } else {
+            return null;
+        }
     }
 }
 

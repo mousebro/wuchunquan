@@ -185,6 +185,22 @@ class Controller {
                 exit;
         }
     }
+
+    /**
+     * 判断是否ajax请求
+     * @return boolean [description]
+     */
+    protected function isAjax() {
+       if ( (isset($_SERVER['HTTP_X_REQUESTED_WITH']) 
+            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') 
+            || !empty($_POST[C('VAR_AJAX_SUBMIT')]) 
+            || !empty($_GET[C('VAR_AJAX_SUBMIT')]) ) {
+
+            return true;
+       }
+       return false;
+    }
+
     /**
      * 通过curl提交数据
      * @param $url
@@ -202,6 +218,16 @@ class Controller {
         $rt=curl_exec($ch);
         curl_close($ch);
         return $rt;
+    }
+
+    public static function getSoap()
+    {
+        $ac     = '16ucom';
+        $pw     = 'c33367701511b4f6020ec61ded352059';
+        $soap = new \SoapClient(null,array(
+            "location" => "http://localhost/open/openService/pft_insideMX.php",
+            "uri" => "www.16u.com?ac_16u={$ac}|pw_16u={$pw}|auth_16u=true"));
+        return $soap;
     }
 }
 ?>

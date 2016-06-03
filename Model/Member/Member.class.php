@@ -12,6 +12,7 @@ use Library\Model;
 class Member extends Model
 {
     const __MEMBER_TABLE__ = 'pft_member';
+    const __MEMBER_EXT_TABLE__ = 'pft_member_extinfo';
     const __MEMBER_RELATIONSHOP_TABLE__ = 'pft_member_relationship';
 
     const MONEY_ADD = 0;
@@ -102,6 +103,17 @@ class Member extends Model
         $where[$field] = $identify;
 
         $member = $this->table(self::__MEMBER_TABLE__)->where($where)->find();
+        return $member ?: false;
+    }
+    /**
+     * 根据账号获取用户扩展表信息
+     * @param  mixed $identify 字段值
+     * @param  mixed $field    字段名
+     * @return mixed        [description]
+     */
+    public function getMemberExtInfo($fid, $field = 'id') {
+        $where['fid'] = $fid;
+        $member = $this->table(self::__MEMBER_EXT_TABLE__)->where($where)->getField($field);
         return $member ?: false;
     }
 

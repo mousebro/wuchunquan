@@ -17,12 +17,13 @@ class Order extends Controller
 {
     private $soap;
 
-    private function getSoap()
+    public function soap()
     {
+        $this->soap  = parent::getSoap();
         //$this->verify();
-        $this->soap  = new \SoapClient(null,array(
-            "location" => "http://localhost/open/openService/pft_insideMX.php",
-            "uri" => "www.16u.com?ac_16u=16ucom|pw_16u=c33367701511b4f6020ec61ded352059|auth_16u=true"));
+        //$this->soap  = new \SoapClient(null,array(
+        //    "location" => "http://localhost/open/openService/pft_insideMX.php",
+        //    "uri" => "www.16u.com?ac_16u=16ucom|pw_16u=c33367701511b4f6020ec61ded352059|auth_16u=true"));
     }
 
     /**
@@ -38,7 +39,7 @@ class Order extends Controller
             parent::apiReturn(401, [],'参数错误');
         }
         //echo $tid;exit;
-        $this->getSoap();
+        $this->soap();
         $res        = $this->soap->QuickOrder($tid, $auth_code);
         if ($res==100) {
             parent::apiReturn(200, [],'下单成功');
@@ -61,10 +62,10 @@ class Order extends Controller
         $tid = 0;
         $member             = I('post.member');
         $aid                = I('post.aid');
-        $this->getSoap();
+        $this->soap();
         $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, 0, $tid, '', '',
             $ordertime_begin, $ordertime_end,'','','', '',//13订单完成时间
-            $orderNum, '', $ordertel, $orderStatus, $payStatus, '',/*19排序*/ 1,/*20降序*/ 0, 100,
+            $orderNum, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
@@ -93,19 +94,32 @@ class Order extends Controller
     public function QuickPayOffline()
     {
         $ordernum       = I('post.ordernum');
-        $pay_total_fee  = I('post.total_fee');;
+        $pay_total_fee  = I('post.total_fee') + 0;
         $pay_channel    = 4;
         $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付
         $pay_to_pft     = false;
         $tradeno        = I('post.tradeno');//流水号
-        $this->getSoap();
-        //$soap = new \ServerInside();
+        $pay_conf       = include '/var/www/html/Service/Conf/pay.conf.php';
+        $pay_account    = I('post.pay_account');
+        if ($pay_account!='' && in_array($pay_account, $pay_conf['pft']['lakala'])) {
+            $pay_to_pft = true;
+        }
+        if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，支付方式不对');
+        }
+        if (empty($ordernum)) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单号不能为空');
+        }
+        if (empty($pay_total_fee) || !$pay_total_fee) {
+            parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单金额格式不对');
+        }
+        $this->soap();
         $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
             parent::apiReturn(parent::CODE_SUCCESS, [], '支付成功');
         }
-        parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败');
+        parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单号:' . $ordernum);
     }
 
     /**
