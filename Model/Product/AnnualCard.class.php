@@ -44,8 +44,15 @@ class AnnualCard extends Model {
      */
     public function getAnnualCardProducts($sid) {
 
-        return $this->table(self::PRODUCT_TABLE)->where(['apply_did' => $sid, 'p_type' => 'I'])->select();
+        $where = [
+            'apply_did' => $sid,
+            'p_type'    => 'I',
+            'p_status'  => '0'
+        ];
 
+        $field = 'id,p_name';
+
+        return $this->table(self::PRODUCT_TABLE)->where($where)->field($field)->select();
     }
 
     /**
@@ -53,23 +60,25 @@ class AnnualCard extends Model {
      * @return [type] [description]
      */
     public function createAnnualCard($num, $sid, $pid) {
-        $insert_data = [];
+        $insert_data = $return = [];
 
         while (1) {
             $virtual_no = $this->_createVirtualNo();
 
             if (!$this->getAnnualCard($virtual_no, 'virtual_no')) {
-                $insert_data[] = ['sid' => $sid, 'pid' => $pid, 'virtual_no' => $virtual_no];
+                $insert_data[] = ['sid' => $sid, 'pid' => $pid, 'virtual_no' => $virtual_no, 'status' => 3];
             }
 
-            if (count($virtual_arr) == $num) break;
+            $return[] = $virtual_no;
+
+            if (count($insert_data) == $num) break;
         }
 
-        if ($this->table(self::ANNUAL_CARD_TABLE)->addAll($insert_data)) {
+        if (!$this->table(self::ANNUAL_CARD_TABLE)->addAll($insert_data)) {
             return false;
         }
 
-        return $insert_data;
+        return $return;
     }
 
     /**

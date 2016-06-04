@@ -74,6 +74,18 @@ class Ticket extends Model {
             ->field( $this->ticket_filed )
             ->where(array('pid' => $pid))->find();
     }
+
+    /**
+     * 获取产品表的信息
+     * @param  array $options 
+     * @return [type]      [description]
+     */
+    public function getProductInfo($options) {
+
+        return $this->table(self::__PRODUCT_TABLE__)->where(array('id' => $pid))->find($options);
+
+    }
+
     /**
      * 获取产品类型
      * @param  int $pid productID
@@ -81,9 +93,9 @@ class Ticket extends Model {
      */
     public function getProductType($pid) {
         return $this->table(self::__PRODUCT_TABLE__)
-                    ->join('p left join uu_land l on p.contact_id=l.id')
-                    ->where(array('p.id' => $pid))
-                    ->getField('l.p_type');
+            ->join('p left join uu_land l on p.contact_id=l.id')
+            ->where(array('p.id' => $pid))
+            ->getField('l.p_type');
     }
 
     public function getPackageInfoByTid($tid){
@@ -108,20 +120,6 @@ class Ticket extends Model {
      * @return array
      */
     public function getSaleProducts($memberid, $options = array()) {
-        // $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
-
-        // if (!$sale_list) return array();
-
-        // $sale_pid_arr = $sale_aid_arr = array();
-        // foreach ($sale_list as $item) {
-        //     if ($memberid == $item['aid']) {
-        //         $sale_pid_arr[$item['aid']] = array('A');
-        //     } else {
-        //         $sale_pid_arr[$item['aid']] = explode(',', $item['pids']);
-        //     }
-        //     $sale_aid_arr[] = $item['aid'];
-        // }
-        // var_dump($sale_pid_arr);die;
         $where = array(
             'p.p_status' => 0,
             'p.apply_limit' => 1,
@@ -136,16 +134,13 @@ class Ticket extends Model {
 
         $data = $this->getProductsDetailInfo($where, $options);
 
+        if (!$data) return array();
+
         $result = array();
-        if ($data) {
-            foreach ($data as $item) {
-            // $pid_arr = $sale_pid_arr[$item['apply_did']];
-            // if (is_array($pid_arr) && ($pid_arr[0] == 'A' || in_array($item['pid'], $pid_arr))) {
-                $item['apply_sid'] = $memberid;
-                $item['sapply_sid'] = $item['apply_did'];
-                $result[] = $item;
-            // }
-            }
+        foreach ($data as $item) {
+            $item['apply_sid'] = $memberid;
+            $item['sapply_sid'] = $item['apply_did'];
+            $result[] = $item;
         }
         
         return $result;
