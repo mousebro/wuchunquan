@@ -2,11 +2,22 @@
 
 namespace Model\Product;
 
+use Library\Cache\Cache;
 use Library\Model;
 
 class AnnualCard extends Model {
 
     const ANNUAL_CARD_TABLE = 'pft_annual_card';    //卡片信息表
+    const CARD_CONFIG_TABLE = 'pft_annual_card_conf';    //年卡激活配置表
+    const CARD_PRIVILEGE_TABLE = 'pft_annual_card_privilege';    //年卡景区特权表
+
+    public function __construct($parent_tid=0)
+    {
+        parent::__construct();
+        $this->parent_tid = $parent_tid;
+        $this->cacheKey   = "crd:{$_SESSION['memberID']}";
+        $this->cache = Cache::getInstance('redis');
+    }
 
     const PRODUCT_TABLE     = 'uu_products';        //产品信息表
 
@@ -22,7 +33,7 @@ class AnnualCard extends Model {
 
     }
 
-     /**
+    /**
      * 获取指定产品的关联年卡
      * @return [type] [description]
      */
@@ -169,5 +180,71 @@ class AnnualCard extends Model {
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->count();
     }
-    
+
+    /**
+     * 生成年卡
+     * @return [type] [description]
+     */
+
+    public function saveCardConfig($crdConf,$crdPriv) {
+        $this->startTrans();
+        $ret1 = $this->saveCrdConf($crdConf);
+        $ret2 = $this->saveCrdPriv($crdPriv);
+        if($ret1 && $ret2){
+            $this->commit();
+            return true;
+        }else{
+            $this->rollback();
+            return false;
+        }
+    }
+
+
+    /**
+     * 保存年卡激活配置信息
+     * @param array $data
+     *
+     * @return mixed
+     */
+    public function saveCrdConf($data){
+        return $this->table(self::CARD_CONFIG_TABLE)->save($data);
+    }
+
+
+    /**
+     * 保存年卡景区特权信息
+     * @param array $data
+     *
+     * @return bool|string
+     */
+    public function saveCrdPriv(array $data){
+        return $this->table(self::CARD_PRIVILEGE_TABLE)->addAll($data);
+    }
+
+    public function getCache(){
+        return $this->cache->get($this->cacheKey);
+    }
+
+    public function setCache($json)
+    {
+        return $this->cache->set($this->cacheKey, $json, '', 1800);
+    }
+    public function rmCache()
+    {
+        return $this->cache->rm($this->cacheKey);
+    }
+    public function checkPriv($json)
+    {
+        $arr_list = json_decode($json, true);
+        $limit_key_list = ['aid','tid','use_limit','limit_count'];
+        foreach ($arr_list as $arr) {
+            foreach ($arr as $key=>$val) {
+                if(!in_array($key, $limit_key_list) || !is_numeric($val)) {
+                    echo $key, $val;
+                    return false;
+                }
+            }
+        }
+        return $arr_list;
+    }
 }
