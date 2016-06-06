@@ -21,6 +21,7 @@ class AnnualCard extends Model {
 
 
 
+
     /**
      * 根据字段获取年卡信息
      * @param  [type] $identify [description]
