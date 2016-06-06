@@ -163,7 +163,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));// 验证限制
 
         if(($tkBaseAttr['buy_limit_up']>0) && $tkBaseAttr['buy_limit_low']>$tkBaseAttr['buy_limit_up'])
-           return self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数', $ticketData['ttitle']);
+            return self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数', $ticketData['ttitle']);
 
         // 延迟验证
         $delaytime = array(0,0);
@@ -517,7 +517,7 @@ class ProductBasic extends Controller
         {
             // 期票模式（有效期是时间段）只能全部有价格
             if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6'))
-               return $this->_return(self::CODE_INVALID_REQUEST, '期票模式必须每天都有价格','');
+                return $this->_return(self::CODE_INVALID_REQUEST, '期票模式必须每天都有价格','');
             if(($tableId = ($row['id']+0))==0) continue; // 已存在表ID
             $section = $row['sdate'].' 至 '.$row['edate'];
             $diff_js = $original_price[$tableId]['js'] - $row['js'];

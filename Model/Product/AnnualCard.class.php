@@ -10,7 +10,7 @@ class AnnualCard extends Model {
     const ANNUAL_CARD_TABLE = 'pft_annual_card';    //卡片信息表
     const CARD_CONFIG_TABLE = 'pft_annual_card_conf';    //年卡激活配置表
     const CARD_PRIVILEGE_TABLE = 'pft_annual_card_privilege';    //年卡景区特权表
-
+    const PRODUCT_TABLE     = 'uu_products';        //产品信息表
     public function __construct($parent_tid=0)
     {
         parent::__construct();
@@ -19,7 +19,7 @@ class AnnualCard extends Model {
         $this->cache = Cache::getInstance('redis');
     }
 
-    const PRODUCT_TABLE     = 'uu_products';        //产品信息表
+
 
     /**
      * 根据字段获取年卡信息
