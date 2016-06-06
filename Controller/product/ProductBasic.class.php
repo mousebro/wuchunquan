@@ -332,8 +332,8 @@ class ProductBasic extends Controller
             $crdConf['srch_limit'] = isset($ticketData['srch_limit']) ? intval($ticketData['srch_limit']) : 1; //购买搜索限制 0 不限制 1：卡号（实体卡/虚拟卡）  2：身份证号 4：手机号
             $crdConf['cert_limit'] = isset($ticketData['cert_limit']) ? intval($ticketData['cert_limit']) : 0; //身份证地域限制 0 不限制 其他：限制身份证前n位为'其他'
             $crdConf['act_notice'] = isset($ticketData['act_notice']) ? intval($ticketData['act_notice']) : 0; //激活通知 0 不通知 1 通知游客 1通知供应商 2 通知游客和供应商
-            if(count(I('post.priv'))){
-                $crdPriv = $crdModel->checkPriv(I('post.priv'));
+            if(count($ticketData['priv'])){
+                $crdPriv = $crdModel->checkPriv($ticketData['priv']);
                 if(is_array($crdPriv)){
                     $crdInfo = json_encode(['crdConf'=>$crdConf,'crdPriv'=>$crdPriv]);
                     $crdModel->rmCache();
@@ -460,7 +460,7 @@ class ProductBasic extends Controller
         }
 
         if($ticketData['p_type']=='I'){
-            $cardRet = $this->saveAnnualCard($tid);
+            $cardRet = $this->saveCardConfig($tid,$crdModel);
             $output['data']['saveCardResult'] = $cardRet;
         }
 
@@ -583,13 +583,9 @@ class ProductBasic extends Controller
      *
      * @return bool|string
      */
-    private function saveAnnualCard($parent_tid)
+    private function saveCardConfig($parent_tid,\Model\Product\AnnualCard $crdModel)
     {
-        if (is_null($this->cardObj)) {
-            $this->cardObj = new AnnualCard();
-        }
-
-        $card_info = $this->cardObj->getCache();
+        $card_info = $crdModel->getCache();
         if (empty($card_info) || empty($card_info) ) return false;
         $cardData = json_decode($card_info, true);
         $crdConf = $cardData['crdConf'];
@@ -598,8 +594,8 @@ class ProductBasic extends Controller
             $packData[$key]['parent_tid'] = $parent_tid;
         }
         $crdConf['tid'] = $parent_tid;
-        $ret = $this->cardObj->saveCardConfig($crdConf,$crdPriv);
-        if ($ret!==false) $this->cardObj->rmCache();
+        $ret = $crdModel->saveCardConfig($crdConf,$crdPriv);
+        if ($ret!==false) $crdModel->rmCache();
         return $ret;
     }
 
