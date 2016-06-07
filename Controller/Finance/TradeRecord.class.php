@@ -10,6 +10,7 @@ use Library\Exception;
 
 class TradeRecord extends Controller
 {
+    private $tradeModel;   //交易记录模型
 
     public function __construct()
     {
@@ -17,18 +18,56 @@ class TradeRecord extends Controller
     }
 
     /**
+     * 获取交易记录详情
+     *
+     * @param string [trade_id] 交易记录id
+     *
+     */
+    public function getDetails()
+    {
+        $memberId = $this->isLogin('ajax');
+        self::logInput($memberId);
+        $recordModel = $this->_getTradeModel();
+
+        $trade_id = \safe_str(I('trade_id'));
+
+        if ( ! $trade_id) {
+            $this->apiReturn(201, [], '传入参数不合法');
+        }
+
+        $record = $recordModel->getDetails($trade_id);
+        //无权查看时返回数据为空
+        if (isset($record['fid'], $record['aid']) && in_array($memberId, [1, $record['fid'], $record['aid']])) {
+            unset($record['fid'], $record['aid']);
+        } else {
+            $record = [];
+        }
+
+        $this->apiReturn(200, $record, '操作成功');
+    }
+
+    /**
      * 获取交易记录列表
+     *
+     * @param   int    [fid]       被查询的会员id   管理员账号用
+     * @param   string [orderid]   交易号
+     * @param   string [btime]     开始时间        yy-mm-dd hh:ii:ss
+     * @param   string [etime]     结束时间        yy-mm-dd hh:ii:ss
+     * @param   int    [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
+     * @param   int    [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
+     * @param   int    [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
+     * @param   int    [page]      当前页数
+     * @param   int    [limit]     每页显示条数
      */
     public function getList()
     {
         try {
-
             $memberId = $this->isLogin('ajax');
-
+            //日志记录传入数据
             self::logInput($memberId);
 
             $map = [];
-            //被查询账号
+            //被查询会员id
             $fid = intval(I('fid'));
             $fid = ($memberId == 1 && $fid) ? $fid : $memberId;
 
@@ -38,22 +77,23 @@ class TradeRecord extends Controller
                 $map['orderid'] = $orderid;
             }
             //时段
-            $interval = $this->parseTime();
+            $interval       = $this->_parseTime();
             $map['rectime'] = array('between', $interval);
 
-            //支付方式用"|"分隔
-            $this->parsePtype($fid, $map);
+            //支付方式
+            $this->_parsePayType($fid, $map);
 
             if (empty($map['aid']) && empty($map['fid'])) {
                 $map['fid'] = $fid;
             }
 
-            //交易类目用"|"分隔
-            $subtype = $this->parseTradeCategory($map);
+            //交易大类
+            $subtype = $this->_parseTradeCategory($map);
 
             //交易类型
-            $this->parseTradeType($subtype, $map);
+            $this->_parseTradeType($subtype, $map);
 
+            //交易金额为0的交易记录不显示
             $map['dmoney'] = ['gt', 0];
             //分页
             $page  = intval(I('page'));
@@ -63,8 +103,8 @@ class TradeRecord extends Controller
 
             //数据输出形式
             $form        = intval(I('form'));
-            $recordModel = new \Model\Finance\TradeRecord();
-            $this->output($form, $recordModel, $map, $page, $limit, $interval);
+            $recordModel = $this->_getTradeModel();
+            $this->_output($form, $recordModel, $map, $page, $limit, $interval);
         } catch (Exception $e) {
             \pft_log('trade_record/err', 'get_list|' . $e->getCode() . "|" . $e->getMessage(), 'month');
             $this->apiReturn($e->getCode(), [], $e->getMessage());
@@ -72,72 +112,155 @@ class TradeRecord extends Controller
     }
 
     /**
-     * 获取交易记录详情
+     * 管理员查询会员
      *
-     * @param $memberId
      */
-    static public function logInput($memberId)
+    public function srchMem()
     {
-        $input  = ['member' => $memberId, 'input' => I('param.')];
-        $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
-        $action = debug_backtrace()['function'] ?: '';
-        \pft_log($prefix . 'input', $action . '|' . json_encode($input));
+        $memberId = $this->isLogin('ajax');
+        $srch     = \safe_str(I('srch'));
+        try {
+            //只有管理员可查看
+            if ($memberId != 1) {
+                throw new Exception('无权查看', 209);
+            }
+            if(empty($srch)){
+                throw new Exception('传入参数错误',210);
+            }
+            $model = $this->_getTradeModel();
+            $data  = $model->getMember($srch);
+            $data  = is_array($data) ? $data : [];
+            $this->apiReturn(200, $data, '操作成功');
+        } catch (Exception $e) {
+            \pft_log('trade_record/err', 'srch_mem|' . $e->getCode() . "|" . $e->getMessage(), 'month');
+            $this->apiReturn($e->getCode(), [], $e->getMessage());
+        }
     }
 
     /**
-     * 解析输入时间参数
-     *
-     * @return array|bool
-     * @throws \Library\Exception
+     * @url 下载excel http://www.12301.local/route/?c=Finance_TradeRecord&a=test&fid=57675&form=1&btime=2016-05-23 00:00:00
+     * @url 显示交易报表 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&fid=57675&form=0&btime=2016-05-23 00:00:00
+     * @url 查看交易详情 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&trade_id=6483409
+     * @url 查询会员 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&srch=技术部
      */
-    private function parseTime()
+    public function test()
     {
-        //开始时间
-        $btime = $this->validateTime('btime', "today midnight");
-        //结束时间 - 默认为当前时间
-        $etime = $this->validateTime('etime', "now");
-        $interval =  [$btime, $etime];
-        return $interval;
+        if ('DEVELOP' == ENV) {
+            $_SESSION['sid'] = 1;
+//            $this->getList();
+//            $this->getDetails();
+            $this->srchMem();
+        } else {
+            $this->apiReturn(213);
+        }
     }
 
     /**
-     * 验证输入时间格式
+     * 导出excel报表
      *
-     * @param $timeTag
-     * @param $defaultVal
-     *
-     * @return bool|mixed|string
-     * @throws \Library\Exception
+     * @param array  $data     数据
+     * @param string $filename 文件名
      */
-    private function validateTime($timeTag, $defaultVal)
+    private function _exportExcel(array $data, $filename = '')
     {
-        $time = \safe_str(I($timeTag));
-        if ($time && ! strtotime($time)) {
-            throw new Exception('时间格式错误', 201);
+        if ( ! $filename) {
+            $filename = date('YmdHis');
+        }
+        $r = [];
+        if (is_array($data) && count($data)) {
+            foreach ($data as $record) {
+                uksort($record, [$this, '_rearrangeData']);
+                $r[] = $record;
+            }
+        }
+        array_unshift($r, C('excel_head'));
+        include_once("/var/www/html/new/d/class/SimpleExcel.class.php");
+        $xls = new \SimpleExcel('UTF-8', true, 'orderList');
+        $xls->addArray($r);
+        $xls->generateXML($filename);
+        exit;
+    }
+
+    /**
+     * 获取交易记录模型
+     *
+     * @return mixed
+     */
+    private function _getTradeModel()
+    {
+        if (null === $this->tradeModel) {
+            $this->tradeModel = new \Model\Finance\TradeRecord();
         }
 
-        $time = $time ?: $defaultVal;
-        $time = date('Y-m-d H:i:s', strtotime($time));
-
-        return $time;
+        return $this->tradeModel;
     }
 
     /**
-     * @param $fid
-     * @param $map
+     * 根据传入的form值输出结果
+     *
+     * @param                            $form
+     * @param \Model\Finance\TradeRecord $recordModel
+     * @param                            $map
+     * @param                            $page
+     * @param                            $limit
+     * @param                            $interval
+     *
+     * @throws \Library\Exception
+     */
+    private function _output($form, \Model\Finance\TradeRecord $recordModel, $map, $page, $limit, $interval)
+    {
+        switch ($form) {
+            case 0:
+                $data = $recordModel->getList($map, $page, $limit);
+                if (is_array($data)) {
+                    $data['btime'] = $interval[0];
+                    $data['etime'] = $interval[1];
+                    $this->apiReturn(200, $data);
+                } else {
+                    throw new Exception('查询结果为空', 208);
+                }
+                break;
+            case 1:
+                $data = $recordModel->getExList($map);
+
+                if (is_array($data)) {
+                    $filename = date('YmdHis') . '交易记录';
+                    $this->_exportExcel($data, $filename);
+                } else {
+                    throw new Exception('查询结果为空', 207);
+                }
+                break;
+            case 2:
+                $data = $recordModel->getSummary($map);
+                if (is_array($data)) {
+                    $this->apiReturn(200, $data);
+                } else {
+                    throw new Exception('查询结果为空', 209);
+                }
+                break;
+            default:
+                throw new Exception('传入参数错误', 210);
+        }
+    }
+
+    /**
+     * 解析支付类型
+     *
+     * @param   string|int $fid 分销商id
+     * @param   array      $map 查询条件
      *
      * @return array
      */
-    private function parsePtype($fid, &$map)
+    private function _parsePayType($fid, &$map)
     {
-        //支付类型的值可能是0，不能用empty判断
+        //支付类型的值可能是0
         if ( ! isset($_REQUEST['ptypes'])) {
             return false;
         }
 
         $ptypes = \safe_str(I('ptypes'));
 
-        if ($ptypes == '') {
+        if ('' == $ptypes) {
             return false;
         }
 
@@ -162,7 +285,7 @@ class TradeRecord extends Controller
                 $map['ptype'] = ['in', $ptypes];
             }
         } else {
-            if ($ptypes == 99) {
+            if (99 == $ptypes) {
                 $map['ptype'] = ['in', [2, 3]];
                 $map['aid']   = $fid;
             } else {
@@ -174,14 +297,31 @@ class TradeRecord extends Controller
     }
 
     /**
+     * 解析输入时间参数
+     *
+     * @return array|bool
+     * @throws \Library\Exception
+     */
+    private function _parseTime()
+    {
+        //开始时间
+        $btime = $this->_validateTime('btime', "today midnight");
+        //结束时间 - 默认为当前时间
+        $etime    = $this->_validateTime('etime', "now");
+        $interval = [$btime, $etime];
+
+        return $interval;
+    }
+
+    /**
      * 解析交易大类
      *
-     * @param $map
+     * @param array $map 查询条件
      *
      * @return array
      * @throws \Library\Exception
      */
-    private function parseTradeCategory(&$map)
+    private function _parseTradeCategory(&$map)
     {
         if ( ! isset($_REQUEST['items'])) {
             return false;
@@ -216,13 +356,13 @@ class TradeRecord extends Controller
     /**
      * 解析交易类型
      *
-     * @param $subtype
-     * @param $map
+     * @param   string $subtype 交易类型
+     * @param   array  $map     查询条件
      *
      * @return mixed
      * @throws \Library\Exception
      */
-    private function parseTradeType($subtype, &$map)
+    private function _parseTradeType($subtype, &$map)
     {
         if ( ! isset($_REQUEST['dtype'])) {
             return false;
@@ -246,154 +386,58 @@ class TradeRecord extends Controller
     }
 
     /**
-     * 根据传入的form值输出结果
+     * 重排excel数据
      *
-     * @param                            $form
-     * @param \Model\Finance\TradeRecord $recordModel
-     * @param                            $map
-     * @param                            $page
-     * @param                            $limit
+     * @param $field_a
+     * @param $field_b
      *
-     * @throws \Library\Exception
+     * @return int
      */
-    private function output($form, \Model\Finance\TradeRecord $recordModel, $map, $page, $limit, $interval)
+    private function _rearrangeData($field_a, $field_b)
     {
-        switch ($form) {
-            case 0:
-                $data = $recordModel->getList($map, $page, $limit, $interval);
-                if (is_array($data)) {
-                    $data['btime'] = $interval[0];
-                    $data['etime'] = $interval[1];
-                    $this->apiReturn(200, $data);
-                } else {
-                    throw new Exception('查询结果为空', 208);
-                }
-                break;
-            case 1:
-                $data = $recordModel->getExList($map);
-
-                if (is_array($data)) {
-                    $filename = date('YmdHis') . '交易记录';
-                    $this->exportExcel($data, $filename);
-                } else {
-                    throw new Exception('查询结果为空', 207);
-                }
-                break;
-            case 2:
-                $data = $recordModel->getSummary($map);
-                if (is_array($data)) {
-                    $this->apiReturn(200, $data);
-                } else {
-                    throw new Exception('查询结果为空', 209);
-                }
-                break;
-            default:
-                throw new Exception('传入参数错误', 210);
-        }
-    }
-
-    private function exportExcel(array $data, $filename = '')
-    {
-        if ( ! $filename) {
-            $filename = date('YmdHis');
-        }
-
-        //        var_dump($data[0]);
-        //        exit;
-        $r[0] = self::getExcelHead();
-        $r    = array_merge($r, $data);
-        include_once("/var/www/html/new/d/class/SimpleExcel.class.php");
-        $xls = new \SimpleExcel('UTF-8', true, 'orderList');
-        $xls->addArray($r);
-        $xls->generateXML($filename);
-        exit;
-    }
-
-    protected static function getExcelHead()
-    {
-        return array(
-            'rectime'   => '交易时间',
-            'orderid'   => '订单号',
-            'dtype'     => '交易类型',
-            'ptype'     => '支付方式',
-            'dmoney'    => '收支',
-            //            'body'      => '交易内容',
-            'memo'      => '备注',
-            'member'    => '交易商户',
-            'counter'   => '对方商户',
-            'oper'      => '操作人',
-            'cre_money' => '授信余额',
-            'acc_money' => '账户余额',
-
-        );
-    }
-
-    public function srchMem()
-    {
-        $memberId = $this->isLogin('ajax');
-        $srch     = \safe_str(I('srch'));
-        try {
-            if ($memberId != 1) {
-                throw new Exception('无权查看', 209);
-            }
-            if ($srch) {
-                $model = new \Model\Finance\TradeRecord();
-                $data  = $model->getMember($srch);
-                if ($data) {
-                    $this->apiReturn(200, $data, '操作成功');
-                } else {
-                    throw new Exception('查询结果为空', 210);
-                }
-            } else {
-                throw new Exception('参数缺失', 212);
-            }
-        } catch (Exception $e) {
-            \pft_log('trade_record/err', 'srch_mem|' . $e->getCode() . "|" . $e->getMessage(), 'month');
-            $this->apiReturn($e->getCode(), [], $e->getMessage());
+        $excel_head = array_keys(C('excel_head'));
+        $pos_a      = array_search($field_a, $excel_head);
+        $pos_b      = array_search($field_b, $excel_head);
+        if (false !== $pos_a && false !== $pos_b) {
+            return ($pos_a < $pos_b) ? -1 : 1;
+        } else {
+            return 0;
         }
     }
 
     /**
-     * @url http://www.12301.local/route/?c=Finance_TradeRecord&a=test
+     * 验证输入时间格式
+     *
+     * @param   string $timeTag    时间字段
+     * @param   string $defaultVal 默认值
+     *
+     * @return bool|mixed|string
+     * @throws \Library\Exception
      */
-    public function test()
+
+    private function _validateTime($timeTag, $defaultVal)
     {
-        if (ENV == 'DEVELOP') {
-            $_SESSION['sid'] = 1;
-//            $this->getList();
-            $this->getDetails();
-        } else {
-            $this->apiReturn(213);
+        $time = \safe_str(I($timeTag));
+        if ($time && ! strtotime($time)) {
+            throw new Exception('时间格式错误', 201);
         }
 
-        //            $this->srchMem();
-        //            $this->getDetails();
+        $time = $time ?: $defaultVal;
+        $time = date('Y-m-d H:i:s', strtotime($time));
+
+        return $time;
     }
 
-    public function getDetails()
+    /**
+     * 记录接收数据日志
+     *
+     * @param $memberId
+     */
+    static function logInput($memberId)
     {
-        $memberId = $this->isLogin('ajax');
-        self::logInput($memberId);
-        $recordModel = new \Model\Finance\TradeRecord();
-
-        $trade_id = \safe_str(I('trade_id'));
-
-        if ( ! $trade_id) {
-            $this->apiReturn(201, [], '传入参数不合法');
-        }
-
-        $record = $recordModel->getDetails($trade_id);
-        if ( ! empty($record['fid']) || ! empty($record['aid'])) {
-            if ( ! in_array($memberId, [1, $record['fid'], $record['aid']])) {
-                $this->apiReturn(201, [], '无权查看');
-            } else {
-                unset($record['fid']);
-                unset($record['aid']);
-            }
-        } else {
-            $record = [];
-        }
-
-        $this->apiReturn(200, $record, '操作成功');
+        $input  = ['member' => $memberId, 'input' => I('param.')];
+        $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
+        $action = debug_backtrace()['function'] ?: '';
+        \pft_log($prefix . 'input', $action . '|' . json_encode($input));
     }
 }
