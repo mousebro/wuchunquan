@@ -62,7 +62,7 @@ class OnlineRefund extends Model
     {
         $trade_log = $this->GetTradeLog($ordernum);
         if (!$trade_log) return false;
-        $appid = '';
+        $appid = $trade_log['seller_email'];
         //TODO::需要记录微信支付的appid
         if ($trade_log['sourceT']==1) {
             if (!$trade_log['seller_email']) {
@@ -72,9 +72,6 @@ class OnlineRefund extends Model
                 $obj  = json_decode($trade_log['seller_email'], true);
                 $appid = isset($obj['sub_appid']) ? $obj['sub_appid'] : $obj['appid'];
             }
-        }
-        elseif ($trade_log['sourceT']==0) {
-            $appid = $trade_log['seller_email'];
         }
 
         $data = [
