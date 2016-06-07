@@ -9,7 +9,7 @@
 namespace Library;
 
 
-class OrderCode
+class OrderCodePool
 {
     private $redis;
     const __TBL_ORDER__ = 'uu_ss_order';
@@ -28,10 +28,10 @@ class OrderCode
 
     public function GetCode($lid)
     {
-        $code = $this->redis->blPop("code:$lid");
+        $code = $this->redis->lPop("code:$lid");
         if (!$code) {
             self::Generate($lid);
-            $code = $this->redis->blPop("code:$lid");
+            $code = $this->redis->lPop("code:$lid");
         }
         return $code;
     }
@@ -54,14 +54,14 @@ class OrderCode
         return true;
     }
 
-    static function code()
+    private static function code()
     {
         $list = [0,1,2,3,4,5,6,7,8,9];
         for ($i=10;$i>1;$i--) {
-            $rand = mt_rand(0,9);
-            $tmp  = $list[$rand];
-            $list[$rand] = $list[$i - 1];
-            $list[$i-1] = $tmp;
+            $rand           = mt_rand(0,9);
+            $tmp            = $list[$rand];
+            $list[$rand]    = $list[$i - 1];
+            $list[$i-1]     = $tmp;
         }
         $result = 0;
         for ($i=0; $i<6; $i++) {
