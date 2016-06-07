@@ -343,6 +343,7 @@ class OrderQuery extends Model
      * @param int $unix_tm_end 查询结束时间-时间戳
      * @param int $op_id 操作员ID
      * @param int $lid 景点ID
+     * @param int $sale_op 总账号ID
      * @return array
      */
     public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id=0, $lid=0, $sale_op=0)
