@@ -11,34 +11,37 @@ namespace Library;
 
 class OrderCodePool
 {
-    private $redis;
+    private static $redis=null;
     const __TBL_ORDER__ = 'uu_ss_order';
     const __TBL_POOL__  = 'pft_code_pool';
 
-    public function __construct()
+    private function getRedis()
     {
-        $this->config = C('redis');
-        $this->redis = new \Redis();
-        $this->enable = $this->redis->connect($this->config['master']['db_host'], $this->config['master']['db_port']);
-        if (isset($this->config['master']['db_pwd'])) {
-            $this->redis->auth($this->config['master']['db_pwd']);
+        if (is_null(self::$redis)) {
+            $config = C('redis');
+            self::$redis = new \Redis();
+            self::$redis->connect($config['master']['db_host'], $config['master']['db_port']);
+            if (isset($config['master']['db_pwd'])) {
+                self::$redis->auth($config['master']['db_pwd']);
+            }
+            self::$redis->select(1);
         }
-        $this->redis->select(1);
+        return self::$redis;
     }
 
-    public function GetCode($lid)
+    public static function GetCode($lid, $forceGenerate=false)
     {
-        $code = $this->redis->lPop("code:$lid");
-        if (!$code) {
+        $code = self::getRedis()->lPop("code:$lid");
+        if (!$code || $forceGenerate===true) {
             self::Generate($lid);
-            $code = $this->redis->lPop("code:$lid");
+            $code = self::getRedis()->lPop("code:$lid");
         }
         return $code;
     }
 
-    public function Generate($lid)
+    private static function Generate($lid)
     {
-        $this->redis->multi(\Redis::PIPELINE);
+        self::getRedis()->multi(\Redis::PIPELINE);
         //$this->redis->multi(\Redis::MULTI);
         $pool = [];
         for ($i=0; $i<2000; $i++) {
@@ -48,10 +51,30 @@ class OrderCodePool
                 continue;
             }
             $pool[] = $code;
-            $this->redis->lPush("code:$lid", $code);
         }
-        $this->redis->exec();
+        //校验未使用的订单是否存在重码
+        $chk_ret = self::uk_code_verify($lid, $pool);
+        $uk_code = array_diff_assoc($pool, $chk_ret);
+        foreach ($uk_code as $item) {
+            self::getRedis()->lPush("code:$lid", $item);
+        }
+        self::getRedis()->exec();
         return true;
+    }
+
+    private static function uk_code_verify($lid, Array $codes)
+    {
+        $m      = new Model('slave');
+        $exist_codes = $m->table(self::__TBL_ORDER__)
+            ->where(['lid'=>$lid, 'code'=>['in', $codes], 'status'=>0])
+            ->field('code')
+            ->limit(count($codes))
+            ->select();
+        $ret = [];
+        foreach ($exist_codes as $code) {
+            $ret[] = $code['code'];
+        }
+        return $ret;
     }
 
     private static function code()
