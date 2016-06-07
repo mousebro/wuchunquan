@@ -86,6 +86,10 @@ class RefundAuditModel extends Model
     public function getOrderInfoForAudit($orderNum)
     {
         $table = "{$this->_orderTable} AS o";
+
+        //这里的ordernum需要是string才会使用上索引
+        $orderNum = strval($orderNum);
+
         $where = array(
             'o.ordernum' => $orderNum,
         );
@@ -576,7 +580,10 @@ class RefundAuditModel extends Model
             "{$this->_orderDetailTable} AS od ON o.ordernum=od.orderid",
             "{$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
         );
+
+        //这里的ordernum需要是string才会使用上索引
         $ordernum = strval($ordernum);
+
         $where  = array(
             "o.ordernum" => $ordernum,
         );
