@@ -12,6 +12,7 @@ namespace Model\Order;
 
 use Library\Dict\OrderDict;
 use Library\Model;
+use Model\Member\Member;
 
 class OrderQuery extends Model
 {
@@ -336,6 +337,7 @@ class OrderQuery extends Model
         return $ret;
     }
 
+
     /**
      * 云票务订单汇总
      *
@@ -346,11 +348,13 @@ class OrderQuery extends Model
      * @param int $sale_op 总账号ID
      * @return array
      */
-    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id=0, $lid=0, $sale_op=0)
+    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id=0, $lid=0)
     {
         $where = [];
-        if ($sale_op>0) {
-            $where['sale_op']   = $sale_op;
+        $member = new Member();
+        $dtype = $member->getMemberCacheById($op_id, 'dtype');
+        if ($dtype == 6) {//员工
+            $where['sale_op']   = $op_id;
         }
         else {
             $where['op_id']     = $op_id;
