@@ -2,8 +2,11 @@
 /**
  * Created by PhpStorm.
  * User: chenguangpeng
- * Date: 6/7-007
+ * Date: 6/7-2016
  * Time: 12:17
+ * Description: 票付通凭证码POOL，保证相同景点不重码
+ *              每次下单从POOL中获取一个code（lpop），如果POOL为空，生成2000个code
+ * Usage:      $code = Library\OrderCodePool::GetCode($lid);
  */
 
 namespace Library;
