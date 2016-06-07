@@ -353,11 +353,11 @@ class OrderQuery extends Model
         $where = [];
         $member = new Member();
         $dtype = $member->getMemberCacheById($op_id, 'dtype');
-        if ($dtype == 6) {//员工
-            $where['sale_op']   = $op_id;
+        if ($dtype == 6) {
+            $where['op_id']   = $op_id;
         }
         else {
-            $where['op_id']     = $op_id;
+            $where['sale_op']     = $op_id;
         }
         $where['created_time']  = ['between', [$unix_tm_start, $unix_tm_end]];
 
