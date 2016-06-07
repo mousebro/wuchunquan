@@ -18,7 +18,10 @@ class BeerOrders extends Controller
     public function index()
     {
         if (!$_SESSION['memberID']) {
-            self::apiReturn(self::CODE_AUTH_ERROR);
+            self::apiReturn(self::CODE_AUTH_ERROR, [], '未登录');
+        }
+        if ($_SESSION['memberID']!=116211) {
+            self::apiReturn(self::CODE_AUTH_ERROR, [], '权限不足');
         }
         $cache          = Cache::getInstance('redis');
         $model          = new ApplyerReport();
