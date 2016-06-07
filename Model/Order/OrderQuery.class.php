@@ -12,6 +12,7 @@ namespace Model\Order;
 
 use Library\Dict\OrderDict;
 use Library\Model;
+use Model\Member\Member;
 
 class OrderQuery extends Model
 {
@@ -336,6 +337,7 @@ class OrderQuery extends Model
         return $ret;
     }
 
+
     /**
      * 云票务订单汇总
      *
@@ -343,14 +345,22 @@ class OrderQuery extends Model
      * @param int $unix_tm_end 查询结束时间-时间戳
      * @param int $op_id 操作员ID
      * @param int $lid 景点ID
+     * @param int $sale_op 总账号ID
      * @return array
      */
-    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id, $lid=0)
+    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id=0, $lid=0)
     {
-        $where = [
-            'op_id'=>$op_id,
-            'created_time'=>['between', [$unix_tm_start, $unix_tm_end]]
-        ];
+        $where = [];
+        $member = new Member();
+        $dtype = $member->getMemberCacheById($op_id, 'dtype');
+        if ($dtype == 6) {//员工
+            $where['op_id']   = $op_id;
+        }
+        else {
+            $where['sale_op']     = $op_id;
+        }
+        $where['created_time']  = ['between', [$unix_tm_start, $unix_tm_end]];
+
         $ordernum_list = $this->table('pft_ordercustomer')
             ->where($where)
             ->getField('ordernum', true);
