@@ -73,6 +73,9 @@ class OnlineRefund extends Model
                 $appid = isset($obj['sub_appid']) ? $obj['sub_appid'] : $obj['appid'];
             }
         }
+        elseif ($trade_log['sourceT']==0) {
+            $appid = $trade_log['seller_email'];
+        }
 
         $data = [
             'aid'           => $aid,
