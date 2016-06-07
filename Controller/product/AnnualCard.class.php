@@ -17,9 +17,9 @@ class AnnualCard extends Controller {
             $this->apiReturn(401, [], '请先登录');
         }
 
-        if (!$this->isAjax()) {
-            $this->apiReturn(403, [], '我要报警了!!!');
-        }
+        // if (!$this->isAjax()) {
+        //     $this->apiReturn(403, [], '我要报警了!!!');
+        // }
         
         $this->_CardModel =  new CardModel();
 
@@ -31,10 +31,28 @@ class AnnualCard extends Controller {
      */
     public function getAnnualCardProducts() {
 
-        $products = $this->_CardModel->getAnnualCardProducts($_SESSION['sid']);
+        $options = [
+            'page_size' => I('page_size', '10', 'intval'),
+            'page'      => I('page', '1', 'intval')
+        ];
 
-        $this->apiReturn(200, $products);
+        $products = $this->_CardModel->getAnnualCardProducts($_SESSION['sid'], $options , 'select');
 
+        $total = $total_page = 0;
+        if ($products) {
+            $total = $this->_CardModel->getAnnualCardProducts($_SESSION['sid'], $options, 'count');
+            $total_page = ceil($total / $options['page_size']);
+        }
+
+        $return = [
+            'list'      => $products ?: [],
+            'page'      => $options['page'],
+            'page_size' => $options['page_size'],
+            'total_page'=> $total_page,
+            'total'     => $total
+        ];
+
+        $this->apiReturn('200', $return);
     }
 
     /**
@@ -48,8 +66,28 @@ class AnnualCard extends Controller {
             $this->apiReturn(400, [], '参数错误');
         }
 
-        $this->_CardModel->getAnnualCards($_SESSION['sid'], $pid);
+        $options = [
+            'page_size' => I('page_size', '10', 'intval'),
+            'page'      => I('page', '1', 'intval')
+        ];
 
+        $result = $this->_CardModel->getAnnualCards($_SESSION['sid'], $pid, $options);
+
+        $total = $total_page = 0;
+        if ($result) {
+            $total = $this->_CardModel->getAnnualCards($_SESSION['sid'], $pid, $options, 'count');
+            $total_page = ceil($total / $options['page_size']);
+        }
+
+        $return = [
+            'list'      => $result ?: [],
+            'page'      => $options['page'],
+            'page_size' => $options['page_size'],
+            'total_page'=> $total_page,
+            'total'     => $total
+        ];
+
+        $this->apiReturn('200', $return);
     }
 
 
@@ -155,6 +193,19 @@ class AnnualCard extends Controller {
         $mobile     = I('mobile');
         $name       = I('name');
 
+        $identify = "sid={$_SESSION['sid']} and (card_no='{$identify}' or virtual_no='{$identify}' or physics_no='{$identify}')";
+        $card_info = $this->_CardModel->getAnnualCard($identify, '_string');
+
+        if (!$card_info) {
+            $this->apiReturn(204, [], '未找到相应的卡片信息');
+        }
+
+        if ($card_info['memberid']) {
+            $this->apiReturn(204, [], '该卡已被使用');
+        }
+
+        $this->_CardModel->startTrans();
+
         $member = (new Member())->getMemberInfo(I('mobile'), 'mobile');
 
         if (!$member) {
@@ -163,17 +214,23 @@ class AnnualCard extends Controller {
 
         $memberid = $member['id'];
 
+        $card = $this->_hasBindAnnualCard($memberid, $_SESSION['sid']);
         
-        if (isset($_POST['update'])) { //确认进行替换
-
-        } else {
-            //如果此会员已经绑定过年卡,则询问是否进行替换
-            if ($card = $this->_hasBindAnnualCard($memberid, $_SESSION['sid'])) {
-                $this->apiReturn(200, ['exist' => 1, 'name' => '来自汪星人的神秘年卡']);
-            } else {
-                $this->activeAction();
+        if ($card && isset($_REQUEST['update'])) { 
+            //确认替换动作,将会员之前绑定的年卡设为禁用状态
+            if (!$this->_CardModel->forbiddenAnnualCard($card['id'])) {
+                $this->_CardModel->rollback() && $this->apiReturn(204, [], '激活失败');
             }
+        } elseif ($card && !isset($_REQUEST['update'])) {
+            //需要向用户确认是否进行替换
+            $this->apiReturn(200, ['exist' => 1, 'name' => '来自汪星人的神秘年卡']);
         }
+
+        if (!$this->activeAction($card_info['id'], $memberid)) {
+            $this->_CardModel->rollback() && $this->apiReturn(200, [], '激活失败');
+        }
+
+        $this->_CardModel->commit() && $this->apiReturn(200, [], '激活成功');
 
     }
     
@@ -184,12 +241,27 @@ class AnnualCard extends Controller {
     }
 
     /**
-     * 激活动作(用于所有渠道的激活操作)
+     * 年卡激活接口(用于所有渠道的激活操作)
      * @access  public
      * @return [type] [description]
      */
-    public function activeAction() {
-        // thinking...
+    public function activeAction($card_id, $memberid) {
+
+        
+
+        //状态变更
+        if (!$this->_CardModel->activateAnnualCard($card_id, $memberid)) {
+            return false;
+        }
+
+        //卡片激活后，清算订单资金
+        if (0) {
+            $this->_CardModel->rollback();
+            return false;
+        }
+
+
+        return true;
     }
 
     /**
@@ -208,6 +280,23 @@ class AnnualCard extends Controller {
 
         $this->apiReturn(200, $member);
 
+    }
+
+    /**
+     * 获取年卡会员列表
+     * @return [type] [description]
+     */
+    public function getMemberList() {
+
+        $result = $this->_CardModel->getMemberList($_SESSION['sid']);
+
+        $result = $result ?: [];
+
+        foreach ($result as $item) {
+
+        }
+
+        $this->apiReturn(200, $result ?: []);
     }
 
     /**

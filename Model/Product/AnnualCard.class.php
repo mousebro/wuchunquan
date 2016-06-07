@@ -26,14 +26,28 @@ class AnnualCard extends Model {
      * 获取指定产品的关联年卡
      * @return [type] [description]
      */
-    public function getAnnualCards($sid, $pid, $options = []) {
+    public function getAnnualCards($sid, $pid, $options = [], $action = 'select') {
 
         $where = [
             'sid' => $sid,
             'pid' => $pid
         ];
 
-        $this->table(self::ANNUAL_CARD_TABLE)->where($where)->select($options);
+        $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
+
+        $field = 'id,virtual_no,card_no,physics_no';
+
+        if ($action == 'select') {
+
+            return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->limit($limit)->select();
+
+        } else {
+
+            return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->count();
+
+        }
+
+        // return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->limit($limit)->select();
 
     }
 
@@ -168,6 +182,56 @@ class AnnualCard extends Model {
         }
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->count();
+    }
+
+    /**
+     * 激活会员卡
+     * @param  [type] $card_id  [description]
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
+    public function activateAnnualCard($card_id, $memberid) {
+
+        $data = [
+            'id'            => $card_id,
+            'memberid'      => $memberid,
+            'status'        => 1,
+            'update_time'   => time()
+        ];
+
+        return $this->table(self::ANNUAL_CARD_TABLE)->save($data);
+    }
+
+    /**
+     * 禁用会员卡
+     * @param  [type] $card_id [description]
+     * @return [type]          [description]
+     */
+    public function forbiddenAnnualCard($card_id) {
+        $data = [
+            'id'            => $card_id,
+            'status'        => 2,
+            'update_time'   => time()
+        ];
+
+        return $this->table(self::ANNUAL_CARD_TABLE)->save($data);
+    }
+
+    /**
+     * 获取年卡会员列表
+     * @param  [type] $sid     [description]
+     * @param  [type] $options [description]
+     * @return [type]          [description]
+     */
+    public function getMemberList($sid, $options = []) {
+        $where = [
+            'sid'       => $sid,
+            'memberid'  => ['gt', 0]
+        ];
+
+        $field = 'id,memberid,activate_source,pid';
+        
+        return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
     }
     
 }
