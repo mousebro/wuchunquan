@@ -345,12 +345,17 @@ class OrderQuery extends Model
      * @param int $lid 景点ID
      * @return array
      */
-    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id, $lid=0)
+    public function CTS_SaleSummary($unix_tm_start, $unix_tm_end, $op_id=0, $lid=0, $sale_op=0)
     {
-        $where = [
-            'op_id'=>$op_id,
-            'created_time'=>['between', [$unix_tm_start, $unix_tm_end]]
-        ];
+        $where = [];
+        if ($sale_op>0) {
+            $where['sale_op']   = $sale_op;
+        }
+        else {
+            $where['op_id']     = $op_id;
+        }
+        $where['created_time']  = ['between', [$unix_tm_start, $unix_tm_end]];
+
         $ordernum_list = $this->table('pft_ordercustomer')
             ->where($where)
             ->getField('ordernum', true);
