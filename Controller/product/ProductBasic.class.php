@@ -12,6 +12,7 @@ use Library\Controller;
 use Library\Model;
 use Library\Tools;
 use Model\Member\Member;
+use Model\Product\AnnualCard;
 use Model\Product\Land;
 use Model\Product\PackTicket;
 use Model\Product\PriceWrite;
@@ -20,9 +21,12 @@ use Model\Product\Ticket;
 class ProductBasic extends Controller
 {
     private $packObj=null;
+    private $cardObj=null;
+    private $config;
     public function __construct()
     {
-        $this->config = C(include  __DIR__ .'/../../Conf/product.conf.php');
+        C(include  __DIR__ .'/../../Conf/product.conf.php');
+        $this->config = C('');
     }
     private function _return($code, $msg, $title)
     {
@@ -54,6 +58,9 @@ class ProductBasic extends Controller
         if (!$apply_did || !is_numeric($apply_did)) {
             self::apiReturn(self::CODE_INVALID_REQUEST,'', '供应商不能为空');
         }
+
+        $params = [];
+
         $params['title']    = I('post.product_name', '', 'strip_tags,addslashes');
         if ( $params['title']=='' ) {
             self::apiReturn(self::CODE_INVALID_REQUEST,'', '产品标题不能为空');
@@ -61,12 +68,11 @@ class ProductBasic extends Controller
         if(mb_strlen($params['title'],'utf8')>30){
             self::apiReturn(self::CODE_INVALID_REQUEST, [], '景区名称不能超过 30 个字符');
         }
-        $params['ptype']    = I('post.product_type');
-        if (!in_array($params['ptype'], $this->config['LIMIT_TYPES']) ) {
+        $params['p_type']    = I('post.product_type');
+        if (!in_array($params['p_type'], $this->config['LIMIT_TYPES']) ) {
             self::apiReturn(self::CODE_INVALID_REQUEST, [], '产品类型不对');
         }
 
-        $params = [];
         //供应商ID
         $params['apply_did']    = $apply_did;
         //详细地址
@@ -157,7 +163,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));// 验证限制
 
         if(($tkBaseAttr['buy_limit_up']>0) && $tkBaseAttr['buy_limit_low']>$tkBaseAttr['buy_limit_up'])
-           return self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数', $ticketData['ttitle']);
+            return self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数', $ticketData['ttitle']);
 
         // 延迟验证
         $delaytime = array(0,0);
@@ -319,6 +325,26 @@ class ProductBasic extends Controller
                 }
             }
         }
+        if($p_type=='I'){
+            $crdModel = new AnnualCard($ticketData['tid'] + 0);
+            if(!isset($crdConf)) $crdConf = [];
+            $crdConf['auto_act_day'] = isset($ticketData['auto_act_day']) ? intval($ticketData['auto_act_day']) : -1; //自动激活天数 -1 不自动激活
+            $crdConf['srch_limit'] = isset($ticketData['srch_limit']) ? intval($ticketData['srch_limit']) : 1; //购买搜索限制 0 不限制 1：卡号（实体卡/虚拟卡）  2：身份证号 4：手机号
+            $crdConf['cert_limit'] = isset($ticketData['cert_limit']) ? intval($ticketData['cert_limit']) : 0; //身份证地域限制 0 不限制 其他：限制身份证前n位为'其他'
+            $crdConf['act_notice'] = isset($ticketData['act_notice']) ? intval($ticketData['act_notice']) : 0; //激活通知 0 不通知 1 通知游客 1通知供应商 2 通知游客和供应商
+            if(count($ticketData['priv'])){
+                $crdPriv = $crdModel->checkPriv($ticketData['priv']);
+                if(is_array($crdPriv)){
+                    $crdInfo = json_encode(['crdConf'=>$crdConf,'crdPriv'=>$crdPriv]);
+                    $crdModel->rmCache();
+                    $crdModel->setCache($crdInfo);
+                }else{
+                    return self::_return(self::CODE_INVALID_REQUEST, '年卡特权信息错误',$ticketData['ttitle']);
+                }
+            }else{
+                return self::_return(self::CODE_INVALID_REQUEST, '年卡特权信息未配置',$ticketData['ttitle']);
+            }
+        }
 
         //线路产品属性
         if($p_type=='B')
@@ -432,6 +458,12 @@ class ProductBasic extends Controller
             $packRet = $this->savePackage($tid);
             $output['data']['savePackResult'] = $packRet;
         }
+
+        if($ticketData['p_type']=='I'){
+            $cardRet = $this->saveCardConfig($tid,$crdModel);
+            $output['data']['saveCardResult'] = $cardRet;
+        }
+
         return $output;
     }
 
@@ -485,7 +517,7 @@ class ProductBasic extends Controller
         {
             // 期票模式（有效期是时间段）只能全部有价格
             if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6'))
-               return $this->_return(self::CODE_INVALID_REQUEST, '期票模式必须每天都有价格','');
+                return $this->_return(self::CODE_INVALID_REQUEST, '期票模式必须每天都有价格','');
             if(($tableId = ($row['id']+0))==0) continue; // 已存在表ID
             $section = $row['sdate'].' 至 '.$row['edate'];
             $diff_js = $original_price[$tableId]['js'] - $row['js'];
@@ -544,4 +576,27 @@ class ProductBasic extends Controller
     {
 
     }
+
+    /**
+     * 保存年卡特权信息
+     * @param $parent_tid
+     *
+     * @return bool|string
+     */
+    private function saveCardConfig($parent_tid,\Model\Product\AnnualCard $crdModel)
+    {
+        $card_info = $crdModel->getCache();
+        if (empty($card_info) || empty($card_info) ) return false;
+        $cardData = json_decode($card_info, true);
+        $crdConf = $cardData['crdConf'];
+        $crdPriv = $cardData['crdPriv'];
+        foreach ($crdPriv as $key => $item) {
+            $packData[$key]['parent_tid'] = $parent_tid;
+        }
+        $crdConf['tid'] = $parent_tid;
+        $ret = $crdModel->saveCardConfig($crdConf,$crdPriv);
+        if ($ret!==false) $crdModel->rmCache();
+        return $ret;
+    }
+
 }

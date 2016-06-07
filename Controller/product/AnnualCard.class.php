@@ -186,7 +186,7 @@ class AnnualCard extends Controller {
     }
 
     /**
-     * PC端激活年卡
+     * PC端激活年卡,TODO://待优化
      */
     public function activateAnnualCard() {
         $identify   = I('identify');
@@ -219,21 +219,32 @@ class AnnualCard extends Controller {
         if ($card && isset($_REQUEST['update'])) { 
             //确认替换动作,将会员之前绑定的年卡设为禁用状态
             if (!$this->_CardModel->forbiddenAnnualCard($card['id'])) {
-                $this->_CardModel->rollback() && $this->apiReturn(204, [], '激活失败');
+                $this->_CardModel->rollback();
+                $this->apiReturn(204, [], '激活失败');
             }
-        } elseif ($card && !isset($_REQUEST['update'])) {
+        } 
+
+        if ($card && !isset($_REQUEST['update'])) {
             //需要向用户确认是否进行替换
-            $this->apiReturn(200, ['exist' => 1, 'name' => '来自汪星人的神秘年卡']);
+            // $this->apiReturn(200, ['exist' => 1, 'name' => '来自汪星人的神秘年卡']);
         }
 
         if (!$this->activeAction($card_info['id'], $memberid)) {
-            $this->_CardModel->rollback() && $this->apiReturn(200, [], '激活失败');
+            $this->_CardModel->rollback();
+            $this->apiReturn(200, [], '激活失败');
         }
 
         $this->_CardModel->commit() && $this->apiReturn(200, [], '激活成功');
 
     }
     
+
+    /**
+     * 判断用户是否已经绑定过其他年卡
+     * @param  [type]  $memberid [description]
+     * @param  [type]  $sid      [description]
+     * @return boolean           [description]
+     */
     private function _hasBindAnnualCard($memberid, $sid) {
         $identify = "sid={$sid} and memberid={$memberid}";
 
