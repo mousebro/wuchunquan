@@ -184,7 +184,7 @@ class OnlineRefund extends Controller
         include '/var/www/html/alipay/Library/alipay_fuwuchuang/f2fpay/F2fpay.php';
         $f2fpay = new \F2fpay();
         $refund_fee   = number_format($this->data->refund_money / 100, 2);//元为单位
-        $refundResult = $f2fpay->refund($this->data->trade_no, $refund_fee, $this->data->ordernum);
+        $refundResult = $f2fpay->refund($this->data->trade_no, $refund_fee, $this->data->ordernum, $this->data->appid);
         Api::Log(json_encode($refundResult), $this->req_log);
         if ($refundResult->alipay_trade_refund_response->code==10000) {
             return ['code'=>200, 'msg'=>'退款成功'];
