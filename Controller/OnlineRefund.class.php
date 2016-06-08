@@ -47,11 +47,12 @@ class OnlineRefund extends Controller
         $this->data  = (object)$data;
 
         $pay_mode = I("post.pay_mode");
-        if (ENV!='PRODUCTION') $res = ['code'=>200];
-        else {
+        //if (ENV!='PRODUCTION') $res = ['code'=>200];
+        //else {
             if ($pay_mode==5) $res = $this->wx();
             elseif($pay_mode==7) $res = $this->union();
-        }
+            elseif ($pay_mode==1) $res = $this->alipay();
+        //}
         if ($res['code']==200) {
             $this->model->UpdateRefundLogOk($this->log_id);
             //print_r( $this->data);
@@ -174,4 +175,33 @@ class OnlineRefund extends Controller
            return ['code'=>400, 'msg'=>'退款失败,原因:'.$refundResult['respMsg']];
        }
     }
+
+    /**
+     * 支付宝刷卡支付退款
+     */
+    public function alipay()
+    {
+        include '/var/www/html/alipay/Library/alipay_fuwuchuang/f2fpay/F2fpay.php';
+        $f2fpay = new \F2fpay();
+        $refund_fee   = number_format($this->data->refund_money / 100, 2);//元为单位
+        $refundResult = $f2fpay->refund($this->data->trade_no, $refund_fee, $this->data->ordernum);
+        Api::Log(json_encode($refundResult), $this->req_log);
+        if ($refundResult->alipay_trade_refund_response->code==10000) {
+            return ['code'=>200, 'msg'=>'退款成功'];
+        }
+        Api::Log(json_encode($refundResult), $this->err_log);
+        return ['code'=>400, 'msg'=>"退款失败,原因:{$refundResult['err_code_des']}"];
+
+    }
 }
+/*错误码	              错误描述	     解决方案
+ACQ.SYSTEM_ERROR	系统错误	       请使用相同的参数再次调用
+ACQ.INVALID_PARAMETER	参数无效	   请求参数有错，重新检查请求后，再调用退款
+ACQ.SELLER_BALANCE_NOT_ENOUGH	    卖家余额不足	商户支付宝账户充值后重新发起退款即可
+ACQ.REFUND_AMT_NOT_EQUAL_TOTAL	    退款金额超限	检查退款金额是否正确，重新修改请求后，重新发起退款
+ACQ.REASON_TRADE_BEEN_FREEZEN	    请求退款的交易被冻结	联系支付宝小二，确认该笔交易的具体情况
+ACQ.TRADE_NOT_EXIST	交易不存在	   检查请求中的交易号和商户订单号是否正确，确认后重新发起
+ACQ.TRADE_HAS_FINISHED	交易已完结	该交易已完结，不允许进行退款，确认请求的退款的交易信息是否正确
+ACQ.TRADE_STATUS_ERROR	交易状态非法	查询交易，确认交易是否已经付款
+ACQ.DISCORDANT_REPEAT_REQUEST	    不一致的请求	检查该退款号是否已退过款或更换退款号重新发起请求
+ACQ.REASON_TRADE_REFUND_FEE_ERR	    退款金额无效	检查退款请求的金额是否正确*/
