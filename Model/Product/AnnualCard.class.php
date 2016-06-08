@@ -49,9 +49,13 @@ class AnnualCard extends Model
             'pid' => $pid,
         ];
 
+        if (isset($options['status'])) {
+            $where['status'] = $options['status'];
+        }
+
         $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
 
-        $field = 'id,virtual_no,card_no,physics_no';
+        $field = 'id,virtual_no,card_no,physics_no,update_time';
 
         if ($action == 'select') {
 
@@ -197,25 +201,23 @@ class AnnualCard extends Model
 
     /**
      * 获取年卡库存
-     *
      * @param  [type] $sid  [description]
      * @param  string $type 虚拟卡 OR 物理卡
      *
      * @return [type]       [description]
      */
-    public function getAnnualCardStorage($sid, $type = 'virtual')
-    {
+    public function getAnnualCardStorage($sid, $pid, $type = 'virtual') {
         if ($type == 'virtual') {
             $where = [
                 'sid'     => $sid,
                 'card_no' => '',
-                'status'  => 0,
+                'status'  => 3,
             ];
         } else {
             $where = [
                 'sid'    => $sid,
-                'card'   => array('neq', ''),
-                'status' => 0,
+                'card_no'   => array('neq', ''),
+                'status' => 3,
             ];
         }
 
@@ -261,14 +263,47 @@ class AnnualCard extends Model
      * @param  [type] $options [description]
      * @return [type]          [description]
      */
-    public function getMemberList($sid, $options = []) {
+    public function getMemberList($sid, $options = [], $action = 'select') {
         $where = [
             'sid'       => $sid,
-            'memberid'  => ['gt', 0]
+            'memberid'  => ['gt', 0],
+            'status'   => (int)$options['status']
         ];
 
+        if ($options['identify']) {
+            $identify = $options['identify'];
+            $where['_string'] = "card_no='{$identify}' or virtual_no='{$identify}'";
+        }
+
+        $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
+
         $field = 'id,memberid,activate_source,pid';
-        
+
+        if ($action == 'select') {
+
+            return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->limit($limit)->select();
+
+        } else {
+
+            return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->count();
+
+        }
+    }
+
+    /**
+     * 获取会员详细信息
+     * @param  [type] $sid      [description]
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
+    public function getMemberDetail($sid, $memberid) {
+        $where = [
+            'sid'       => $sid,
+            'memberid'  => $memberid,
+        ];
+
+        $field = 'memberid,card_no,virtual_no,physics_no,status';
+
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
     }
     
