@@ -576,6 +576,7 @@ class RefundAuditModel extends Model
             "{$this->_orderDetailTable} AS od ON o.ordernum=od.orderid",
             "{$this->_orderAppendixTable} AS oa ON o.ordernum=oa.orderid",
         );
+        $ordernum = strval($ordernum);
         $where  = array(
             "o.ordernum" => $ordernum,
         );
