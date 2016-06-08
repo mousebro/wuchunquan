@@ -8,64 +8,15 @@
  *              每次下单从POOL中获取一个code（lpop），如果POOL为空，生成2000个code
  * Usage:      $code = Library\OrderCodePool::GetCode($lid);
  */
-
 namespace Library;
-
-
-class OrderCodePool
+//use Library\Model;
+class BasePool
 {
-    private static $redis=null;
     const __TBL_ORDER__ = 'uu_ss_order';
     const __TBL_POOL__  = 'pft_code_pool';
 
-    private function getRedis($timeout=1)
-    {
-        if (is_null(self::$redis)) {
-            $config = C('redis');
-            self::$redis = new \Redis();
-            self::$redis->connect($config['master']['db_host'], $config['master']['db_port'], $timeout);
-            if (isset($config['master']['db_pwd'])) {
-                self::$redis->auth($config['master']['db_pwd']);
-            }
-            self::$redis->select(1);
-        }
-        return self::$redis;
-    }
-
-    public static function GetCode($lid, $forceGenerate=false)
-    {
-        $code = self::getRedis()->lPop("code:$lid");
-        if (!$code || $forceGenerate===true) {
-            self::Generate($lid);
-            $code = self::getRedis()->lPop("code:$lid");
-        }
-        return $code;
-    }
-
-    private static function Generate($lid)
-    {
-        self::getRedis()->multi(\Redis::PIPELINE);
-        //$this->redis->multi(\Redis::MULTI);
-        $pool = [];
-        for ($i=0; $i<2000; $i++) {
-            $code =  self::code();
-            if (in_array($code, $pool)){
-                $i -= 1;
-                continue;
-            }
-            $pool[] = $code;
-        }
-        //校验未使用的订单是否存在重码
-        $chk_ret = self::uk_code_verify($lid, $pool);
-        $uk_code = array_diff_assoc($pool, $chk_ret);
-        foreach ($uk_code as $item) {
-            self::getRedis()->lPush("code:$lid", $item);
-        }
-        self::getRedis()->exec();
-        return true;
-    }
-
-    private static function uk_code_verify($lid, Array $codes)
+    public static function GetCode($lid, $forceGenerate=false){}
+    protected static function uk_code_verify($lid, Array $codes)
     {
         $m      = new Model('slave');
         $exist_codes = $m->table(self::__TBL_ORDER__)
@@ -80,7 +31,7 @@ class OrderCodePool
         return $ret;
     }
 
-    private static function code()
+    protected static function code()
     {
         $list = [0,1,2,3,4,5,6,7,8,9];
         for ($i=10;$i>1;$i--) {
@@ -94,5 +45,109 @@ class OrderCodePool
             $result = $result * 10 + $list[$i];
         }
         return $result;
+    }
+
+    protected static function Generate($lid)
+    {
+        $pool = [];
+        for ($i=0; $i<2000; $i++) {
+            $code =  self::code();
+            if (in_array($code, $pool)){
+                $i -= 1;
+                continue;
+            }
+            $pool[] = $code;
+        }
+        //校验未使用的订单是否存在重码
+        $chk_ret = self::uk_code_verify($lid, $pool);
+        $uk_code = array_diff_assoc($pool, $chk_ret);
+        $data = [];
+        foreach ($uk_code as $code) {
+            $data[] = [
+                'code'=> $code,
+                'lid' => $lid,
+            ];
+        }
+        //file_put_contents(BASE_LOG_DIR . '/debug.log', $m->_sql());
+        return $data;
+    }
+}
+class CodePoolRedis extends BasePool
+{
+    private static $redis=null;
+
+    public static function GetCode($lid, $forceGenerate=false)
+    {
+        $code = self::getRedis()->lPop("code:$lid");
+        if (!$code || $forceGenerate===true) {
+            self::Generate($lid);
+            $code = self::getRedis()->lPop("code:$lid");
+        }
+        return $code;
+    }
+
+    public static function getRedis($timeout=1)
+    {
+        if (is_null(self::$redis)) {
+            $config = C('redis');
+            self::$redis = new \Redis();
+            self::$redis->connect($config['master']['db_host'], $config['master']['db_port'], $timeout);
+            if (isset($config['master']['db_pwd'])) {
+                self::$redis->auth($config['master']['db_pwd']);
+            }
+            try {
+                self::$redis->select(1);
+            } catch(\RedisException $e) {
+                return false;
+            }
+
+        }
+        return self::$redis;
+    }
+
+    protected static function Generate($lid)
+    {
+        $uk_code = parent::Generate($lid);
+        self::getRedis()->multi(\Redis::PIPELINE);
+        foreach ($uk_code as $item) {
+            self::getRedis()->lPush("code:$lid", $item['code']);
+        }
+        self::getRedis()->exec();
+        return true;
+    }
+}
+class CodePoolMysql extends BasePool
+{
+    public static function GetCode($lid, $forceGenerate=false)
+    {
+        $m = new Model('localhost');
+        $w = ['lid'=>$lid];
+        $code = $m->table(self::__TBL_POOL__)->where($w)->getField('code');
+        if (!$code || $forceGenerate===true) {
+            $codes = self::Generate($lid);
+            $codes = array_shift($codes);
+            $code = $codes['code'];
+        }
+        $w['code'] = $code;
+        $m->table(self::__TBL_POOL__)->where($w)->limit(1)->delete();
+        return $code;
+    }
+    protected  static function Generate($lid)
+    {
+        $data = parent::Generate($lid);
+        $m = new Model('localhost');
+        $m->table(self::__TBL_POOL__)->addAll($data);
+        return $data;
+    }
+}
+class OrderCodePool
+{
+    public static function GetCode($lid, $forceGenerate=false)
+    {
+        //var_dump(CodePoolRedis::getRedis(1));exit;
+        if (CodePoolRedis::getRedis(0.2)!==false) {
+            return CodePoolRedis::GetCode($lid, $forceGenerate);
+        }
+        return CodePoolMysql::GetCode($lid, $forceGenerate);
     }
 }
