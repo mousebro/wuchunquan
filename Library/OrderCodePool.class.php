@@ -18,12 +18,12 @@ class OrderCodePool
     const __TBL_ORDER__ = 'uu_ss_order';
     const __TBL_POOL__  = 'pft_code_pool';
 
-    private function getRedis()
+    private function getRedis($timeout=1)
     {
         if (is_null(self::$redis)) {
             $config = C('redis');
             self::$redis = new \Redis();
-            self::$redis->connect($config['master']['db_host'], $config['master']['db_port']);
+            self::$redis->connect($config['master']['db_host'], $config['master']['db_port'], $timeout);
             if (isset($config['master']['db_pwd'])) {
                 self::$redis->auth($config['master']['db_pwd']);
             }
