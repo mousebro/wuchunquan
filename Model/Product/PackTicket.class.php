@@ -259,7 +259,10 @@ class PackTicket extends Model
         $arr = array();
         if($orderDate=='') $orderDate = date('Y-m-d 00:00:00');// 下单时间
         if($playDate=='') $playDate = date('Y-m-d 00:00:00');// 游玩时间
-        if($data['order_start']!='' && $data['order_end']){
+        $_tm = 1420041600;
+        $_os = strtotime($data['order_start']);
+        $_oe = strtotime($data['order_end']);
+        if($_os>$_tm && $_oe>$_tm){
             // 提前天数
             if($data['ddays']>0) $date_tmp = date('Y-m-d 00:00:00',time()+ $data['ddays'] * 86400);
 
@@ -268,7 +271,7 @@ class PackTicket extends Model
             $arr['oDate'] = $data['order_end'];
             $arr['mDate'] = $data['order_end'];
             $arr['section'] = 1;
-        }elseif($data['order_start']=='' && $data['order_end']){// 只有结束时间
+        }elseif($_os<=0 && $_oe > $_tm){// 只有结束时间
             $arr['eDate'] = date('Y-m-d 00:00:00');
             $arr['eDate'] = $data['order_end'];
             $arr['oDate'] = $data['order_end'];

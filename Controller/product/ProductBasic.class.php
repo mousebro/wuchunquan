@@ -147,7 +147,8 @@ class ProductBasic extends Controller
         $tkBaseAttr['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
         //套票只允许在线支付
         if ($p_type=='F' && $tkBaseAttr['pay']==0) {
-            return self::_return(self::CODE_INVALID_REQUEST,  '套票产品只允许在线支付',$ticketData['ttitle']);
+            if (!$ticketObj->allowOfflinePackage($memberId))
+                return self::_return(self::CODE_INVALID_REQUEST,  '套票产品只允许在线支付',$ticketData['ttitle']);
         }
 
 
