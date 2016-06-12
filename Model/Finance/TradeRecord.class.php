@@ -41,10 +41,15 @@ class TradeRecord extends Model
     public function getDetails($trade_id)
     {
         $table = "{$this->_trade_record_table} AS tr";
-        $join = "LEFT JOIN {$this->_order_table} AS o ON o.ordernum = tr.orderid";
+        $join = [
+            "LEFT JOIN {$this->_order_table} AS o ON o.ordernum = tr.orderid",
+            "LEFT JOIN {$this->_ticket_table} AS t ON o.tid = t.id",
+            "LEFT JOIN {$this->_product_table} AS p ON p.id = t.pid"
+        ];
+
         $field = [
-            'tr.rectime',        //交易时间
-            'tr.dtype',          //交易类型
+            'tr.rectime',         //交易时间
+            'tr.dtype',           //交易类型
             'tr.fid',             //主体商户
             'tr.aid',             //对方商户
             'tr.orderid',         //交易号
@@ -55,6 +60,9 @@ class TradeRecord extends Model
             'tr.daction',         //收支
             'tr.payee_type',      //收款账户类型
             'o.ordermode as order_channel',        //交易渠道
+            'o.tnum',
+            'p.p_name',
+
         ];
         $where = ['tr.id' => $trade_id];
         $record = $this->table($table)->field($field)->where($where)->join($join)->find();
@@ -64,6 +72,7 @@ class TradeRecord extends Model
             return $this->_getParser()
                 ->setRecord($record)
                 ->parseTradeType()
+                ->parseTradeContent()
                 ->parseMember()
                 ->parseMoney()
                 ->parsePayType()

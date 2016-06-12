@@ -91,7 +91,16 @@ class TradeRecordParser{
         }
         return $this;
     }
-
+    /**
+     * 转换交易内容
+     */
+    public function parseTradeContent(){
+        if(isset($this->record['p_name'],$this->record['tnum'])){
+            $this->record['body'] = $this->record['p_name'] . ' ' . $this->record['tnum'] . '张';
+            unset($this->record['p_name'],$this->record['tnum']);
+        }
+        return $this;
+    }
     /**
      * 转换支付方式
      */
@@ -126,6 +135,7 @@ class TradeRecordParser{
                 $item_list = C('trade_item');
                 if (array_key_exists($this->record['item'], $item_list)) {
                     $this->record['dtype'] = $item_list[$this->record['item']] . '-' . $this->record['dtype'];
+                    $this->record['item'] = $this->record['dtype'];
                 }
             }
         }

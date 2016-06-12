@@ -79,7 +79,11 @@ class TradeRecord extends Controller
 
             //支付方式
             $this->_parsePayType($fid, $map);
-
+            if(!isset($map['aid']) && !isset($map['fid']) && !isset($map['_complex']) && $memberId != 1) {
+                $map['fid'] = $fid;
+            }
+            //print_r($map);
+            //exit;
             //订单号
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
@@ -275,7 +279,7 @@ class TradeRecord extends Controller
 
         if (false !== $key) {
 
-            $search_dist_credit =                     [
+            $search_dist_credit = [
                 'ptype' => ['in', [2, 3]],
                 'aid' => $fid
             ];
@@ -283,7 +287,7 @@ class TradeRecord extends Controller
             unset($ptypes[$key]);
 
             if (count($ptypes) && $fid) {
-                $map['complex'] = [
+                $map['_complex'] = [
                     $search_dist_credit,
                     [
                         'ptype' => ['in', $ptypes],
@@ -291,15 +295,15 @@ class TradeRecord extends Controller
                     ],
                     '_logic' => 'or'
                 ];
-            } else if($fid){
+            } else if ($fid) {
                 $map = array_merge($search_dist_credit);
             } else {
                 $ptypes = array_merge([2, 3], $ptypes);
                 $map['ptype'] = ['in', $ptypes];
             }
-        }else{
+        } else {
             $map['ptype'] = ['in', $ptypes];
-            if($fid){
+            if ($fid) {
                 $map['fid'] = $fid;
             }
         }
@@ -346,7 +350,7 @@ class TradeRecord extends Controller
         $items = explode('|', $items);
 
         $subtype = [];
-        $item_cat = array_column(C('item_category'),0);
+        $item_cat = array_column(C('item_category'), 0);
         foreach ($items as $item) {
             $subtype = array_merge($subtype, array_keys($item_cat, $item));
         }
@@ -429,7 +433,7 @@ class TradeRecord extends Controller
         if ($time) {
             if (!strtotime($time)) {
                 throw new Exception('时间格式错误', 201);
-            } else if (strlen($time) < 10) {
+            } else if (strlen($time) < 11) {
                 $time .= ' ' . $postfix;
             }
         }
