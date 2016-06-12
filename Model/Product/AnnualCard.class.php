@@ -5,6 +5,7 @@ namespace Model\Product;
 use Library\Cache\Cache;
 use Library\Model;
 use Library\Exception;
+use Model\Order\OrderTools;
 
 class AnnualCard extends Model
 {
@@ -35,6 +36,17 @@ class AnnualCard extends Model
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where([$field => $identify])->find();
 
+    }
+
+    /**
+     * 获取年卡配置
+     * @param  [type] $tid [description]
+     * @return [type]      [description]
+     */
+    public function getAnnualCardConfig($tid) {
+
+        return $this->table(self::CARD_CONFIG_TABLE)->where(['tid' => $tid])->find();
+   
     }
 
     /**
@@ -305,6 +317,56 @@ class AnnualCard extends Model
         $field = 'memberid,card_no,virtual_no,physics_no,status';
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
+    }
+
+    /**
+     * 年卡消费合法性检测
+     * @return [type] [description]
+     */
+    public function consumeCheck($memberid, $sid, $tid) {
+        $config = $this->getAnnualCardConfig($tid);
+
+        $OrderModel = new OrderTools();
+
+        //限制消费次数
+        $use_check = false;
+        switch ($config['use_limit']) {
+            case 0 :
+                $use_check = true;
+                break;
+
+            case 1 :
+                $options = [];
+
+            case 2:
+                $options = [
+                    'begin_time'    => date('Y-m-d') . ' 00:00:00',
+                    'end_time'      => date('Y-m-d') . ' 23:59:59'
+                ];
+
+            case 3:
+                $options = [
+                    'begin_time'    => date('Y-m-01') . ' 00:00:00',
+                    'end_time'      => date('Y-m-t')  . ' 23:59:59'
+                ];
+
+            case 4:
+                $count = $OrderModel->countOrderForTicket($tid, $memberid, $sid, $options);
+                if ($count < $config['limit_count']) {
+                    $use_check = true;
+                }
+                break;
+            default:
+                break;
+        }
+
+        if (!$use_check) {
+            return false;
+        }
+
+
+
+
     }
     
 

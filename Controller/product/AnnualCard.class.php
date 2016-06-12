@@ -320,8 +320,8 @@ class AnnualCard extends Controller {
     public function getMemberList() {
 
         $options = [
-            'page_size' => I('page_size', '10', 'intval'),
-            'page'      => I('page', '1', 'intval'),
+            'page_size' => I('page_size', 10, 'intval'),
+            'page'      => I('page', 1, 'intval'),
             'status'    => I('status', 1, 'intval'),
             'identify'  => I('identify', '')
         ];
@@ -336,8 +336,20 @@ class AnnualCard extends Controller {
 
         $result = $result ?: [];
 
+        $memberid_arr = [];
         foreach ($result as $item) {
+            if ($item['memberid'])
+                $memberid_arr[] = $item['memberid'];
+        }   
 
+        $members = $result ? $this->_getMemberInfoByMulti($memberid_arr) : [];
+        $members = $this->_replaceKey($members, 'id');
+
+        foreach ($result as $key => $item) {
+            if (isset($members[$item['memberid']])) {
+                $result[$key]['account'] = $members[$item['memberid']]['account'];
+                $result[$key]['mobile'] = $members[$item['memberid']]['mobile'];
+            }
         }
 
         $return = [
@@ -349,6 +361,17 @@ class AnnualCard extends Controller {
         ];
 
         $this->apiReturn(200, $return ?: []);
+    }
+
+    /**
+     * 获取多用户信息
+     * @param  [type] $memberid_arr [description]
+     * @return [type]               [description]
+     */
+    private function _getMemberInfoByMulti($memberid_arr) {
+
+        return (new Member())->getMemberInfoByMulti($memberid_arr, 'id', 'id,account,mobile');
+
     }
 
     /**
@@ -415,5 +438,15 @@ class AnnualCard extends Controller {
         $CardModel = new CardModel();
 
         return $CardModel;
+    }
+
+    private function _replaceKey($arr, $key) {
+        $new_arr = [];
+
+        foreach ($arr as $item) {
+            $new_arr[$item[$key]] = $item;
+        }
+
+        return $new_arr;
     }
 }
