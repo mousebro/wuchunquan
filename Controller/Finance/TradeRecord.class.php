@@ -31,7 +31,7 @@ class TradeRecord extends Controller
 
         $trade_id = \safe_str(I('trade_id'));
 
-        if ( ! $trade_id) {
+        if (!$trade_id) {
             $this->apiReturn(201, [], '传入参数不合法');
         }
 
@@ -49,15 +49,15 @@ class TradeRecord extends Controller
     /**
      * 获取交易记录列表
      *
-     * @param   int    [fid]       被查询的会员id   管理员账号用
+     * @param   int [fid]       被查询的会员id   管理员账号用
      * @param   string [orderid]   交易号
      * @param   string [btime]     开始时间        yy-mm-dd hh:ii:ss
      * @param   string [etime]     结束时间        yy-mm-dd hh:ii:ss
-     * @param   int    [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
-     * @param   int    [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
-     * @param   int    [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
-     * @param   int    [page]      当前页数
-     * @param   int    [limit]     每页显示条数
+     * @param   int [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
+     * @param   int [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
+     * @param   int [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
+     * @param   int [page]      当前页数
+     * @param   int [limit]     每页显示条数
      */
     public function getList()
     {
@@ -69,23 +69,26 @@ class TradeRecord extends Controller
             $map = [];
             //被查询会员id
             $fid = intval(I('fid'));
-            $fid = ($memberId == 1 && $fid) ? $fid : $memberId;
 
-            //订单号
-            $orderid = \safe_str(I('ordreid'));
-            if ($orderid) {
-                $map['orderid'] = $orderid;
+            //非管理员不能指定被查询对象
+            if ($memberId == 1) {
+                $fid = $fid ?: 0;
+            } else {
+                $fid = $memberId;
             }
-            //时段
-            $interval       = $this->_parseTime();
-            $map['rectime'] = array('between', $interval);
 
             //支付方式
             $this->_parsePayType($fid, $map);
 
-            if (empty($map['aid']) && empty($map['fid'])) {
-                $map['fid'] = $fid;
+            //订单号
+            $orderid = \safe_str(I('orderid'));
+            if ($orderid) {
+                $map['orderid'] = $orderid;
             }
+
+            //时段
+            $interval = $this->_parseTime();
+            $map['rectime'] = array('between', $interval);
 
             //交易大类
             $subtype = $this->_parseTradeCategory($map);
@@ -95,16 +98,19 @@ class TradeRecord extends Controller
 
             //交易金额为0的交易记录不显示
             $map['dmoney'] = ['gt', 0];
+
             //分页
-            $page  = intval(I('page'));
+            $page = intval(I('page'));
             $limit = intval(I('limit'));
-            $page  = ($page > 0) ? $page : 1;
+            $page = ($page > 0) ? $page : 1;
             $limit = ($limit > 0) ? $limit : 15;
 
             //数据输出形式
-            $form        = intval(I('form'));
+            $form = intval(I('form'));
+
             $recordModel = $this->_getTradeModel();
             $this->_output($form, $recordModel, $map, $page, $limit, $interval);
+
         } catch (Exception $e) {
             \pft_log('trade_record/err', 'get_list|' . $e->getCode() . "|" . $e->getMessage(), 'month');
             $this->apiReturn($e->getCode(), [], $e->getMessage());
@@ -118,18 +124,18 @@ class TradeRecord extends Controller
     public function srchMem()
     {
         $memberId = $this->isLogin('ajax');
-        $srch     = \safe_str(I('srch'));
+        $srch = \safe_str(I('srch'));
         try {
             //只有管理员可查看
             if ($memberId != 1) {
                 throw new Exception('无权查看', 209);
             }
-            if(empty($srch)){
-                throw new Exception('传入参数错误',210);
+            if (empty($srch)) {
+                throw new Exception('传入参数错误', 210);
             }
             $model = $this->_getTradeModel();
-            $data  = $model->getMember($srch);
-            $data  = is_array($data) ? $data : [];
+            $data = $model->getMember($srch);
+            $data = is_array($data) ? $data : [];
             $this->apiReturn(200, $data, '操作成功');
         } catch (Exception $e) {
             \pft_log('trade_record/err', 'srch_mem|' . $e->getCode() . "|" . $e->getMessage(), 'month');
@@ -158,12 +164,12 @@ class TradeRecord extends Controller
     /**
      * 导出excel报表
      *
-     * @param array  $data     数据
+     * @param array $data 数据
      * @param string $filename 文件名
      */
     private function _exportExcel(array $data, $filename = '')
     {
-        if ( ! $filename) {
+        if (!$filename) {
             $filename = date('YmdHis');
         }
         $r = [];
@@ -247,14 +253,14 @@ class TradeRecord extends Controller
      * 解析支付类型
      *
      * @param   string|int $fid 分销商id
-     * @param   array      $map 查询条件
+     * @param   array $map 查询条件
      *
      * @return array
      */
     private function _parsePayType($fid, &$map)
     {
         //支付类型的值可能是0
-        if ( ! isset($_REQUEST['ptypes'])) {
+        if (!isset($_REQUEST['ptypes'])) {
             return false;
         }
 
@@ -263,36 +269,40 @@ class TradeRecord extends Controller
         if ('' == $ptypes) {
             return false;
         }
+        $ptypes = explode('|', $ptypes);
 
-        //多种支付方式用|分隔
-        if ( ! is_numeric($ptypes) && strpos($ptypes, '|')) {
-            $ptypes = explode('|', $ptypes);
-            //查看分销商账户
-            if ($key = array_search(99, $ptypes) !== false) {
-                unset($ptypes[$key]);
-                $map['_complex'] = [
+        $key = array_search(99, $ptypes);
+
+        if (false !== $key) {
+
+            $search_dist_credit =                     [
+                'ptype' => ['in', [2, 3]],
+                'aid' => $fid
+            ];
+
+            unset($ptypes[$key]);
+
+            if (count($ptypes) && $fid) {
+                $map['complex'] = [
+                    $search_dist_credit,
                     [
-                        'aid'   => $fid,
-                        'ptype' => ['in', [2, 3]],
-                    ],
-                    [
-                        'fid'   => $fid,
                         'ptype' => ['in', $ptypes],
+                        'fid' => $fid
                     ],
-                    '_logic' => 'or',
+                    '_logic' => 'or'
                 ];
+            } else if($fid){
+                $map = array_merge($search_dist_credit);
             } else {
+                $ptypes = array_merge([2, 3], $ptypes);
                 $map['ptype'] = ['in', $ptypes];
             }
-        } else {
-            if (99 == $ptypes) {
-                $map['ptype'] = ['in', [2, 3]];
-                $map['aid']   = $fid;
-            } else {
-                $map['ptype'] = $ptypes;
+        }else{
+            $map['ptype'] = ['in', $ptypes];
+            if($fid){
+                $map['fid'] = $fid;
             }
         }
-
         return $ptypes;
     }
 
@@ -305,9 +315,9 @@ class TradeRecord extends Controller
     private function _parseTime()
     {
         //开始时间
-        $btime = $this->_validateTime('btime', "today midnight");
+        $btime = $this->_validateTime('btime', "today midnight", "00:00:00");
         //结束时间 - 默认为当前时间
-        $etime    = $this->_validateTime('etime', "now");
+        $etime = $this->_validateTime('etime', "now", "23:59:59");
         $interval = [$btime, $etime];
 
         return $interval;
@@ -323,23 +333,20 @@ class TradeRecord extends Controller
      */
     private function _parseTradeCategory(&$map)
     {
-        if ( ! isset($_REQUEST['items'])) {
+        if (!isset($_REQUEST['items'])) {
             return false;
         }
 
         $items = \safe_str(I('items'));
 
-        if ('' != $items) {
+        if ('' == $items) {
             return false;
         }
 
         $items = explode('|', $items);
-        if (array_intersect($items, array_keys(C('trade_item'))) != $items) {
-            throw new Exception('交易类目错误', 204);
-        }
 
-        $subtype  = [];
-        $item_cat = C('item_category');
+        $subtype = [];
+        $item_cat = array_column(C('item_category'),0);
         foreach ($items as $item) {
             $subtype = array_merge($subtype, array_keys($item_cat, $item));
         }
@@ -357,14 +364,14 @@ class TradeRecord extends Controller
      * 解析交易类型
      *
      * @param   string $subtype 交易类型
-     * @param   array  $map     查询条件
+     * @param   array $map 查询条件
      *
      * @return mixed
      * @throws \Library\Exception
      */
     private function _parseTradeType($subtype, &$map)
     {
-        if ( ! isset($_REQUEST['dtype'])) {
+        if (!isset($_REQUEST['dtype'])) {
             return false;
         }
 
@@ -374,7 +381,7 @@ class TradeRecord extends Controller
         }
         $item_cat = C('item_category');
         if (is_numeric($dtype) && in_array($dtype, array_column($item_cat, 0))) {
-            if (is_array($subtype) && ! in_array($dtype, $subtype)) {
+            if (is_array($subtype) && !in_array($dtype, $subtype)) {
                 throw new Exception('交易类型与交易类目不符', 205);
             }
             $map['dtype'] = $dtype;
@@ -396,8 +403,8 @@ class TradeRecord extends Controller
     private function _rearrangeData($field_a, $field_b)
     {
         $excel_head = array_keys(C('excel_head'));
-        $pos_a      = array_search($field_a, $excel_head);
-        $pos_b      = array_search($field_b, $excel_head);
+        $pos_a = array_search($field_a, $excel_head);
+        $pos_b = array_search($field_b, $excel_head);
         if (false !== $pos_a && false !== $pos_b) {
             return ($pos_a < $pos_b) ? -1 : 1;
         } else {
@@ -408,21 +415,27 @@ class TradeRecord extends Controller
     /**
      * 验证输入时间格式
      *
-     * @param   string $timeTag    时间字段
+     * @param   string $timeTag 时间字段
      * @param   string $defaultVal 默认值
      *
      * @return bool|mixed|string
      * @throws \Library\Exception
      */
 
-    private function _validateTime($timeTag, $defaultVal)
+    private function _validateTime($timeTag, $defaultVal, $postfix)
     {
         $time = \safe_str(I($timeTag));
-        if ($time && ! strtotime($time)) {
-            throw new Exception('时间格式错误', 201);
+
+        if ($time) {
+            if (!strtotime($time)) {
+                throw new Exception('时间格式错误', 201);
+            } else if (strlen($time) < 10) {
+                $time .= ' ' . $postfix;
+            }
         }
 
         $time = $time ?: $defaultVal;
+
         $time = date('Y-m-d H:i:s', strtotime($time));
 
         return $time;
@@ -435,7 +448,7 @@ class TradeRecord extends Controller
      */
     static function logInput($memberId)
     {
-        $input  = ['member' => $memberId, 'input' => I('param.')];
+        $input = ['member' => $memberId, 'input' => I('param.')];
         $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
         $action = debug_backtrace()['function'] ?: '';
         \pft_log($prefix . 'input', $action . '|' . json_encode($input));

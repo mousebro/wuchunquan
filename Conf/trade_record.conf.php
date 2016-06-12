@@ -80,7 +80,7 @@ return array(
         'counter'       => '对方商户',
         'oper'          => '操作人',
         'rectime'       => '交易时间',
-        'item'          => '交易分类-明细分类',
+        'dtype'          => '交易分类-明细分类',
         'orderid'       => '交易号',
         'body'          => '交易内容',
         'dmoney'        => '操作金额(单位:元)',
