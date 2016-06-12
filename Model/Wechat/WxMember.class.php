@@ -26,4 +26,17 @@ class WxMember extends Model
         return $this->table(self::__TABLE_WX_MEMBER__)
             ->where(['id'=>$id])->save(['verifycode'=>$code]);
     }
+
+    /**
+     * 获取用户绑定的微信信息
+     *
+     * @param int $fid 用户ID
+     * @param string $tousername 微信appid
+     * @return mixed
+     */
+    public function getWxInfo($fid, $tousername)
+    {
+        $map = ['fid'=>$fid, 'tousername'=>$tousername];;
+        return $this->table(self::__TABLE_WX_MEMBER__)->where($map)->select();
+    }
 }
