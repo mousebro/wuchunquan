@@ -1,5 +1,6 @@
 <?php
 /**
+ * Description: 交易记录查询接口
  * User: Fang
  * Time: 11:14 2016/5/17
  */
@@ -15,9 +16,10 @@ class TradeRecord extends Controller
     public function __construct()
     {
         C(include __DIR__ . '/../../Conf/trade_record.conf.php');
-        //ini_set('display_errors','on');
-        //error_reporting(E_ALL);
-
+        //if(ENV == 'DEVELOP'){
+        //    ini_set('display_errors','on');
+        //    error_reporting(E_ALL);
+        //}
     }
 
     /**
@@ -52,15 +54,16 @@ class TradeRecord extends Controller
     /**
      * 获取交易记录列表
      *
-     * @param   int [fid]       被查询的会员id   管理员账号用
-     * @param   string [orderid]   交易号
-     * @param   string [btime]     开始时间        yy-mm-dd hh:ii:ss
-     * @param   string [etime]     结束时间        yy-mm-dd hh:ii:ss
-     * @param   int [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
-     * @param   int [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
-     * @param   int [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
-     * @param   int [page]      当前页数
-     * @param   int [limit]     每页显示条数
+     * @param   int     [fid]       被查询的会员id  管理员账号用
+     * @param   string  [orderid]   交易号
+     * @param   string  [btime]     开始时间        yy-mm-dd hh:ii:ss
+     * @param   string  [etime]     结束时间        yy-mm-dd hh:ii:ss
+     * @param   string  [dtype]     交易类型        见 C('item_category')
+     * @param   int     [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
+     * @param   int     [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
+     * @param   int     [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
+     * @param   int     [page]      当前页数        返回给前端的页数比实际值多1
+     * @param   int     [limit]     每页显示条数
      */
     public function getList()
     {
@@ -82,11 +85,10 @@ class TradeRecord extends Controller
 
             //支付方式
             $this->_parsePayType($fid, $map);
-            if(!isset($map['aid']) && !isset($map['fid']) && !isset($map['_complex']) && $memberId != 1) {
+            if (!isset($map['aid']) && !isset($map['fid']) && !isset($map['_complex']) && $memberId != 1) {
                 $map['fid'] = $fid;
             }
-            //print_r($map);
-            //exit;
+
             //订单号
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
@@ -125,8 +127,8 @@ class TradeRecord extends Controller
     }
 
     /**
-     * 管理员查询会员
-     *
+     * 管理员模糊搜索会员
+     * @param   string     [srch]       会员名称 / 会员id / 会员账号
      */
     public function srchMem()
     {
@@ -140,10 +142,13 @@ class TradeRecord extends Controller
             if (empty($srch)) {
                 throw new Exception('传入参数错误', 210);
             }
-            $model = $this->_getTradeModel();
-            $data = $model->getMember($srch);
+
+            $data = $this->_getTradeModel()->getMember($srch);
+
             $data = is_array($data) ? $data : [];
+
             $this->apiReturn(200, $data, '操作成功');
+
         } catch (Exception $e) {
             \pft_log('trade_record/err', 'srch_mem|' . $e->getCode() . "|" . $e->getMessage(), 'month');
             $this->apiReturn($e->getCode(), [], $e->getMessage());
@@ -158,14 +163,14 @@ class TradeRecord extends Controller
      */
     public function test()
     {
-        if ('DEVELOP' == ENV) {
-            $_SESSION['sid'] = 1;
-//            $this->getList();
-//            $this->getDetails();
-            $this->srchMem();
-        } else {
+//        if ('DEVELOP' == ENV) {
+//            $_SESSION['sid'] = 1;
+////            $this->getList();
+////            $this->getDetails();
+//            $this->srchMem();
+//        } else {
             $this->apiReturn(213);
-        }
+//        }
     }
 
     /**
@@ -176,7 +181,7 @@ class TradeRecord extends Controller
      */
     private function _exportExcel(array $data, $filename = '')
     {
-       if (!$filename) {
+        if (!$filename) {
             $filename = date('YmdHis');
         }
 
@@ -185,13 +190,14 @@ class TradeRecord extends Controller
 
             foreach ($data as $record) {
 
-                $record = self::array_recompose($record,array_keys(C('excel_head')));
+                $record = self::array_recompose($record, array_keys(C('excel_head')));
 
                 $r[] = $record;
             }
         }
 
         array_unshift($r, C('excel_head'));
+
         include_once("/var/www/html/new/d/class/SimpleExcel.class.php");
         $xls = new \SimpleExcel('UTF-8', true, 'orderList');
         $xls->addArray($r);
@@ -216,12 +222,12 @@ class TradeRecord extends Controller
     /**
      * 根据传入的form值输出结果
      *
-     * @param                            $form
-     * @param \Model\Finance\TradeRecord $recordModel
-     * @param                            $map
-     * @param                            $page
-     * @param                            $limit
-     * @param                            $interval
+     * @param   int                         $form           数据格式    0-交易记录列表 1-导出excel表 2-交易记录统计
+     * @param   \Model\Finance\TradeRecord  $recordModel    交易记录模型
+     * @param   array                       $map            查询条件
+     * @param   int                         $page           当前页数
+     * @param   int                         $limit          每页行数
+     * @param   array                       $interval       起止时间段   [开始时间,结束时间]
      *
      * @throws \Library\Exception
      */
@@ -265,8 +271,8 @@ class TradeRecord extends Controller
     /**
      * 解析支付类型
      *
-     * @param   string|int $fid 分销商id
-     * @param   array $map 查询条件
+     * @param   string  $fid    分销商id
+     * @param   array   $map  查询条件
      *
      * @return array
      */
@@ -320,8 +326,11 @@ class TradeRecord extends Controller
     }
 
     /**
-     * 解析输入时间参数
+     * 解析时间参数
      *
+     * @param   string  [btime]     开始时间        yy-mm-dd hh:ii:ss
+     * @param   string  [etime]     结束时间        yy-mm-dd hh:ii:ss
+     * 
      * @return array|bool
      * @throws \Library\Exception
      */
@@ -338,8 +347,9 @@ class TradeRecord extends Controller
 
     /**
      * 解析交易大类
-     *
-     * @param array $map 查询条件
+     * 
+     * @param   int     [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
+     * @param   array   $map        查询条件
      *
      * @return array
      * @throws \Library\Exception
@@ -376,8 +386,8 @@ class TradeRecord extends Controller
     /**
      * 解析交易类型
      *
-     * @param   string $subtype 交易类型
-     * @param   array $map 查询条件
+     * @param   string      $subtype        交易类型
+     * @param   array       $map            查询条件
      *
      * @return mixed
      * @throws \Library\Exception
@@ -406,35 +416,12 @@ class TradeRecord extends Controller
     }
 
     /**
-     * 重排excel数据
-     *
-     * @param $field_a
-     * @param $field_b
-     *
-     * @return int
-     */
-    private function _rearrangeData($field_a, $field_b)
-    {
-        $excel_head = array_keys(C('excel_head'));
-        $pos_a = array_search($field_a, $excel_head);
-        $pos_b = array_search($field_b, $excel_head);
-        if (false !== $pos_a && false !== $pos_b) {
-            return ($pos_a < $pos_b) ? -1 : 1;
-        } else {
-            return 0;
-        }
-    }
-
-    /**
-     * 验证输入时间格式
-     *
-     * @param   string $timeTag 时间字段
-     * @param   string $defaultVal 默认值
-     *
+     * @param string    $timeTag        时间字段
+     * @param string    $defaultVal     绝对默认时间
+     * @param string    $postfix        相对默认时间：未传入时分秒时的默认时间
      * @return bool|mixed|string
-     * @throws \Library\Exception
+     * @throws Exception
      */
-
     private function _validateTime($timeTag, $defaultVal, $postfix)
     {
         $time = \safe_str(I($timeTag));
@@ -463,23 +450,29 @@ class TradeRecord extends Controller
     {
         $input = ['member' => $memberId, 'input' => I('param.')];
         $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
-        $action = debug_backtrace()['function'] ?: '';
+        $trace = debug_backtrace();
+        $caller = array_shift($trace);
+        $action = $caller['function'] ?: '';
         \pft_log($prefix . 'input', $action . '|' . json_encode($input));
     }
 
-    static function array_recompose(array $data, array $format){
-try{
-    $format_data = array_flip($format);
-    foreach($data as $key => $value){
-        if(!in_array($key,$format)){
-            continue;
+    /**
+     * 按指定格式和指定顺序重排数组
+     * 
+     * @param   array   $data       数据
+     * @param   array   $format     格式：
+     * @return  array
+     */
+    static function array_recompose(array $data, array $format)
+    {
+        $format_data = array_flip($format);
+        foreach ($data as $key => $value) {
+            if (!in_array($key, $format)) {
+                continue;
+            }
+            $format_data[$key] = $data[$key];
         }
-        $format_data[$key] = $data[$key];
-    }
-    return $format_data;
-}catch (Exception $e){
-    print_r($e);
-}
+        return $format_data;
 
     }
 }

@@ -1,5 +1,6 @@
 <?php
 /**
+ * Description: 交易记录查询模型
  * User: Fang
  * Time: 9:55 2016/5/16
  */
@@ -7,9 +8,9 @@
 namespace Model\Finance;
 
 use Controller\Finance\TradeRecordParser;
-use Library\Exception;
+//use Library\Exception;
 use Library\Model;
-use Model\Member\Member;
+//use Model\Member\Member;
 
 class TradeRecord extends Model
 {
@@ -48,17 +49,17 @@ class TradeRecord extends Model
         ];
 
         $field = [
-            'tr.rectime',         //交易时间
-            'tr.dtype',           //交易类型
-            'tr.fid',             //主体商户
-            'tr.aid',             //对方商户
-            'tr.orderid',         //交易号
-            'tr.dmoney',          //本次交易金额（分）
-            'tr.ptype',           //支付方式
-            'tr.trade_no',        //交易流水
-            'tr.memo',            //备注
-            'tr.daction',         //收支
-            'tr.payee_type',      //收款账户类型
+            'tr.rectime',                           //交易时间
+            'tr.dtype',                             //交易类型
+            'tr.fid',                               //主体商户
+            'tr.aid',                               //对方商户
+            'tr.orderid',                           //交易号
+            'tr.dmoney',                            //本次交易金额（分）
+            'tr.ptype',                             //支付方式
+            'tr.trade_no',                          //交易流水
+            'tr.memo',                              //备注
+            'tr.daction',                           //收支
+            'tr.payee_type',                        //收款账户类型
             'o.ordermode as order_channel',        //交易渠道
             'o.tnum',
             'p.p_name',
@@ -88,28 +89,28 @@ class TradeRecord extends Model
     /**
      * 获取excel数据
      *
-     * @param   array $map 查询条件
+     * @param   array   $map    查询条件
      *
-     * @return array
+     * @return  array
      */
     public function getExList($map)
     {
         $table = "{$this->_trade_record_table}";
 
         $field = [
-            'fid',//交易商户
-            'aid',//对方商户
-            'opid',//操作人
-            'rectime',//交易时间
-            'dtype',//交易分类
-            'orderid',//交易号
-            'dmoney',
-            'lmoney',
-            'ptype',
-            'daction',
-            'payee_type',//收款方账号
-            'trade_no',//支付流水号
-            'memo',
+            'fid',          //交易商户
+            'aid',          //对方商户
+            'opid',         //操作人
+            'rectime',      //交易时间
+            'dtype',        //交易分类
+            'orderid',      //交易号
+            'dmoney',       //本次交易金额
+            'lmoney',       //账户余额
+            'ptype',        //支付方式
+            'daction',      //0-收入 1-支出
+            'payee_type',   //收款方账号
+            'trade_no',     //支付流水号
+            'memo',         //备注
         ];
         $order = 'id asc';
 
@@ -118,12 +119,17 @@ class TradeRecord extends Model
 
         if (!$records || !is_array($records)) {
             return false;
+
         } else {
-            $orderid = array_filter(array_column($records, 'orderid'));
+            $orderid = array_filter(array_column($records, 'orderid')); //过滤空值
+
             $extInfo = $this->getExtendInfo($orderid);
+
             if (is_array($extInfo)) {
+
                 $tid = array_unique(array_column($extInfo, 'tid'));
                 $prod_name = $this->getProdNameByTid($tid);
+
             }
         }
 
@@ -154,21 +160,17 @@ class TradeRecord extends Model
                 ->parseChannel()
                 ->parsePayee()
                 ->getRecord();
-            //if($record['orderid']) {
-            //    print_r($data);
-            //    exit;
-            //}
         }
 
         return $data;
     }
 
     /**
-     * 获取产品名称
+     * 获取订单信息：辅助交易内容的获取
      *
-     * @param $orderId
+     * @param   string  $orderId    交易号/订单号
      *
-     * @return mixed
+     * @return  mixed
      */
     public function getExtendInfo($orderId)
     {
@@ -195,9 +197,9 @@ class TradeRecord extends Model
     /**
      * 获取交易记录列表
      *
-     * @param $map
-     * @param $page
-     * @param $limit
+     * @param   array   $map    查询条件
+     * @param   int     $page   当前页
+     * @param   int     $limit  单页记录数
      *
      * @return array
      */
@@ -252,8 +254,8 @@ class TradeRecord extends Model
     /**
      * 获取会员列表
      *
-     * @param   string $srch 查询关键字
-     * @param   int $limit 返回记录条数
+     * @param   string  $srch   查询关键字
+     * @param   int     $limit  返回记录条数
      *
      * @return mixed
      */
@@ -296,7 +298,7 @@ class TradeRecord extends Model
     /**
      * 根据票类id获取产品名称
      *
-     * @param $tid
+     * @param int   $tid    门票id
      *
      * @return mixed
      */
@@ -317,31 +319,33 @@ class TradeRecord extends Model
     /**
      *  获取统计记录
      *
-     * @param $map
+     * @param   array     $map  查询条件
      *
-     * @return array
+     * @return  array
      */
     public function getSummary($map)
     {
-        $table = "{$this->_trade_record_table}";
-        $where = [];
+        $table      = "{$this->_trade_record_table}";
+        $where      = [];
 
-        $where = array_merge($where, $map);
+        $where      = array_merge($where, $map);
         $income_map = $outcome_map = $where;
-        $income_map['daction'] = 0;
+
+        $income_map['daction']  = 0;
         $outcome_map['daction'] = 1;
-        $income = $this->table($table)->where($income_map)->getField('sum(dmoney)');
+
+        $income     = $this->table($table)->where($income_map)->getField('sum(dmoney)');
         $this->logSql();
-        $outcome = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
+        $outcome    = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
         $this->logSql();
-        $income = $income ? $income : 0;
-        $outcome = $outcome ? $outcome : 0;
-        $balance = strval(round(($income - $outcome) / 100, 2));
-        $income = strval(round($income / 100, 2));
-        $outcome = strval(round($outcome / 100, 2));
-        $return = [
+        $income     = $income ? $income : 0;
+        $outcome    = $outcome ? $outcome : 0;
+        $balance    = strval(round(($income - $outcome) / 100, 2));
+        $income     = strval(round($income / 100, 2));
+        $outcome    = strval(round($outcome / 100, 2));
+        $return     = [
             'balance' => $balance,
-            'income' => $income,
+            'income'  => $income,
             'outcome' => $outcome,
         ];
 
@@ -355,7 +359,9 @@ class TradeRecord extends Model
     {
         if (ENV == 'DEVELOP') {
             $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
-            $action = debug_backtrace()['function'] ?: '';
+            $trace  = debug_backtrace();
+            $caller = array_shift($trace);
+            $action = $caller['function'] ?: '';
             \pft_log($prefix . 'query', $action . "#" . $this->getLastSql());
         }
     }
