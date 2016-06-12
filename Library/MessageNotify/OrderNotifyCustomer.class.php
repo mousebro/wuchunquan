@@ -46,7 +46,7 @@ class OrderNotifyCustomer extends OrderNotifyBase
     {
         $Model = new Model('slave');
         $row   = $Model->table('uu_sms_format') ->field('cformat,dtype,sms_account,sms_sign')
-            ->where(['pid'=>$this->pid])
+            ->where(['pid'=>$this->ticketInfo['pid']])
             ->find();
 
         if (!$row) {
@@ -73,8 +73,7 @@ class OrderNotifyCustomer extends OrderNotifyBase
      * @param bool|false $manualQr 是否显示二维码（小彭对接时调用）
      * @return array|mixed|string
      */
-    private function SmsContent($p_name, $num, $begin_time, $end_time,
-                                $ptype=null, $cformat='', $code=0,
+    private function SmsContent($p_name, $num, $begin_time, $end_time,$cformat='', $code=0,
                                 $ret_format=1, $manualQr=false)
     {
         $search_replace = array();
@@ -84,24 +83,23 @@ class OrderNotifyCustomer extends OrderNotifyBase
         } else {
             //获取凭证号
             $orderInfo  = $orderObj->GetOrderInfo(OrderQuery::__ORDER_TABLE__, $this->order_num, 'code');
-            $search_replace['{code}'] = $orderInfo['code'];
+            $search_replace['{code}'] = $orderInfo[0]['code'];
         }
         $memberObj  = new Member();
-        $ticketObj  = new Ticket();
-        $ticketInfo = $ticketObj->getTicketInfoById($this->tid, 'getaddr');
+
         $dname      = $memberObj->getMemberCacheById($this->aid, 'dname');
         $search_replace['{dname}']      = $dname;
         $search_replace['{pname}']      = $p_name;
-        $search_replace['{tnum}']       = $num . ($this->p_type=='C' ? '' : '张');
+        $search_replace['{tnum}']       = $num > 0 ? ($num . ($this->p_type=='C' ? '' : '张')) : '';
         $search_replace['{begintime}']  = date('m月d日', strtotime($begin_time));
         $search_replace['{endtime}']    = date('m月d日', strtotime($end_time));
-        $search_replace['{getaddr}']    = $ticketInfo['getaddr'];
+        $search_replace['{getaddr}']    = $this->ticketInfo['getaddr'];
         //演出类产品
         if ($this->p_type=='H') {
             $PerInfo='';
             $orderInfo  = $orderObj->GetOrderInfo(OrderQuery::__ORDER_DETAIL_TABLE__, $this->order_num, 'series');
-            if ($orderInfo['series']){
-                $PerInfo=unserialize($orderInfo['series'])[6];
+            if ($orderInfo[0]['series']){
+                $PerInfo=unserialize($orderInfo[0]['series'])[6];
             }
             $search_replace['{perinfo}']=$PerInfo;
         }
@@ -145,7 +143,7 @@ class OrderNotifyCustomer extends OrderNotifyBase
         }
         //离店时间要加一天
         $end_time = date('Y-m-d', strtotime('+1 days', strtotime($end_time)));
-        $sms_content = $this->SmsContent($p_name, $num, $begin_time, $end_time, $p_type, $cformat,$code);
+        $sms_content = $this->SmsContent($p_name, $num, $begin_time, $end_time, $cformat,$code);
         if (!empty($sms_sign) ) {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
@@ -205,7 +203,7 @@ class OrderNotifyCustomer extends OrderNotifyBase
         //离店时间要加一天
         $end_time = date('Y-m-d', strtotime('+1 days', strtotime($end_time)));
         $sms_content = $this->SmsContent($p_name, $num, $begin_time, $end_time,
-            $p_type, $cformat, $code, 'string', $qrLink);
+            $cformat, $code, 'string', $qrLink);
         if (!empty($sms_sign) ) {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
@@ -281,68 +279,65 @@ class OrderNotifyCustomer extends OrderNotifyBase
     public function SendByOrderInfo($ordernum, $send2ApplyEr = true, $useWxNotify = true)
     {
         $orderQuery = new OrderQuery();
-        $order = $orderQuery->GetOrderInfo(OrderQuery::__ORDER_TABLE__, $ordernum, 'ordertel, mid, tid,lid');
+        $order = $orderQuery->GetOrderInfo(OrderQuery::__ORDER_TABLE__, $ordernum,
+            'ordertime,ordername,begintime,endtime,tnum,ordertel,member,tid,lid,remsg');
         parent::SetParam(
-            $order['ordertel'],
-            $order['mid'],
-            $order['tid'],
-            $order['pid'],
+            $order[0]['ordertel'],
+            $order[0]['member'],
+            $order[0]['tid'],
             $ordernum,
-            $order['lid']
+            $order[0]['lid']
         );
-        if ($useWxNotify && $wx_open_id = $this->WxNotifyChk($order['mainOrder']->UUmid, 1)) {
-            $unit = $this->p_type == 'C' ? '间' : '张';
-            $itemData = "{$order['mainOrder']->UUttitle}:{$order['mainOrder']->UUtnum} $unit；";
-            if (count($order['childOrder']) > 0) {
-                foreach ($order['childOrder'] as $child) {
-                    $itemData .= "\n$child->UUttitle:$child->UUtnum $unit；";
-                }
+
+        $unit = $this->p_type == 'C' ? '间' : '张';
+        $p_name  = $this->ltitle . $this->ticketInfo['title'].$order['tnum'].$unit;
+        $itemData = "{$order['mainOrder']->UUttitle}:{$order['mainOrder']->UUtnum} $unit；";
+        //是否联票
+        $childOrder = $orderQuery->GetLinkOrders($ordernum, 'tnum,ordertel,begintime,member,tid,lid');
+        $time_list = array( $order[0]['begintime'] );
+        if (count($childOrder) > 0) {
+            $ticketObj      = new Ticket();
+            foreach ($childOrder as $child) {
+                $time_list[] = $child['begintime'];
+                $ticketInfo = $ticketObj->getTicketInfoById($child['tid'], 'title,getaddr');
+                $itemData .= "\n{$ticketInfo['title']}:{$child['tnum']} $unit；";
+                $p_name .= "{$ticketInfo['title']}{$child['tnum']}$unit,";
             }
+        } else {
+            $time_list[] = $order[0]['begintime'];
+        }
+        if ($useWxNotify && $wx_open_id = $this->WxNotifyChk($order[0]['member'], 1)) {
             $this->WxNotifyCustomer($wx_open_id,
-                (string)$order['mainOrder']->UUordertime,
-                (string)$order['mainOrder']->UUordername,
-                (string)$order['mainOrder']->UUltitle,
+                $order[0]['ordertime'],
+                $order[0]['ordername'],
+                $this->ltitle,
                 $itemData,
-                $order['mainOrder']->UUordernum
+                $ordernum
             );
         }
-        //供应商通知
+        //TODO::供应商通知
         if ($this->p_type != 'C' && $send2ApplyEr) {
             $this->OrderNotify('AFTER_PAY', $order);
         }
         //判断是否需要发送凭证码
         $model = new Model('slave');
-        $map = ['pid'=>$this->pid];
+        $map = ['tid'=>$this->ticketInfo['pid']];
         $sendVoucher = $model->table('uu_land_f')->where($map)->getField('sendVoucher');
         if ($sendVoucher==1) {
             pft_log('queue/sms',"该票类设置了不发送凭证码，发送失败:".json_encode(func_get_args(), JSON_UNESCAPED_UNICODE), 'month');
             return '该票类设置了不发送凭证码，发送失败';
         }
         //短信发送次数超过3次的不发送
-        if ($order['mainOrder']->UUremsg>3) {
+        if ($order[0]['remsg']>3) {
             return 116;
         }
-        $p_name  = strval($order['mainOrder']->UUltitle . $order['mainOrder']->UUttitle);
 
         //非酒店类型的订单
         if ($this->p_type != 'C') {
-//            return $this->Send($p_name, intval($order['mainOrder']->UUtnum),
-//                (string)$order['mainOrder']->UUbegintime, $this->end_time);
-            return $this->soap->reSend_SMS_Global_PL($this->order_num,
-                $this->aid,$this->fid);//重发短信
-        }
-        $time_list = array((string)$order['mainOrder']->UUbegintime);
-        if (count($order['childOrder'])>0) {
-            foreach ($order['childOrder'] as $child) {
-                $time_list[] = (string)$child->UUbegintime;
-            }
-        }
-        else {
-            $time_list[] = (string)$order['mainOrder']->UUbegintime;
+            return $this->Send($p_name, 0, $order[0]['begintime'], $order[0]['endtime']);
         }
 
         sort($time_list);
-
         $this->begin_time = array_shift($time_list);
         $this->end_time   = array_pop($time_list);
 

@@ -10,11 +10,13 @@ namespace Library\MessageNotify;
 
 
 use Library\Model;
+use Model\Product\Ticket;
 use Model\Wechat\WxMember;
 
 class OrderNotifyBase
 {
     protected $order_tel;
+    protected $ltitle;
     protected $aid;
     protected $fid;
     protected $tid;
@@ -24,6 +26,7 @@ class OrderNotifyBase
     protected $soap;
     protected $db = null;
     protected $source_apply_did;
+    protected $ticketInfo;
 
     protected $begin_time = null;
     protected $end_time   = null;
@@ -34,7 +37,7 @@ class OrderNotifyBase
     protected function GetApplyDid($lid)
     {
         $m = new Model('slave');
-        return $m->table('uu_land')->where(['id'=>$lid])->getField('apply_did, p_type');
+        return $m->table('uu_land')->where(['id'=>$lid])->getField('title, apply_did, p_type');
     }
     /**
      * 设置参数
@@ -47,14 +50,18 @@ class OrderNotifyBase
      * @param string $order_num 订单号
      * @param int $lid 景区id
      */
-    public function SetParam($order_tel, $fid, $tid, $pid, $order_num, $lid)
+    public function SetParam($order_tel, $fid, $tid, $order_num, $lid)
     {
         $this->order_tel = (string)$order_tel;
         $this->fid = (int)$fid;//$mainOrder['UUmid'];
         $this->tid = (int)$tid;//$mainOrder['UUtid'];
-        $this->pid = (int)$pid;//$mainOrder['UUpid'];
         $this->order_num = (string)$order_num;//$mainOrder['UUordernum'];
-        list($this->source_apply_did, $this->p_type) = $this->GetApplyDid((int)$lid);
+        $landInfo   = $this->GetApplyDid((int)$lid);
+        $this->p_type = $landInfo['p_type'];
+        $this->source_apply_did = $landInfo['apply_did'];
+        $this->ltitle   = $landInfo['title'];
+        $ticketObj      = new Ticket();
+        $this->ticketInfo = $ticketObj->getTicketInfoById($this->tid, 'title,pid, getaddr');
     }
     protected function GetApplerTel($pids)
     {

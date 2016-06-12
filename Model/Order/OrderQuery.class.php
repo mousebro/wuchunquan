@@ -488,10 +488,10 @@ class OrderQuery extends Model
         else $map['orderid'] = "'{$ordernum}'";
         return $this->table(self::__ORDER_TABLE__)->field($fields)
             ->where($map)
-            ->find();
+            ->select();
     }
 
-    public function GetLinkOrders($parent_ordernum)
+    public function GetLinkOrders($parent_ordernum,$fields="*")
     {
         $map = [
             'concat_id'=> $parent_ordernum,
@@ -500,6 +500,6 @@ class OrderQuery extends Model
         $order_num_list = $this->table(self::__ORDER_DETAIL_TABLE__)
                         ->where($map)
                         ->getField('orderid', true);
-        $this->GetOrderInfo(self::__ORDER_TABLE__, $order_num_list, 'ordertel,mid,tid,lid');
+        return $this->GetOrderInfo(self::__ORDER_TABLE__, $order_num_list, $fields);
     }
 }
