@@ -15,6 +15,9 @@ class TradeRecord extends Controller
     public function __construct()
     {
         C(include __DIR__ . '/../../Conf/trade_record.conf.php');
+        //ini_set('display_errors','on');
+        //error_reporting(E_ALL);
+
     }
 
     /**
@@ -173,16 +176,21 @@ class TradeRecord extends Controller
      */
     private function _exportExcel(array $data, $filename = '')
     {
-        if (!$filename) {
+       if (!$filename) {
             $filename = date('YmdHis');
         }
+
         $r = [];
         if (is_array($data) && count($data)) {
+
             foreach ($data as $record) {
-                uksort($record, [$this, '_rearrangeData']);
+
+                $record = self::array_recompose($record,array_keys(C('excel_head')));
+
                 $r[] = $record;
             }
         }
+
         array_unshift($r, C('excel_head'));
         include_once("/var/www/html/new/d/class/SimpleExcel.class.php");
         $xls = new \SimpleExcel('UTF-8', true, 'orderList');
@@ -235,6 +243,7 @@ class TradeRecord extends Controller
 
                 if (is_array($data)) {
                     $filename = date('YmdHis') . '交易记录';
+
                     $this->_exportExcel($data, $filename);
                 } else {
                     throw new Exception('查询结果为空', 207);
@@ -456,5 +465,21 @@ class TradeRecord extends Controller
         $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
         $action = debug_backtrace()['function'] ?: '';
         \pft_log($prefix . 'input', $action . '|' . json_encode($input));
+    }
+
+    static function array_recompose(array $data, array $format){
+try{
+    $format_data = array_flip($format);
+    foreach($data as $key => $value){
+        if(!in_array($key,$format)){
+            continue;
+        }
+        $format_data[$key] = $data[$key];
+    }
+    return $format_data;
+}catch (Exception $e){
+    print_r($e);
+}
+
     }
 }

@@ -112,33 +112,39 @@ class TradeRecord extends Model
             'memo',
         ];
         $order = 'id asc';
+
         $records = $this->table($table)->field($field)->where($map)->order($order)->select();
         $this->logSql();
+
         if (!$records || !is_array($records)) {
             return false;
         } else {
             $orderid = array_filter(array_column($records, 'orderid'));
             $extInfo = $this->getExtendInfo($orderid);
-
             if (is_array($extInfo)) {
                 $tid = array_unique(array_column($extInfo, 'tid'));
                 $prod_name = $this->getProdNameByTid($tid);
-            } else {
-                return false;
             }
         }
+
         $data = [];
+
         $parser = $this->_getParser();
+
         foreach ($records as $record) {
-            $ordernum = $record['ordernum'];
+
+            $ordernum = $record['orderid'];
+
             if ($ordernum && array_key_exists($ordernum, $extInfo)) {
                 $record['order_channel'] = $extInfo[$ordernum]['ordermode'];
                 $tid = $extInfo[$ordernum]['tid'];
-                if (array_key_exists($tid, $prod_name)) {
-                    $record['body'] = $prod_name[$tid] . $extInfo[$ordernum]['tnum'] . '张';
+                if (isset($prod_name) && array_key_exists($tid, $prod_name)) {
+                    $record['body'] = $prod_name[$tid] . ' ' . $extInfo[$ordernum]['tnum'] . '张';
                 }
             }
+
             $record['order_channel'] = isset($record['order_channel']) ? $record['order_channel'] : '平台';
+
             $record['body'] = isset($record['body']) ? $record['body'] : '';
             $data[] = $parser->setRecord($record)
                 ->parseTradeType()
@@ -148,6 +154,10 @@ class TradeRecord extends Model
                 ->parseChannel()
                 ->parsePayee()
                 ->getRecord();
+            //if($record['orderid']) {
+            //    print_r($data);
+            //    exit;
+            //}
         }
 
         return $data;

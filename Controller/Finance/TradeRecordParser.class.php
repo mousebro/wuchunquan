@@ -22,7 +22,7 @@ class TradeRecordParser{
      * @throws Exception
      */
     public function setRecord(array $record){
-        if(null == $this->record){
+        if(!isset($this->record)){
             $this->record = $record;
         }else{
             throw new Exception('数据未读取',301);
@@ -54,6 +54,10 @@ class TradeRecordParser{
             'aid' => 'counter',
             'opid' => 'oper'
         ];
+        if(isset($this->record['aid']) && $_SESSION['sid'] == $this->record['aid']){
+            $options['aid'] = 'member';
+            $options['fid'] = 'counter';
+        }
 
         foreach($options as $key => $value){
             if(array_key_exists($key, $this->record)){
@@ -62,6 +66,7 @@ class TradeRecordParser{
             $this->record[$value] = ! empty($this->record[$value]) ? $this->record[$value] : '';
 
         }
+
         return $this;
     }
 
