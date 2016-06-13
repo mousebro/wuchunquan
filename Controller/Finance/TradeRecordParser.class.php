@@ -150,8 +150,7 @@ class TradeRecordParser
                 //交易记录对应分类
                 $item_list = C('trade_item');
                 if (array_key_exists($this->record['item'], $item_list)) {
-                    $this->record['dtype'] = $item_list[$this->record['item']] . '-' . $this->record['dtype'];
-                    $this->record['item'] = $this->record['dtype'];
+                    $this->record['item'] = $item_list[$this->record['item']] . '-' . $this->record['dtype'];
                 }
             }
         }
