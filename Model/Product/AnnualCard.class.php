@@ -6,6 +6,7 @@ use Library\Cache\Cache;
 use Library\Model;
 use Library\Exception;
 use Model\Order\OrderTools;
+use Model\Product\Ticket;
 
 class AnnualCard extends Model
 {
@@ -13,6 +14,8 @@ class AnnualCard extends Model
     const ANNUAL_CARD_TABLE         = 'pft_annual_card';            //卡片信息表
     const CARD_CONFIG_TABLE         = 'pft_annual_card_conf';       //年卡激活配置表
     const CARD_PRIVILEGE_TABLE      = 'pft_annual_card_privilege';  //年卡景区特权表
+    const CARD_ORDER_TABLE          = 'pft_annual_card_order';       //年卡订单记录表
+
     const PRODUCT_TABLE             = 'uu_products';                //产品信息表
     const TICKET_TABLE              = 'uu_jq_ticket';               //门票信息表
     const LAND_TABLE                = 'uu_land';                    //景区表
@@ -34,8 +37,7 @@ class AnnualCard extends Model
      *
      * @return [type]           [description]
      */
-    public function getAnnualCard($identify, $field = 'id')
-    {
+    public function getAnnualCard($identify, $field = 'id') {
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where([$field => $identify])->find();
 
@@ -48,8 +50,11 @@ class AnnualCard extends Model
      */
     public function getAnnualCardConfig($tid) {
 
-        return $this->table(self::CARD_CONFIG_TABLE)->where(['tid' => $tid])->find();
-   
+        return $this->table(self::CARD_PRIVILEGE_TABLE)
+            ->join('c left join uu_jq_ticket t on c.tid=t.id')
+            ->where(['tid' => $tid])
+            ->field('c.id,c.use_limit,c.limit_count,t.delaytype,t.delaydays,t.order_start,t.order_end')
+            ->find();
     }
 
     /**
@@ -74,7 +79,11 @@ class AnnualCard extends Model
 
         if ($action == 'select') {
 
-            return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->limit($limit)->select();
+            return $this->table(self::ANNUAL_CARD_TABLE)
+                ->where($where)
+                ->field($field)
+                ->limit($limit)
+                ->select();
 
         } else {
 
@@ -105,7 +114,12 @@ class AnnualCard extends Model
         $field = 'id,p_name';
 
         if ($action == 'select') {
-            return $this->table(self::PRODUCT_TABLE)->where($where)->field($field)->limit($limit)->select();
+            return $this->table(self::PRODUCT_TABLE)
+                ->where($where)
+                ->field($field)
+                ->limit($limit)
+                ->select();
+
         } else {
             return $this->table(self::PRODUCT_TABLE)->where($where)->count();
         }
@@ -296,7 +310,10 @@ class AnnualCard extends Model
 
         if ($action == 'select') {
 
-            return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->limit($limit)->select();
+            return $this->table(self::ANNUAL_CARD_TABLE)
+                ->where($where)->field($field)
+                ->limit($limit)
+                ->select();
 
         } else {
 
@@ -326,47 +343,139 @@ class AnnualCard extends Model
      * 年卡消费合法性检测
      * @return [type] [description]
      */
-    public function consumeCheck($memberid, $sid, $tid) {
-        $config = $this->getAnnualCardConfig($tid);
+    public function consumeCheck($card_info) {
+        $card_info = $this->getAnnualCard('555555', 'physics_no');  //调试代码
+        
+        extract($card_info);
+        
+        $ticket = (new Ticket())->getTicketInfoByPid($pid);
 
-        $OrderModel = new OrderTools();
+        $ticket['id'] = 28460;  //调试代码
+        $config = $this->getAnnualCardConfig($ticket['id']);
 
-        //限制消费次数
-        $use_check = false;
-        switch ($config['use_limit']) {
-            case 0 :
-                $use_check = true;
-                break;
-
-            case 1 :
-                $options = [];
-
-            case 2:
-                $options = [
-                    'begin_time'    => date('Y-m-d') . ' 00:00:00',
-                    'end_time'      => date('Y-m-d') . ' 23:59:59'
-                ];
-
-            case 3:
-                $options = [
-                    'begin_time'    => date('Y-m-01') . ' 00:00:00',
-                    'end_time'      => date('Y-m-t')  . ' 23:59:59'
-                ];
-
-            case 4:
-                $count = $OrderModel->countOrderForTicket($tid, $memberid, $sid, $options);
-                if ($count < $config['limit_count']) {
-                    $use_check = true;
-                }
-                break;
-            default:
-                break;
-        }
-
-        if (!$use_check) {
+        //年卡有效期检测
+        if (!$this->_periodOfValidityCheck($card_info, $config)) {
             return false;
         }
 
+        //次数限制检测
+        if (!$this->_consumeTimesCheck($tid, $memberid, $sid, $config)) {
+            return false;
+        }
+
+        return true;
+
+    }
+    
+    /**
+     * 年卡有效期检测
+     * @param  [type] $card_info [description]
+     * @param  [type] $config    [description]
+     * @return [type]            [description]
+     */
+    private function _periodOfValidityCheck($card_info, $config) {
+
+        //是否处于未激活状态(待定)
+        if ($card_info['status'] != 1) {
+            return false;
+        }
+        
+        switch ($config['delaytype']) {
+
+            case 0: //激活后有效
+                $valid_time = $card_info['active_time'] + $config['delaydays'] * 24 * 3600;
+
+                if (time() > $valid_time) {
+                    return false;
+                }
+
+                break;
+
+            case 1: //售出后有效
+                $valid_time = $card_info['sale_time'] + $config['delaydays'] * 24 * 3600;
+
+                if (time() > $valid_time) {
+                    return false;
+                }
+
+                break;
+
+            case 2: //固定时间段有效
+                $begin_time = strtotime($config['order_start']);
+                $end_time   = strtotime($config['order_end']);
+
+                if (time() > $end_time || time() < $begin_time) {
+                    return false;
+                }
+
+                break;
+
+            default:
+                return false;
+        }        
+
+        return true;
+    }
+
+    /**
+     * 消费次数限制
+     * @param  [type] $tid      [description]
+     * @param  [type] $memberid [description]
+     * @param  [type] $sid      [description]
+     * @return [type]           [description]
+     */
+    private function _consumeTimesCheck($tid, $memberid, $sid, $config) {
+        //限制消费次数
+        $use_check = false;
+
+        if ($config['use_limit'] == 0) return true;
+
+        $limit_count = explode(',', $config['limit_count']);
+
+        $loop = [
+            [
+                date('Y-m-d') . ' 00:00:00',
+                date('Y-m-d') . ' 23:59:59'
+            ],
+            [
+                date('Y-m-01') . ' 00:00:00',
+                date('Y-m-t')  . ' 23:59:59'
+            ],
+            []
+        ];
+
+        foreach ($loop as $key => $time) {
+            $count = $this->_countTimeRangeOrder($tid, $memberid, $time);
+
+            if ($count >= $limit_count[$key]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    /**
+     * 统计时间段内的订单总数
+     * @param  [type] $tid      [description]
+     * @param  [type] $memberid [description]
+     * @param  [type] $time     [description]
+     * @return [type]           [description]
+     */
+    private function _countTimeRangeOrder($tid, $memberid, $time) {
+
+        $where = [
+            'memberid'      => $memberid,
+            'tid'           => $tid,
+            'status'        => 1
+        ];
+
+        if ($time) {
+            $where['create_time'] = ['between', array_map('strtotime', $time)];
+        }
+
+        return $this->table(self::CARD_ORDER_TABLE)->where($where)->count();
     }
 
     /**
@@ -405,6 +514,13 @@ class AnnualCard extends Model
         return $lands ?: [];
     }
 
+    /**
+     * [可添加到年卡特权的门票(自供应 + 转分销一级)
+     * @param  [type] $sid [description]
+     * @param  [type] $aid [description]
+     * @param  [type] $lid [description]
+     * @return [type]      [description]
+     */
     public function getTickets($sid, $aid, $lid) {
 
         $where = [

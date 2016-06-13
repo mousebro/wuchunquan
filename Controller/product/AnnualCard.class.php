@@ -20,7 +20,7 @@ class AnnualCard extends Controller {
         $reflect = new \ReflectionMethod (__CLASS__, I('a'));
 
         $document   = $reflect->getDocComment();
-        $start_line = $reflect->getStartLine();
+        $start_line = $reflect->getStartLine() - 1;
         $end_line   = $reflect->getEndLine();
 
         $output = "<?php \r\n" . $document;
@@ -456,6 +456,10 @@ class AnnualCard extends Controller {
         $this->apiReturn(200, $result);
     }
 
+    /**
+     * [可添加到年卡特权的门票(自供应 + 转分销一级)
+     * @return [type] [description]
+     */
     public function getTickets() {
 
         include '/var/www/html/new/d/class/SoapInit.class.php';
@@ -466,7 +470,10 @@ class AnnualCard extends Controller {
         $tickets = $this->_CardModel->getTickets($_SESSION['sid'], (int)I('aid'), (int)I('lid'));
 
         foreach ($tickets as $key => $item) {
-            if ($item['apply_did'] == $_SESSION['sid']) continue;
+
+            if ($item['apply_did'] == $_SESSION['sid']) {
+                continue;
+            }
 
             $price = \PFTCoreAPI::pStorage(
                 $soap_cli, $_SESSION['saccount'], 
@@ -481,6 +488,9 @@ class AnnualCard extends Controller {
         $this->apiReturn(200, $tickets);
     }
 
+    public function test() {
+        $this->_CardModel->consumeCheck(3385, 3385, 28460);
+    }
 
 
     /**
