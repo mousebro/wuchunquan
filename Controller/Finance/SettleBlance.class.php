@@ -218,7 +218,7 @@ class SettleBlance extends Controller {
         $updateId = intval(I('post.id'));
         //参数合法性
         if(!$updateId) {
-            $this->apiReturn(401, [], '参数错误');
+            $this->apiReturn(400, [], '参数错误');
         }
 
         $this->add($updateId);
@@ -237,13 +237,13 @@ class SettleBlance extends Controller {
         $updateId = intval(I('post.id'));
         //参数合法性
         if(!$updateId) {
-            $this->apiReturn(401, [], '参数错误');
+            $this->apiReturn(400, [], '参数错误');
         }
 
         $settleBlanceModel = $this->model('Finance/SettleBlance');
         $info = $settleBlanceModel->getSettingInfo($updateId);
         if(!$info) {
-            $this->apiReturn(401, [], '获取不到记录信息');
+            $this->apiReturn(400, [], '获取不到记录信息');
         }
 
         $res = $info;
@@ -274,6 +274,8 @@ class SettleBlance extends Controller {
             $res['last_settle_time'] = 0;
         }
 
+        $res['status'] = $res['status'] == 1 ? 'on' : 'off';
+
         $this->apiReturn(200, $res);
     }
 
@@ -293,13 +295,13 @@ class SettleBlance extends Controller {
 
         //参数合法性
         if(!$updateId || !in_array($status, ['on', 'off'])) {
-            $this->apiReturn(401, [], '参数错误');
+            $this->apiReturn(400, [], '参数错误');
         }
 
         $settleBlanceModel = $this->model('Finance/SettleBlance');
         $info = $settleBlanceModel->getSettingInfo($updateId);
         if(!$info) {
-            $this->apiReturn(401, [], '获取不到记录信息');
+            $this->apiReturn(400, [], '获取不到记录信息');
         }
 
         if(($status == 'on' && $info['status'] == 1) || ($status == 'off' && $info['status'] == 0)) {
@@ -330,7 +332,7 @@ class SettleBlance extends Controller {
     public function getAccounts() {
         $uid = intval(I('post.fid'));
         if(!$uid) {
-            $this->apiReturn(401, [], '');
+            $this->apiReturn(400, [], '参数错误');
         }
 
         $memberModel = $this->model('Member/Member');

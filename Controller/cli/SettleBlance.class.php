@@ -30,7 +30,16 @@ class SettleBlance extends Controller {
      * @return 
      */
     public function generateTransRecord() {
+        //获取日结的记录
+        $dayMark = date('Ymd');
 
+        //获取周结的记录
+        $weekMark = date('Y02W');
+
+        //获取月结的记录
+        $montyMark = date('Y01m');
+
+        
     }
 
     /**
