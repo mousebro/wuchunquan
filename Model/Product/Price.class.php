@@ -321,6 +321,9 @@ class Price extends Model {
             //价格为空，则去除分销权限
             if (($priceset[$did] == '' && $priceset[$did] !== 0)) {
                 if ((count($pid_arr) == 1 && $pid_arr[0] == '') || $pid_arr[0] == 'A') {
+                    if ($pid_arr[0] == 'A') {
+                        $this->deletePriceset($sid, $did, $pid);
+                    }
                     continue;
                 }
                 if (!in_array($pid, $pid_arr)) continue;
@@ -470,6 +473,25 @@ class Price extends Model {
         }
 
         return true;
+    }
+
+    /**
+     * 删除价格表的记录
+     * @param  [type] $sid [description]
+     * @param  [type] $aid [description]
+     * @param  [type] $did [description]
+     * @param  [type] $pid [description]
+     * @return [type]      [description]
+     */
+    public function deletePriceset($sid, $did, $pid) {
+        $real_aid = $aid ? $sid : 0;
+        $where = [
+            'tid' => $pid,
+            'pid' => $did,
+            'aid' => 0
+        ];
+        $result = $this->table(self::__PRICESET_TABLE__)->where($where)->limit(1)->delete();
+        $this->recordLog($sid,  $result . $this->_sql());
     }
 
     /**

@@ -273,4 +273,27 @@ SQL;
         }
 
     }
+
+    /**
+     * 统计指定会员购买指定票的次数
+     * @param  [type] $tid      [description]
+     * @param  [type] $memberid [description]
+     * @param  [type] $aid      [description]
+     * @return [type]           [description]
+     */
+    public function countOrderForTicket($tid, $memberid, $aid = 0, $options = []) {
+
+        $where = [
+            'member'    => $memberid,
+            'tid'       => $tid
+        ];
+
+        if ($aid) $where['aid'] = $aid;
+
+        if (isset($options['begin_time']) && isset($options['end_time'])) {
+            $where['ordertime'] = ['between', [$options['begin_time'], $options['end_time']]];
+        }
+
+        return $this->table('uu_ss_order')->where($where)->count();
+    }
 }
