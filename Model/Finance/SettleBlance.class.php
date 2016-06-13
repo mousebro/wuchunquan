@@ -31,12 +31,13 @@ class SettleBlance extends Model{
      * @param $transferDate 转账日期，日结（几点），月结（几号），周结（周几）
      * @param $transferTime 转账时间，具体几点
      * @param $updateUid 配置修改用户ID
-     * @param $accountInfo '账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":""}',
+     * @param $accountInfo 账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","account_name":"",acc_type":""}',
+     * @param $serviceFee 提现手续费
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      *
      * @return bool
      */
-    public function addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo,
+    public function addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee,
             $freezeData = false) {
 
         if(!$fid) {
@@ -44,7 +45,7 @@ class SettleBlance extends Model{
         }
 
         //参数统一校验，格式化
-        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo,
+        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, 
             $freezeData);
 
         if($data) {
@@ -74,14 +75,14 @@ class SettleBlance extends Model{
      *
      * @return bool
      */
-    public function updateSetting($id, $$mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo,
+    public function updateSetting($id, $$mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee,
             $freezeData = false) {
         if(!$id) {
             return false;
         }
 
         //参数统一校验，格式化
-        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo,
+        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee
             $freezeData);
 
         if($data) {
@@ -338,7 +339,7 @@ class SettleBlance extends Model{
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      * @return array / bool
      */
-    private function _formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo,
+    private function _formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, 
             $freezeData = false) {
 
         if(!in_array($mode, [1, 2, 3]) || !$updateUid || !$accountInfo || !is_array($accountInfo)) {
@@ -350,6 +351,7 @@ class SettleBlance extends Model{
         $transferDate = intval($transferDate);
         $transferTime = intval($transferTime);
         $accountInfo  = json_encode($accountInfo);
+        $serviceFee   = floatval($serviceFee);
 
         if($freezeType == 2) {
             if(!$freezeData || !is_array($freezeData)) {
@@ -357,6 +359,10 @@ class SettleBlance extends Model{
             }
 
             $freezeData = json_encode($freezeData);
+        }
+
+        if($serviceFee < 0 || $serviceFee > 100) {
+            return false;
         }
 
         $data = [
@@ -367,6 +373,7 @@ class SettleBlance extends Model{
             'transfer_date' => $transferDate,
             'transfer_time' => $transferTime,
             'account_info'  => $accountInfo,
+            'service_fee'   => $serviceFee,
             'update_uid'    => $updateUid,
             'update_time'   => time()
         ];
