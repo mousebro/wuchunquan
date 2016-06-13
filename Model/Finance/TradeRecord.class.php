@@ -254,35 +254,38 @@ class TradeRecord extends Model
     /**
      * 获取会员列表
      *
-     * @param   string  $srch   查询关键字
+     * @param   string  $keywords   查询关键字
      * @param   int     $limit  返回记录条数
      *
      * @return mixed
      */
-    public function getMember($srch, $limit = 10)
+    public function getMember($keywords, $limit = 10)
     {
-        //如果输入的是少于4个字符的英文字符串，不查询
-        if (preg_match("/^[a-zA-Z\s]+$/", $srch) && strlen($srch) < 4) {
+        //输入少于4个字符不查询
+        if (preg_match("/^[a-zA-Z\s]+$/", $keywords) && strlen($keywords) < 4) {
             return false;
         }
 
         $where['_complex'] = [
             'dname' => ['like', ':dname'],
         ];
-        $bind[':dname'] = '%' . $srch . '%';
 
-        if (strlen($srch) >= 4) {
-            $where['_complex']['account'] = ['like', ':account'];
-            $bind[':account'] = $srch . '%';
-        }
+        $bind[':dname'] = '%' . $keywords . '%';
 
-        if (is_numeric($srch)) {
-            $where['_complex']['id'] = ['like', ':id'];
-            $bind[':id'] = $srch . '%';
+        if (is_numeric($keywords)) {
+            $where['_complex']['id'] = ':id';
+            $bind[':id'] = $keywords ;
+
+            if (strlen($keywords) >= 4) {
+                $where['_complex']['account'] = ':account';
+                $bind[':account'] = $keywords;
+            }
+
         }
         if (count($bind) > 1) {
             $where['_complex']['_logic'] = 'or';
         }
+        $where['dtype'] = ['in','0,1,7'];
         $field = ['id as fid', 'account', 'dname'];
         $return = $this->table('pft_member')
             ->bind($bind)
@@ -294,7 +297,7 @@ class TradeRecord extends Model
 
         return $return;
     }
-
+    
     /**
      * 根据票类id获取产品名称
      *
@@ -351,19 +354,5 @@ class TradeRecord extends Model
 
         return $return;
     }
-
-    /**
-     * 在非生产环境记录所执行的sql语句
-     */
-    private function logSql()
-    {
-        if (ENV == 'DEVELOP') {
-            $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
-            $trace  = debug_backtrace();
-            $caller = array_shift($trace);
-            $action = $caller['function'] ?: '';
-            \pft_log($prefix . 'query', $action . "#" . $this->getLastSql());
-        }
-    }
-
+    
 }

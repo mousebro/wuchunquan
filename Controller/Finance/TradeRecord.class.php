@@ -8,6 +8,7 @@ namespace Controller\Finance;
 
 use Library\Controller;
 use Library\Exception;
+use Model\Member\MemberRelationship;
 
 class TradeRecord extends Controller
 {
@@ -54,16 +55,16 @@ class TradeRecord extends Controller
     /**
      * 获取交易记录列表
      *
-     * @param   int     [fid]       被查询的会员id  管理员账号用
-     * @param   string  [orderid]   交易号
-     * @param   string  [btime]     开始时间        yy-mm-dd hh:ii:ss
-     * @param   string  [etime]     结束时间        yy-mm-dd hh:ii:ss
-     * @param   string  [dtype]     交易类型        见 C('item_category')
-     * @param   int     [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
-     * @param   int     [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
-     * @param   int     [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
-     * @param   int     [page]      当前页数        返回给前端的页数比实际值多1
-     * @param   int     [limit]     每页显示条数
+     * @param   int [fid]       被查询的会员id  管理员账号用
+     * @param   string [orderid]   交易号
+     * @param   string [btime]     开始时间        yy-mm-dd hh:ii:ss
+     * @param   string [etime]     结束时间        yy-mm-dd hh:ii:ss
+     * @param   string [dtype]     交易类型        见 C('item_category')
+     * @param   int [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
+     * @param   int [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
+     * @param   int [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
+     * @param   int [page]      当前页数        返回给前端的页数比实际值多1
+     * @param   int [limit]     每页显示条数
      */
     public function getList()
     {
@@ -128,22 +129,40 @@ class TradeRecord extends Controller
 
     /**
      * 管理员模糊搜索会员
-     * @param   string     [srch]       会员名称 / 会员id / 会员账号
+     * @param   string [srch]       会员名称/会员id/会员账号
+     * @param   string [ptypes]     支付类型                0-查看当前用户授信; 1-查看分销商授信
      */
     public function srchMem()
     {
         $memberId = $this->isLogin('ajax');
         $srch = \safe_str(I('srch'));
+        $limit = intval(I('limit')) ?: 20;
+        
         try {
-            //只有管理员可查看
-            if ($memberId != 1) {
-                throw new Exception('无权查看', 209);
-            }
             if (empty($srch)) {
                 throw new Exception('传入参数错误', 210);
             }
 
-            $data = $this->_getTradeModel()->getMember($srch);
+            if ($memberId != 1) {
+                $ptype = intval(I('ptype'));
+                
+                if ($ptype && !in_array($ptype, [2, 99])) {
+                    throw new Exception('请选择要查看的授信账户类型', 220);
+                }
+                
+                $memberModel = new MemberRelationship($memberId);
+                
+                $field = ['distinct m.id as fid', 'm.account', 'm.dname'];
+                
+                $relation = $ptype ? ($ptype == '2' ? 1 : 0) : 2;
+                
+                $data = $memberModel->getRelevantMerchants($srch, $field, $relation, $limit);
+                
+            } else {
+                
+                $data = $this->_getTradeModel()->getMember($srch);
+                
+            }
 
             $data = is_array($data) ? $data : [];
 
@@ -169,7 +188,7 @@ class TradeRecord extends Controller
 ////            $this->getDetails();
 //            $this->srchMem();
 //        } else {
-            $this->apiReturn(213);
+        $this->apiReturn(213);
 //        }
     }
 
@@ -222,12 +241,12 @@ class TradeRecord extends Controller
     /**
      * 根据传入的form值输出结果
      *
-     * @param   int                         $form           数据格式    0-交易记录列表 1-导出excel表 2-交易记录统计
-     * @param   \Model\Finance\TradeRecord  $recordModel    交易记录模型
-     * @param   array                       $map            查询条件
-     * @param   int                         $page           当前页数
-     * @param   int                         $limit          每页行数
-     * @param   array                       $interval       起止时间段   [开始时间,结束时间]
+     * @param   int $form 数据格式    0-交易记录列表 1-导出excel表 2-交易记录统计
+     * @param   \Model\Finance\TradeRecord $recordModel 交易记录模型
+     * @param   array $map 查询条件
+     * @param   int $page 当前页数
+     * @param   int $limit 每页行数
+     * @param   array $interval 起止时间段   [开始时间,结束时间]
      *
      * @throws \Library\Exception
      */
@@ -271,8 +290,8 @@ class TradeRecord extends Controller
     /**
      * 解析支付类型
      *
-     * @param   string  $fid    分销商id
-     * @param   array   $map  查询条件
+     * @param   string $fid 分销商id
+     * @param   array $map 查询条件
      *
      * @return array
      */
@@ -328,9 +347,9 @@ class TradeRecord extends Controller
     /**
      * 解析时间参数
      *
-     * @param   string  [btime]     开始时间        yy-mm-dd hh:ii:ss
-     * @param   string  [etime]     结束时间        yy-mm-dd hh:ii:ss
-     * 
+     * @param   string [btime]     开始时间        yy-mm-dd hh:ii:ss
+     * @param   string [etime]     结束时间        yy-mm-dd hh:ii:ss
+     *
      * @return array|bool
      * @throws \Library\Exception
      */
@@ -347,9 +366,9 @@ class TradeRecord extends Controller
 
     /**
      * 解析交易大类
-     * 
-     * @param   int     [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
-     * @param   array   $map        查询条件
+     *
+     * @param   int [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
+     * @param   array $map 查询条件
      *
      * @return array
      * @throws \Library\Exception
@@ -386,8 +405,8 @@ class TradeRecord extends Controller
     /**
      * 解析交易类型
      *
-     * @param   string      $subtype        交易类型
-     * @param   array       $map            查询条件
+     * @param   string $subtype 交易类型
+     * @param   array $map 查询条件
      *
      * @return mixed
      * @throws \Library\Exception
@@ -416,9 +435,9 @@ class TradeRecord extends Controller
     }
 
     /**
-     * @param string    $timeTag        时间字段
-     * @param string    $defaultVal     绝对默认时间
-     * @param string    $postfix        相对默认时间：未传入时分秒时的默认时间
+     * @param string $timeTag 时间字段
+     * @param string $defaultVal 绝对默认时间
+     * @param string $postfix 相对默认时间：未传入时分秒时的默认时间
      * @return bool|mixed|string
      * @throws Exception
      */
@@ -458,9 +477,9 @@ class TradeRecord extends Controller
 
     /**
      * 按指定格式和指定顺序重排数组
-     * 
-     * @param   array   $data       数据
-     * @param   array   $format     格式：
+     *
+     * @param   array $data 数据
+     * @param   array $format 格式：
      * @return  array
      */
     static function array_recompose(array $data, array $format)

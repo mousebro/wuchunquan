@@ -118,4 +118,85 @@ class MemberRelationship extends Model
         print_r($str);
     }
 
+    /**
+     * 获取相关商家列表
+     *
+     * @param   string      $keywords      查询关键字
+     * @param   integer     $relation      会员关系     0-分销商 1-供应商 2-供应商和分销商
+     * @param   array       $field         返回字段
+     * @return  mixed
+     */
+    public function getRelevantMerchants($keywords, array $field = ['m.id'], $relation = 0, $limit = 20){
+
+        //输入少于4个字符的英文字符串: 不查询
+        if (preg_match("/^[a-zA-Z\s]+$/", $keywords) && strlen($keywords) < 4) {
+            return false;
+        }
+        
+        //初始化
+        $table = "{$this->memberRealtionTable} AS mr";
+        $where = [
+            'mr.son_id_type'     => 0,
+            'mr.ship_type'       => 0,
+            'mr.son_id'          => array('not in',['1',$this->memberID]),
+            'm.dtype'            => array('in',[0,1,7]),
+            'm.status'           => array('in',[0,3]),
+            'length(m.account)'  => 6,
+        ];
+        
+        //处理查询关键字
+        $param['m.dname'] = ['like', ':dname'];
+        $bind[':dname'] = '%' . $keywords . '%';
+
+        //关键字全为数字时查询对应会员ID
+        if (is_numeric($keywords)) {
+            $param['m.id'] = ':id';
+            $bind[':id'] = $keywords;
+            //关键字为6位数字时查询对应会员账号
+            if (strlen($keywords) == 6) {
+                $param['m.account'] = ':account';
+                $bind[':account'] = $keywords;
+            }
+        }
+       
+        if (count($bind) > 1) {
+            $param['_logic'] = 'or';
+        }
+        
+        $where['_complex'][] = $param;
+        
+        $select_distributor = [
+            'mr.parent_id'       => $this->memberID,
+            'mr.son_id'          => array('not in',['1',$this->memberID]),
+        ];
+        
+        $select_supplier = [
+            'mr.parent_id'      => array('not in',['1',$this->memberID]),
+            'mr.son_id'         => $this->memberID,
+        ];
+        
+        if($relation==0){
+            $where = array_merge($select_distributor);
+            $join_on = "mr.son_id = m.id";
+        }elseif($relation==1){
+            $where = array_merge($select_supplier);
+            $join_on = "mr.parent_id = m.id";
+        }else{
+            $where['_complex'][] = [$select_distributor,$select_supplier,'_logic'=>'or'];
+            $join_on = " ( mr.son_id = m.id OR mr.parent_id = m.id) ";
+        }
+       
+        $join = "INNER JOIN {$this->memberTable} AS m ON " . $join_on;
+        
+        $result = $this->table($table)
+            ->join($join)
+            ->where($where)
+            ->bind($bind)
+            ->field($field)
+            ->limit($limit)
+            ->select();
+        $this->logSql();
+        return $result;
+    }
+
 }
