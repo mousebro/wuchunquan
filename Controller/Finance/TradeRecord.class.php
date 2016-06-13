@@ -55,16 +55,16 @@ class TradeRecord extends Controller
     /**
      * 获取交易记录列表
      *
-     * @param   int [fid]       被查询的会员id  管理员账号用
-     * @param   string [orderid]   交易号
-     * @param   string [btime]     开始时间        yy-mm-dd hh:ii:ss
-     * @param   string [etime]     结束时间        yy-mm-dd hh:ii:ss
-     * @param   string [dtype]     交易类型        见 C('item_category')
-     * @param   int [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
-     * @param   int [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
-     * @param   int [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
-     * @param   int [page]      当前页数        返回给前端的页数比实际值多1
-     * @param   int [limit]     每页显示条数
+     * @param   int     [fid]       被查询的会员id  管理员账号用
+     * @param   string  [orderid]   交易号
+     * @param   string  [btime]     开始时间        yy-mm-dd hh:ii:ss
+     * @param   string  [etime]     结束时间        yy-mm-dd hh:ii:ss
+     * @param   string  [dtype]     交易类型        见 C('item_category')
+     * @param   int     [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
+     * @param   int     [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
+     * @param   int     [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
+     * @param   int     [page]      当前页数        返回给前端的页数比实际值多1
+     * @param   int     [limit]     每页显示条数
      */
     public function getList()
     {
@@ -74,19 +74,20 @@ class TradeRecord extends Controller
             self::logInput($memberId);
 
             $map = [];
+
             //被查询会员id
             $fid = intval(I('fid'));
 
-            //非管理员不能指定被查询对象
+            //fid=0时可查看所有会员记录
             if ($memberId == 1) {
                 $fid = $fid ?: 0;
-            } else {
-                $fid = $memberId;
+            }else{
+                $fid = $fid ?: $memberId;
             }
 
             //支付方式
-            $this->_parsePayType($fid, $map);
-            if (!isset($map['aid']) && !isset($map['fid']) && !isset($map['_complex']) && $memberId != 1) {
+            $this->_parsePayType($fid, $memberId, $map);
+            if (!isset($map['aid']) && !isset($map['fid'])) {
                 $map['fid'] = $fid;
             }
 
@@ -289,56 +290,41 @@ class TradeRecord extends Controller
 
     /**
      * 解析支付类型
-     *
-     * @param   string $fid 分销商id
-     * @param   array $map 查询条件
-     *
-     * @return array
+     * @param   string      $fid            被查询用户id
+     * @param   string      $memberId       当前用户id
+     * @param   array       $map            查询条件
+     * @return  bool|int
      */
-    private function _parsePayType($fid, &$map)
+    private function _parsePayType($fid, $memberId, &$map)
     {
-        //支付类型的值可能是0
-        if (!isset($_REQUEST['ptypes'])) {
-            return false;
-        }
-
         $ptypes = \safe_str(I('ptypes'));
 
-        if ('' == $ptypes) {
+        if (!is_numeric($ptypes)) {
             return false;
         }
-        $ptypes = explode('|', $ptypes);
 
-        $key = array_search(99, $ptypes);
+        $ptypes = intval($ptypes);
 
-        if (false !== $key) {
+        $map['ptype'] = in_array($ptypes,[2,99]) ? ['in', [2, 3]] : $ptypes;
 
-            $search_dist_credit = [
-                'ptype' => ['in', [2, 3]],
-                'aid' => $fid
-            ];
+        if($memberId == 1){
+            $member_tmp = $fid;
+            $fid_tmp = 0;
+        }else{
+            $member_tmp = $memberId;
+            $fid_tmp = $fid;
+        }
 
-            unset($ptypes[$key]);
-
-            if (count($ptypes) && $fid) {
-                $map['_complex'] = [
-                    $search_dist_credit,
-                    [
-                        'ptype' => ['in', $ptypes],
-                        'fid' => $fid
-                    ],
-                    '_logic' => 'or'
-                ];
-            } else if ($fid) {
-                $map = array_merge($search_dist_credit);
-            } else {
-                $ptypes = array_merge([2, 3], $ptypes);
-                $map['ptype'] = ['in', $ptypes];
+        //99-查看分销商授信账户
+        if($ptypes == 99){
+            $map['aid'] = $member_tmp;
+            if($fid_tmp){
+                $map['fid'] = $fid_tmp;
             }
-        } else {
-            $map['ptype'] = ['in', $ptypes];
-            if ($fid) {
-                $map['fid'] = $fid;
+        }else{
+            $map['fid'] = $member_tmp;
+            if($fid_tmp){
+                $map['aid'] = $fid_tmp;
             }
         }
         return $ptypes;
@@ -350,8 +336,8 @@ class TradeRecord extends Controller
      * @param   string [btime]     开始时间        yy-mm-dd hh:ii:ss
      * @param   string [etime]     结束时间        yy-mm-dd hh:ii:ss
      *
-     * @return array|bool
-     * @throws \Library\Exception
+     * @return  array|bool
+     * @throws  \Library\Exception
      */
     private function _parseTime()
     {
