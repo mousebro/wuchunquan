@@ -31,7 +31,7 @@ class SettleBlance extends Model{
      * @param $transferDate 转账日期，日结（几点），月结（几号），周结（周几）
      * @param $transferTime 转账时间，具体几点
      * @param $updateUid 配置修改用户ID
-     * @param $accountInfo 账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","account_name":"",acc_type":""}',
+     * @param $accountInfo 账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","account_name":"","acc_type":"","select_no":}',
      * @param $serviceFee 提现手续费
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      *
@@ -48,10 +48,12 @@ class SettleBlance extends Model{
         $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, 
             $freezeData);
 
-        if($data) {
+        $data['fid'] = $fid;
+
+        if(!$data) {
             return false;
         }
-
+        
         $res = $this->table($this->_settingTable)->add($data);
 
         return $res === false ? false : true;
@@ -75,17 +77,15 @@ class SettleBlance extends Model{
      *
      * @return bool
      */
-    public function updateSetting($id, $$mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee,
-            $freezeData = false) {
+    public function updateSetting($id, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData = false) {
         if(!$id) {
             return false;
         }
 
         //参数统一校验，格式化
-        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee
-            $freezeData);
+        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData);
 
-        if($data) {
+        if(!$data) {
             return false;
         }
 
@@ -160,20 +160,91 @@ class SettleBlance extends Model{
 
         $where = [];
         if($fid) {
-            $where['fid'] => intval($fid);
+            $where['fid'] = intval($fid);
         }
 
         if($mode) {
-            $where['mode'] => intval($mode);
+            $where['mode'] = intval($mode);
         }
 
         if($circleMark) {
-            $where['circle_mark'] => ['lt', intval($mode)];
+            $where['circle_mark'] = ['lt', intval($mode)];
         }
 
         $res = $this->table($this->_settingTable)->where($where)->page($page . ',' . $size)->select();
 
         return $res === false ? [] : $res;
+    }
+
+    /**
+     * 获取具体的配置信息
+     * @author dwer
+     * @date   2016-06-13
+     *
+     * @param  $id 记录ID
+     * @return 
+     */
+    public function getSettingInfo($id) {
+        if(!$id) {
+            return false;
+        }
+
+        $info = $this->table($this->_settingTable)->where(['id' => $id])->find();
+        return $info;
+    }
+
+    /**
+     * 获取最近一次的清分数据
+     * @author dwer
+     * @date   2016-06-13
+     *
+     * @param  $fid
+     * @return
+     */
+    public function getLastTransferInfo($fid) {
+        if(!$fid) {
+            return false;
+        }
+
+        $where = [
+            'is_transfer' => 1,
+            'status'      => 0,
+            'fid' => $fid
+        ];
+        $order = 'transfer_time,desc';
+
+        $info = $this->table($this->_recordTable)->where($where)->order($order)->find();
+        return $info;
+    }
+
+    /**
+     * 批量获取提现配置
+     * @author dwer
+     * @date   2016-06-13
+     *
+     * @param  $fidArr 用户ID数组
+     * @return
+     */
+    public function getSettingByFids($fidArr) {
+        if(!$fidArr || !is_array($fidArr)) {
+            return false;
+        }
+
+        $fidArr = array_filter($fidArr);
+
+        $field = '';
+        $where = [
+            'fid' => ['in', $fidArr]
+        ];
+
+        $tmp = $this->table($this->_settingTable)->where($where)->field($field)->select();
+
+        $res = [];
+        foreach($tmp as $item) {
+            $res[$item['fid']] = ['mode' => $item['mode'], 'service_fee' => $item['service_fee']];
+        }
+
+        return $res;
     }
 
     /**
@@ -352,7 +423,7 @@ class SettleBlance extends Model{
         $transferTime = intval($transferTime);
         $accountInfo  = json_encode($accountInfo);
         $serviceFee   = floatval($serviceFee);
-
+        
         if($freezeType == 2) {
             if(!$freezeData || !is_array($freezeData)) {
                 return false;

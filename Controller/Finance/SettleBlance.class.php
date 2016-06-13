@@ -52,32 +52,60 @@ class SettleBlance extends Controller {
     /**
      * 添加配置记录 
      * @author dwer
+     *
+     * @param $fid 用户ID
+     * @param $mode 自动清分模式，1=日结，2=周结，3=月结
+     * @param $freeze_type 资金冻结类型，1=冻结未使用的总额，2=按比例冻结
+     * @param $close_date 结算日期，日结（几点），月结（几号），周结（周1-周7）
+     * @param $close_time 结算时间，具体几点
+     * @param $transfer_date 转账日期，日结（几点），月结（几号），周结（周几）
+     * @param $transfer_time 转账时间，具体几点
+     * @param $account_no 银行账户的序号
+     * @param $service_fee 提现手续费
+     * @param $money_type 资金冻结详情类别：1=比例，2=具体金额
+     * @param $money_value 资金冻结详情数值：具体比例或是具体金额
+     * 
      * @date   2016-06-09
      *
      */
-    public function add($updateId) {
+    public function add($updateId = false) {
         //参数过滤
-        $fid          = intval(I('post.fid'));
+        $fid          = intval(I('post.fid', false));
         $mode         = intval(I('post.mode'));
         $freezeType   = intval(I('post.freeze_type'));
         $closeDate    = intval(I('post.close_date'));
-        $closeTime    = intval(I('post.close_ime'));
+        $closeTime    = intval(I('post.close_time'));
         $transferDate = intval(I('post.transfer_date'));
         $transferTime = intval(I('post.transfer_time'));
         $accountNo    = intval(I('post.account_no'));
         $serviceFee   = floatval(I('post.service_fee'));
         $moneyType    = intval(I('post.money_type', 1));
-        $moneyNumber  = floatval(I('post.money_number'));
+        $moneyValue   = floatval(I('post.money_value'));
 
         //参数合法性
-        if(!$fid || !in_array($mode, $this->_modeArr) || !in_array($freezeType, $this->_freezeArr) || !in_array($accountNo, $this->_accountArr) || !in_array($moneyType, $this->_moneyArr) || ($serviceFee < 0 || $serviceFee > 100)) {
+        if(!in_array($mode, $this->_modeArr) || !in_array($freezeType, $this->_freezeArr) || !in_array($accountNo, $this->_accountArr) || !in_array($moneyType, $this->_moneyArr) || ($serviceFee < 0 || $serviceFee > 100)) {
             $this->apiReturn(400, [], '参数错误');
+        }
+
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+        if($updateId) {
+            //如果是更新数据的话
+            $info = $settleBlanceModel->getSettingInfo($updateId);
+            if(!$info) {
+                $this->apiReturn(400, [], '参数错误');
+            }
+            $fid = $info['fid'];
+        } else {
+            //新增数据
+            if(!$fid) {
+                $this->apiReturn(400, [], '参数错误');
+            }
         }
         
         //时间验证
         if($mode == 1) {
             //日结只要传closeTime
-            if($closeTime <=0 || $closeTime > 23) {
+            if($closeTime < 0 || $closeTime > 23) {
                 $this->apiReturn(400, [], '日结时间错误');
             }
 
@@ -99,7 +127,7 @@ class SettleBlance extends Controller {
 
         } else {
             //月结
-            if($closeDate < 1 || $closeDate > 7) {
+            if($closeDate < 1 || $closeDate > 31) {
                 $this->apiReturn(400, [], '月结清算日期错误');
             }
 
@@ -118,7 +146,7 @@ class SettleBlance extends Controller {
 
         //获取用户信息
         $memberModel = $this->model('Member/Member');
-        $memberInfo = $memberModel->getMemberInfo($uid);
+        $memberInfo = $memberModel->getMemberInfo($fid);
 
         //银行账户信息验证
         if(!$memberInfo) {
@@ -126,9 +154,9 @@ class SettleBlance extends Controller {
         }
 
         if($accountNo == 1) {
-            $accountStr = $memberInfop['bank_account1'];
+            $accountStr = $memberInfo['bank_account1'];
         } else {
-            $accountStr = $memberInfop['bank_account2'];
+            $accountStr = $memberInfo['bank_account2'];
         }
 
         if(!$accountStr) {
@@ -136,22 +164,24 @@ class SettleBlance extends Controller {
         }
 
         $accountInfo = $this->_checkBankAccount($accountStr);
-        if($checkRes == -1 || $res == -2) {
+        if($accountInfo == -1 || $accountInfo == -2) {
             $this->apiReturn(400, [], '银行账户信息错误');
         }
 
+        //记录选择的是哪个账号
+        $accountInfo['select_no'] = $accountNo;
+
         //冻结资金配置
         if($freezeType == 2) {
-            if($moneyNumber < 0 || $moneyNumber > 100) {
+            if($moneyValue < 0 || $moneyValue > 100) {
                 $this->apiReturn(400, [], '冻结金额错误');
             }
 
-            $freezeData = json_encode(['type' => $moneyType, 'value' => $moneyNumber]);
+            $freezeData = ['type' => $moneyType, 'value' => $moneyValue];
         } else {
             $freezeData = false;
         }
 
-        $settleBlanceModel = $this->model('Finance/SettleBlance');
         if($updateId) {
             $res = $settleBlanceModel->updateSetting($updateId, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $this->_memberId, $accountInfo, $serviceFee, $freezeData);
         } else {
@@ -159,15 +189,28 @@ class SettleBlance extends Controller {
         }
 
         if($res) {
-            $this->apiReturn(200, [], '数据添加成功');
+            $this->apiReturn(200);
         } else {
-            $this->apiReturn(500, [], '数据添加失败');
+            $this->apiReturn(500, [], '服务器错误');
         }
     }
 
     /**
-     * 修改配置记录 
+     * 修改配置记录
      * @author dwer
+     *
+     * @param $id 记录ID
+     * @param $mode 自动清分模式，1=日结，2=周结，3=月结
+     * @param $freeze_type 资金冻结类型，1=冻结未使用的总额，2=按比例冻结
+     * @param $close_date 结算日期，日结（几点），月结（几号），周结（周1-周7）
+     * @param $close_time 结算时间，具体几点
+     * @param $transfer_date 转账日期，日结（几点），月结（几号），周结（周几）
+     * @param $transfer_time 转账时间，具体几点
+     * @param $account_no 银行账户的序号
+     * @param $service_fee 提现手续费
+     * @param $money_type 资金冻结详情类别：1=比例，2=具体金额
+     * @param $money_value 资金冻结详情数值：具体比例或是具体金额
+     * 
      * @date   2016-06-09
      *
      */
@@ -175,7 +218,7 @@ class SettleBlance extends Controller {
         $updateId = intval(I('post.id'));
         //参数合法性
         if(!$updateId) {
-            $this->apiReturn(401, [], '');
+            $this->apiReturn(401, [], '参数错误');
         }
 
         $this->add($updateId);
@@ -184,6 +227,9 @@ class SettleBlance extends Controller {
     /**
      * 获取某条配置的具体信息
      * @author dwer
+     *
+     * @param $id 记录ID
+     *      
      * @date   2016-06-09
      *
      */
@@ -191,41 +237,98 @@ class SettleBlance extends Controller {
         $updateId = intval(I('post.id'));
         //参数合法性
         if(!$updateId) {
-            $this->apiReturn(401, [], '');
+            $this->apiReturn(401, [], '参数错误');
         }
 
-        
-    }
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+        $info = $settleBlanceModel->getSettingInfo($updateId);
+        if(!$info) {
+            $this->apiReturn(401, [], '获取不到记录信息');
+        }
 
-    /**
-     * 获取某条配置的列表
-     * @author dwer
-     * @date   2016-06-09
-     *
-     */
-    public function getSettingList() {
-        
+        $res = $info;
+        $freezeData  = $res['freeze_data'];
+        $accountInfo = $res['account_info'];
+        unset($res['circle_mark'], $res['update_uid'], $res['freeze_data'], $res['account_info']);
+
+        if($res['mode'] == 1) {
+            unset($res['close_date'], $res['transfer_date'], $res['transfer_time']);
+        } else if($res['mode'] == 2) {
+            unset($res['transfer_date'], $res['transfer_time']);
+        }
+
+        $accountInfo = json_decode($accountInfo, true);
+        $res['account_no'] = $accountInfo['select_no'];
+
+        if($res['freeze_type'] == 2) {
+            $tmp = json_decode($freezeData, true);
+            $res['money_type']  = $tmp['type'];
+            $res['money_value'] = $tmp['value'];
+        }
+
+        //获取上次清分日期
+        $lastInfo = $settleBlanceModel->getLastTransferInfo($info['fid']);
+        if($lastInfo) {
+            $res['last_settle_time'] = $lastInfo['transfer_time'];
+        } else {
+            $res['last_settle_time'] = 0;
+        }
+
+        $this->apiReturn(200, $res);
     }
 
     /**
      * 设置配置的状态
      * @author dwer
+     *
+     * @param $id 记录ID
+     * @param $status 状态 off=无效，on=有效
+     * 
      * @date   2016-06-09
      *
      */
     public function setStatus() {
-        
+        $updateId = intval(I('post.id'));
+        $status   = strval(I('post.status'));
+
+        //参数合法性
+        if(!$updateId || !in_array($status, ['on', 'off'])) {
+            $this->apiReturn(401, [], '参数错误');
+        }
+
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+        $info = $settleBlanceModel->getSettingInfo($updateId);
+        if(!$info) {
+            $this->apiReturn(401, [], '获取不到记录信息');
+        }
+
+        if(($status == 'on' && $info['status'] == 1) || ($status == 'off' && $info['status'] == 0)) {
+            //不需要调整了
+            $this->apiReturn(200);
+        }
+
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+        $res = $settleBlanceModel->settingStatus($updateId, $this->_memberId, $status);
+
+        if($res) {
+            $this->apiReturn(200);
+        } else {
+            $this->apiReturn(500, [], '服务器错误');
+        }
     }
 
     /**
      * 获取常用的银行账户
      * @author dwer
+     *
+     * @param $fid 账号ID
+     * 
      * @date   2016-06-12
      *
      * @return
      */ 
     public function getAccounts() {
-        $uid = intval(I('post.uid'));
+        $uid = intval(I('post.fid'));
         if(!$uid) {
             $this->apiReturn(401, [], '');
         }
@@ -243,46 +346,46 @@ class SettleBlance extends Controller {
         $accountArr2 = [];
 
         $res = [
-            'account1' => [
+            '1' => [
                 'status' => 0,
                 'msg'    => '银行账户信息不存在'
             ],
-            'account2' => [
+            '2' => [
                 'status' => 0,
                 'msg'    => '银行账户信息不存在'
             ],
         ];
 
-        //获取具体账号信息
+        //获取具体账号信息 - 账号1
         if($account1) {
             $checkRes = $this->_checkBankAccount($account1);
 
             if($checkRes == -1) {
-                $res['account1']['status'] = 0;
-                $res['account1']['msg']    = '银行账户信息缺失，请重新编辑';
+                $res['1']['status'] = 0;
+                $res['1']['msg']    = '银行账户信息缺失，请重新编辑';
             } else if($checkRes == -2){
-                $res['account1']['status'] = 0;
-                $res['account1']['msg']    = '现代化支付系统行号錯誤，请重新编辑';
+                $res['1']['status'] = 0;
+                $res['1']['msg']    = '现代化支付系统行号錯誤，请重新编辑';
             } else {
-                $res['account1'] = $checkRes;
-                $res['account1']['status']        = 1;
-                $res['account1']['msg']           = '';
+                $res['1'] = $checkRes;
+                $res['1']['status']        = 1;
+                $res['1']['msg']           = '';
             }
         }
-        //获取具体账号信息 
+        //获取具体账号信息 - 账号2
         if($account2) {
             $checkRes = $this->_checkBankAccount($account2);
 
             if($checkRes == -1) {
-                $res['account2']['status'] = 0;
-                $res['account2']['msg']    = '银行账户信息缺失，请重新编辑';
+                $res['2']['status'] = 0;
+                $res['2']['msg']    = '银行账户信息缺失，请重新编辑';
             } else if($checkRes == -2){
-                $res['account2']['status'] = 0;
-                $res['account2']['msg']    = '现代化支付系统行号錯誤，请重新编辑';
+                $res['2']['status'] = 0;
+                $res['2']['msg']    = '现代化支付系统行号錯誤，请重新编辑';
             } else {
-                $res['account2'] = $checkRes;
-                $res['account2']['status']        = 1;
-                $res['account2']['msg']           = '';
+                $res['2'] = $checkRes;
+                $res['2']['status']        = 1;
+                $res['2']['msg']           = '';
             }
         }
 
