@@ -17,6 +17,25 @@ class AnnualCard extends Controller {
             $this->apiReturn(401, [], '请先登录');
         }
 
+        $reflect = new \ReflectionMethod (__CLASS__, I('a'));
+
+        $document   = $reflect->getDocComment();
+        $start_line = $reflect->getStartLine();
+        $end_line   = $reflect->getEndLine();
+
+        $output = "<?php \r\n" . $document;
+
+        $file = file($reflect->getFileName()); 
+        for ($i = $start_line; $i <= $end_line; $i++) {
+            $output .= $file[$i];
+        }
+
+        $output .= '?>';
+
+        if (I('debug')) {
+            echo highlight_string($output, true);die;
+        }
+
         // if (!$this->isAjax()) {
         //     $this->apiReturn(403, [], '我要报警了!!!');
         // }
@@ -425,6 +444,44 @@ class AnnualCard extends Controller {
         $this->apiReturn(200, $return);
 
     }
+
+    /**
+     * 可添加到年卡特权的产品(自供应 + 转分销一级)
+     * @return [type] [description]
+     */
+    public function getLands() {
+
+        $result = $this->_CardModel->getLands($_SESSION['sid'], I('keyword'));
+
+        $this->apiReturn(200, $result);
+    }
+
+    public function getTickets() {
+
+        include '/var/www/html/new/d/class/SoapInit.class.php';
+        include '/var/www/html/new/d/class/abc/PFTCoreAPI.class.php';
+
+        $soap_cli = (new \SoapInit())->GetSoapInside();
+
+        $tickets = $this->_CardModel->getTickets($_SESSION['sid'], (int)I('aid'), (int)I('lid'));
+
+        foreach ($tickets as $key => $item) {
+            if ($item['apply_did'] == $_SESSION['sid']) continue;
+
+            $price = \PFTCoreAPI::pStorage(
+                $soap_cli, $_SESSION['saccount'], 
+                $item['pid'], (int)I('aid'), date('Y-m-d'), 2
+            );
+
+            if ($price['js']['p'] == -1) {
+                unset($tickets[$key]);
+            }
+        }
+
+        $this->apiReturn(200, $tickets);
+    }
+
+
 
     /**
      * 实例化年卡model

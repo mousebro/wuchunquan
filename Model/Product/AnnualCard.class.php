@@ -10,10 +10,13 @@ use Model\Order\OrderTools;
 class AnnualCard extends Model
 {
 
-    const ANNUAL_CARD_TABLE         = 'pft_annual_card';    //卡片信息表
-    const CARD_CONFIG_TABLE         = 'pft_annual_card_conf';    //年卡激活配置表
-    const CARD_PRIVILEGE_TABLE      = 'pft_annual_card_privilege';    //年卡景区特权表
-    const PRODUCT_TABLE             = 'uu_products';        //产品信息表
+    const ANNUAL_CARD_TABLE         = 'pft_annual_card';            //卡片信息表
+    const CARD_CONFIG_TABLE         = 'pft_annual_card_conf';       //年卡激活配置表
+    const CARD_PRIVILEGE_TABLE      = 'pft_annual_card_privilege';  //年卡景区特权表
+    const PRODUCT_TABLE             = 'uu_products';                //产品信息表
+    const TICKET_TABLE              = 'uu_jq_ticket';               //门票信息表
+    const LAND_TABLE                = 'uu_land';                    //景区表
+    const SALE_LIST_TABLE           = 'pft_product_sale_list';      //一级转分销表
 
     public function __construct($parent_tid = 0)
     {
@@ -364,9 +367,59 @@ class AnnualCard extends Model
             return false;
         }
 
+    }
 
+    /**
+     * 可添加到年卡特权的产品(自供应 + 转分销一级)
+     * @return [type] [description]
+     */
+    public function getLands($sid, $keyword) {
+        $where = [
+            'fid'    => $sid, 
+            'status' => 0
+        ];
 
+        $evolute = $this->table(self::SALE_LIST_TABLE)->where($where)->field('pids')->select();
+        $evolute = $evolute ?: [];
+        
+        $pid_arr = [];
+        foreach ($evolute as $item) {
+            if ($item['pids'] && $item['pids'] != 'A') {
+                $pid_arr = array_merge($pid_arr, explode(',', $item['pids']));
+            }
+        }
 
+        $where = [
+            'p.id'          => ['in', implode(',', $pid_arr)],
+            'l.title'       => ['like', "%{$keyword}%"],
+            'p.p_status'    => 0,
+            'p.apply_limit' => 1,
+        ];
+
+        $lands = $this->table(self::LAND_TABLE)
+            ->join('l left join uu_products p on l.id=p.contact_id')
+            ->where($where)
+            ->field('distinct(l.id),l.title,l.apply_did')
+            ->select();
+
+        return $lands ?: [];
+    }
+
+    public function getTickets($sid, $aid, $lid) {
+
+        $where = [
+            't.landid'      => $lid,
+            'p.p_status'    => 0,
+            'p.apply_limit' => 1
+        ];
+
+        $tickets = $this->table(self::TICKET_TABLE)
+            ->join('t left join uu_products p on p.id=t.pid')
+            ->where($where)
+            ->field('t.id,t.title,t.pid,t.apply_did')
+            ->select();
+
+        return $tickets ?: [];
     }
     
 
