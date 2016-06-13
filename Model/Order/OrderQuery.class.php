@@ -353,7 +353,7 @@ class OrderQuery extends Model
         $where = [];
         $member = new Member();
         $dtype = $member->getMemberCacheById($op_id, 'dtype');
-        if ($dtype == 6) {//员工
+        if ($dtype == 6) {
             $where['op_id']   = $op_id;
         }
         else {
