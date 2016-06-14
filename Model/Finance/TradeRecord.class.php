@@ -18,6 +18,7 @@ class TradeRecord extends Model
     private $_product_table = 'uu_products';
     private $_trade_record_table = 'pft_member_journal';
     private $_ticket_table = "uu_jq_ticket";
+    private $_alipay_table = "pft_alipay_rec";
     private $parser;
 
     /**
@@ -195,35 +196,61 @@ class TradeRecord extends Model
     }
 
     /**
+     * 获取在线支付收款方/付款方账号
+     *
+     * @param string|array $orderId 订单号
+     *
+     * @return mixed
+     */
+    public function getPayerAccount($orderId){
+        if(!is_array($orderId)){
+            $orderId = [$orderId];
+        }
+        $table = $this->_alipay_table;
+        $where = ['out_trade_no' => ['in', $orderId]];
+        $field = [
+            "out_trade_no as ordernum",
+            "buyer_email as payer_acc",
+            "seller_email as payee_acc",
+        ];
+        $result = $this->table($table)->where($where)->getField($field,true);
+        $this->logSql();
+        return $result;
+    }
+    /**
      * 获取交易记录列表
      *
      * @param   array   $map    查询条件
      * @param   int     $page   当前页
      * @param   int     $limit  单页记录数
      *
-     * @return array
+     * @return  array
      */
     public function getList($map, $page, $limit)
     {
         $table = "{$this->_trade_record_table}";
 
         $field = [
+            'orderid',
             'id as trade_id',
             'fid',
             'rectime',
             'dtype',
-            'orderid',
             'dmoney',
             'daction',
             'lmoney',
             'ptype',
             'memo',
         ];
-
+        $field = join(',',$field);
         $order = 'id desc';
-        $records = $this->table($table)->field($field)->where($map)->page($page)->limit($limit)->order($order)->select();
+        $records = $this->table($table)->where($map)->page($page)->limit($limit)->order($order)->getField($field,true);
         //记录查询语句
         $this->logSql();
+
+        $orderId = array_filter(array_column($records,'orderid'));
+        $online_pay_info = $this->getPayerAccount($orderId);
+        $records = array_merge($records,$online_pay_info);
         $data = [];
         $parser = $this->_getParser();
         if (is_array($records)) {
@@ -354,5 +381,4 @@ class TradeRecord extends Model
 
         return $return;
     }
-    
 }

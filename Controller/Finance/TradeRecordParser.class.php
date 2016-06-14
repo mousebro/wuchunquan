@@ -86,7 +86,7 @@ class TradeRecordParser
         //收入支出
         if (isset($this->record['daction'])) {
             $this->record['dmoney'] = $this->record['daction'] == 0 ? $this->record['dmoney'] : ("-" . $this->record['dmoney']);
-            unset($this->record['daction']);
+            //unset($this->record['daction']);
         }
         return $this;
     }

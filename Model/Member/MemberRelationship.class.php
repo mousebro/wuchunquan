@@ -126,7 +126,7 @@ class MemberRelationship extends Model
      * @param   array       $field         返回字段
      * @return  mixed
      */
-    public function getRelevantMerchants($keywords, array $field = ['m.id'], $relation = 0, $limit = 20){
+    public function getRelevantMerchants($keywords, array $field = ['m.id'], $limit = 20, $relation = 2){
 
         //输入少于4个字符的英文字符串: 不查询
         if (preg_match("/^[a-zA-Z\s]+$/", $keywords) && strlen($keywords) < 4) {

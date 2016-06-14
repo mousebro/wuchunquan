@@ -14,13 +14,37 @@ class TradeRecord extends Controller
 {
     private $tradeModel;   //交易记录模型
 
+    private $memberId;
+
     public function __construct()
     {
         C(include __DIR__ . '/../../Conf/trade_record.conf.php');
+        $this->memberId = $this->isLogin('ajax');
         //if(ENV == 'DEVELOP'){
         //    ini_set('display_errors','on');
         //    error_reporting(E_ALL);
         //}
+    }
+
+    /**
+     * 按指定格式和指定顺序重排数组
+     *
+     * @param   array $data   数据
+     * @param   array $format 格式
+     *
+     * @return  array
+     */
+    static function array_recompose(array $data, array $format)
+    {
+        $format_data = array_flip($format);
+        foreach ($data as $key => $value) {
+            if (!in_array($key, $format)) {
+                continue;
+            }
+            $format_data[$key] = $data[$key];
+        }
+        return $format_data;
+
     }
 
     /**
@@ -31,9 +55,7 @@ class TradeRecord extends Controller
      */
     public function getDetails()
     {
-        $memberId = $this->isLogin('ajax');
-        self::logInput($memberId);
-        $recordModel = $this->_getTradeModel();
+        self::logInput($this->memberId);
 
         $trade_id = \safe_str(I('trade_id'));
 
@@ -41,9 +63,10 @@ class TradeRecord extends Controller
             $this->apiReturn(201, [], '传入参数不合法');
         }
 
-        $record = $recordModel->getDetails($trade_id);
+        $record = $this->_getTradeModel()->getDetails($trade_id);
+
         //无权查看时返回数据为空
-        if (isset($record['fid'], $record['aid']) && in_array($memberId, [1, $record['fid'], $record['aid']])) {
+        if (isset($record['fid'], $record['aid']) && in_array($this->memberId, [1, $record['fid'], $record['aid']])) {
             unset($record['fid'], $record['aid']);
         } else {
             $record = [];
@@ -55,38 +78,43 @@ class TradeRecord extends Controller
     /**
      * 获取交易记录列表
      *
-     * @param   int     [fid]       被查询的会员id  管理员账号用
-     * @param   string  [orderid]   交易号
-     * @param   string  [btime]     开始时间        yy-mm-dd hh:ii:ss
-     * @param   string  [etime]     结束时间        yy-mm-dd hh:ii:ss
-     * @param   string  [dtype]     交易类型        见 C('item_category')
-     * @param   int     [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
-     * @param   int     [ptypes]    支付类型        见 C('pay_type'); 多值以'|'分隔
-     * @param   int     [form]      数据格式        0-交易记录列表 1-导出excel表 2-交易记录统计
-     * @param   int     [page]      当前页数        返回给前端的页数比实际值多1
-     * @param   int     [limit]     每页显示条数
+     * @param   int    [fid]        被查询的会员id   管理员账号用
+     * @param   int    [partner_id] 供应商/分销商id  管理员账号用
+     *
+     * @param   string [orderid]    交易号
+     *
+     * @param   string [btime]      开始时间         yy-mm-dd hh:ii:ss
+     * @param   string [etime]      结束时间         yy-mm-dd hh:ii:ss
+     *
+     * @param   string [dtype]      交易类型         见 C('item_category')
+     * @param   int    [items]      交易大类         见 C('trade_item'); 多值以'|'分隔
+     * @param   int    [ptypes]     支付类型         见 C('pay_type'); 多值以'|'分隔
+     *
+     * @param   int    [form]       数据格式         0-交易记录列表 1-导出excel表 2-交易记录统计
+     *
+     * @param   int    [page]       当前页数         返回给前端的页数比实际值多1
+     * @param   int    [limit]      每页显示条数
      */
     public function getList()
     {
         try {
-            $memberId = $this->isLogin('ajax');
             //日志记录传入数据
-            self::logInput($memberId);
+            self::logInput($this->memberId);
 
             $map = [];
 
             //被查询会员id
             $fid = intval(I('fid'));
-
             //fid=0时可查看所有会员记录
-            if ($memberId == 1) {
-                $fid = $fid ?: 0;
-            }else{
-                $fid = $fid ?: $memberId;
-            }
+
+            $fid = ($this->memberId == 1) ? ($fid ?: 0) : $this->memberId;
+
+            $partner_id = intval(I('partner_id'));
+            $partner_id = $partner_id ?: 0;
+
 
             //支付方式
-            $this->_parsePayType($fid, $memberId, $map);
+            $this->_parsePayType($fid, $partner_id, $map);
             if (!isset($map['aid']) && !isset($map['fid'])) {
                 $map['fid'] = $fid;
             }
@@ -129,40 +157,72 @@ class TradeRecord extends Controller
     }
 
     /**
+     * 获取对方商户信息
+     *
+     * @param   string  [srch]  查询关键字
+     * @param   integer [limit] 单页限制数
+     *
+     */
+    public function getPartner()
+    {
+        $srch = \safe_str(I('srch'));
+        $limit = intval(I('limit')) ?: 20;
+
+        $memberModel = new MemberRelationship($this->memberId);
+
+        $field = ['distinct m.id as fid', 'm.account', 'm.dname'];
+
+        $data = $memberModel->getRelevantMerchants($srch, $field, $limit);
+
+        $data = $data ?: [];
+
+        $this->apiReturn(200, $data, '操作成功');
+    }
+
+    /**
+     * 记录接收数据日志
+     *
+     * @param $memberId
+     */
+    static function logInput($memberId = 'no_login')
+    {
+        $input = ['member' => $memberId, 'input' => I('param.')];
+        $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
+        $trace = debug_backtrace();
+        $caller = array_shift($trace);
+        $action = $caller['function'] ?: '';
+        \pft_log($prefix . 'input', $action . '|' . json_encode($input));
+    }
+
+    /**
      * 管理员模糊搜索会员
+     *
      * @param   string [srch]       会员名称/会员id/会员账号
      * @param   string [ptypes]     支付类型                0-查看当前用户授信; 1-查看分销商授信
      */
     public function srchMem()
     {
-        $memberId = $this->isLogin('ajax');
+        $this->memberId = $this->isLogin('ajax');
         $srch = \safe_str(I('srch'));
         $limit = intval(I('limit')) ?: 20;
-        
+
         try {
             if (empty($srch)) {
                 throw new Exception('传入参数错误', 210);
             }
 
-            if ($memberId != 1) {
+            if ($this->memberId != 1) {
                 $ptype = intval(I('ptype'));
-                
+
                 if ($ptype && !in_array($ptype, [2, 99])) {
                     throw new Exception('请选择要查看的授信账户类型', 220);
                 }
-                
-                $memberModel = new MemberRelationship($memberId);
-                
-                $field = ['distinct m.id as fid', 'm.account', 'm.dname'];
-                
-                $relation = $ptype ? ($ptype == '2' ? 1 : 0) : 2;
-                
-                $data = $memberModel->getRelevantMerchants($srch, $field, $relation, $limit);
-                
+
+
             } else {
-                
+
                 $data = $this->_getTradeModel()->getMember($srch);
-                
+
             }
 
             $data = is_array($data) ? $data : [];
@@ -176,8 +236,10 @@ class TradeRecord extends Controller
     }
 
     /**
-     * @url 下载excel http://www.12301.local/route/?c=Finance_TradeRecord&a=test&fid=57675&form=1&btime=2016-05-23 00:00:00
-     * @url 显示交易报表 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&fid=57675&form=0&btime=2016-05-23 00:00:00
+     * @url 下载excel http://www.12301.local/route/?c=Finance_TradeRecord&a=test&fid=57675&form=1&btime=2016-05-23
+     *      00:00:00
+     * @url 显示交易报表 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&fid=57675&form=0&btime=2016-05-23
+     *      00:00:00
      * @url 查看交易详情 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&trade_id=6483409
      * @url 查询会员 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&srch=技术部
      */
@@ -196,7 +258,7 @@ class TradeRecord extends Controller
     /**
      * 导出excel报表
      *
-     * @param array $data 数据
+     * @param array  $data     数据
      * @param string $filename 文件名
      */
     private function _exportExcel(array $data, $filename = '')
@@ -242,12 +304,12 @@ class TradeRecord extends Controller
     /**
      * 根据传入的form值输出结果
      *
-     * @param   int $form 数据格式    0-交易记录列表 1-导出excel表 2-交易记录统计
+     * @param   int                        $form        数据格式    0-交易记录列表 1-导出excel表 2-交易记录统计
      * @param   \Model\Finance\TradeRecord $recordModel 交易记录模型
-     * @param   array $map 查询条件
-     * @param   int $page 当前页数
-     * @param   int $limit 每页行数
-     * @param   array $interval 起止时间段   [开始时间,结束时间]
+     * @param   array                      $map         查询条件
+     * @param   int                        $page        当前页数
+     * @param   int                        $limit       每页行数
+     * @param   array                      $interval    起止时间段   [开始时间,结束时间]
      *
      * @throws \Library\Exception
      */
@@ -290,44 +352,50 @@ class TradeRecord extends Controller
 
     /**
      * 解析支付类型
-     * @param   string      $fid            被查询用户id
-     * @param   string      $memberId       当前用户id
-     * @param   array       $map            查询条件
-     * @return  bool|int
+     *
+     * @param string $fid       被查询用户id
+     * @param string $partnerId 当前用户id
+     * @param array  $map       查询条件
+     *
+     * @return bool|mixed|string
+     * @throws Exception
      */
-    private function _parsePayType($fid, $memberId, &$map)
+    private function _parsePayType($fid, $partnerId, &$map)
     {
-        $ptypes = \safe_str(I('ptypes'));
+        $ptype = \safe_str(I('ptypes'));
 
-        if (!is_numeric($ptypes)) {
+        if (!is_numeric($ptype)) {
             return false;
         }
 
-        $ptypes = intval($ptypes);
-
-        $map['ptype'] = in_array($ptypes,[2,99]) ? ['in', [2, 3]] : $ptypes;
-
-        if($memberId == 1){
-            $member_tmp = $fid;
-            $fid_tmp = 0;
-        }else{
-            $member_tmp = $memberId;
-            $fid_tmp = $fid;
+        if (in_array($ptype, [2, 99])) {
+            $map['ptype'] = ['in', [2, 3]];
+        } elseif ($ptype == 98) { //在线支付
+            $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
+            $map['ptype'] = ['in', array_keys($pay_types, 0)];
         }
 
-        //99-查看分销商授信账户
-        if($ptypes == 99){
-            $map['aid'] = $member_tmp;
-            if($fid_tmp){
-                $map['fid'] = $fid_tmp;
-            }
-        }else{
-            $map['fid'] = $member_tmp;
-            if($fid_tmp){
-                $map['aid'] = $fid_tmp;
+        if ($ptype == 99) {
+            $self = 'aid';
+            $other = 'fid';
+        } else {
+            $self = 'fid';
+            $other = 'aid';
+        }
+
+        if (!$fid && $this->memberId != 1) {
+            throw new Exception('无权限查看', 201);
+        } else {
+            if ($fid) {
+                $map[$self] = $fid;
             }
         }
-        return $ptypes;
+
+        if ($partnerId) {
+            $map[$other] = $partnerId;
+        }
+
+        return $ptype;
     }
 
     /**
@@ -353,8 +421,8 @@ class TradeRecord extends Controller
     /**
      * 解析交易大类
      *
-     * @param   int [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
-     * @param   array $map 查询条件
+     * @param         integer [items]     交易大类        见 C('trade_item'); 多值以'|'分隔
+     * @param   array $map    查询条件
      *
      * @return array
      * @throws \Library\Exception
@@ -392,7 +460,7 @@ class TradeRecord extends Controller
      * 解析交易类型
      *
      * @param   string $subtype 交易类型
-     * @param   array $map 查询条件
+     * @param   array  $map     查询条件
      *
      * @return mixed
      * @throws \Library\Exception
@@ -421,9 +489,10 @@ class TradeRecord extends Controller
     }
 
     /**
-     * @param string $timeTag 时间字段
-     * @param string $defaultVal 绝对默认时间
-     * @param string $postfix 相对默认时间：未传入时分秒时的默认时间
+     * @param   string $timeTag    时间字段
+     * @param   string $defaultVal 绝对默认时间
+     * @param   string $postfix    相对默认时间：未传入时分秒时的默认时间
+     *
      * @return bool|mixed|string
      * @throws Exception
      */
@@ -434,8 +503,10 @@ class TradeRecord extends Controller
         if ($time) {
             if (!strtotime($time)) {
                 throw new Exception('时间格式错误', 201);
-            } else if (strlen($time) < 11) {
-                $time .= ' ' . $postfix;
+            } else {
+                if (strlen($time) < 11) {
+                    $time .= ' ' . $postfix;
+                }
             }
         }
 
@@ -444,40 +515,5 @@ class TradeRecord extends Controller
         $time = date('Y-m-d H:i:s', strtotime($time));
 
         return $time;
-    }
-
-    /**
-     * 记录接收数据日志
-     *
-     * @param $memberId
-     */
-    static function logInput($memberId)
-    {
-        $input = ['member' => $memberId, 'input' => I('param.')];
-        $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
-        $trace = debug_backtrace();
-        $caller = array_shift($trace);
-        $action = $caller['function'] ?: '';
-        \pft_log($prefix . 'input', $action . '|' . json_encode($input));
-    }
-
-    /**
-     * 按指定格式和指定顺序重排数组
-     *
-     * @param   array $data 数据
-     * @param   array $format 格式：
-     * @return  array
-     */
-    static function array_recompose(array $data, array $format)
-    {
-        $format_data = array_flip($format);
-        foreach ($data as $key => $value) {
-            if (!in_array($key, $format)) {
-                continue;
-            }
-            $format_data[$key] = $data[$key];
-        }
-        return $format_data;
-
     }
 }
