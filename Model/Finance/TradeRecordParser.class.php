@@ -61,10 +61,36 @@ class TradeRecordParser
         foreach ($options as $key => $value) {
             if (array_key_exists($key, $this->record)) {
                 $this->record[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key], 'dname');
+                $this->record[$value] = !empty($this->record[$value]) ? $this->record[$value] : '';
             }
-            $this->record[$value] = !empty($this->record[$value]) ? $this->record[$value] : '';
-
         }
+            $pay_types = C('pay_type');
+            switch ($this->record['ptype']) {
+                case 0:
+                    $this->record['counter'] .= $this->record['counter'] ? "/平台账户" : "票付通/平台账户";
+                    break;
+                case 1:
+                    // no break;
+                case 4:
+                    // no break;
+                case 5:
+                    // no break;
+                case 6:
+                    // no break;
+                case 11:
+                    // no break;
+                    $pay_type = $pay_types[$this->record['ptype']][1];
+                    $this->record['counter'] .= empty($this->record['payer_acc']) ? "/$pay_type" : "/$pay_type（{$this->record['payer_acc']}）";
+                    break;
+                case 2:
+                    // no break;
+                case 3:
+                    $this->record['counter'] .= $_SESSION['sid'] == $this->record['aid'] ? '/(分销商)授信账户' : '/(供应商)授信账户';
+                    break;
+                default:
+                    break;
+            }
+
 
         return $this;
     }

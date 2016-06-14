@@ -352,26 +352,47 @@ class TradeRecord extends Controller
             default:
                 $map['ptype'] = $ptype;
         }
-
-        if ($ptype == 99) {
-            $self = 'aid';
-            $other = 'fid';
-        } else {
-            $self = 'fid';
-            $other = 'aid';
-        }
-
-        if (!$fid && $this->memberId != 1) {
-            throw new Exception('无权限查看', 201);
-        } else {
-            if ($fid) {
-                $map[$self] = $fid;
+        if($ptype==100){
+            if(!$partnerId){
+                $map['_complex'][] = [
+                    'aid' => $fid,
+                    'fid' => $fid,
+                    '_logic' => 'or',
+                ];
+            }else{
+                $map['_complex'][] = [
+                    [
+                        'aid' => $fid,
+                        'fid' => $partnerId,
+                    ],
+                    [
+                        'aid' => $partnerId,
+                        'fid' => $fid,
+                    ],
+                    '_logic' => 'or',
+                ];
             }
+        }else{
+            if ($ptype == 99) {
+                $self = 'aid';
+                $other = 'fid';
+            } else {
+                $self = 'fid';
+                $other = 'aid';
+            }
+            if (!$fid && $this->memberId != 1) {
+                throw new Exception('无权限查看', 201);
+            } else {
+                if ($fid) {
+                    $map[$self] = $fid;
+                }
+            }
+            if ($partnerId) {
+                $map[$other] = $partnerId;
+            }
+
         }
 
-        if ($partnerId) {
-            $map[$other] = $partnerId;
-        }
         return $ptype;
     }
 

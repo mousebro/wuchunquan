@@ -250,6 +250,7 @@ class TradeRecord extends Model
             'orderid',
             'id as trade_id',
             'fid',
+            'aid',
             'rectime',
             'dtype',
             'dmoney',
