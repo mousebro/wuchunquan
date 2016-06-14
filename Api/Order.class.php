@@ -97,15 +97,16 @@ class Order extends Controller
         $ordernum       = I('post.ordernum');
         $pay_total_fee  = I('post.total_fee') + 0;
         $pay_channel    = 4;
-        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付
+        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付  11--拉卡拉（商户），12--拉卡拉（平台）
         $pay_to_pft     = false;
         $tradeno        = I('post.tradeno');//流水号
         $pay_conf       = include '/var/www/html/Service/Conf/pay.conf.php';
         $pay_account    = I('post.pay_account');
         if ($pay_account!='' && in_array($pay_account, $pay_conf['pft']['lakala'])) {
             $pay_to_pft = true;
+            $sourceT    = 7;//平台拉卡拉
         }
-        if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6) {
+        if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6 && $sourceT !=7) {
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，支付方式不对');
         }
         if (empty($ordernum)) {
