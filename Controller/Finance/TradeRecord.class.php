@@ -324,7 +324,7 @@ class TradeRecord extends Controller
      * 解析支付类型
      *
      * @param string $fid       被查询用户id
-     * @param string $partnerId 当前用户id
+     * @param string $partnerId 合作商家id
      * @param array  $map       查询条件
      *
      * @return bool|mixed|string
@@ -348,7 +348,7 @@ class TradeRecord extends Controller
                 $map['ptype'] = ['in', array_keys($pay_types, 0)];
                 break;
             case 100:
-                return false;
+                break;
             default:
                 $map['ptype'] = $ptype;
         }
@@ -372,7 +372,6 @@ class TradeRecord extends Controller
         if ($partnerId) {
             $map[$other] = $partnerId;
         }
-
         return $ptype;
     }
 
