@@ -241,7 +241,12 @@ class SettleBlance extends Model{
 
         $res = [];
         foreach($tmp as $item) {
-            $res[$item['fid']] = ['mode' => $item['mode'], 'service_fee' => $item['service_fee']];
+            $res[$item['fid']] = [
+                                    'id'   => $item['id'],
+                                    'mode' => $item['mode'],
+                                    'service_fee' => $item['service_fee'], 
+                                    'status' => $item['status'] == 1 ? 'on' : 'off'
+                                ];
         }
 
         return $res;
