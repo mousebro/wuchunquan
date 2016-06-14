@@ -275,8 +275,8 @@ class TradeRecord extends Model
             ->page($page)
             ->limit($limit)
             ->order($order)
-            ->getField($field, true);
-
+            ->field($field)
+            ->select();
         $this->logSql();
 
         if (is_array($records) && count($records)) {
@@ -289,8 +289,8 @@ class TradeRecord extends Model
         $data = [];
         $parser = $this->_getParser();
         if (is_array($records)) {
-            foreach ($records as $orderid => $record) {
-
+            foreach ($records as $record) {
+                $orderid = $record['orderid'];
                 if (is_array($online_pay_info) && array_key_exists($orderid, $online_pay_info)) {
                     $record = array_merge($record, $online_pay_info[$orderid]);
                 }
