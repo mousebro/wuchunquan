@@ -10,6 +10,7 @@ namespace Model\Finance;
 use Controller\Finance\TradeRecordParser;
 //use Library\Exception;
 use Library\Model;
+
 //use Model\Member\Member;
 
 class TradeRecord extends Model
@@ -23,6 +24,7 @@ class TradeRecord extends Model
 
     /**
      * 获取交易记录转换实例
+     *
      * @return TradeRecordParser
      */
     private function _getParser()
@@ -46,7 +48,8 @@ class TradeRecord extends Model
         $join = [
             "LEFT JOIN {$this->_order_table} AS o ON o.ordernum = tr.orderid",
             "LEFT JOIN {$this->_ticket_table} AS t ON o.tid = t.id",
-            "LEFT JOIN {$this->_product_table} AS p ON p.id = t.pid"
+            "LEFT JOIN {$this->_product_table} AS p ON p.id = t.pid",
+            "LEFT JOIN {$this->_alipay_table} AS a ON a.out_trade_no=o.ordernum",
         ];
 
         $field = [
@@ -64,33 +67,41 @@ class TradeRecord extends Model
             'o.ordermode as order_channel',        //交易渠道
             'o.tnum',
             'p.p_name',
+            'a.buyer_email as payer_acc'
 
         ];
         $where = ['tr.id' => $trade_id];
         $record = $this->table($table)->field($field)->where($where)->join($join)->find();
         //记录查询语句
         $this->logSql();
-        if (is_array($record)) {
-            return $this->_getParser()
-                ->setRecord($record)
-                ->parseTradeType()
-                ->parseTradeContent()
-                ->parseMember()
-                ->parseMoney()
-                ->parsePayType()
-                ->parseChannel()
-                ->parsePayee()
-                ->getRecord();
-        } else {
+        if (!is_array($record) || !$record) {
             return false;
         }
+        if (isset($record['ptype']) && C('pay_type')[$record['ptype']][3] == 0) {
+            $payAcc = $this->getPayerAccount($record['orderid']);
+            if (is_array($payAcc)) {
+                $record = array_merge($record, $payAcc[$record['orderid']]);
+            }
+        }
+
+        return $this->_getParser()
+            ->setRecord($record)
+            ->parsePayer()
+            ->parseTradeType()
+            ->parseTradeContent()
+            ->parseMember()
+            ->parseMoney()
+            ->parsePayType()
+            ->parseChannel()
+            ->parsePayee()
+            ->getRecord();
 
     }
 
     /**
      * 获取excel数据
      *
-     * @param   array   $map    查询条件
+     * @param   array $map 查询条件
      *
      * @return  array
      */
@@ -119,13 +130,13 @@ class TradeRecord extends Model
         $this->logSql();
 
         if (!$records || !is_array($records)) {
-            return false;
+            return [];
 
         } else {
-            $orderid = array_filter(array_column($records, 'orderid')); //过滤空值
+            $orderid = array_unique(array_filter(array_column($records, 'orderid'))); //过滤空值
 
             $extInfo = $this->getExtendInfo($orderid);
-
+            $payAcc = $this->getPayerAccount($orderid);
             if (is_array($extInfo)) {
 
                 $tid = array_unique(array_column($extInfo, 'tid'));
@@ -150,6 +161,12 @@ class TradeRecord extends Model
                 }
             }
 
+            if (is_array($payAcc) && $ordernum && array_key_exists($ordernum, $payAcc)) {
+                if (array_key_exists($orderid, $payAcc)) {
+                    $record = array_merge($record, $payAcc[$ordernum]);
+                }
+            }
+
             $record['order_channel'] = isset($record['order_channel']) ? $record['order_channel'] : '平台';
 
             $record['body'] = isset($record['body']) ? $record['body'] : '';
@@ -169,7 +186,7 @@ class TradeRecord extends Model
     /**
      * 获取订单信息：辅助交易内容的获取
      *
-     * @param   string  $orderId    交易号/订单号
+     * @param   string $orderId 交易号/订单号
      *
      * @return  mixed
      */
@@ -202,28 +219,33 @@ class TradeRecord extends Model
      *
      * @return mixed
      */
-    public function getPayerAccount($orderId){
-        if(!is_array($orderId)){
+    public function getPayerAccount($orderId)
+    {
+        if (empty($orderId)) {
+            return [];
+        }
+        if (!is_array($orderId)) {
             $orderId = [$orderId];
         }
         $table = $this->_alipay_table;
         $where = ['out_trade_no' => ['in', $orderId]];
         $field = [
-            "out_trade_no as ordernum",
+            "out_trade_no as orderid",
             "buyer_email as payer_acc",
             "seller_email as payee_acc",
         ];
-        $field = implode(',',$field);
-        $result = $this->table($table)->where($where)->getField($field,true);
+        $field = implode(',', $field);
+        $result = $this->table($table)->where($where)->getField($field, true);
         $this->logSql();
         return $result;
     }
+
     /**
      * 获取交易记录列表
      *
-     * @param   array   $map    查询条件
-     * @param   int     $page   当前页
-     * @param   int     $limit  单页记录数
+     * @param   array $map   查询条件
+     * @param   int   $page  当前页
+     * @param   int   $limit 单页记录数
      *
      * @return  array
      */
@@ -243,25 +265,35 @@ class TradeRecord extends Model
             'ptype',
             'memo',
         ];
-        $field = join(',',$field);
+
+        $field = join(',', $field);
+
         $order = 'id desc';
-        $records = $this->table($table)->where($map)->page($page)->limit($limit)->order($order)->getField($field,true);
-        //记录查询语句
+
+        $records = $this->table($table)
+            ->where($map)
+            ->page($page)
+            ->limit($limit)
+            ->order($order)
+            ->getField($field, true);
+
         $this->logSql();
-        if(is_array($records) && count($records)){
-            $orderId = array_filter(array_column($records,'orderid'));
-            if(is_array($orderId) && count($orderId)){
-                $online_pay_info = $this->getPayerAccount($orderId);
-                if(is_array($online_pay_info)){
-                    $records = array_merge($records,$online_pay_info);
-                }
-            }
+
+        if (is_array($records) && count($records)) {
+            $orderIds = array_filter(array_column($records, 'orderid'));
+            $online_pay_info = $this->getPayerAccount($orderIds);
+        } else {
+            return [];
         }
 
         $data = [];
         $parser = $this->_getParser();
         if (is_array($records)) {
-            foreach ($records as $record) {
+            foreach ($records as $orderid => $record) {
+
+                if (is_array($online_pay_info) && array_key_exists($orderid, $online_pay_info)) {
+                    $record = array_merge($record, $online_pay_info[$orderid]);
+                }
                 $data[] = $parser->setRecord($record)
                     ->parseMember()
                     ->parseMoney()
@@ -288,8 +320,8 @@ class TradeRecord extends Model
     /**
      * 获取会员列表
      *
-     * @param   string  $keywords   查询关键字
-     * @param   int     $limit  返回记录条数
+     * @param   string $keywords 查询关键字
+     * @param   int    $limit    返回记录条数
      *
      * @return mixed
      */
@@ -308,7 +340,7 @@ class TradeRecord extends Model
 
         if (is_numeric($keywords)) {
             $where['_complex']['id'] = ':id';
-            $bind[':id'] = $keywords ;
+            $bind[':id'] = $keywords;
 
             if (strlen($keywords) >= 4) {
                 $where['_complex']['account'] = ':account';
@@ -319,7 +351,7 @@ class TradeRecord extends Model
         if (count($bind) > 1) {
             $where['_complex']['_logic'] = 'or';
         }
-        $where['dtype'] = ['in','0,1,7'];
+        $where['dtype'] = ['in', '0,1,7'];
         $field = ['id as fid', 'account', 'dname'];
         $return = $this->table('pft_member')
             ->bind($bind)
@@ -331,11 +363,11 @@ class TradeRecord extends Model
 
         return $return;
     }
-    
+
     /**
      * 根据票类id获取产品名称
      *
-     * @param int   $tid    门票id
+     * @param int $tid 门票id
      *
      * @return mixed
      */
@@ -356,33 +388,33 @@ class TradeRecord extends Model
     /**
      *  获取统计记录
      *
-     * @param   array     $map  查询条件
+     * @param   array $map 查询条件
      *
      * @return  array
      */
     public function getSummary($map)
     {
-        $table      = "{$this->_trade_record_table}";
-        $where      = [];
+        $table = "{$this->_trade_record_table}";
+        $where = [];
 
-        $where      = array_merge($where, $map);
+        $where = array_merge($where, $map);
         $income_map = $outcome_map = $where;
 
-        $income_map['daction']  = 0;
+        $income_map['daction'] = 0;
         $outcome_map['daction'] = 1;
 
-        $income     = $this->table($table)->where($income_map)->getField('sum(dmoney)');
+        $income = $this->table($table)->where($income_map)->getField('sum(dmoney)');
         $this->logSql();
-        $outcome    = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
+        $outcome = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
         $this->logSql();
-        $income     = $income ? $income : 0;
-        $outcome    = $outcome ? $outcome : 0;
-        $balance    = strval(round(($income - $outcome) / 100, 2));
-        $income     = strval(round($income / 100, 2));
-        $outcome    = strval(round($outcome / 100, 2));
-        $return     = [
+        $income = $income ? $income : 0;
+        $outcome = $outcome ? $outcome : 0;
+        $balance = strval(round(($income - $outcome) / 100, 2));
+        $income = strval(round($income / 100, 2));
+        $outcome = strval(round($outcome / 100, 2));
+        $return = [
             'balance' => $balance,
-            'income'  => $income,
+            'income' => $income,
             'outcome' => $outcome,
         ];
 

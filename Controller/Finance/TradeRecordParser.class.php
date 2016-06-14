@@ -48,11 +48,6 @@ class TradeRecordParser
      */
     public function parseMember()
     {
-
-        if (null == $this->memberModel) {
-            $this->memberModel = new Member();
-        }
-
         $options = [
             'fid' => 'member',
             'aid' => 'counter',
@@ -65,7 +60,7 @@ class TradeRecordParser
 
         foreach ($options as $key => $value) {
             if (array_key_exists($key, $this->record)) {
-                $this->record[$value] = $this->memberModel->getMemberCacheById($this->record[$key], 'dname');
+                $this->record[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key], 'dname');
             }
             $this->record[$value] = !empty($this->record[$value]) ? $this->record[$value] : '';
 
@@ -166,5 +161,29 @@ class TradeRecordParser
             $this->record['payee_type'] = C('payee_type')[$this->record['payee_type']];
         }
         return $this;
+    }
+    /**
+     * 转换收款方账号
+     */
+    public function parsePayer(){
+        if(array_key_exists('payer_acc', $this->record)){
+            if(!($this->record['payer_acc'])){
+                $this->record['payer_acc']='';
+            }
+            if($this->record['ptype']==0){
+                $this->record['payer_acc'] = $this->getMemberModel()->getMemberCacheById($this->record['fid'], 'account');
+            }
+        }
+        return $this;
+    }
+    /**
+     * @return mixed
+     */
+    public function getMemberModel()
+    {
+        if(!isset($this->memberModel)){
+            $this->memberModel = new Member();
+        }
+        return $this->memberModel;
     }
 }

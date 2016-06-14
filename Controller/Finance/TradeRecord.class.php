@@ -116,15 +116,16 @@ class TradeRecord extends Controller
             //支付方式
             $this->_parsePayType($fid, $partner_id, $map);
 
+            //时段
+            $interval = $this->_parseTime();
+            $map['rectime'] = array('between', $interval);
+
             //订单号
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
                 $map['orderid'] = $orderid;
+                unset($map['rectime']);
             }
-
-            //时段
-            $interval = $this->_parseTime();
-            $map['rectime'] = array('between', $interval);
 
             //交易大类
             $subtype = $this->_parseTradeCategory($map);
