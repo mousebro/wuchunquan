@@ -55,8 +55,6 @@ class TradeRecord extends Controller
      */
     public function getDetails()
     {
-        self::logInput($this->memberId);
-
         $trade_id = \safe_str(I('trade_id'));
 
         if (!$trade_id) {
@@ -98,9 +96,6 @@ class TradeRecord extends Controller
     public function getList()
     {
         try {
-            //日志记录传入数据
-            self::logInput($this->memberId);
-
             $map = [];
 
             //被查询会员id
@@ -175,21 +170,6 @@ class TradeRecord extends Controller
         $data = $data ?: [];
 
         $this->apiReturn(200, $data, '操作成功');
-    }
-
-    /**
-     * 记录接收数据日志
-     *
-     * @param $memberId
-     */
-    static function logInput($memberId = 'no_login')
-    {
-        $input = ['member' => $memberId, 'input' => I('param.')];
-        $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
-        $trace = debug_backtrace();
-        $caller = array_shift($trace);
-        $action = $caller['function'] ?: '';
-        \pft_log($prefix . 'input', $action . '|' . json_encode($input));
     }
 
     /**

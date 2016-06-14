@@ -6,7 +6,7 @@
  * Description: 将交易记录转化为可读数据
  */
 
-namespace Controller\Finance;
+namespace Model\Finance;
 
 use Library\Exception;
 use Model\Member\Member;

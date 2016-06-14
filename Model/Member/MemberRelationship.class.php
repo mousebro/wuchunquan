@@ -195,7 +195,6 @@ class MemberRelationship extends Model
             ->field($field)
             ->limit($limit)
             ->select();
-        $this->logSql();
         return $result;
     }
 

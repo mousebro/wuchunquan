@@ -7,11 +7,8 @@
 
 namespace Model\Finance;
 
-use Controller\Finance\TradeRecordParser;
-//use Library\Exception;
 use Library\Model;
 
-//use Model\Member\Member;
 
 class TradeRecord extends Model
 {
@@ -72,8 +69,7 @@ class TradeRecord extends Model
         ];
         $where = ['tr.id' => $trade_id];
         $record = $this->table($table)->field($field)->where($where)->join($join)->find();
-        //记录查询语句
-        $this->logSql();
+
         if (!is_array($record) || !$record) {
             return false;
         }
@@ -127,7 +123,6 @@ class TradeRecord extends Model
         $order = 'id asc';
 
         $records = $this->table($table)->field($field)->where($map)->order($order)->select();
-        $this->logSql();
 
         if (!$records || !is_array($records)) {
             return [];
@@ -207,7 +202,6 @@ class TradeRecord extends Model
         $field = implode(',', $field);
         $where = ['ordernum' => ['in', $orderId]];
         $orderInfo = $this->table($table)->where($where)->getField($field, true);
-        $this->logSql();
 
         return $orderInfo;
     }
@@ -236,7 +230,6 @@ class TradeRecord extends Model
         ];
         $field = implode(',', $field);
         $result = $this->table($table)->where($where)->getField($field, true);
-        $this->logSql();
         return $result;
     }
 
@@ -277,7 +270,6 @@ class TradeRecord extends Model
             ->order($order)
             ->field($field)
             ->select();
-        $this->logSql();
 
         if (is_array($records) && count($records)) {
             $orderIds = array_filter(array_column($records, 'orderid'));
@@ -359,7 +351,6 @@ class TradeRecord extends Model
             ->field($field)
             ->limit($limit)
             ->select();
-        $this->logSql();
 
         return $return;
     }
@@ -380,8 +371,6 @@ class TradeRecord extends Model
         $join = "{$this->_ticket_table} AS t ON p.id=t.pid";
         $where = ['t.id' => ['in', $tid]];
         $result = $this->table($table)->where($where)->join($join)->getField('t.id AS tid,p.p_name', true);
-        $this->logSql();
-
         return $result;
     }
 
@@ -404,9 +393,8 @@ class TradeRecord extends Model
         $outcome_map['daction'] = 1;
 
         $income = $this->table($table)->where($income_map)->getField('sum(dmoney)');
-        $this->logSql();
         $outcome = $this->table($table)->where($outcome_map)->getField('sum(dmoney)');
-        $this->logSql();
+
         $income = $income ? $income : 0;
         $outcome = $outcome ? $outcome : 0;
         $balance = strval(round(($income - $outcome) / 100, 2));
