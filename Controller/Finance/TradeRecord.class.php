@@ -210,17 +210,9 @@ class TradeRecord extends Controller
             }
 
             if ($this->memberId != 1) {
-                $ptype = intval(I('ptype'));
-
-                if ($ptype && !in_array($ptype, [2, 99])) {
-                    throw new Exception('请选择要查看的授信账户类型', 220);
-                }
-
-
+                throw new Exception('没有查询权限', 210);
             } else {
-
                 $data = $this->_getTradeModel()->getMember($srch);
-
             }
 
             $data = is_array($data) ? $data : [];
@@ -366,13 +358,19 @@ class TradeRecord extends Controller
             return false;
         }
 
-        if (in_array($ptype, [2, 99])) {
-            $map['ptype'] = ['in', [2, 3]];
-        } elseif ($ptype == 98) { //在线支付
-            $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
-            $map['ptype'] = ['in', array_keys($pay_types, 0)];
-        }else{
-            $map['ptype'] = $ptype;
+        switch($ptype){
+            case 2: //no break;
+            case 99:
+                $map['ptype'] = ['in', [2, 3]];
+                break;
+            case 98:
+                $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
+                $map['ptype'] = ['in', array_keys($pay_types, 0)];
+                break;
+            case 100:
+                return false;
+            default:
+                $map['ptype'] = $ptype;
         }
 
         if ($ptype == 99) {
