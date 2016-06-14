@@ -253,6 +253,24 @@ class SettleBlance extends Model{
     }
 
     /**
+     * 根据参数获取具体清分和清算的时间
+     * @author dwer
+     * @date   2016-06-14
+     *
+     * @param  $mode 模式
+     * @param  $settleTime 清算时间
+     * @param  $settleDate 清算日期
+     * @param  $transferTime 清分时间
+     * @param  $transferDate 清分日期
+     * @return
+     */
+    public function createSettleTime($mode, $settleTime, $settleDate = false, $transferTime = false, $transferDate = false) {
+
+
+        return ['settle_time' => 1, 'transfer_time' => 2];
+    }
+
+    /**
      * 创建打款记录
      * @author dwer
      * @date   2016-06-08
@@ -313,7 +331,7 @@ class SettleBlance extends Model{
             'fid'            => $fid,
             'freeze_money'   => $freezeMoney,
             'transfer_money' => $transferMoney,
-            'is_settle'      => 0,
+            'is_settle'      => 1,
             'is_transfer'    => 0,
             'update_time'    => time()
         ];

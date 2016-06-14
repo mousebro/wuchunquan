@@ -30,15 +30,44 @@ class SettleBlance extends Controller {
      * @return 
      */
     public function generateTransRecord() {
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+
         //获取日结的记录
         $dayMark = date('Ymd');
+        $dayList = $settleBlanceModel->getSettingList(1, 100, false, 1, $dayMark);
+        foreach($dayList as $item) {
+            $timeArr = $settleBlanceModel->createSettleTime();
+
+
+            $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $cycleMark);
+
+            $settleBlanceModel->updateCircle($id, $dayMark)
+        }
 
         //获取周结的记录
         $weekMark = date('Y02W');
+        $dayList = $settleBlanceModel->getSettingList(1, 100, false, 2, $weekMark);
+        foreach($dayList as $item) {
+            $timeArr = $settleBlanceModel->createSettleTime();
+
+
+            $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $cycleMark);
+
+            $settleBlanceModel->updateCircle($id, $weekMark)
+        }
+
 
         //获取月结的记录
         $montyMark = date('Y01m');
+        $dayList = $settleBlanceModel->getSettingList(1, 100, false, 3, $montyMark);
+        foreach($dayList as $item) {
+            $timeArr = $settleBlanceModel->createSettleTime();
 
+
+            $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $cycleMark);
+
+            $settleBlanceModel->updateCircle($id, $montyMark)
+        }
         
     }
 
@@ -50,7 +79,15 @@ class SettleBlance extends Controller {
      * @return 
      */
     public function runSettleTask() {
-        
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+
+        $settleList = $settleBlanceModel->getSettleList(1, 100);
+        foreach($settleList as $item) {
+            //清算金额
+
+            $res = $settleBlanceModel->updateSettleInfo($id, $freezeMoney, $transferMoney, $remark);
+        }
+
     }
 
     /**
@@ -61,6 +98,16 @@ class SettleBlance extends Controller {
      * @return
      */
     public function runTransTask() {
-        
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+
+        $transferList = $settleBlanceModel->getTransferList(1, 100);
+        foreach($transferList as $item) {
+            //调用自动提现的接口
+            
+
+            //更新数据
+            $settleBlanceModel->updateTransferInfo($id, $status);
+        }
+
     }
 }
