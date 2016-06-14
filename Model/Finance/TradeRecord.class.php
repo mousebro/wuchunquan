@@ -283,7 +283,7 @@ class TradeRecord extends Model
             $orderIds = array_filter(array_column($records, 'orderid'));
             $online_pay_info = $this->getPayerAccount($orderIds);
         } else {
-            return [];
+            return false;
         }
 
         $data = [];
