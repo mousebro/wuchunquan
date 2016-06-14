@@ -115,9 +115,6 @@ class TradeRecord extends Controller
 
             //支付方式
             $this->_parsePayType($fid, $partner_id, $map);
-            if (!isset($map['aid']) && !isset($map['fid'])) {
-                $map['fid'] = $fid;
-            }
 
             //订单号
             $orderid = \safe_str(I('orderid'));
@@ -373,6 +370,8 @@ class TradeRecord extends Controller
         } elseif ($ptype == 98) { //在线支付
             $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
             $map['ptype'] = ['in', array_keys($pay_types, 0)];
+        }else{
+            $map['ptype'] = $ptype;
         }
 
         if ($ptype == 99) {

@@ -213,6 +213,7 @@ class TradeRecord extends Model
             "buyer_email as payer_acc",
             "seller_email as payee_acc",
         ];
+        $field = implode(',',$field);
         $result = $this->table($table)->where($where)->getField($field,true);
         $this->logSql();
         return $result;
@@ -247,10 +248,16 @@ class TradeRecord extends Model
         $records = $this->table($table)->where($map)->page($page)->limit($limit)->order($order)->getField($field,true);
         //记录查询语句
         $this->logSql();
+        if(is_array($records) && count($records)){
+            $orderId = array_filter(array_column($records,'orderid'));
+            if(is_array($orderId) && count($orderId)){
+                $online_pay_info = $this->getPayerAccount($orderId);
+                if(is_array($online_pay_info)){
+                    $records = array_merge($records,$online_pay_info);
+                }
+            }
+        }
 
-        $orderId = array_filter(array_column($records,'orderid'));
-        $online_pay_info = $this->getPayerAccount($orderId);
-        $records = array_merge($records,$online_pay_info);
         $data = [];
         $parser = $this->_getParser();
         if (is_array($records)) {
