@@ -164,8 +164,8 @@ class TradeRecord extends Model
 
             $data[] = $parser->setRecord($record)
                 ->parseTradeType('|')
-                ->parseMember('#')
-                ->parseMoney()
+                ->parseMember(false,true)
+                ->parseMoney(true)
                 ->parsePayType()
                 ->parseChannel()
                 ->parsePayee()

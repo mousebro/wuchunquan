@@ -52,23 +52,26 @@ class TradeRecordParser
      *
      * @return $this
      */
-    public function parseMember($separator='<br>')
+    public function parseMember($separator='<br>',$excel = false)
     {
-        $memberId = $_SESSION['sid'];
         $options['opid'] = 'oper';
 
-        if (isset($this->record['aid']) && $memberId == $this->record['aid']) {
+        if (isset($this->record['aid']) && $_SESSION['sid'] == $this->record['aid']) {
             $options['aid'] = 'member';
             $options['fid'] = 'counter';
-            $partnerId = $this->record['fid'];
         } else {
             $options['aid'] = 'counter';
             $options['fid'] = 'member';
-            $partnerId = $this->record['aid'];
         }
 
-        $this->record['partner_acc'] = $partnerId ? $this->getMemberModel()->getMemberCacheById($partnerId,
+        $partnerId = $this->record['aid'];
+        $memberId = $this->record['fid'];
+
+        $partner_acc = $partnerId ? $this->getMemberModel()->getMemberCacheById($partnerId,
             'account') : '';
+        $member_acc  = $memberId ? $this->getMemberModel()->getMemberCacheById($memberId,
+            'account') : '';
+
 
         foreach ($options as $key => $value) {
             if (array_key_exists($key, $this->record) && $this->record[$key]) {
@@ -78,20 +81,23 @@ class TradeRecordParser
         }
 
         $pay_types = C('pay_type');
-
         switch ($this->record['ptype']) {
             //平台账户
             case 0:
                 $this->record['counter'] = $this->record['counter'] ?: '票付通信息科技';
-                if (!empty($this->record['partner_acc'])) {
-                    $this->record['counter'] .= $separator . $this->record['partner_acc'];
+                if($this->record['daction']==0){
+                    $this->record['payer_acc'] = $partner_acc;
+                    $this->record['payee_acc'] = $member_acc;
+                }else{
+                    $this->record['payer_acc'] = $member_acc;
+                    $this->record['payee_acc'] = $partner_acc;
                 }
+                $partner_info = ($_SESSION['sid'] == $this->record['fid']) ? $partner_acc : $member_acc;
                 break;
             //在线支付
             case 1:
-                $pay_type = $pay_types[$this->record['ptype']][1];
-                $this->record['counter'] .= $this->record['counter'] ? "/$pay_type" : "$pay_type";
-                $this->record['counter'] .= $this->record['payer_acc'] ? "（{$this->record['payer_acc']}）" : "";
+                $partner_info = $pay_types[$this->record['ptype']][1];
+                $partner_info .= $this->record['payer_acc'] ? "（{$this->record['payer_acc']}）" : "";
                 break;
             case 4:
                 // no break;
@@ -101,17 +107,31 @@ class TradeRecordParser
                 // no break;
             case 11:
                 // no break;
-                $pay_type = $pay_types[$this->record['ptype']][1];
-                $this->record['counter'] .= $this->record['counter'] ? "/$pay_type" : "$pay_type";
+            $partner_info = $pay_types[$this->record['ptype']][1];
                 break;
             // 授信账户
             case 2:
                 // no break;
             case 3:
-                $this->record['counter'] .= $separator . (($memberId == $this->record['aid']) ? '(分销商)授信账户' : '(供应商)授信账户');
-                break;
+                $partner_info = ($_SESSION['sid'] == $this->record['fid']) ? '(供应商)授信账户' : '(分销商)授信账户';
+            if($this->record['daction']==0){
+                $this->record['payer_acc'] = $partner_acc;
+                $this->record['payee_acc'] = $member_acc;
+            }else{
+                $this->record['payer_acc'] = $member_acc;
+                $this->record['payee_acc'] = $partner_acc;
+            }
+            break;
             default:
                 break;
+        }
+
+        if($separator && isset($partner_info)){
+            $this->record['counter'] = ltrim($this->record['counter'] . $separator . $partner_info,$separator);
+        }
+        if($excel){
+            self::wrapStr($this->record['payer_acc']);
+            self::wrapStr($this->record['payee_acc']);
         }
         return $this;
     }
@@ -119,12 +139,16 @@ class TradeRecordParser
     /**
      * 转换金额
      */
-    public function parseMoney()
+    public function parseMoney($excel= false)
     {
         $options = ['dmoney', 'lmoney'];
         foreach ($options as $money) {
             $this->record[$money] = strval(sprintf($this->record[$money] / 100, 2));
+            if($excel){
+                self::wrapStr($this->record[$money]);
+            }
         }
+        
         //收入支出
         if (isset($this->record['daction'])) {
             $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
@@ -166,7 +190,9 @@ class TradeRecordParser
     {
         if (isset($this->record['ptype'])) {
             $ptype = $this->record['ptype'];
-
+            if(in_array($ptype,[0,2,3]) && !empty($this->record['trade_no'])){
+                $this->record['trade_no'] = '';
+            }
             $ptype_list = C('pay_type');
             if (array_key_exists($ptype, $ptype_list)) {
                 $this->record['ptype'] = $ptype_list[$ptype][1];
@@ -238,5 +264,14 @@ class TradeRecordParser
             $this->memberModel = new Member();
         }
         return $this->memberModel;
+    }
+
+    /**
+     * 将excel表中的数值型转成字符串型
+     * @param $string
+     */
+    static function wrapStr(&$string){
+        $string = '<td style="vnd.ms-excel.numberformat:@">' . $string  . '</td>';
+
     }
 }
