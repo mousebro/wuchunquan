@@ -95,28 +95,6 @@ class SettleBlance extends Model{
     }
 
     /**
-     * 修改上次更新的周期标识
-     * @author dwer
-     * @date   2016-06-08
-     *
-     * @param  $id 记录ID
-     * @param  $circleMark 上次更新的周期标识，日（20160612）-月（20160104）-周（20160238）
-     * @return
-     */
-    public function updateCircle($id, $circleMark) {
-        $circleMark = intal($circleMark);
-        if(!$id || !$circleMark) {
-            return false;
-        }
-
-        $where = ['id' => $id];
-        $data = ['circel_mark' => $circleMark];
-
-        $res = $this->table($this->_settingTable)->where($where)->save($data);
-        return $res === false ? false : true;
-    }
-
-    /**
      * 更改配置的状态
      * @author dwer
      * @date   2016-06-08
@@ -158,7 +136,7 @@ class SettleBlance extends Model{
         $page = intval($page);
         $size = intval($size);
 
-        $where = [];
+        $where = ['status' => 1];
         if($fid) {
             $where['fid'] = intval($fid);
         }
@@ -168,10 +146,11 @@ class SettleBlance extends Model{
         }
 
         if($circleMark) {
-            $where['circle_mark'] = ['lt', intval($mode)];
+            $where['cycle_mark'] = ['LT', intval($circleMark)];
         }
+        $field = 'id, fid, mode, close_time, close_date, transfer_time, transfer_date';
 
-        $res = $this->table($this->_settingTable)->where($where)->page($page . ',' . $size)->select();
+        $res = $this->table($this->_settingTable)->field($field)->where($where)->page($page . ',' . $size)->select();
 
         return $res === false ? [] : $res;
     }
@@ -257,17 +236,71 @@ class SettleBlance extends Model{
      * @author dwer
      * @date   2016-06-14
      *
-     * @param  $mode 模式
+     * @param  $mode 模式 1=日结，2=周结，3=月结
      * @param  $settleTime 清算时间
      * @param  $settleDate 清算日期
      * @param  $transferTime 清分时间
      * @param  $transferDate 清分日期
      * @return
      */
-    public function createSettleTime($mode, $settleTime, $settleDate = false, $transferTime = false, $transferDate = false) {
+    public function createSettleTime($mode, $circleMark, $settleTime, $settleDate = false, $transferTime = false, $transferDate = false) {
+        //时间处理
+        $year      = substr($circleMark, 0, 4);
+        $twoMark   = substr($circleMark, 4, 2); //日结的时候是月,周结的时候是固定的'02',月结的时候是固定的'01'
+        $threeMark = substr($circleMark, 6, 2); //日结的时候是日，周结的时候是第几周,月结的时候具体几月份
 
+        if($mode == 1) {
+            //日结
+            $settleTime = intval($settleTime);
+            $settleTime = ($settleTime < 0 || $settleTime > 23) ? 1 : $settleTime;
 
-        return ['settle_time' => 1, 'transfer_time' => 2];
+            //2016-10-23 23:00:00
+            $tmpTime = $year . '-' . $twoMark . '-' . $threeMark  . " {$settleTime}:00:00";
+
+            $resSettleTime      = $tmpTime;
+            $resTransferTime    = $tmpTime;
+
+        } else if($mode == 2){
+            //周结
+
+            //时间处理
+            $settleTime = intval($settleTime);
+            $settleDate = intval($settleDate);
+            $settleTime = ($settleTime < 0 || $settleTime > 23) ? 1 : $settleTime;
+
+            //日期处理
+            $needDay = $this->_getDateFromWeekNum($year, $threeMark, $settleDate);
+            $tmpTime = $needDay  . " {$settleTime}:00:00";
+
+            $resSettleTime      = $tmpTime;
+            $resTransferTime    = $tmpTime;
+
+        } else {
+            //月结
+
+            //时间处理
+            $settleTime = intval($settleTime);
+            $settleTime = ($settleTime < 0 || $settleTime > 23) ? 1 : $settleTime;
+
+            $transferTime = intval($transferTime);
+            $transferTime = ($transferTime < 0 || $transferTime > 23) ? 1 : $transferTime;
+
+            //日期处理
+            $settleDate = intval($settleDate);
+            $settleDate = ($settleDate < 1 || $settleDate > 31) ? 28 : $settleDate;
+
+            $transferDate = intval($transferDate);
+            $transferDate = ($transferDate < 1 || $transferDate > 31) ? 28 : $transferDate;
+
+            //有些月份里面没有29, 30, 31号，就在这里处理
+            $settleDateTmp = $this->_getRealDate($threeMark, $settleDate, $year);
+            $transferDateTmp = $this->_getRealDate($threeMark, $transferDate, $year);
+
+            $resSettleTime   = $settleDateTmp . " {$settleTime}:00:00";
+            $resTransferTime = $transferDateTmp . " {$transferTime}:00:00";
+        }
+
+        return ['settle_time' => $resSettleTime, 'transfer_time' => $resTransferTime];
     }
 
     /**
@@ -286,21 +319,40 @@ class SettleBlance extends Model{
             return falsel;
         }
         
-        $settleTime   = intval($settleTime);
-        $transferTime = intval($transferTime);
+        $settleTime   = strval($settleTime);
+        $transferTime = strval($transferTime);
         $cycleMark    = intval($cycleMark);
 
         $data = [
             'fid'           => $fid,
             'settle_time'   => $settleTime,
             'transfer_time' => $transferTime,
-            'circle_mark'   => $cycleMark,
+            'cycle_mark'   => $cycleMark,
             'update_time'   => time()
         ];
 
-        $res = $this->table($this->_recordTable)->add($data);
+        //在这边开启事务
+        $this->startTrans();
 
-        return $res === false ? false : true;
+        $res = $this->table($this->_recordTable)->add($data);
+        if(!$res) {
+            $this->rollback();
+            return false;
+        }
+
+        //修改上次更新的周期标识
+        $where = ['fid' => $fid];
+        $data  = ['cycle_mark' => $cycleMark];
+
+        $res = $this->table($this->_settingTable)->where($where)->save($data);
+
+        if($res === false) {
+            $this->rollback();
+            return false;
+        } else {
+            $this->commit();
+            return true;
+        }
     }
 
     /**
@@ -477,6 +529,65 @@ class SettleBlance extends Model{
         }
 
         return $data;
+    }
+
+    /**
+     * 根据第几周获取这一周的第几天的日期
+     * @author dwer
+     * @date   2016-06-15
+     *
+     * @param  $year 几年
+     * @param  $weekNum 第几周
+     * @param  $dayOfWeek 周几 1-7
+     * @return
+     */
+    private function _getDateFromWeekNum($year, $weekNum, $dayOfWeek = 1) {
+        $year      = intval($year);
+        $weekNum   = intval($weekNum);
+        $dayOfWeek = intval($dayOfWeek);
+        $weekNum   = $weekNum < 1 ? 1 : $weekNum;
+        $dayOfWeek = ($dayOfWeek <= 1 || $dayOfWeek <=7) ? $dayOfWeek : 1;
+
+        //获取第一周的第一天的日期
+        $startDate = $year . "-01-01";
+        $startTime = strtotime($startDate);
+
+        if (intval(date('N', $startTime)) != 1) {
+            //如果新年的第一天不是周一
+            $startTime = strtotime("next monday", strtotime($startDate));
+        }
+
+        //今天第一天的日期
+        $firstDay = date("Y-m-d", $startTime);
+
+        //指定周第一天的日期
+        $tmpNum       = $weekNum - 1;
+        $weekFirstDay = date("Y-m-d", strtotime("$firstDay {$tmpNum} week "));
+
+        //获取具体星期几的日期
+        $tmpNum = $dayOfWeek - 1;
+        $needDay = date('Y-m-d', strtotime("$weekFirstDay {$tmpNum} day"));
+
+        return $needDay;
+    }
+
+    /**
+     * 检测日期是不是存在，如果不存在往后退，找到最近的一天
+     * @author dwer
+     * @date   2016-06-15
+     *
+     * @param  int $month 月
+     * @param  int $day 日
+     * @param  int $year 年
+     * @return 具体日期
+     */
+    private function _getRealDate($month, $day, $year) {
+        $res = checkdate($month, $day, $year);
+        if($res) {
+            return $year . '-' . $month . '-' . $day;
+        } else {
+            return $this->_getRealDate($month, --$day, $year);
+        }
     }
 
 

@@ -1,4 +1,4 @@
-<?php if(!defined('PFT_CLI')) {exit('Access Deny');}
+<?php
 /**
  * 用户余额清分后台配置控制器
  * 清分模型：1=日结，2=周结，3=月结
@@ -9,15 +9,19 @@
  * @date 2016-01-20 
  * 
  */
-
 namespace Controller\cli;
 use Library\Controller;
 
+//权限判断
+if(!defined('PFT_CLI')) {
+    exit('Access Deny');
+}
+
 class SettleBlance extends Controller {
     
-    public function __construct() }{
-        //做下运行模式的判断
-
+    public function __construct() {
+        //运行时间不做限制
+        set_time_limit(0);
     }
 
     /**
@@ -30,45 +34,86 @@ class SettleBlance extends Controller {
      * @return 
      */
     public function generateTransRecord() {
+        //日结
+        $this->runDaySettle();
+
+        //周结
+        $this->runWeekSettle();
+
+        //月结
+        $this->runMonthSettle();
+    }
+
+    /**
+     * 检测生成日结清分记录
+     * @author dwer
+     * @date   2016-06-15
+     *
+     * @return 
+     */
+    public function runDaySettle() {
         $settleBlanceModel = $this->model('Finance/SettleBlance');
 
         //获取日结的记录
         $dayMark = date('Ymd');
-        $dayList = $settleBlanceModel->getSettingList(1, 100, false, 1, $dayMark);
+        $dayList = $settleBlanceModel->getSettingList(1, 200, false, 1, $dayMark);
         foreach($dayList as $item) {
-            $timeArr = $settleBlanceModel->createSettleTime();
+            $timeArr = $settleBlanceModel->createSettleTime($item['mode'], $dayMark, $item['close_time']);
 
+            $settleTime   = strtotime($timeArr['settle_time']);
+            $transferTime = strtotime($timeArr['transfer_time']);
+            $fid          = $item['fid'];
 
-            $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $cycleMark);
-
-            $settleBlanceModel->updateCircle($id, $dayMark)
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $dayMark);
         }
+    }
+
+    /**
+     * 检测生成周结清分记录
+     * @author dwer
+     * @date   2016-06-15
+     *
+     * @return 
+     */
+    public function runWeekSettle() {
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
 
         //获取周结的记录
         $weekMark = date('Y02W');
-        $dayList = $settleBlanceModel->getSettingList(1, 100, false, 2, $weekMark);
+        $dayList = $settleBlanceModel->getSettingList(1, 200, false, 2, $weekMark);
         foreach($dayList as $item) {
-            $timeArr = $settleBlanceModel->createSettleTime();
+            $timeArr = $settleBlanceModel->createSettleTime($item['mode'], $weekMark, $item['close_time'], $item['close_date']);
 
+            $settleTime   = strtotime($timeArr['settle_time']);
+            $transferTime = strtotime($timeArr['transfer_time']);
+            $fid          = $item['fid'];
 
-            $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $cycleMark);
-
-            $settleBlanceModel->updateCircle($id, $weekMark)
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $weekMark);
         }
+    }
 
+    /**
+     * 检测生成月结清分记录
+     * @author dwer
+     * @date   2016-06-15
+     *
+     * @return 
+     */
+    public function runMonthSettle() {
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
 
         //获取月结的记录
         $montyMark = date('Y01m');
-        $dayList = $settleBlanceModel->getSettingList(1, 100, false, 3, $montyMark);
+        $dayList = $settleBlanceModel->getSettingList(1, 200, false, 3, $montyMark);
         foreach($dayList as $item) {
-            $timeArr = $settleBlanceModel->createSettleTime();
+            $timeArr = $settleBlanceModel->createSettleTime($item['mode'], $montyMark, $item['close_time'], $item['close_date'], $item['transfer_time'], $item['transfer_date']);
 
+            $settleTime   = strtotime($timeArr['settle_time']);
+            $transferTime = strtotime($timeArr['transfer_time']);
+            $fid          = $item['fid'];
 
-            $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $cycleMark);
-
-            $settleBlanceModel->updateCircle($id, $montyMark)
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $montyMark);
         }
-        
     }
 
     /**
