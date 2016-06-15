@@ -768,8 +768,8 @@ if (!function_exists('curl_post')) {
      */
     function curl_post($url,$postData, $port=80, $timeout=15, $logPath='/api/curl_post.log', $http_headers=[]) {
         $ch = curl_init();
-        $basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
-        $logPath = $basePath . $logPath;
+        //$basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
+        $logPath = BASE_LOG_DIR . str_replace(BASE_LOG_DIR, '',$logPath);
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_PORT, $port);
         curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
@@ -790,6 +790,7 @@ if (!function_exists('curl_post')) {
         if ($errCode > 0) {
             //记录日志
             $logData = json_encode(array(
+                'url'      => $url,
                 'err_code' => $errCode,
                 'err_msg'  => curl_error($ch)
             ));
@@ -803,6 +804,7 @@ if (!function_exists('curl_post')) {
             if($httpCode != 200) {
                 //接口错误
                 $logData = json_encode(array(
+                    'url'      => $url,
                     'err_code' => $httpCode,
                     'err_msg'  => $res
                 ));
