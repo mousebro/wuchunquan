@@ -56,7 +56,7 @@ class TradeRecordParser
     {
         $options['opid'] = 'oper';
 
-        if (isset($this->record['aid']) && $_SESSION['sid'] == $this->record['aid']) {
+        if (isset($this->record['aid']) && $_SESSION['sid'] == $this->record['aid'] && $_SESSION != 1) {
             $options['aid'] = 'member';
             $options['fid'] = 'counter';
         } else {
@@ -92,7 +92,7 @@ class TradeRecordParser
                     $this->record['payer_acc'] = $member_acc;
                     $this->record['payee_acc'] = $partner_acc;
                 }
-                $partner_info = ($_SESSION['sid'] == $this->record['fid']) ? $partner_acc : $member_acc;
+                $partner_info = ($_SESSION['sid'] == $this->record['fid'] || $_SESSION['sid'] == 1) ? $partner_acc : $member_acc;
                 break;
             //在线支付
             case 1:

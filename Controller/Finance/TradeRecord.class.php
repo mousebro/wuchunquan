@@ -182,7 +182,7 @@ class TradeRecord extends Controller
     {
         $this->memberId = $this->isLogin('ajax');
         $srch = \safe_str(I('srch'));
-        $limit = intval(I('limit')) ?: 20;
+        //$limit = intval(I('limit')) ?: 20;
 
         try {
             if (empty($srch)) {
@@ -349,27 +349,29 @@ class TradeRecord extends Controller
                 $map['ptype'] = $ptype;
         }
         if ($ptype == 100) {
-            if (!$partnerId) {
-                $map['_complex'][] = [
-                    [
-                        'aid' => $fid,
-                        'ptype' => ['in', '2,3'],
-                    ],
-                    'fid' => $fid,
-                    '_logic' => 'or',
-                ];
-            } else {
-                $map['_complex'][] = [
-                    [
-                        'aid' => $fid,
-                        'fid' => $partnerId,
-                    ],
-                    [
-                        'aid' => $partnerId,
+            if($fid){
+                if (!$partnerId) {
+                    $map['_complex'][] = [
+                        [
+                            'aid' => $fid,
+                            'ptype' => ['in', '2,3'],
+                        ],
                         'fid' => $fid,
-                    ],
-                    '_logic' => 'or',
-                ];
+                        '_logic' => 'or',
+                    ];
+                } else {
+                    $map['_complex'][] = [
+                        [
+                            'aid' => $fid,
+                            'fid' => $partnerId,
+                        ],
+                        [
+                            'aid' => $partnerId,
+                            'fid' => $fid,
+                        ],
+                        '_logic' => 'or',
+                    ];
+                }
             }
         } else {
             if ($ptype == 99) {
