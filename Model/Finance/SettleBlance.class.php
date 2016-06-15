@@ -11,6 +11,7 @@
  */
 namespace Model\Finance;
 use Library\Model;
+use Model\Member\Member as Member;
 
 class SettleBlance extends Model{
     //自动清分配置表
@@ -149,8 +150,9 @@ class SettleBlance extends Model{
             $where['cycle_mark'] = ['LT', intval($circleMark)];
         }
         $field = 'id, fid, mode, close_time, close_date, transfer_time, transfer_date';
+        $order = 'update_time desc';
 
-        $res = $this->table($this->_settingTable)->field($field)->where($where)->page($page . ',' . $size)->select();
+        $res = $this->table($this->_settingTable)->field($field)->order($order)->where($where)->page($page . ',' . $size)->select();
 
         return $res === false ? [] : $res;
     }
@@ -163,7 +165,7 @@ class SettleBlance extends Model{
      * @param  $id 记录ID
      * @return 
      */
-    public function getSettingInfo($id) {
+    public function info($id) {
         if(!$id) {
             return false;
         }
@@ -436,10 +438,13 @@ class SettleBlance extends Model{
             'status'      => 0,
             'is_settle'   => 0,
             'is_transfer' => 0,
-            'settle_time' => ['gt', time()]
+            'settle_time' => ['ELT', time()]
         ];
 
-         $res = $this->table($this->_recordTable)->where($where)->page($page . ',' . $size)->select();
+        $field = 'fid, cycle_mark';
+        $order = 'update_time asc';
+
+         $res = $this->table($this->_recordTable)->where($where)->field($field)->order($order)->page($page . ',' . $size)->select();
 
          return $res === false ? [] : $res;
     }
@@ -590,5 +595,68 @@ class SettleBlance extends Model{
         }
     }
 
+    /**
+     * 清算账号信息
+     * @author dwer
+     * @date   2016-06-15
+     *
+     * @param  $fid
+     * @return
+     */
+    public function settleAmount($fid) {
+        if(!$fid) {
+            return false;
+        }
 
+        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('freeze_type, freeze_data, service_fee, status')->find();
+        if(!$settingInfo) {
+            return false;
+        }
+
+        //判断如果状态是关闭的，就终止清算的工作
+        if($settingInfo['status'] == 0) {
+            return -1;
+        }
+
+        $freezeType = $settingInfo['freeze_type'];
+        $freezeData = $settingInfo['freeze_data'];
+        $serviceFee = $settingInfo['service_fee'];
+
+        //获取账号余额
+        $memberModel = new Member();
+        $amoney = $memberModel->getMoney($fid, 0);
+        if($amoney <= 0) {
+            return -2;
+        }
+
+        if($freezeType == 1) {
+            //冻结未使用的总额
+            
+
+        } else {
+            //按比例或是固定金额冻结
+            $freezeData = @json_decode($freezeData, true);
+            if(!$freezeData || !is_array($freezeData)) {
+                return false;
+            }
+
+            $type  = intval($freezeData['type']);
+            $value = floatval($freezeData['value']);
+            if($type == 1) {
+                //比例
+
+
+            } else {
+                //固定金额
+                $freezeMoney = $value * 100;//转化为分
+                if($freezeMoney >= $amoney) {
+                    return -3;
+                }
+
+                $transferMoney = $amoney - $freezeMoney;
+
+            }
+
+        }
+    }
 }

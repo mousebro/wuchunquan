@@ -199,7 +199,7 @@ class Member extends Model
      * @param int $aid 供应商ID dmode>0必须
      * @return mixed
      */
-    private function getMoney($mid, $dmode, $aid=0)
+    public function getMoney($mid, $dmode, $aid=0)
     {
         if ($dmode==0) {
             return $this->table('pft_member_money')

@@ -129,6 +129,9 @@ class SettleBlance extends Controller {
         $settleList = $settleBlanceModel->getSettleList(1, 100);
         foreach($settleList as $item) {
             //清算金额
+            $fid = $item['fid'];
+            $settleInfo = $settleBlanceModel->_settleAmount($fid);
+            
 
             $res = $settleBlanceModel->updateSettleInfo($id, $freezeMoney, $transferMoney, $remark);
         }
