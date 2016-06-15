@@ -18,7 +18,9 @@ class TradeRecordParser
 
     /**
      * 传入交易记录
+     *
      * @param array $record
+     *
      * @return $this
      * @throws Exception
      */
@@ -34,6 +36,7 @@ class TradeRecordParser
 
     /**
      * 获取解析结果
+     *
      * @return array
      */
     public function getRecord()
@@ -49,60 +52,64 @@ class TradeRecordParser
     public function parseMember()
     {
         $memberId = $_SESSION['sid'];
+        $options['opid'] = 'oper';
 
-        if (isset($this->record['aid']) &&  $memberId == $this->record['aid']) {
+        if (isset($this->record['aid']) && $memberId == $this->record['aid']) {
             $options['aid'] = 'member';
             $options['fid'] = 'counter';
             $partnerId = $this->record['fid'];
-        }else{
+        } else {
             $options['aid'] = 'counter';
             $options['fid'] = 'member';
             $partnerId = $this->record['aid'];
         }
-        $options['opid'] = 'oper';
-        $this->record['partner_acc'] = $partnerId ? $this->getMemberModel()->getMemberCacheById($partnerId,'account') : '';
-        foreach ($options as $key => $value) {
-            if (array_key_exists($key, $this->record)) {
-                $this->record[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key], 'dname');
-                $this->record[$value] = !empty($this->record[$value]) ? $this->record[$value] : '';
-            }
-        }
-            $pay_types = C('pay_type');
-            switch ($this->record['ptype']) {
-                //平台账户
-                case 0:
-                    $this->record['counter'] = $this->record['counter'] ?: '票付通信息科技';
-                    if(isset($this->record['partner_acc'])){
-                        $this->record['counter'] .= '<br>' . $this->record['partner_acc'];
-                    }
 
-                    break;
-                //在线支付
-                case 1:
-                    $pay_type = $pay_types[$this->record['ptype']][1];
-                    $this->record['counter'] .= $this->record['counter'] ? "/$pay_type" : "$pay_type";
-                    $this->record['counter'] .= $this->record['payer_acc'] ? "（{$this->record['payer_acc']}）" : "";
-                    break;
-                case 4:
-                    // no break;
-                case 5:
-                    // no break;
-                case 6:
-                    // no break;
-                case 11:
-                    // no break;
-                    $pay_type = $pay_types[$this->record['ptype']][1];
-                    $this->record['counter'] .= $this->record['counter'] ? "/$pay_type" : "$pay_type";
-                    break;
-                // 授信账户
-                case 2:
-                    // no break;
-                case 3:
-                    $this->record['counter'] .= $_SESSION['sid'] == $this->record['aid'] ? '<br>(分销商)授信账户' : '<br>(供应商)授信账户';
-                    break;
-                default:
-                    break;
+        $this->record['partner_acc'] = $partnerId ? $this->getMemberModel()->getMemberCacheById($partnerId,
+            'account') : '';
+
+        foreach ($options as $key => $value) {
+            if (array_key_exists($key, $this->record) && $this->record[$key]) {
+                $this->record[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key], 'dname');
             }
+            $this->record[$value] = !empty($this->record[$value]) ? $this->record[$value] : '';
+        }
+
+        $pay_types = C('pay_type');
+
+        switch ($this->record['ptype']) {
+            //平台账户
+            case 0:
+                $this->record['counter'] = $this->record['counter'] ?: '票付通信息科技';
+                if (isset($this->record['partner_acc'])) {
+                    $this->record['counter'] .= '<br>' . $this->record['partner_acc'];
+                }
+                break;
+            //在线支付
+            case 1:
+                $pay_type = $pay_types[$this->record['ptype']][1];
+                $this->record['counter'] .= $this->record['counter'] ? "/$pay_type" : "$pay_type";
+                $this->record['counter'] .= $this->record['payer_acc'] ? "（{$this->record['payer_acc']}）" : "";
+                break;
+            case 4:
+                // no break;
+            case 5:
+                // no break;
+            case 6:
+                // no break;
+            case 11:
+                // no break;
+                $pay_type = $pay_types[$this->record['ptype']][1];
+                $this->record['counter'] .= $this->record['counter'] ? "/$pay_type" : "$pay_type";
+                break;
+            // 授信账户
+            case 2:
+                // no break;
+            case 3:
+                $this->record['counter'] .= ($memberId == $this->record['aid']) ? '<br>(分销商)授信账户' : '<br>(供应商)授信账户';
+                break;
+            default:
+                break;
+        }
         return $this;
     }
 
@@ -199,26 +206,30 @@ class TradeRecordParser
         }
         return $this;
     }
+
     /**
      * 转换收款方账号
      */
-    public function parsePayer(){
-        if(array_key_exists('payer_acc', $this->record)){
-            if(!($this->record['payer_acc'])){
-                $this->record['payer_acc']='';
+    public function parsePayer()
+    {
+        if (array_key_exists('payer_acc', $this->record)) {
+            if (!($this->record['payer_acc'])) {
+                $this->record['payer_acc'] = '';
             }
-            if($this->record['ptype']==0){
-                $this->record['payer_acc'] = $this->getMemberModel()->getMemberCacheById($this->record['fid'], 'account');
+            if ($this->record['ptype'] == 0) {
+                $this->record['payer_acc'] = $this->getMemberModel()->getMemberCacheById($this->record['fid'],
+                    'account');
             }
         }
         return $this;
     }
+
     /**
      * @return mixed
      */
     public function getMemberModel()
     {
-        if(!isset($this->memberModel)){
+        if (!isset($this->memberModel)) {
             $this->memberModel = new Member();
         }
         return $this->memberModel;
