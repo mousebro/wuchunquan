@@ -75,7 +75,7 @@ class TradeRecord extends Model
         }
         if (isset($record['ptype']) && C('pay_type')[$record['ptype']][3] == 0) {
             $payAcc = $this->getPayerAccount($record['orderid']);
-            if (is_array($payAcc)) {
+            if (is_array($payAcc[$record['orderid']])) {
                 $record = array_merge($record, $payAcc[$record['orderid']]);
             }
         }
