@@ -48,16 +48,19 @@ class TradeRecordParser
      */
     public function parseMember()
     {
-        $options = [
-            'fid' => 'member',
-            'aid' => 'counter',
-            'opid' => 'oper'
-        ];
-        if (isset($this->record['aid']) && $_SESSION['sid'] == $this->record['aid']) {
+        $memberId = $_SESSION['sid'];
+
+        if (isset($this->record['aid']) &&  $memberId == $this->record['aid']) {
             $options['aid'] = 'member';
             $options['fid'] = 'counter';
+            $partnerId = $this->record['fid'];
+        }else{
+            $options['aid'] = 'counter';
+            $options['fid'] = 'member';
+            $partnerId = $this->record['aid'];
         }
-
+        $options['opid'] = 'oper';
+        $this->record['partner_acc'] = $partnerId ? $this->getMemberModel()->getMemberCacheById($partnerId,'account') : '';
         foreach ($options as $key => $value) {
             if (array_key_exists($key, $this->record)) {
                 $this->record[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key], 'dname');
@@ -68,7 +71,11 @@ class TradeRecordParser
             switch ($this->record['ptype']) {
                 //平台账户
                 case 0:
-                    $this->record['counter'] .= $this->record['counter'] ? "/平台账户" : "票付通/平台账户";
+                    $this->record['counter'] = $this->record['counter'] ?: '票付通信息科技';
+                    if(isset($this->record['partner_acc'])){
+                        $this->record['counter'] .= '<br>' . $this->record['partner_acc'];
+                    }
+
                     break;
                 //在线支付
                 case 1:
@@ -91,7 +98,7 @@ class TradeRecordParser
                 case 2:
                     // no break;
                 case 3:
-                    $this->record['counter'] .= $_SESSION['sid'] == $this->record['aid'] ? '/(分销商)授信账户' : '/(供应商)授信账户';
+                    $this->record['counter'] .= $_SESSION['sid'] == $this->record['aid'] ? '<br>(分销商)授信账户' : '<br>(供应商)授信账户';
                     break;
                 default:
                     break;

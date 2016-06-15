@@ -355,7 +355,10 @@ class TradeRecord extends Controller
         if($ptype==100){
             if(!$partnerId){
                 $map['_complex'][] = [
-                    'aid' => $fid,
+                    [
+                        'aid' => $fid,
+                        'ptype'=>['in','2,3'],
+                    ],
                     'fid' => $fid,
                     '_logic' => 'or',
                 ];
