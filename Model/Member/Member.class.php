@@ -205,7 +205,7 @@ class Member extends Model
      * @param int $aid 供应商ID dmode>0必须
      * @return mixed
      */
-    public function getMoney($mid, $dmode, $aid=0)
+    public function getMoney($mid, $dmode, $aid=0, $order=false)
     {
         if ($dmode==0) {
             return $this->table('pft_member_money')
@@ -215,9 +215,16 @@ class Member extends Model
         $field  = 'kmoney';
         if ($dmode==2) $field='basecredit';
         elseif ($dmode==3) $field .= ',basecredit';
-        return $this->table('pft_member_credit')
-            ->where(['fid'=>$mid, 'aid'=>$aid])
-            ->getField($field);
+        $query = $this->table('pft_member_credit')->where(['fid'=>$mid, 'aid'=>$aid]);
+        if ($order===true) {
+            return $query->field($field)->find();
+        }
+
+        return $query->getField($field);
+        //echo $this->_sql();
+        //echo $this->getDbError();
+        //print_r($ret);
+
     }
 
     /**

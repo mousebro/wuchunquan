@@ -70,6 +70,6 @@ class OrderSubmit extends Model
     }
     public function addOrderDetail($params)
     {
-        return $this->table('uu_order_fx_detail')->data($params)->add();
+        return $this->table('uu_order_fx_details')->data($params)->add();
     }
 }
