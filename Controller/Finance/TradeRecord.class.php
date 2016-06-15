@@ -159,9 +159,20 @@ class TradeRecord extends Controller
     public function getPartner()
     {
         $srch = \safe_str(I('srch'));
+
+        if($this->memberId==1){
+            $fid =  \safe_str(I('fid'));
+            if(!$fid){
+                $this->apiReturn('220','请先选择交易商户');
+            }else{
+                $memberId = $fid;
+            }
+        }else{
+            $memberId = $this->memberId;
+        }
         $limit = intval(I('limit')) ?: 20;
 
-        $memberModel = new MemberRelationship($this->memberId);
+        $memberModel = new MemberRelationship($memberId);
 
         $field = ['distinct m.id as fid', 'm.account', 'm.dname'];
 
@@ -364,6 +375,7 @@ class TradeRecord extends Controller
                         [
                             'aid' => $fid,
                             'fid' => $partnerId,
+                            'ptype' => ['in', '2,3'],
                         ],
                         [
                             'aid' => $partnerId,
