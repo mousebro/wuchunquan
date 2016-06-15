@@ -125,53 +125,51 @@ class TradeRecord extends Model
         $records = $this->table($table)->field($field)->where($map)->order($order)->select();
 
         if (!$records || !is_array($records)) {
-            return [];
-
+            return false;
         } else {
-            $orderid = array_unique(array_filter(array_column($records, 'orderid'))); //过滤空值
-
-            $extInfo = $this->getExtendInfo($orderid);
-            $payAcc = $this->getPayerAccount($orderid);
-            if (is_array($extInfo)) {
-
-                $tid = array_unique(array_column($extInfo, 'tid'));
-                $prod_name = $this->getProdNameByTid($tid);
-
+            $orderid = array_unique(array_filter(array_column($records, 'orderid'))); //提取交易号
+            if(count($orderid)){
+                $extInfo = $this->getExtendInfo($orderid);
+                $payAcc = $this->getPayerAccount($orderid);
+                if (is_array($extInfo)) {
+                    $tid = array_unique(array_column($extInfo, 'tid'));
+                    $prod_name = $this->getProdNameByTid($tid);
+                }
             }
         }
-
+        //整合数据
         $data = [];
 
         $parser = $this->_getParser();
 
         foreach ($records as $record) {
-
             $ordernum = $record['orderid'];
 
-            if ($ordernum && array_key_exists($ordernum, $extInfo)) {
-                $record['order_channel'] = $extInfo[$ordernum]['ordermode'];
+            if(!$ordernum){
+                continue;
+            }
+
+            if(isset($extInfo) && array_key_exists($ordernum, $extInfo)){
+                $record = array_merge($record,$extInfo[$ordernum]);
+
                 $tid = $extInfo[$ordernum]['tid'];
-                if (isset($prod_name) && array_key_exists($tid, $prod_name)) {
-                    $record['body'] = $prod_name[$tid] . ' ' . $extInfo[$ordernum]['tnum'] . '张';
+                if(!empty($prod_name[$tid])){
+                    $record['p_name'] = $prod_name[$tid];
                 }
             }
 
-            if (is_array($payAcc) && $ordernum && array_key_exists($ordernum, $payAcc)) {
-                if (array_key_exists($orderid, $payAcc)) {
-                    $record = array_merge($record, $payAcc[$ordernum]);
-                }
+            if (isset($payAcc) && $ordernum && array_key_exists($ordernum, $payAcc)) {
+                $record = array_merge($record, $payAcc[$ordernum]);
             }
 
-            $record['order_channel'] = isset($record['order_channel']) ? $record['order_channel'] : '平台';
-
-            $record['body'] = isset($record['body']) ? $record['body'] : '';
             $data[] = $parser->setRecord($record)
-                ->parseTradeType()
-                ->parseMember()
+                ->parseTradeType('|')
+                ->parseMember('#')
                 ->parseMoney()
                 ->parsePayType()
                 ->parseChannel()
                 ->parsePayee()
+                ->parseTradeContent()
                 ->getRecord();
         }
 
@@ -195,7 +193,7 @@ class TradeRecord extends Model
 
         $field = [
             "ordernum",
-            "ordermode",
+            "ordermode as order_channel",
             "tnum",
             "tid",
         ];
@@ -369,7 +367,7 @@ class TradeRecord extends Model
             $tid = [$tid];
         }
         $table = "{$this->_product_table} AS p";
-        $join = "{$this->_ticket_table} AS t ON p.id=t.pid";
+        $join = "LEFT JOIN {$this->_ticket_table} AS t ON p.id=t.pid";
         $where = ['t.id' => ['in', $tid]];
         $result = $this->table($table)->where($where)->join($join)->getField('t.id AS tid,p.p_name', true);
         return $result;

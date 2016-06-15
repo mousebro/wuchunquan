@@ -239,17 +239,13 @@ class TradeRecord extends Controller
 
         $r = [];
         if (is_array($data) && count($data)) {
-
             foreach ($data as $record) {
-
                 $record = self::array_recompose($record, array_keys(C('excel_head')));
-
                 $r[] = $record;
             }
         }
 
         array_unshift($r, C('excel_head'));
-
         include_once("/var/www/html/new/d/class/SimpleExcel.class.php");
         $xls = new \SimpleExcel('UTF-8', true, 'orderList');
         $xls->addArray($r);
@@ -338,7 +334,7 @@ class TradeRecord extends Controller
             return false;
         }
 
-        switch($ptype){
+        switch ($ptype) {
             case 2: //no break;
             case 99:
                 $map['ptype'] = ['in', [2, 3]];
@@ -352,17 +348,17 @@ class TradeRecord extends Controller
             default:
                 $map['ptype'] = $ptype;
         }
-        if($ptype==100){
-            if(!$partnerId){
+        if ($ptype == 100) {
+            if (!$partnerId) {
                 $map['_complex'][] = [
                     [
                         'aid' => $fid,
-                        'ptype'=>['in','2,3'],
+                        'ptype' => ['in', '2,3'],
                     ],
                     'fid' => $fid,
                     '_logic' => 'or',
                 ];
-            }else{
+            } else {
                 $map['_complex'][] = [
                     [
                         'aid' => $fid,
@@ -375,7 +371,7 @@ class TradeRecord extends Controller
                     '_logic' => 'or',
                 ];
             }
-        }else{
+        } else {
             if ($ptype == 99) {
                 $self = 'aid';
                 $other = 'fid';

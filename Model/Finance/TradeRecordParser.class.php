@@ -48,8 +48,11 @@ class TradeRecordParser
 
     /**
      * 查询会员名称
+     * @param string $separator
+     *
+     * @return $this
      */
-    public function parseMember()
+    public function parseMember($separator='<br>')
     {
         $memberId = $_SESSION['sid'];
         $options['opid'] = 'oper';
@@ -80,8 +83,8 @@ class TradeRecordParser
             //平台账户
             case 0:
                 $this->record['counter'] = $this->record['counter'] ?: '票付通信息科技';
-                if (isset($this->record['partner_acc'])) {
-                    $this->record['counter'] .= '<br>' . $this->record['partner_acc'];
+                if (!empty($this->record['partner_acc'])) {
+                    $this->record['counter'] .= $separator . $this->record['partner_acc'];
                 }
                 break;
             //在线支付
@@ -105,7 +108,7 @@ class TradeRecordParser
             case 2:
                 // no break;
             case 3:
-                $this->record['counter'] .= ($memberId == $this->record['aid']) ? '<br>(分销商)授信账户' : '<br>(供应商)授信账户';
+                $this->record['counter'] .= $separator . (($memberId == $this->record['aid']) ? '(分销商)授信账户' : '(供应商)授信账户');
                 break;
             default:
                 break;
@@ -138,6 +141,8 @@ class TradeRecordParser
         $channel_list = C('order_channel');
         if (array_key_exists($this->record['order_channel'], $channel_list)) {
             $this->record['order_channel'] = $channel_list[$this->record['order_channel']];
+        }else{
+            $this->record['order_channel'] = '平台';
         }
         return $this;
     }
@@ -148,7 +153,7 @@ class TradeRecordParser
     public function parseTradeContent()
     {
         if (isset($this->record['p_name'], $this->record['tnum'])) {
-            $this->record['body'] = $this->record['p_name'] . ' ' . $this->record['tnum'] . '张';
+            $this->record['body'] = $this->record['p_name'] . ' * ' . $this->record['tnum'] . '张';
             unset($this->record['p_name'], $this->record['tnum']);
         }
         return $this;
@@ -178,7 +183,7 @@ class TradeRecordParser
     /**
      * 转换交易类型
      */
-    public function parseTradeType()
+    public function parseTradeType($separator='-')
     {
         if (isset($this->record['dtype'])) {
             $dtype_list = array_column(C('item_category'), 1);
@@ -189,7 +194,7 @@ class TradeRecordParser
                 //交易记录对应分类
                 $item_list = C('trade_item');
                 if (array_key_exists($this->record['item'], $item_list)) {
-                    $this->record['item'] = $item_list[$this->record['item']] . '-' . $this->record['dtype'];
+                    $this->record['item'] = $item_list[$this->record['item']] . $separator . $this->record['dtype'];
                 }
             }
         }
