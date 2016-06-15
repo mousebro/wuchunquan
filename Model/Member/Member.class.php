@@ -24,6 +24,7 @@ class Member extends Model
     const ACCOUNT_MONEY             = 0;//账户余额
     const ACCOUNT_APPLYER_MONEY     = 1;//可用供应商余额
     const ACCOUNT_APPLYER_CREDIT    = 2;//信用额度
+    const ACCOUNT_APPLYER_BOTH      = 3;//可用供应商余额 & 信用额度
 
     const D_TYPE_BUY                = 0;//下单
     const D_TYPE_CANCEL_ORDER       = 1;//取消
@@ -53,6 +54,11 @@ class Member extends Model
     const P_TYPE_ONLINE_HXPAY       = 6;//环迅
 
     protected $connection = '';
+
+    public function __construct($defaultDb='localhost', $tablePrefix='pft')
+    {
+        parent::__construct($defaultDb, $tablePrefix);
+    }
 
     private function getLimitReferer()
     {
@@ -195,11 +201,11 @@ class Member extends Model
      * 查询账户余额或授信额度
      *
      * @param int $mid 会员ID
-     * @param int $dmode 查询模式0账户余额1授信额度2授信余额
+     * @param int $dmode 查询模式0账户余额1授信额度2授信余额3授信额度和授信余额
      * @param int $aid 供应商ID dmode>0必须
      * @return mixed
      */
-    private function getMoney($mid, $dmode, $aid=0)
+    public function getMoney($mid, $dmode, $aid=0)
     {
         if ($dmode==0) {
             return $this->table('pft_member_money')
@@ -208,6 +214,7 @@ class Member extends Model
         }
         $field  = 'kmoney';
         if ($dmode==2) $field='basecredit';
+        elseif ($dmode==3) $field .= ',basecredit';
         return $this->table('pft_member_credit')
             ->where(['fid'=>$mid, 'aid'=>$aid])
             ->getField($field);
