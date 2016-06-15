@@ -66,11 +66,16 @@ class TradeRecordParser
         }
             $pay_types = C('pay_type');
             switch ($this->record['ptype']) {
+                //平台账户
                 case 0:
                     $this->record['counter'] .= $this->record['counter'] ? "/平台账户" : "票付通/平台账户";
                     break;
+                //在线支付
                 case 1:
-                    // no break;
+                    $pay_type = $pay_types[$this->record['ptype']][1];
+                    $this->record['counter'] .= $this->record['counter'] ? "/$pay_type" : "$pay_type";
+                    $this->record['counter'] .= $this->record['payer_acc'] ? "（{$this->record['payer_acc']}）" : "";
+                    break;
                 case 4:
                     // no break;
                 case 5:
@@ -80,8 +85,9 @@ class TradeRecordParser
                 case 11:
                     // no break;
                     $pay_type = $pay_types[$this->record['ptype']][1];
-                    $this->record['counter'] .= empty($this->record['payer_acc']) ? "/$pay_type" : "/$pay_type（{$this->record['payer_acc']}）";
+                    $this->record['counter'] .= $this->record['counter'] ? "/$pay_type" : "$pay_type";
                     break;
+                // 授信账户
                 case 2:
                     // no break;
                 case 3:
@@ -90,8 +96,6 @@ class TradeRecordParser
                 default:
                     break;
             }
-
-
         return $this;
     }
 
@@ -106,7 +110,7 @@ class TradeRecordParser
         }
         //收入支出
         if (isset($this->record['daction'])) {
-            $this->record['dmoney'] = $this->record['daction'] == 0 ? $this->record['dmoney'] : ("-" . $this->record['dmoney']);
+            $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
             //unset($this->record['daction']);
         }
         return $this;
