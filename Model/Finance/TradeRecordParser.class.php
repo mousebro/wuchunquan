@@ -152,9 +152,9 @@ class TradeRecordParser
      */
     public function parseTradeContent()
     {
-        if (isset($this->record['p_name'], $this->record['tnum'])) {
-            $this->record['body'] = $this->record['p_name'] . ' * ' . $this->record['tnum'] . '张';
-            unset($this->record['p_name'], $this->record['tnum']);
+        if (empty($this->record['body']) && isset($this->record['p_name'])) {
+            $this->record['body'] = $this->record['p_name'] ;
+            unset($this->record['p_name']);
         }
         return $this;
     }

@@ -225,6 +225,7 @@ class TradeRecord extends Model
             "out_trade_no as orderid",
             "buyer_email as payer_acc",
             "seller_email as payee_acc",
+            "subject as body"
         ];
         $field = implode(',', $field);
         $result = $this->table($table)->where($where)->getField($field, true);

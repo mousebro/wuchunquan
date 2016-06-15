@@ -36,7 +36,7 @@ class TradeRecord extends Controller
      */
     static function array_recompose(array $data, array $format)
     {
-        $format_data = array_flip($format);
+        $format_data = array_fill_keys($format,'');
         foreach ($data as $key => $value) {
             if (!in_array($key, $format)) {
                 continue;
