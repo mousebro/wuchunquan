@@ -31,9 +31,10 @@ class BasePool
         return $ret;
     }
 
-    protected static function code()
+    protected static function code($reverse=false)
     {
         $list = [0,1,2,3,4,5,6,7,8,9];
+        if ($reverse) $list = array_reverse($list);
         for ($i=10;$i>1;$i--) {
             $rand           = mt_rand(0,9);
             $tmp            = $list[$rand];
@@ -41,17 +42,19 @@ class BasePool
             $list[$i-1]     = $tmp;
         }
         $result = 0;
+
         for ($i=0; $i<6; $i++) {
             $result = $result * 10 + $list[$i];
         }
         return $result;
     }
 
-    protected static function Generate($lid)
+    protected static function Generate($lid,$ptype='')
     {
         $pool = [];
+        $flag = $ptype=='F' ? true : false;
         for ($i=0; $i<2000; $i++) {
-            $code =  self::code();
+            $code =  self::code($flag);
             if (in_array($code, $pool)){
                 $i -= 1;
                 continue;
@@ -76,11 +79,11 @@ class CodePoolRedis extends BasePool
 {
     private static $redis=null;
 
-    public static function GetCode($lid, $forceGenerate=false)
+    public static function GetCode($lid, $ptype='', $forceGenerate=false)
     {
         $code = self::getRedis()->lPop("code:$lid");
         if (!$code || $forceGenerate===true) {
-            self::Generate($lid);
+            self::Generate($lid, $ptype);
             $code = self::getRedis()->lPop("code:$lid");
         }
         return $code;
@@ -105,9 +108,9 @@ class CodePoolRedis extends BasePool
         return self::$redis;
     }
 
-    protected static function Generate($lid)
+    protected static function Generate($lid, $ptype='')
     {
-        $uk_code = parent::Generate($lid);
+        $uk_code = parent::Generate($lid, $ptype);
         self::getRedis()->multi(\Redis::PIPELINE);
         foreach ($uk_code as $item) {
             self::getRedis()->lPush("code:$lid", $item['code']);
@@ -118,13 +121,13 @@ class CodePoolRedis extends BasePool
 }
 class CodePoolMysql extends BasePool
 {
-    public static function GetCode($lid, $forceGenerate=false)
+    public static function GetCode($lid, $ptype='', $forceGenerate=false)
     {
         $m = new Model('localhost');
         $w = ['lid'=>$lid];
         $code = $m->table(self::__TBL_POOL__)->where($w)->getField('code');
         if (!$code || $forceGenerate===true) {
-            $codes = self::Generate($lid);
+            $codes = self::Generate($lid, $ptype);
             $codes = array_shift($codes);
             $code = $codes['code'];
         }
@@ -132,9 +135,9 @@ class CodePoolMysql extends BasePool
         $m->table(self::__TBL_POOL__)->where($w)->limit(1)->delete();
         return $code;
     }
-    protected  static function Generate($lid)
+    protected  static function Generate($lid, $ptype='')
     {
-        $data = parent::Generate($lid);
+        $data = parent::Generate($lid, $ptype);
         $m = new Model('localhost');
         $m->table(self::__TBL_POOL__)->addAll($data);
         return $data;
@@ -142,12 +145,12 @@ class CodePoolMysql extends BasePool
 }
 class OrderCodePool
 {
-    public static function GetCode($lid, $forceGenerate=false)
+    public static function GetCode($lid, $ptype='', $forceGenerate=false)
     {
         //var_dump(CodePoolRedis::getRedis(1));exit;
         if (CodePoolRedis::getRedis(0.2)!==false) {
-            return CodePoolRedis::GetCode($lid, $forceGenerate);
+            return CodePoolRedis::GetCode($lid, $ptype, $forceGenerate);
         }
-        return CodePoolMysql::GetCode($lid, $forceGenerate);
+        return CodePoolMysql::GetCode($lid, $ptype, $forceGenerate);
     }
 }

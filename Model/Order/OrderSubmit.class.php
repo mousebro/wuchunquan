@@ -32,6 +32,34 @@ class OrderSubmit extends Model
             ->getField('id');
     }
 
+    /**
+     * 检测凭证号是否有效
+     *
+     * @param int $lid landid
+     * @param int $code 凭证号
+     * @return mixed
+     */
+    public function is_ok_code($lid, $code, $pCode)
+    {
+        if ($pCode==1) {
+            $id  = $this->table(self::__TBL_ORDER__)
+                ->join(' s left join uu_order_addon a on s.ordernum=a.orderid')
+                ->where(['s.code'=>$code, 'a.ifpack'=>1, ])
+                ->limit(1)
+                ->getField('id');
+        }
+        else {
+            $map = ['lid'=>':lid', 'code'=>':code','status'=>0];
+            $id  = $this->table(self::__TBL_ORDER__)
+                ->where($map)
+                ->bind([':lid'=>$lid, ':code'=>$code])
+                ->limit(1)
+                ->getField('id');
+        }
+
+        return $id > 0 ? false : true;
+    }
+
     public function getOrderCode($ordernum)
     {
         return $this->table(self::__TBL_ORDER__)->where(['ordernum'=>$ordernum])->getField('code');
