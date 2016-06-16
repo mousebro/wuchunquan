@@ -120,7 +120,7 @@ class OrderSubmit extends Model
     }
     public  function getOrderSn() {
         $id = $this->table('pft_order_key')->add(['id'=>'null']);
-        return $this->makeOrderSn($id);
+        return $id;//$this->makeOrderSn($id);
     }
 
     public function addOrder($params)
