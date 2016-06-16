@@ -12,7 +12,7 @@
 namespace Model\Finance;
 use Library\Model;
 use Model\Member\Member as Member;
-use Library\Tools\Helpers as Helpers;
+use Model\Finance\Withdraws as Withdraws;
 
 class SettleBlance extends Model{
     //自动清分配置表
@@ -638,7 +638,7 @@ class SettleBlance extends Model{
         $accountInfo = @json_decode($settingInfo['account_info'], true);
 
         //参数判断
-        if(($serviceFee > 100) || !is_array($accountInfo)) {
+        if(($serviceFee > 1000) || !is_array($accountInfo)) {
             return false;
         }
 
@@ -658,18 +658,24 @@ class SettleBlance extends Model{
         $leftMoney = $amoney - $transferMoney;
 
         //计算手续费 - 分为单位
-        $feeMoney = $transferMoney * ($serviceFee / 100); 
+        $feeMoney = $transferMoney * ($serviceFee / 1000); 
 
         if($feeMoney > $leftMoney ) {
             //剩余金额不足以支付提现手续费
             
         }
 
-        //插入提现表
-        
-        
-        //调用
+        //提现
+        $withdrawModel = new Withdraws();
+        $feeCutWay     = 1;
+        $accountType   = 1;
+        $res = $withdrawModel->addRecord($fid, $transferMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, true)
 
+        if($res) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**

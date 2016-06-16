@@ -8,6 +8,7 @@
  */
 namespace Model\Finance;
 use Library\Model;
+use Library\Tools\Helpers as Helpers;
 
 class Withdraws extends Model{
 
@@ -97,11 +98,15 @@ class Withdraws extends Model{
             return false;
         }
 
+        //获取一下之前的备注信息
+        $res = $this->table($this->_withdrawTable)->where(['id' => $orderId])->find();
+        $memo = $res ? ' - ' . $res['memo'] : '';
+
         //更新代付数据
         $data = [
             'push_status' => 3,
             'wd_status'   => 2,
-            'memo'        => "民生银行代付成功，流水号【{$queryId}】",
+            'memo'        => "民生银行代付成功，流水号【{$queryId}】" . $memo,
             'batchno'     => $queryId,
             'wd_time'     => date('Y-m-d H:i:s')
         ];
@@ -124,11 +129,15 @@ class Withdraws extends Model{
             return false;
         }
 
+        //获取一下之前的备注信息
+        $res = $this->table($this->_withdrawTable)->where(['id' => $orderId])->find();
+        $memo = $res ? ' - ' . $res['memo'] : '';
+
         //更新代付数据
         $data = [
             'push_status' => 3,
             'wd_status'   => 1,
-            'memo'        => $errMsg,
+            'memo'        => $errMsg . $memo,
             'wd_time'     => date('Y-m-d H:i:s')
         ];
 
@@ -147,16 +156,81 @@ class Withdraws extends Model{
      * @param $feeCutWay 提现金额从哪里扣除  0=提现金额扣除 1=账户余额扣除
      * @param $accountType 账号类型：1=银行，2=支付宝
      * @param $accountInfo 账号信息数组  {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":"","account_name":""}
-     * @param $isAuto 是否直接自动清分 
+     * @param $isAuto 是否直接自动清分
      * 
      */
-    public function add($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false) {
+    public function addRecord($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false) {
+        $wdMoney    = intval($wdMoney);
+        $serviceFee = intval($serviceFee);
+        $cutwayArr  = ['0' => '提现金额扣除', '1' => '账户余额扣除'];
 
-        $memo = <<<MEMO
-申请提现金额:{$withdraw_deposit_in_yuan}元,手续费:{$service_charge_in_yuan}元,{$cut_fee_from},实际提现金额:{$transfer_money_in_yuan}元
-MEMO;
+        if(!$fid || $wdMoney <= 0 || !in_array($feeCutWay, [0, 1]) || !in_array($accountType, [1, 2]) || !is_array($accountInfo)) {
+            return false;
+        }
 
-        $str = "insert pft_wd_cash set fid=$memberID,wd_name='$wd_name',wd_money=$withdraw_deposit_in_fen,apply_time=now(),bank_name='$bank_name',bank_ins_code='$bank_area_name',bank_accuont='$bank_accuont',batchno='{$batchno}',memo='{$memo}',fee_bank_once=$fee_bank_once,cut_fee_way=$charge_from_account,accType='$accType',type='$type',service_charge=$service_charge_in_fen";
+        $serviceCharge = $wdMoney * ($serviceFee / 1000);
+
+        $wdMoneyV       = round($wdMoney / 100, 2);
+        $serviceChargeV = round($$serviceCharge / 100, 2);
+        $transMoneyV    = $feeCutWay == 1 ? $wdMoneyV : round(($wdMoney - $serviceCharge) / 100, 2);
+        $cutwayV        = $cutwayArr[$feeCutWay];
+
+        $memo = "申请提现金额:{$wdMoneyV}元,手续费:{$serviceChargeV}元,{$cutwayV},实际提现金额:{$transMoneyV}元";
+        if($isAuto) {
+            //直接自动提现
+            $memo = '自动清分 - ' . $memo;
+        }
+
+        $data = [
+            'fid'            => $fid,
+            'wd_name'        => $accountInfo['account_name'],
+            'wd_money'       => $wdMoney,
+            'bank_name'      => $accountInfo['bank_name'],
+            'bank_ins_code'  => $accountInfo['bank_ins_code'],
+            'bank_accuont'   => $accountInfo['bank_account'],
+            'accType'        => $accountInfo['acc_type'],
+            'type'           => $accountType,
+            'cut_fee_way'    => $feeCutWay,
+            'fee_bank_once'  => $serviceFee,
+            'service_charge' => $serviceCharge,
+            'memo'           => $memo,
+            'apply_time'     => date('Y-m-d H:i:s')
+        ];
+
+        if($isAuto) {
+            $data['wd_operator']   = '后台系统|ID:1';
+            if(defined('ENV') && ENV == 'PRODUCTION') {
+                //生成环境需要实际打款
+                $data['wd_status']   = 5;
+                $data['push_status'] = 1;
+            } else {
+                $data['batchno']     = 'cmbc_' . time();
+                $data['memo']        = "民生银行代付成功，流水号【{$batchno}】" . ' - ' . $memo;
+                $data['wd_time']     = date('Y-m-d H:i:s');
+                $data['wd_status']   = 2;
+                $data['push_status'] = 3;
+            }
+        }
+
+        $this->startTrans();
+        $res = $this->table($this->_withdrawTable)->add($data);
+
+        if(!$res) {
+            $this->rollback();
+            return false;
+        }
+
+        //通过接口调用交易流水扣除
+        $soapInside = Helpers::GetSoapInside();
+        $frozenMoney = $feeCutWay == 1 ? $wdMoney + $serviceCharge : $wdMoney;
+        $res = $soapInside->PFT_Member_Fund_Modify($fid, $fid, $frozenMoney, 1, 0, null, 6, null, '', $memo);
+        if($res == 100) {
+            $this->commit();
+            return true;
+        } else {
+            $this->rollback();
+            return false;
+        }
     }
 
 }
