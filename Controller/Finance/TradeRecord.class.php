@@ -20,10 +20,6 @@ class TradeRecord extends Controller
     {
         C(include __DIR__ . '/../../Conf/trade_record.conf.php');
         $this->memberId = $this->isLogin('ajax');
-        //if(ENV == 'DEVELOP'){
-        //    ini_set('display_errors','on');
-        //    error_reporting(E_ALL);
-        //}
     }
 
     /**
@@ -214,26 +210,6 @@ class TradeRecord extends Controller
             \pft_log('trade_record/err', 'srch_mem|' . $e->getCode() . "|" . $e->getMessage(), 'month');
             $this->apiReturn($e->getCode(), [], $e->getMessage());
         }
-    }
-
-    /**
-     * @url 下载excel http://www.12301.local/route/?c=Finance_TradeRecord&a=test&fid=57675&form=1&btime=2016-05-23
-     *      00:00:00
-     * @url 显示交易报表 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&fid=57675&form=0&btime=2016-05-23
-     *      00:00:00
-     * @url 查看交易详情 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&trade_id=6483409
-     * @url 查询会员 http://www.12301.local/route/?c=Finance_TradeRecord&a=test&srch=技术部
-     */
-    public function test()
-    {
-//        if ('DEVELOP' == ENV) {
-//            $_SESSION['sid'] = 1;
-////            $this->getList();
-////            $this->getDetails();
-//            $this->srchMem();
-//        } else {
-        $this->apiReturn(213);
-//        }
     }
 
     /**
