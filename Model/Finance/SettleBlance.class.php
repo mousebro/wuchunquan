@@ -12,12 +12,16 @@
 namespace Model\Finance;
 use Library\Model;
 use Model\Member\Member as Member;
+use Library\Tools\Helpers as Helpers;
 
 class SettleBlance extends Model{
     //自动清分配置表
     private $_settingTable = 'pft_auto_withdraw_setting';
     //清分记录表
     private $_recordTable = 'pft_auto_withdraw_record';
+
+    //订单表
+    private $_orderTable = 'uu_ss_order';
 
     /**
      * 添加自动清分配置
@@ -630,8 +634,9 @@ class SettleBlance extends Model{
         }
 
         if($freezeType == 1) {
-            //冻结未使用的总额
+            //冻结未使用的总额 - 在线支付的未使用的订单的总额
             
+
 
         } else {
             //按比例或是固定金额冻结
@@ -641,11 +646,11 @@ class SettleBlance extends Model{
             }
 
             $type  = intval($freezeData['type']);
-            $value = floatval($freezeData['value']);
+            $value = floatval($freezeData['value']); 5/100
             if($type == 1) {
                 //比例
-
-
+                $freezeMoney   = round($amoney * ($value / 100), 2);
+                $transferMoney = $amoney - $freezeMoney;
             } else {
                 //固定金额
                 $freezeMoney = $value * 100;//转化为分
@@ -654,9 +659,38 @@ class SettleBlance extends Model{
                 }
 
                 $transferMoney = $amoney - $freezeMoney;
-
             }
-
         }
     }
+
+    /**
+     * 通过接口获取在线支付的未使用的订单的总额
+     * @author dwer
+     * @date   2016-06-16
+     *
+     * @param  $fid
+     * @return [type]
+     */
+    private function _getUnusedOrderInfo($fid) {
+        $insideSoap = Helpers::GetSoapInside();
+
+        try{
+            $sid    = '';
+            $status = '';
+            $pays   = '';
+            $rstart = 0;
+            $n      = 999999;
+            $c      = 2;
+            $aid    = $fid;
+
+            $insideSoap->Order_Globle_Search($sid, '', '', '', '', '', '', '','', '', '', '', '', '', '',
+                $status, $pays, '', '', '', $rstart=0, $n=40,$c=0, 0, '', 0, '',0 ,'' ,'', $aid='');
+
+
+        } catch(Exception $e) {
+            return false;
+        }
+    }
+
+
 }
