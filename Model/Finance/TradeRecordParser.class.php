@@ -136,7 +136,7 @@ class TradeRecordParser
         if($separator && isset($partner_info)){
             $this->record['counter'] = ltrim($this->record['counter'] . $separator . $partner_info,$separator);
         }
-        
+
         if($excel){
             self::wrapStr($this->record['payer_acc']);
             self::wrapStr($this->record['payee_acc']);
@@ -281,5 +281,89 @@ class TradeRecordParser
     static function wrapStr(&$string){
         $string = '<td style="vnd.ms-excel.numberformat:@">' . $string  . '</td>';
 
+    }
+
+    /**
+     * 查看交易详情会员
+     * @return $this
+     */
+    public function parseMemberBasic(){
+        //is_acc_reverse: aid作为当前账号
+        $is_acc_reverse = $_SESSION['sid'] != $this->record['fid'] && $_SESSION['sid'] != 1;
+
+        if ($is_acc_reverse) {
+            $options['aid'] = 'member';
+            $options['fid'] = 'counter';
+        } else {
+            $options['aid'] = 'counter';
+            $options['fid'] = 'member';
+        }
+
+        foreach ($options as $key => $value) {
+            if(!$this->record[$key]){
+                continue;
+            }
+            $this->record[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key], 'dname') ?: '';
+            $account[$key] = $account[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key],
+                'account') ?: '';
+        }
+
+        switch ($this->record['ptype']) {
+            //平台账户
+            case 0:
+                // no break;
+                $this->record['counter'] = $this->record['counter'] ?: '';
+                $this->record['counter'] .= !empty($account['counter']) ? self::join_bracket(['平台账户:',$account['counter']]) : '';
+                $this->record['member'] .= !empty($account['member']) ? self::join_bracket(['平台账户:',$account['member']]): '';
+                break;
+            case 2:
+                // no break;
+            case 3:
+                $this->record['counter'] .=  $is_acc_reverse ? '(分销商授信账户)' : '(供应商授信账户)';
+                $this->record['member'] .= $is_acc_reverse ? '(供应商授信账户)' : '(分销商授信账户)';
+                break;
+            //在线支付
+            case 1:
+                // no break;
+            case 4:
+                // no break;
+            case 5:
+                // no break;
+            case 6:
+                // no break;
+            case 11:
+            $pay_types = C('pay_type');
+
+            $payer_acc = $pay_types[$this->record['ptype']][1];
+            if($this->record['payer_acc'] && $this->record['ptype']==1 ){
+                $payer_acc .= ':' . $this->record['payer_acc'];
+            }
+
+            if($is_acc_reverse ^ $this->record['daction']==0) {
+                $this->record['member'] .= self::join_bracket(['平台账户:',$account['member']]);
+
+                if(!empty($account['counter']) && !empty($this->record['payer_cc'])){
+                    $this->record['counter'] .= self::join_bracket([$payer_acc,$this->record['payer_cc']]);
+                }else{
+                    $this->record['counter'] .= $payer_acc;
+                }
+            }else {
+                $this->record['counter'] .= self::join_bracket(['平台账户:',$account['counter']]);
+
+                if(!empty($account['member']) && !empty($this->record['payer_cc'])){
+                    $this->record['member'] .= self::join_bracket([$payer_acc,$this->record['payer_cc']]);
+                }else{
+                    $this->record['member'] .= self::join_bracket(['平台账户:',$account['member']]);
+                }
+            }
+            break;
+            default:
+                break;
+        }
+        return $this;
+    }
+    static function join_bracket($array){
+        $str = '(' . implode('',$array) .')';
+        return $str;
     }
 }

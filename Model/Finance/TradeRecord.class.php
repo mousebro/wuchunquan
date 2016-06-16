@@ -42,6 +42,7 @@ class TradeRecord extends Model
     public function getDetails($trade_id)
     {
         $table = "{$this->_trade_record_table} AS tr";
+
         $join = [
             "LEFT JOIN {$this->_order_table} AS o ON o.ordernum = tr.orderid",
             "LEFT JOIN {$this->_ticket_table} AS t ON o.tid = t.id",
@@ -62,9 +63,10 @@ class TradeRecord extends Model
             'tr.daction',                           //收支
             'tr.payee_type',                        //收款账户类型
             'o.ordermode as order_channel',         //交易渠道
-            'o.tnum',
-            'p.p_name',
-            'a.buyer_email as payer_acc'
+            'p.p_name',                             //产品名称
+            'a.buyer_email as payer_acc',           //支付方账号
+            'a.seller_email as payee_acc',          //收款方账号
+            'a.subject as body',                    //交易内容
         ];
 
         $where = ['tr.id' => $trade_id];
@@ -75,34 +77,18 @@ class TradeRecord extends Model
             return false;
         }
 
-
-
-
-        if (isset($record['ptype']) && C('pay_type')[$record['ptype']][3] == 0) {
-            $payAcc = $this->getPayerAccount($record['orderid']);
-            if (is_array($payAcc[$record['orderid']])) {
-                $record = array_merge($record, $payAcc[$record['orderid']]);
-            }
-        }
-
         $result =  $this->_getParser()
             ->setRecord($record)
-            ->parsePayer()
+            //->parsePayer()
             ->parseTradeType()
             ->parseTradeContent()
-            ->parseMember()
+            ->parseMemberBasic()
             ->parseMoney()
             ->parsePayType()
             ->parseChannel()
-            ->parsePayee()
+            //->parsePayee()
             ->getRecord();
-
-        if($result['daction']==0){
-            $result['member'] .= $result['ptype'] . '('.$result['payee_acc'].')';
-        }else{
-            $result['member'] .= $result['ptype'] . '('.$result['payer_acc'].')';
-        }
-        
+//
         return $result;
 
     }
