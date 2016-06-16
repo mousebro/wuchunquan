@@ -169,7 +169,7 @@ class SettleBlance extends Model{
      * @param  $id 记录ID
      * @return 
      */
-    public function info($id) {
+    public function getSettingInfo($id) {
         if(!$id) {
             return false;
         }
