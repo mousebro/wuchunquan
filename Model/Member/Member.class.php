@@ -203,9 +203,10 @@ class Member extends Model
      * @param int $mid 会员ID
      * @param int $dmode 查询模式0账户余额1授信额度2授信余额3授信额度和授信余额
      * @param int $aid 供应商ID dmode>0必须
+     * @param bool $order 是否按数组键值方式返回
      * @return mixed
      */
-    public function getMoney($mid, $dmode, $aid=0, $order=false)
+    public function getMoney($mid, $dmode, $aid=0, $ret_arr=false)
     {
         if ($dmode==0) {
             return $this->table('pft_member_money')
@@ -216,7 +217,7 @@ class Member extends Model
         if ($dmode==2) $field='basecredit';
         elseif ($dmode==3) $field .= ',basecredit';
         $query = $this->table('pft_member_credit')->where(['fid'=>$mid, 'aid'=>$aid]);
-        if ($order===true) {
+        if ($ret_arr===true) {
             return $query->field($field)->find();
         }
 

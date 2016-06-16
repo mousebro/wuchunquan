@@ -56,7 +56,7 @@ class PriceRead extends Model
         $onday=date('w',strtotime($date));
         $fields = ['storage'];
         $q_s_price=($ptype==0)?'s_price':'l_price as s_price';
-        $fields['q_s_price'] = $q_s_price;
+        $fields[1] = $q_s_price;
         $where = [
             'start_date'=>['elt',$date],
             'end_date'  =>['egt', $date],
@@ -72,7 +72,7 @@ class PriceRead extends Model
             else return $s_price;
         }
         $q_s_price=($ptype==0)?'n_price':'l_price as n_price';
-        $fields['q_s_price'] = $q_s_price;
+        $fields[1] = $q_s_price;
         $where['ptype'] = 0;
         $data = $this->table($this->price_table)->field($fields)->where($where)->order("id desc")->find();
         $n_price=$data['n_price'];
