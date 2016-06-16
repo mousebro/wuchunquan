@@ -147,7 +147,6 @@ class OrderCodePool
 {
     public static function GetCode($lid, $ptype='', $forceGenerate=false)
     {
-        //var_dump(CodePoolRedis::getRedis(1));exit;
         if (CodePoolRedis::getRedis(0.2)!==false) {
             return CodePoolRedis::GetCode($lid, $ptype, $forceGenerate);
         }

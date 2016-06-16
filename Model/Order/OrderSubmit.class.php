@@ -65,6 +65,17 @@ class OrderSubmit extends Model
         return $this->table(self::__TBL_ORDER__)->where(['ordernum'=>$ordernum])->getField('code');
     }
 
+    public function TaoBaoOrder($taobaoOrderId, $ordernum)
+    {
+        $id = $this->table('pft_taobao_o2o_log')->where(['order_id'=>$taobaoOrderId])->getField('id');
+        if($id > 0){
+            return $this->table('pft_taobao_o2o_log')
+                ->where("id=$id")
+                ->save(['uu_order_id'=>$ordernum]);
+        }
+        return false;
+    }
+
     /**
      * 获取产品转分销数据
      *
