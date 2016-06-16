@@ -501,12 +501,175 @@ class SettleBlance extends Model{
             'status'        => 0,
             'is_settle'     => 1,
             'is_transfer'   => 0,
-            'transfer_time' => ['gt', time()]
+            'transfer_time' => ['ELT', time()]
         ];
 
-         $res = $this->table($this->_recordTable)->where($where)->page($page . ',' . $size)->select();
+        $field = 'id, fid, freeze_money, transfer_money';
+        $order = 'update_time asc';
+
+         $res = $this->table($this->_recordTable)->field($field)->order($order)->where($where)->page($page . ',' . $size)->select();
 
          return $res === false ? [] : $res;
+    }
+
+    /**
+     * 清算账号信息
+     * @author dwer
+     * @date   2016-06-15
+     *
+     * @param  $fid
+     * @return
+     */
+    public function settleAmount($fid) {
+        if(!$fid) {
+            return ['status' => -1];
+        }
+
+        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('freeze_type, freeze_data, service_fee, status')->find();
+        if(!$settingInfo) {
+            return ['status' => -1];
+        }
+
+        //判断如果状态是关闭的，就终止清算的工作
+        if($settingInfo['status'] == 0) {
+            return ['status' => -2];
+        }
+
+        $freezeType = $settingInfo['freeze_type'];
+        $freezeData = $settingInfo['freeze_data'];
+        $serviceFee = $settingInfo['service_fee'];
+
+        //获取账号余额
+        $memberModel = new Member();
+        $amoney = $memberModel->getMoney($fid, 0);
+        if($amoney <= 0) {
+            return ['status' => -3, 'amoney' => $amoney];
+        }
+
+        if($freezeType == 1) {
+            //冻结未使用的总额 - 在线支付的未使用的订单的总额
+            $res = $this->_getUnusedOrderInfo($fid);
+            if($res === false) {
+                //获取未使用订单金额时报错
+                return ['status' => -4];
+            }
+
+            $orderNum    = $res['order_num'];
+            $ticketNum   = $res['ticket_num'];
+            $freezeMoney = $res['money'];
+
+            if($freezeMoney >= $amoney) {
+                //账号余额不足冻结金额
+                return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
+            }
+
+            $transferMoney = $amoney - $freezeMoney;
+            $remarkData = [
+                'order_num'  => $orderNum,
+                'ticket_num' => $ticketNum,
+            ];
+        } else {
+            //按比例或是固定金额冻结
+            $freezeData = @json_decode($freezeData, true);
+            if(!$freezeData || !is_array($freezeData)) {
+                return ['status' => -1];
+            }
+
+            $type  = intval($freezeData['type']);
+            $value = floatval($freezeData['value']);
+            if($type == 1) {
+                //比例
+                $freezeMoney   = round($amoney * ($value / 100), 2);
+                $transferMoney = $amoney - $freezeMoney;
+            } else {
+                //固定金额
+                $freezeMoney = $value * 100;//转化为分
+                if($freezeMoney >= $amoney) {
+                    //账号余额不足冻结金额
+                    return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
+                }
+
+                $transferMoney = $amoney - $freezeMoney;
+            }
+
+            $remarkData = [
+                'type'  => $type,
+                'value' => $value,
+            ];
+        }
+
+        $res = [
+            'status'         => 1,
+            'amoney'         => $amoney,
+            'transfer_money' => $transferMoney,
+            'freeze_moeny'   => $freezeMoney,
+            'remark_data'         => $remarkData
+         ];
+
+        return $res;
+    }
+
+    /**
+     * 具体的清分动作
+     * @author dwer
+     * @date   2016-06-16
+     *
+     * @param  $id
+     * @param  $fid
+     * @param  $freezeMoney
+     * @param  $transferMoney
+     * @return
+     */
+    public function transMoney($id, $fid, $freezeMoney, $transferMoney) {
+        $freezeMoney   = intval($freezeMoney);
+        $transferMoney = intval($transferMoney);
+
+        if(!$id || !$fid) {
+            return false;
+        }
+
+        //获取配置信息
+        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('account_info, service_fee, status')->find();
+        if(!$settingInfo) {
+            return false;
+        }
+
+        $serviceFee  = floatval($settingInfo['service_fee']);
+        $accountInfo = @json_decode($settingInfo['account_info'], true);
+
+        //参数判断
+        if(($serviceFee > 100) || !is_array($accountInfo)) {
+            return false;
+        }
+
+        //判断现在的账号余额是不是够清分
+        $memberModel = new Member();
+        $amoney = $memberModel->getMoney($fid, 0);
+        if($amoney <= 0) {
+            return ['status' => -3, 'amoney' => $amoney];
+        }
+
+        if($amoney < ($freezeMoney + $transferMoney)) {
+            //余额不够，不能清分
+
+        }
+
+        //剩余的账号金额
+        $leftMoney = $amoney - $transferMoney;
+
+        //计算手续费 - 分为单位
+        $feeMoney = $transferMoney * ($serviceFee / 100); 
+
+        if($feeMoney > $leftMoney ) {
+            //剩余金额不足以支付提现手续费
+            
+        }
+
+        //插入提现表
+        
+        
+        //调用
+
     }
 
     /**
@@ -628,94 +791,6 @@ class SettleBlance extends Model{
         } else {
             return $this->_getRealDate($month, --$day, $year);
         }
-    }
-
-    /**
-     * 清算账号信息
-     * @author dwer
-     * @date   2016-06-15
-     *
-     * @param  $fid
-     * @return
-     */
-    public function settleAmount($fid) {
-        if(!$fid) {
-            return ['status' => -1];
-        }
-
-        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('freeze_type, freeze_data, service_fee, status')->find();
-        if(!$settingInfo) {
-            return ['status' => -1];
-        }
-
-        //判断如果状态是关闭的，就终止清算的工作
-        if($settingInfo['status'] == 0) {
-            return ['status' => -2];
-        }
-
-        $freezeType = $settingInfo['freeze_type'];
-        $freezeData = $settingInfo['freeze_data'];
-        $serviceFee = $settingInfo['service_fee'];
-
-        //获取账号余额
-        $memberModel = new Member();
-        $amoney = $memberModel->getMoney($fid, 0);
-        if($amoney <= 0) {
-            return ['status' => -3, 'amoney' => $amoney];
-        }
-
-        if($freezeType == 1) {
-            //冻结未使用的总额 - 在线支付的未使用的订单的总额
-            $res = $this->_getUnusedOrderInfo($fid);
-            if($res === false) {
-                //获取未使用订单金额时报错
-                return ['status' => -4];
-            }
-
-            $orderNum    = $res['order_num'];
-            $ticketNum   = $res['ticket_num'];
-            $freezeMoney = $res['money'];
-
-            if($freezeMoney >= $amoney) {
-                //账号余额不足冻结金额
-                return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
-            }
-
-            $transferMoney = $amoney - $freezeMoney;
-
-        } else {    
-            //按比例或是固定金额冻结
-            $freezeData = @json_decode($freezeData, true);
-            if(!$freezeData || !is_array($freezeData)) {
-                return ['status' => -1];
-            }
-
-            $type  = intval($freezeData['type']);
-            $value = floatval($freezeData['value']);
-            if($type == 1) {
-                //比例
-                $freezeMoney   = round($amoney * ($value / 100), 2);
-                $transferMoney = $amoney - $freezeMoney;
-            } else {
-                //固定金额
-                $freezeMoney = $value * 100;//转化为分
-                if($freezeMoney >= $amoney) {
-                    //账号余额不足冻结金额
-                    return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
-                }
-
-                $transferMoney = $amoney - $freezeMoney;
-            }
-        }
-
-        $res = [
-            'status'         => 1,
-            'amoney'         => $amoney,
-            'transfer_money' => $transferMoney,
-            'freeze_moeny'   => $freezeMoney,
-        ];
-
-        return $res;
     }
 
     /**

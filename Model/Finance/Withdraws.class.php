@@ -136,4 +136,27 @@ class Withdraws extends Model{
         return $res === false ? false : true;
     }
 
+    /**
+     * 添加提现记录
+     * @author dwer
+     * @date   2016-06-16
+     *
+     * @param $fid 需要提现的账号
+     * @param $wdMoney 需要提现的金额 - 分为单位
+     * @param $serviceFee 提现手续费率(千分之几)
+     * @param $feeCutWay 提现金额从哪里扣除  0=提现金额扣除 1=账户余额扣除
+     * @param $accountType 账号类型：1=银行，2=支付宝
+     * @param $accountInfo 账号信息数组  {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":"","account_name":""}
+     * @param $isAuto 是否直接自动清分 
+     * 
+     */
+    public function add($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false) {
+
+        $memo = <<<MEMO
+申请提现金额:{$withdraw_deposit_in_yuan}元,手续费:{$service_charge_in_yuan}元,{$cut_fee_from},实际提现金额:{$transfer_money_in_yuan}元
+MEMO;
+
+        $str = "insert pft_wd_cash set fid=$memberID,wd_name='$wd_name',wd_money=$withdraw_deposit_in_fen,apply_time=now(),bank_name='$bank_name',bank_ins_code='$bank_area_name',bank_accuont='$bank_accuont',batchno='{$batchno}',memo='{$memo}',fee_bank_once=$fee_bank_once,cut_fee_way=$charge_from_account,accType='$accType',type='$type',service_charge=$service_charge_in_fen";
+    }
+
 }

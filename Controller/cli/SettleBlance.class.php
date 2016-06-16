@@ -144,16 +144,37 @@ class SettleBlance extends Controller {
                 $settleBlanceModel->stopSettle($id, '自动清分处于关闭状态');
             } else if($status === -3) {
                 //账户余额没有钱
-                $amoney = 
-                $settleBlanceModel->stopSettle($id, '账号余额已经没有钱了，账户余额：');
-            }  else if($status === -4) {
-                $settleBlanceModel->stopSettle($id, '自动清分处于关闭状态');
-            }  else if($status === -5) {
-                $settleBlanceModel->stopSettle($id, '自动清分处于关闭状态');
-            } 
-            
+                $amoney = round($settleInfo['amoney']/100, 2);
+                $settleBlanceModel->stopSettle($id, "账号余额已经没有钱了，账户余额：{$amoney}元");
+            } else if($status === -4) {
+                //获取未使用订单信息的时候报错
+                $settleBlanceModel->stopSettle($id, '获取未使用订单金额的时候系统报错');
 
-            $res = $settleBlanceModel->updateSettleInfo($id, $freezeMoney, $transferMoney, $remark);
+            } else if($status === -5) {
+                $amoney      = round($settleInfo['amoney']/100, 2);
+                $freezeMoney = round($settleInfo['freeze_money']/100, 2);
+
+                $settleBlanceModel->stopSettle($id, '账号余额不足，账户余额：{$amoney}元，清分冻结余额：{$freezeMoney}元');
+            } else {
+                //正常清算
+                 $freezeMoney   = $settleInfo['freeze_money'];
+                 $transferMoney = $settleInfo['transfer_money'];
+                 $remarkData      = $settleInfo['remark_data'];
+
+                 if(isset($remarkData['type'])) {
+                    if($remarkData['type'] == 1) {
+                        $remark = "按比例冻结，冻结比例：{$remarkData['value']}%";
+                    } else {
+                        $remark = "按具体金额冻结，冻结金额：{$remarkData['value']}元";
+                    }
+                 } else {
+                    //未使用订单
+                    $tmpMoney = round($freezeMoney/100, 2);
+                    $remark = "未使用在线支付订单情况：总订单数={$remarkData['type']}, 总票数={$remarkData['type']}, 总金额={$tmpMoney}元";
+                 }
+
+                 $res = $settleBlanceModel->updateSettleInfo($id, $freezeMoney, $transferMoney, $remark);
+            }
         }
 
     }
@@ -171,6 +192,7 @@ class SettleBlance extends Controller {
         $transferList = $settleBlanceModel->getTransferList(1, 100);
         foreach($transferList as $item) {
             //调用自动提现的接口
+            
             
 
             //更新数据
