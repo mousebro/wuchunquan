@@ -403,6 +403,37 @@ class SettleBlance extends Model{
     }
 
     /**
+     * 终止清算
+     * 记录错误或是不能完成清算的情况
+     * 
+     * @author dwer
+     * @date   2016-06-16
+     *
+     * @param  $id
+     * @param  $remark
+     * @return
+     */
+    public function stopSettle($id, $remark = '') {
+        if(!$id) {
+            return false;
+        }
+
+        $data = [
+            'status'      => 2,
+            'update_time' => time(),
+            'is_settle'   => 1,
+            'is_transfer' => 1
+        ];
+
+        if($remark) {
+            $data['remark'] = strval($remark);
+        }
+
+        $res = $this->table($this->_recordTable)->where(['id' => $id])->save($data);
+        return $res === false ? false : true;
+    }
+
+    /**
      *  更新转账信息
      * @author dwer
      * @date   2016-06-08
@@ -445,7 +476,7 @@ class SettleBlance extends Model{
             'settle_time' => ['ELT', time()]
         ];
 
-        $field = 'fid, cycle_mark';
+        $field = 'id, fid, cycle_mark';
         $order = 'update_time asc';
 
          $res = $this->table($this->_recordTable)->where($where)->field($field)->order($order)->page($page . ',' . $size)->select();
@@ -609,17 +640,17 @@ class SettleBlance extends Model{
      */
     public function settleAmount($fid) {
         if(!$fid) {
-            return false;
+            return ['status' => -1];
         }
 
         $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('freeze_type, freeze_data, service_fee, status')->find();
         if(!$settingInfo) {
-            return false;
+            return ['status' => -1];
         }
 
         //判断如果状态是关闭的，就终止清算的工作
         if($settingInfo['status'] == 0) {
-            return -1;
+            return ['status' => -2];
         }
 
         $freezeType = $settingInfo['freeze_type'];
@@ -630,23 +661,37 @@ class SettleBlance extends Model{
         $memberModel = new Member();
         $amoney = $memberModel->getMoney($fid, 0);
         if($amoney <= 0) {
-            return -2;
+            return ['status' => -3, 'amoney' => $amoney];
         }
 
         if($freezeType == 1) {
             //冻结未使用的总额 - 在线支付的未使用的订单的总额
-            
+            $res = $this->_getUnusedOrderInfo($fid);
+            if($res === false) {
+                //获取未使用订单金额时报错
+                return ['status' => -4];
+            }
 
+            $orderNum    = $res['order_num'];
+            $ticketNum   = $res['ticket_num'];
+            $freezeMoney = $res['money'];
 
-        } else {
+            if($freezeMoney >= $amoney) {
+                //账号余额不足冻结金额
+                return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
+            }
+
+            $transferMoney = $amoney - $freezeMoney;
+
+        } else {    
             //按比例或是固定金额冻结
             $freezeData = @json_decode($freezeData, true);
             if(!$freezeData || !is_array($freezeData)) {
-                return false;
+                return ['status' => -1];
             }
 
             $type  = intval($freezeData['type']);
-            $value = floatval($freezeData['value']); 5/100
+            $value = floatval($freezeData['value']);
             if($type == 1) {
                 //比例
                 $freezeMoney   = round($amoney * ($value / 100), 2);
@@ -655,12 +700,22 @@ class SettleBlance extends Model{
                 //固定金额
                 $freezeMoney = $value * 100;//转化为分
                 if($freezeMoney >= $amoney) {
-                    return -3;
+                    //账号余额不足冻结金额
+                    return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
                 }
 
                 $transferMoney = $amoney - $freezeMoney;
             }
         }
+
+        $res = [
+            'status'         => 1,
+            'amoney'         => $amoney,
+            'transfer_money' => $transferMoney,
+            'freeze_moeny'   => $freezeMoney,
+        ];
+
+        return $res;
     }
 
     /**
@@ -672,24 +727,50 @@ class SettleBlance extends Model{
      * @return [type]
      */
     private function _getUnusedOrderInfo($fid) {
-        $insideSoap = Helpers::GetSoapInside();
-
-        try{
-            $sid    = '';
-            $status = '';
-            $pays   = '';
-            $rstart = 0;
-            $n      = 999999;
-            $c      = 2;
-            $aid    = $fid;
-
-            $insideSoap->Order_Globle_Search($sid, '', '', '', '', '', '', '','', '', '', '', '', '', '',
-                $status, $pays, '', '', '', $rstart=0, $n=40,$c=0, 0, '', 0, '',0 ,'' ,'', $aid='');
-
-
-        } catch(Exception $e) {
+        if(!$fid) {
             return false;
         }
+
+        $table = "$this->_orderTable s";
+        $joinSplit   = "left join order_aids_split os on s.ordernum=os.orderid";
+        $joinDetail  = "left join uu_order_fx_details fd on s.ordernum=fd.orderid";
+
+
+        $where = [
+            'os.sellerid' => $fid, //供应商
+            'status'      => 0, //未使用
+            'paymode'     => ['in', '1, 2, 5, 6, 7, 8, 9, 10, 11'], //在线支付的
+            'pay_status'  => 1 //已经支付
+        ];
+
+        $field = 's.tnum, s.tprice';
+        $page = "1,100000";
+
+        $res = $this->table($table)
+                    ->join($joinSplit)
+                    ->join($joinDetail)
+                    ->field($field)
+                    ->page($page)
+                    ->where($where)
+                    ->select();
+
+        //如果查询出错，就返回错误
+        if($res === false) {
+            return false;
+        }
+
+        //获取统计信息
+        $orderNum  = count($res);
+        $ticketNum = 0;
+        $money     = 0;
+
+        foreach($res as $item) {
+            $ticketNum += $item['tnum'];
+            $money     += $item['tnum'] * $item['tprice'];
+        }
+
+        //返回数据
+        return ['order_num' => $orderNum, 'ticket_num' => $ticketNum, 'money' => $money];
     }
 
 

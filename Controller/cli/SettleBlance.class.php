@@ -129,8 +129,28 @@ class SettleBlance extends Controller {
         $settleList = $settleBlanceModel->getSettleList(1, 100);
         foreach($settleList as $item) {
             //清算金额
-            $fid = $item['fid'];
-            $settleInfo = $settleBlanceModel->_settleAmount($fid);
+            $fid        = $item['fid'];
+            $id         = $item['id'];
+            $settleInfo = $settleBlanceModel->settleAmount($fid);
+
+            //状态
+            $status = $settleInfo['status'];
+
+            if($status === -1) {
+                //记录数据错误
+                $settleBlanceModel->stopSettle($id, '自动清分配置错误');
+            } else if($status === -2) {
+                //清分关闭
+                $settleBlanceModel->stopSettle($id, '自动清分处于关闭状态');
+            } else if($status === -3) {
+                //账户余额没有钱
+                $amoney = 
+                $settleBlanceModel->stopSettle($id, '账号余额已经没有钱了，账户余额：');
+            }  else if($status === -4) {
+                $settleBlanceModel->stopSettle($id, '自动清分处于关闭状态');
+            }  else if($status === -5) {
+                $settleBlanceModel->stopSettle($id, '自动清分处于关闭状态');
+            } 
             
 
             $res = $settleBlanceModel->updateSettleInfo($id, $freezeMoney, $transferMoney, $remark);
