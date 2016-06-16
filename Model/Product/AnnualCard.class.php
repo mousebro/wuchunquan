@@ -572,7 +572,7 @@ class AnnualCard extends Model
     {
         $this->startTrans();
         $ret1 = $this->saveCrdConf($crdConf);
-        $ret2 = $this->saveCrdPriv($crdPriv);
+        $ret2 = $this->addCardPrivilege($crdPriv);
         if ($ret1 && $ret2) {
             $this->commit();
 
@@ -596,7 +596,6 @@ class AnnualCard extends Model
     {
 
         $result = $this->table(self::CARD_CONFIG_TABLE)->add($data);
-        $this->log_sql();
 
         return $result;
     }
@@ -609,10 +608,9 @@ class AnnualCard extends Model
      *
      * @return bool|string
      */
-    public function saveCrdPriv(array $data)
+    public function addCardPrivilege(array $data)
     {
         $result = $this->table(self::CARD_PRIVILEGE_TABLE)->addAll($data);
-        $this->log_sql();
 
         return $result;
     }
@@ -631,37 +629,42 @@ class AnnualCard extends Model
     {
         return $this->cache->rm($this->cacheKey);
     }
+    //更新年卡配置
+    public function setCardPrivilege($parentId,$data){
+        $tid_before = $this->getPrivilegeInfo(['parent_id'=>$parentId],'tid');
+        $tid_after = array_column($data,'tid');
 
-    public function checkPriv($arr_list)
-    {
-//        $arr_list = json_decode($json, true);
-        if ( ! is_array($arr_list)) {
-            throw new Exception("年卡特权数据出错");
+        if($tid_before === null){
+            $tid_add = $tid_after;
+        }else{
+            $tid_add = array_diff($tid_after,$tid_before);
+            $tid_delete = array_diff($tid_before,$tid_after);
+            $tid_update = array_diff($tid_after,$tid_add,$tid_delete);
         }
-        $limit_key_list = ['aid', 'tid', 'use_limit', 'limit_count'];
-        foreach ($arr_list as $arr) {
-            foreach ($arr as $key => $val) {
-                if ( ! in_array($key, $limit_key_list) || ! is_numeric($val)) {
-                    echo $key, $val;
-
-                    return false;
-                }
+        $tid_add = $tid_add ?: [];
+        $tid_update = $tid_update ?: [];
+        $tid_delete = $tid_delete ?: [];
+        foreach($data as $setting){
+            if(in_array($setting['tid'],$tid_delete)){
+                $data_delete[] = $setting;
+            }else if(in_array($setting['tid'],$tid_update)){
+                $data_update[] = $setting;
+            }else if(in_array($setting['tid'],$tid_add)){
+                $data_add[] = $setting;
             }
         }
-
-        return $arr_list;
-    }
-
-    public function log_sql()
-    {
-        if (ENV != 'production') {
-            $sql   = $this->getLastSql();
-            $error = $this->getDbError();
-            $sql .= $error ? $error : '';
-
-            \pft_log('annual_card/sql', 'sql#' . $sql . 'err#' . $error);
-
+        if(isset($data_delete)){
+            $this->deleteCardPrivilege($data_delete);
         }
-
+        if(isset($data_update)){
+            $this->updateCardPrivilege($data_update);
+        }
+        if(isset($data_add)){
+            $this->addCardPrivilege($data_add);
+        }
+    }
+    //获取年卡产品特权信息
+    public function getPrivilegeInfo($condition,$field){
+        return $this->table(self::CARD_PRIVILEGE_TABLE)->where($condition)->getField($field,true);
     }
 }
