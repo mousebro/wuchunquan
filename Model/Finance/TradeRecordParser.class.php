@@ -96,8 +96,12 @@ class TradeRecordParser
                 break;
             //在线支付
             case 1:
+                if($this->record['daction']==0 && in_array($this->record['payee_type'],[0,1])){//收入-收款方
+                    $this->record['payee_acc'] = $member_acc;
+                }
                 $partner_info = $pay_types[$this->record['ptype']][1];
                 $partner_info .= $this->record['payer_acc'] ? "（{$this->record['payer_acc']}）" : "";
+
                 break;
             case 4:
                 // no break;
@@ -107,7 +111,10 @@ class TradeRecordParser
                 // no break;
             case 11:
                 // no break;
-            $partner_info = $pay_types[$this->record['ptype']][1];
+            if($this->record['daction']==0 && in_array($this->record['payee_type'],[0,1])){//收入-收款方
+                    $this->record['payee_acc'] = $member_acc;
+                }
+                $partner_info = $pay_types[$this->record['ptype']][1];
                 break;
             // 授信账户
             case 2:
@@ -129,6 +136,7 @@ class TradeRecordParser
         if($separator && isset($partner_info)){
             $this->record['counter'] = ltrim($this->record['counter'] . $separator . $partner_info,$separator);
         }
+        
         if($excel){
             self::wrapStr($this->record['payer_acc']);
             self::wrapStr($this->record['payee_acc']);

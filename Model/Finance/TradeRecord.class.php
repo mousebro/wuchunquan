@@ -61,18 +61,23 @@ class TradeRecord extends Model
             'tr.memo',                              //备注
             'tr.daction',                           //收支
             'tr.payee_type',                        //收款账户类型
-            'o.ordermode as order_channel',        //交易渠道
+            'o.ordermode as order_channel',         //交易渠道
             'o.tnum',
             'p.p_name',
             'a.buyer_email as payer_acc'
-
         ];
+
         $where = ['tr.id' => $trade_id];
+
         $record = $this->table($table)->field($field)->where($where)->join($join)->find();
 
         if (!is_array($record) || !$record) {
             return false;
         }
+
+
+
+
         if (isset($record['ptype']) && C('pay_type')[$record['ptype']][3] == 0) {
             $payAcc = $this->getPayerAccount($record['orderid']);
             if (is_array($payAcc[$record['orderid']])) {
@@ -80,7 +85,7 @@ class TradeRecord extends Model
             }
         }
 
-        return $this->_getParser()
+        $result =  $this->_getParser()
             ->setRecord($record)
             ->parsePayer()
             ->parseTradeType()
@@ -91,6 +96,14 @@ class TradeRecord extends Model
             ->parseChannel()
             ->parsePayee()
             ->getRecord();
+
+        if($result['daction']==0){
+            $result['member'] .= $result['ptype'] . '('.$result['payee_acc'].')';
+        }else{
+            $result['member'] .= $result['ptype'] . '('.$result['payer_acc'].')';
+        }
+        
+        return $result;
 
     }
 
@@ -257,6 +270,7 @@ class TradeRecord extends Model
             'lmoney',
             'ptype',
             'memo',
+            'payee_type',
         ];
 
         $field = join(',', $field);
