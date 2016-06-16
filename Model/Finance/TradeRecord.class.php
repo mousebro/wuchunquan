@@ -77,18 +77,15 @@ class TradeRecord extends Model
             return false;
         }
 
-        $result =  $this->_getParser()
+        $result = $this->_getParser()
             ->setRecord($record)
-            //->parsePayer()
             ->parseTradeType()
             ->parseTradeContent()
             ->parseMemberBasic()
             ->parseMoney()
             ->parsePayType()
             ->parseChannel()
-            //->parsePayee()
             ->getRecord();
-//
         return $result;
 
     }
@@ -127,7 +124,7 @@ class TradeRecord extends Model
             return false;
         } else {
             $orderid = array_unique(array_filter(array_column($records, 'orderid'))); //提取交易号
-            if(count($orderid)){
+            if (count($orderid)) {
                 $extInfo = $this->getExtendInfo($orderid);
                 $payAcc = $this->getPayerAccount($orderid);
                 if (is_array($extInfo)) {
@@ -144,15 +141,15 @@ class TradeRecord extends Model
         foreach ($records as $record) {
             $ordernum = $record['orderid'];
 
-            if(!$ordernum){
+            if (!$ordernum) {
                 continue;
             }
 
-            if(isset($extInfo) && array_key_exists($ordernum, $extInfo)){
-                $record = array_merge($record,$extInfo[$ordernum]);
+            if (isset($extInfo) && array_key_exists($ordernum, $extInfo)) {
+                $record = array_merge($record, $extInfo[$ordernum]);
 
                 $tid = $extInfo[$ordernum]['tid'];
-                if(!empty($prod_name[$tid])){
+                if (!empty($prod_name[$tid])) {
                     $record['p_name'] = $prod_name[$tid];
                 }
             }
@@ -163,7 +160,7 @@ class TradeRecord extends Model
 
             $data[] = $parser->setRecord($record)
                 ->parseTradeType('|')
-                ->parseMember(false,true)
+                ->parseMember(false, true)
                 ->parseMoney(true)
                 ->parsePayType()
                 ->parseChannel()
