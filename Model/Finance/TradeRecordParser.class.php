@@ -34,6 +34,7 @@ class TradeRecordParser
         }
 
         $this->is_acc_reverse = isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid'];
+
         return $this;
     }
 
@@ -46,6 +47,7 @@ class TradeRecordParser
     {
         $record = $this->record;
         unset($this->record);
+
         return $record;
     }
 
@@ -78,17 +80,17 @@ class TradeRecordParser
 
 
         foreach ($options as $key => $value) {
-            if (array_key_exists($key, $this->record) && $this->record[$key]) {
-                $this->record[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key], 'dname');
+            if (array_key_exists($key, $this->record) && $this->record[ $key ]) {
+                $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ], 'dname');
             }
-            $this->record[$value] = !empty($this->record[$value]) ? $this->record[$value] : '';
+            $this->record[ $value ] = !empty($this->record[ $value ]) ? $this->record[ $value ] : '';
         }
 
         $pay_types = C('pay_type');
         switch ($this->record['ptype']) {
             //平台账户
             case 0:
-                $this->record['counter'] = $this->record['counter'] ?: '票付通信息科技';
+                $this->record['counter'] = $this->record['counter'] ?: '';
                 if ($this->record['daction'] == 0) {
                     $this->record['payer_acc'] = $partner_acc;
                     $this->record['payee_acc'] = $member_acc;
@@ -103,7 +105,7 @@ class TradeRecordParser
                 if ($this->record['daction'] == 0 && in_array($this->record['payee_type'], [0, 1])) {//收入-收款方
                     $this->record['payee_acc'] = $member_acc;
                 }
-                $partner_info = $pay_types[$this->record['ptype']][1];
+                $partner_info = $pay_types[ $this->record['ptype'] ][1];
                 $partner_info .= $this->record['payer_acc'] ? "（{$this->record['payer_acc']}）" : "";
 
                 break;
@@ -118,7 +120,7 @@ class TradeRecordParser
                 if ($this->record['daction'] == 0 && in_array($this->record['payee_type'], [0, 1])) {//收入-收款方
                     $this->record['payee_acc'] = $member_acc;
                 }
-                $partner_info = $pay_types[$this->record['ptype']][1];
+                $partner_info = $pay_types[ $this->record['ptype'] ][1];
                 break;
             // 授信账户
             case 2:
@@ -145,6 +147,7 @@ class TradeRecordParser
             self::wrapStr($this->record['payer_acc']);
             self::wrapStr($this->record['payee_acc']);
         }
+
         return $this;
     }
 
@@ -153,19 +156,15 @@ class TradeRecordParser
      */
     public function parseMoney($excel = false)
     {
-        $options = ['dmoney', 'lmoney'];
-        foreach ($options as $money) {
-            $this->record[$money] = strval(sprintf($this->record[$money] / 100, 2));
-            if ($excel) {
-                self::wrapStr($this->record[$money]);
-            }
+        $this->record['lmoney'] = strval(sprintf($this->record['lmoney'] / 100, 2));
+        $this->record['dmoney'] = strval(sprintf($this->record['dmoney'] / 100, 2));
+        $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
+
+        if ($excel) {
+            self::wrapStr($this->record['dmoney']);
+            self::wrapStr($this->record['lmoney']);
         }
 
-        //收入支出
-        if (isset($this->record['daction'])) {
-            $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
-            //unset($this->record['daction']);
-        }
         return $this;
     }
 
@@ -176,10 +175,11 @@ class TradeRecordParser
     {
         $channel_list = C('order_channel');
         if (array_key_exists($this->record['order_channel'], $channel_list)) {
-            $this->record['order_channel'] = $channel_list[$this->record['order_channel']];
+            $this->record['order_channel'] = $channel_list[ $this->record['order_channel'] ];
         } else {
             $this->record['order_channel'] = '平台';
         }
+
         return $this;
     }
 
@@ -192,46 +192,64 @@ class TradeRecordParser
             $this->record['body'] = $this->record['p_name'];
             unset($this->record['p_name']);
         }
+
         return $this;
     }
 
+
     /**
      * 转换支付方式
+     *
+     * @param   int    [ptype]             支付类型
+     * @param   string [trade_no]          交易流水号
+     * @param   int    [daction]           收入/支出标识
+     *
+     * @param   string [payer_cc]          支付方账号
+     * @param   string [payee_cc]          收款方账号
+     *
+     * @param   string [payer_cc_type]     支付方账号类型
+     * @param   string [payee_cc_type]     收款方账号类型
+     *
+     * @param   string [taccount]          交易账户类型
+     *
+     *
+     * @return $this
      */
     public function parsePayType()
     {
-        if (isset($this->record['ptype'])) {
+        if (!isset($this->record['ptype'])) {
+            return $this;
+        }
 
-            $ptype = $this->record['ptype'];
+        $ptype = $this->record['ptype'];
 
-            if (in_array($ptype, [0, 2, 3])) {
-                if(!empty($this->record['trade_no'])){
-                    $this->record['trade_no'] = '';
-                }
+        $ptype_list = C('pay_type');
+        $acc_type_list = C('account_type');
+
+        //支付方式
+        $this->record['ptype'] = $ptype_list[ $ptype ][1];
+
+        //支付账户类型代码
+        $p_acc = $ptype_list[ $ptype ][0];
+        $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
+        $this->record['payer_acc'] = (in_array($ptype,[0,1,2,3])) ? $this->record['payer_acc'] : '';
+        $this->record['taccount'] = $acc_type_list[ $p_acc ];
+
+        //非在线支付类型的交易 与 支付宝收款方非票付通账户的 收款方账户类型与支付方式一致
+        if(in_array($ptype,[0,2,3]) || ($ptype == 1 && !in_array($this->record['payee_type'], [0,1]) )){
+            $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
+            $this->record['trade_no'] = '';
+        }else{
+            //收入
+            if($this->record['daction']==0){
+                $this->record['payee_acc_type'] = '平台账户';
+                $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
             }else{
-                if($this->record['daction']==0){
-                    $this->record['payee_acc_type'] = $this->record['taccount'] = '平台账户';
-                }
-            }
-
-
-            $ptype_list = C('pay_type');
-
-            if (array_key_exists($ptype, $ptype_list)) {
-
-                $this->record['ptype'] = $ptype_list[$ptype][1];
-
-                $p_acc = $ptype_list[$ptype][0];
-
-                $acc_type_list = C('account_type');
-                $this->record['payer_acc_type'] = $acc_type_list[$p_acc];
-                if (array_key_exists($p_acc, $acc_type_list) && !isset($this->record['taccount'])) {
-                    $this->record['taccount'] = $acc_type_list[$p_acc];
-
-                    $this->record['payee_acc_type'] = $acc_type_list[$p_acc];
-                }
+                $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
+                $this->record['payer_acc_type'] = '平台账户';
             }
         }
+
         return $this;
     }
 
@@ -244,15 +262,16 @@ class TradeRecordParser
             $dtype_list = array_column(C('item_category'), 1);
             $cat_list = array_column(C('item_category'), 0);
             if (array_key_exists($this->record['dtype'], $dtype_list)) {
-                $this->record['item'] = $cat_list[$this->record['dtype']];
-                $this->record['dtype'] = $dtype_list[$this->record['dtype']];
+                $this->record['item'] = $cat_list[ $this->record['dtype'] ];
+                $this->record['dtype'] = $dtype_list[ $this->record['dtype'] ];
                 //交易记录对应分类
                 $item_list = C('trade_item');
                 if (array_key_exists($this->record['item'], $item_list)) {
-                    $this->record['item'] = $item_list[$this->record['item']] . $separator . $this->record['dtype'];
+                    $this->record['item'] = $item_list[ $this->record['item'] ] . $separator . $this->record['dtype'];
                 }
             }
         }
+
         return $this;
     }
 
@@ -262,8 +281,9 @@ class TradeRecordParser
     public function parsePayee()
     {
         if (isset($this->record['payee_type'])) {
-            $this->record['payee_type'] = C('payee_type')[$this->record['payee_type']];
+            $this->record['payee_type'] = C('payee_type')[ $this->record['payee_type'] ];
         }
+
         return $this;
     }
 
@@ -281,6 +301,7 @@ class TradeRecordParser
                     'account');
             }
         }
+
         return $this;
     }
 
@@ -292,6 +313,7 @@ class TradeRecordParser
         if (!isset($this->memberModel)) {
             $this->memberModel = new Member();
         }
+
         return $this->memberModel;
     }
 
@@ -325,11 +347,11 @@ class TradeRecordParser
         }
 
         foreach ($options as $key => $value) {
-            if (!$this->record[$key]) {
+            if (!$this->record[ $key ]) {
                 continue;
             }
-            $this->record[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key], 'dname') ?: '';
-            $account[$key] = $account[$value] = $this->getMemberModel()->getMemberCacheById($this->record[$key],
+            $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ], 'dname') ?: '';
+            $account[ $key ] = $account[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
                 'account') ?: '';
         }
 
@@ -340,11 +362,11 @@ class TradeRecordParser
                 $this->record['counter'] = $this->record['counter'] ?: '';
                 $this->record['counter'] .= !empty($account['counter']) ? self::join_bracket([
                     '平台账户:',
-                    $account['counter']
+                    $account['counter'],
                 ]) : '';
                 $this->record['member'] .= !empty($account['member']) ? self::join_bracket([
                     '平台账户:',
-                    $account['member']
+                    $account['member'],
                 ]) : '';
                 break;
             case 2:
@@ -365,22 +387,24 @@ class TradeRecordParser
             case 11:
                 $pay_types = C('pay_type');
 
-                $payer_acc = $pay_types[$this->record['ptype']][1];
+                $payer_acc = $pay_types[ $this->record['ptype'] ][1];
                 if ($this->record['payer_acc'] && $this->record['ptype'] == 1) {
                     $payer_acc .= ':' . $this->record['payer_acc'];
                 }
 
                 if ($is_acc_reverse ^ $this->record['daction'] == 0) {
                     $this->record['member'] .= self::join_bracket(['平台账户:', $account['member']]);
-
-                    if (!empty($account['counter']) && !empty($this->record['payer_cc'])) {
-                        $this->record['counter'] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
-                    } else {
+                    if(!empty($account['counter'])){
+                        if(!empty($this->record['payer_cc'])){
+                            $this->record['counter'] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
+                        }else{
+                            $this->record['counter'] .= self::join_bracket([$payer_acc]);
+                        }
+                    }else{
                         $this->record['counter'] .= $payer_acc;
                     }
                 } else {
                     $this->record['counter'] .= self::join_bracket(['平台账户:', $account['counter']]);
-
                     if (!empty($account['member']) && !empty($this->record['payer_cc'])) {
                         $this->record['member'] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
                     } else {
@@ -391,12 +415,14 @@ class TradeRecordParser
             default:
                 break;
         }
+
         return $this;
     }
 
     static function join_bracket($array)
     {
         $str = '(' . implode('', $array) . ')';
+
         return $str;
     }
 }

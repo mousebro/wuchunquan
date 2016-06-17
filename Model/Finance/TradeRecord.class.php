@@ -20,6 +20,50 @@ class TradeRecord extends Model
     private $parser;
 
     /**
+     * @param $records
+     * @param $extInfo
+     * @param $prod_name
+     * @param $payAcc
+     * @param $data
+     *
+     * @return array
+     */
+    private function _recomposeExcelData($records, $extInfo, $prod_name, $payAcc, &$data)
+    {
+        $parser = $this->_getParser();
+        foreach ($records as $record) {
+            $ordernum = $record['orderid'];
+
+            if (!$ordernum) {
+                continue;
+            }
+
+            if (isset($extInfo) && array_key_exists($ordernum, $extInfo)) {
+                $record = array_merge($record, $extInfo[ $ordernum ]);
+
+                $tid = $extInfo[ $ordernum ]['tid'];
+                if (!empty($prod_name[ $tid ])) {
+                    $record['p_name'] = $prod_name[ $tid ];
+                }
+            }
+
+            if (isset($payAcc) && $ordernum && array_key_exists($ordernum, $payAcc)) {
+                $record = array_merge($record, $payAcc[ $ordernum ]);
+            }
+
+            $data[] = $parser->setRecord($record)
+                ->parseTradeType('|')
+                ->parseMember(false, true)
+                ->parseMoney(true)
+                ->parsePayType()
+                ->parseChannel()
+                //->parsePayee()
+                ->parseTradeContent()
+                ->getRecord();
+        }
+    }
+
+    /**
      * 获取交易记录转换实例
      *
      * @return TradeRecordParser
@@ -29,6 +73,7 @@ class TradeRecord extends Model
         if (is_null($this->parser)) {
             $this->parser = new TradeRecordParser();
         }
+
         return $this->parser;
     }
 
@@ -86,6 +131,7 @@ class TradeRecord extends Model
             ->parsePayType()
             ->parseChannel()
             ->getRecord();
+
         return $result;
 
     }
@@ -104,7 +150,7 @@ class TradeRecord extends Model
         $field = [
             'fid',          //交易商户
             'aid',          //对方商户
-            'opid',         //操作人
+            //'opid',         //操作人
             'rectime',      //交易时间
             'dtype',        //交易分类
             'orderid',      //交易号
@@ -123,10 +169,18 @@ class TradeRecord extends Model
         if (!$records || !is_array($records)) {
             return false;
         } else {
-            $orderid = array_unique(array_filter(array_column($records, 'orderid'))); //提取交易号
+            //提取交易号
+            $orderid = array_unique(array_filter(array_column($records, 'orderid')));
+
             if (count($orderid)) {
+                
+                //获取订单号/交易号对应信息
                 $extInfo = $this->getExtendInfo($orderid);
+                
+                //根据外部订单号获取在线支付信息
                 $payAcc = $this->getPayerAccount($orderid);
+                
+                //根据订单中的门票id 查找产品名称
                 if (is_array($extInfo)) {
                     $tid = array_unique(array_column($extInfo, 'tid'));
                     $prod_name = $this->getProdNameByTid($tid);
@@ -135,39 +189,7 @@ class TradeRecord extends Model
         }
         //整合数据
         $data = [];
-
-        $parser = $this->_getParser();
-
-        foreach ($records as $record) {
-            $ordernum = $record['orderid'];
-
-            if (!$ordernum) {
-                continue;
-            }
-
-            if (isset($extInfo) && array_key_exists($ordernum, $extInfo)) {
-                $record = array_merge($record, $extInfo[$ordernum]);
-
-                $tid = $extInfo[$ordernum]['tid'];
-                if (!empty($prod_name[$tid])) {
-                    $record['p_name'] = $prod_name[$tid];
-                }
-            }
-
-            if (isset($payAcc) && $ordernum && array_key_exists($ordernum, $payAcc)) {
-                $record = array_merge($record, $payAcc[$ordernum]);
-            }
-
-            $data[] = $parser->setRecord($record)
-                ->parseTradeType('|')
-                ->parseMember(false, true)
-                ->parseMoney(true)
-                ->parsePayType()
-                ->parseChannel()
-                ->parsePayee()
-                ->parseTradeContent()
-                ->getRecord();
-        }
+        $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $data);
 
         return $data;
     }
@@ -221,10 +243,11 @@ class TradeRecord extends Model
             "out_trade_no as orderid",
             "buyer_email as payer_acc",
             "seller_email as payee_acc",
-            "subject as body"
+            "subject as body",
         ];
         $field = implode(',', $field);
         $result = $this->table($table)->where($where)->getField($field, true);
+
         return $result;
     }
 
@@ -281,7 +304,7 @@ class TradeRecord extends Model
             foreach ($records as $record) {
                 $orderid = $record['orderid'];
                 if (is_array($online_pay_info) && array_key_exists($orderid, $online_pay_info)) {
-                    $record = array_merge($record, $online_pay_info[$orderid]);
+                    $record = array_merge($record, $online_pay_info[ $orderid ]);
                 }
                 $data[] = $parser->setRecord($record)
                     ->parseMember()
@@ -295,11 +318,11 @@ class TradeRecord extends Model
         $total = $this->table($table)->where($map)->count();
 
         $return = [
-            'total' => $total,
-            'page' => $page + 1,
+            'total'      => $total,
+            'page'       => $page + 1,
             'total_page' => ceil($total / $limit),
-            'limit' => $limit,
-            'list' => $data,
+            'limit'      => $limit,
+            'list'       => $data,
         ];
 
         return $return;
@@ -368,6 +391,7 @@ class TradeRecord extends Model
         $join = "LEFT JOIN {$this->_ticket_table} AS t ON p.id=t.pid";
         $where = ['t.id' => ['in', $tid]];
         $result = $this->table($table)->where($where)->join($join)->getField('t.id AS tid,p.p_name', true);
+
         return $result;
     }
 
@@ -399,7 +423,7 @@ class TradeRecord extends Model
         $outcome = strval(round($outcome / 100, 2));
         $return = [
             'balance' => $balance,
-            'income' => $income,
+            'income'  => $income,
             'outcome' => $outcome,
         ];
 

@@ -90,7 +90,7 @@ return array(
         'order_channel'  => '交易渠道',
         'member'         => '交易商户',
         'counter'        => '对方商户',
-        'oper'           => '操作人',
+        //'oper'           => '操作人',
         'rectime'        => '交易时间',
         'item'           => '交易分类|明细分类',
         'orderid'        => '交易号',
