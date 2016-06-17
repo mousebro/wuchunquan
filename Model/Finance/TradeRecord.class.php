@@ -34,11 +34,7 @@ class TradeRecord extends Model
         foreach ($records as $record) {
             $ordernum = $record['orderid'];
 
-            if (!$ordernum) {
-                continue;
-            }
-
-            if (isset($extInfo) && array_key_exists($ordernum, $extInfo)) {
+            if ($ordernum && isset($extInfo) && array_key_exists($ordernum, $extInfo)) {
                 $record = array_merge($record, $extInfo[ $ordernum ]);
 
                 $tid = $extInfo[ $ordernum ]['tid'];
@@ -47,7 +43,7 @@ class TradeRecord extends Model
                 }
             }
 
-            if (isset($payAcc) && $ordernum && array_key_exists($ordernum, $payAcc)) {
+            if ($ordernum && isset($payAcc) && $ordernum && array_key_exists($ordernum, $payAcc)) {
                 $record = array_merge($record, $payAcc[ $ordernum ]);
             }
 
@@ -188,6 +184,7 @@ class TradeRecord extends Model
                 }
             }
         }
+
         //整合数据
         $data = [];
         $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $data);
