@@ -210,7 +210,7 @@ class TradeRecordParser
                 }
             }else{
                 if($this->record['daction']==0){
-                    $this->record['taccount'] = '平台账户';
+                    $this->record['payee_acc_type'] = $this->record['taccount'] = '平台账户';
                 }
             }
 
@@ -224,10 +224,11 @@ class TradeRecordParser
                 $p_acc = $ptype_list[$ptype][0];
 
                 $acc_type_list = C('account_type');
-
+                $this->record['payer_acc_type'] = $acc_type_list[$p_acc];
                 if (array_key_exists($p_acc, $acc_type_list) && !isset($this->record['taccount'])) {
-
                     $this->record['taccount'] = $acc_type_list[$p_acc];
+
+                    $this->record['payee_acc_type'] = $acc_type_list[$p_acc];
                 }
             }
         }
