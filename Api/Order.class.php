@@ -63,10 +63,11 @@ class Order extends Controller
         $tid = 0;
         $member             = I('post.member');
         $aid                = I('post.aid');
+        $oname              = '';//取票人姓名
         $this->soap();
-        $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, 0, $tid, '', '',
-            $ordertime_begin, $ordertime_end,'','','', '',//13订单完成时间
-            $orderNum, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
+        $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, $tid, '', '',
+            $ordertime_begin, $ordertime_end,'','','', '',//12订单完成时间
+            $orderNum, $oname, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
