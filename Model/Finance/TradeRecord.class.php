@@ -24,12 +24,12 @@ class TradeRecord extends Model
      * @param $extInfo
      * @param $prod_name
      * @param $payAcc
-     * @param $data
      *
      * @return array
      */
-    private function _recomposeExcelData($records, $extInfo, $prod_name, $payAcc, &$data)
+    private function _recomposeExcelData($records, $extInfo, $prod_name, $payAcc)
     {
+        $data = [];
         $parser = $this->_getParser();
         foreach ($records as $record) {
             $ordernum = $record['orderid'];
@@ -186,8 +186,7 @@ class TradeRecord extends Model
         }
 
         //整合数据
-        $data = [];
-        $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $data);
+        $data = $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc);
         return $data;
     }
 
