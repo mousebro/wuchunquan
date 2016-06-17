@@ -34,7 +34,7 @@ class TradeRecord extends Model
         foreach ($records as $record) {
             $ordernum = $record['orderid'];
 
-            if ($ordernum && isset($extInfo) && array_key_exists($ordernum, $extInfo)) {
+            if ($ordernum && count($extInfo) && array_key_exists($ordernum, $extInfo)) {
                 $record = array_merge($record, $extInfo[ $ordernum ]);
 
                 $tid = $extInfo[ $ordernum ]['tid'];
@@ -43,7 +43,7 @@ class TradeRecord extends Model
                 }
             }
 
-            if ($ordernum && isset($payAcc) && array_key_exists($ordernum, $payAcc)) {
+            if ($ordernum && count($payAcc) && array_key_exists($ordernum, $payAcc)) {
                 $record = array_merge($record, $payAcc[ $ordernum ]);
             }
 
@@ -58,6 +58,8 @@ class TradeRecord extends Model
                 ->excelWrap(['payer_acc','payee_acc','dmoney','lmoney','trade_no','orderid'])
                 ->getRecord();
         }
+
+        return $data;
     }
 
     /**
@@ -160,9 +162,10 @@ class TradeRecord extends Model
             'memo',         //备注
         ];
         $order = 'id asc';
+        $extInfo = $prod_name = $payAcc = [];
 
         $records = $this->table($table)->field($field)->where($map)->order($order)->select();
-        $extInfo = $prod_name = $payAcc = [];
+
         if (!$records || !is_array($records)) {
             return false;
         } else {
@@ -179,7 +182,7 @@ class TradeRecord extends Model
                 
                 //根据订单中的门票id 查找产品名称
                 if (count($extInfo)) {
-                    $tid = array_unique(array_column($extInfo, 'tid'));
+                    $tid = array_unique(array_filter(array_column($extInfo, 'tid')));
                     $prod_name = $this->getProdNameByTid($tid);
                 }
             }
