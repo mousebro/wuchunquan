@@ -2595,6 +2595,7 @@ class SellerStorage extends Model{
         }
 
         //获取分销商、供应商或是上级分销商、商品ID等信息
+        $orderId = (string)$orderId;
         $orderInfo = $this->table($this->_orderTable)->field('begintime,aid,tid,tnum,member')->where(array('ordernum' => $orderId))->find();
         if(!$orderInfo) {
             return false;

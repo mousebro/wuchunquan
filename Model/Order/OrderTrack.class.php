@@ -141,9 +141,11 @@ class OrderTrack extends Model
                 ->sum('tnum');
     }
 
-    public function getLog($ordernum)
+    public function getLog($ordernum, $source=null, $action=null)
     {
         $where['ordernum'] = ':ordernum';
+        if (!is_null($source) && is_numeric($source)) $where['source'] = $source;
+        if (!is_null($action) && is_numeric($action)) $where['action'] = $action;
         return $this->Table('pft_order_track')
             ->where($where)
             ->bind(':ordernum',$ordernum)
