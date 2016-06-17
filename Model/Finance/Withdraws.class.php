@@ -202,7 +202,7 @@ class Withdraws extends Model{
         if($isAuto) {
             $data['wd_operator']   = '后台系统|ID:1';
             if(defined('ENV') && ENV == 'PRODUCTION') {
-                //生成环境需要实际打款
+                //生产环境需要实际打款
                 $data['wd_status']   = 5;
                 $data['push_status'] = 1;
             } else {
