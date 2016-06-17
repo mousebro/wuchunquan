@@ -388,22 +388,14 @@ class TradeRecordParser
                     $payer_acc .= ':' . $this->record['payer_acc'];
                 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                $this->_recomposeMember($account, $payer_acc,  [$options['aid'],$options['fid']]);
+                if($this->record['daction']==0){ //收入
+                    $payee = 'member';
+                    $payer = 'counter';
+                }else{
+                    $payee = 'counter';
+                    $payer = 'member';
+                }
+            $this->recomposeMemberAccount($payee, $payer, $account[ $payee ], $payer_acc);
                 break;
             default:
                 break;
@@ -429,41 +421,27 @@ class TradeRecordParser
     }
 
     /**
-     * @param $account
+     * @param $payee
+     * @param $payer
+     * @param $payee_acc
      * @param $payer_acc
      */
-    private function _recomposeMember($account, $payer_acc, array $memberOrder)
+    private function recomposeMemberAccount($payee, $payer, $payee_acc, $payer_acc)
     {
-        //if($this->record['daction']==0){
-        //    $aid = $memberOrder[0];
-        //    $fid = $memberOrder[1];
-        //}else{
-            $fid = $memberOrder[1];
-            $aid = $memberOrder[0];
-        //}
-
-        if($this->record['daction']==0){
-            $payer = $aid;
-            $payee = $fid;
-        }else{
-            $payer = $fid;
-            $payee = $aid;
-        }
-
-        if (!empty($this->record[$payee])) {
-            $this->record[$payee] .= self::join_bracket(['平台账户:', $account[$payee]]);
+        if (!empty($this->record[ $payee ])) {
+            $this->record[ $payee ] .= self::join_bracket(['平台账户:', $payee_acc]);
         } else {
-            $this->record[$payee] = '平台账户';
+            $this->record[ $payee ] = '平台账户';
         }
 
-        if (!empty($account[$payer])) {
+        if (!empty($this->record[ $payer ])) {
             if (!empty($this->record['payer_cc'])) {
-                $this->record[$payer] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
+                $this->record[ $payer ] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
             } else {
-                $this->record[$payer] .= self::join_bracket([$payer_acc]);
+                $this->record[ $payer ] .= self::join_bracket([$payer_acc]);
             }
         } else {
-            $this->record[$payer] .= $payer_acc;
+            $this->record[ $payer ] = $payer_acc;
         }
     }
 }
