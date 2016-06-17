@@ -33,7 +33,7 @@ class TradeRecordParser
             throw new Exception('数据未读取', 301);
         }
 
-        $this->is_acc_reverse = isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid'];
+        $this->is_acc_reverse = !(isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid']);
 
         return $this;
     }
@@ -153,10 +153,11 @@ class TradeRecordParser
     {
         $options = ['dmoney', 'lmoney'];
         foreach ($options as $money) {
-            $this->record[$money] = strval(sprintf($this->record[$money] / 100, 2));
+            $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
         }
 
         $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
+
         return $this;
     }
 
@@ -224,19 +225,19 @@ class TradeRecordParser
         //支付账户类型代码
         $p_acc = $ptype_list[ $ptype ][0];
         $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
-        $this->record['payer_acc'] = (in_array($ptype,[0,1,2,3])) ? $this->record['payer_acc'] : '';
+        $this->record['payer_acc'] = (in_array($ptype, [0, 1, 2, 3])) ? $this->record['payer_acc'] : '';
         $this->record['taccount'] = $acc_type_list[ $p_acc ];
 
         //非在线支付类型的交易 与 支付宝收款方非票付通账户的 收款方账户类型与支付方式一致
-        if(in_array($ptype,[0,2,3]) || ($ptype == 1 && !in_array($this->record['payee_type'], [0,1]) )){
+        if (in_array($ptype, [0, 2, 3]) || ($ptype == 1 && !in_array($this->record['payee_type'], [0, 1]))) {
             $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
             $this->record['trade_no'] = '';
-        }else{
+        } else {
             //收入
-            if($this->record['daction']==0){
+            if ($this->record['daction'] == 0) {
                 $this->record['payee_acc_type'] = '平台账户';
                 $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
-            }else{
+            } else {
                 $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
                 $this->record['payer_acc_type'] = '平台账户';
             }
@@ -247,6 +248,10 @@ class TradeRecordParser
 
     /**
      * 转换交易类型
+     *
+     * @param string $separator
+     *
+     * @return $this
      */
     public function parseTradeType($separator = '-')
     {
@@ -298,6 +303,8 @@ class TradeRecordParser
     }
 
     /**
+     * 获取会员模型
+     *
      * @return mixed
      */
     public function getMemberModel()
@@ -342,13 +349,14 @@ class TradeRecordParser
             if (!$this->record[ $key ]) {
                 $this->record[ $value ] = '';
                 $account[ $key ] = '';
-            }else{
-                $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ], 'dname') ?: '';
+            } else {
+                $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
+                    'dname') ?: '';
                 $account[ $key ] = $account[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
                     'account') ?: '';
             }
         }
-        
+
         switch ($this->record['ptype']) {
             //平台账户
             case 0:
@@ -388,14 +396,14 @@ class TradeRecordParser
                     $payer_acc .= ':' . $this->record['payer_acc'];
                 }
 
-                if($this->record['daction']==0){ //收入
+                if ($this->record['daction'] == 0) { //收入
                     $payee = 'member';
                     $payer = 'counter';
-                }else{
+                } else {
                     $payee = 'counter';
                     $payer = 'member';
                 }
-            $this->recomposeMemberAccount($payee, $payer, $account[ $payee ], $payer_acc);
+                $this->_recomposeMemberAccount($payee, $payer, $account[ $payee ], $payer_acc);
                 break;
             default:
                 break;
@@ -404,15 +412,31 @@ class TradeRecordParser
         return $this;
     }
 
-    public function excelWrap(array $field){
-        foreach($field as $key){
-            if(!empty($this->record[$key])){
-                self::wrapStr($this->record[$key]);
+    /**
+     * 将excel字段设置为字符串类型
+     *
+     * @param   array $field 字段名
+     *
+     * @return  $this
+     */
+    public function excelWrap(array $field)
+    {
+        foreach ($field as $key) {
+            if (!empty($this->record[ $key ])) {
+                self::wrapStr($this->record[ $key ]);
             }
         }
+
         return $this;
     }
 
+    /**
+     * 给字符串加上小括号
+     *
+     * @param   array $array 多个字符串以数组形式传入
+     *
+     * @return  string
+     */
     static function join_bracket($array)
     {
         $str = '(' . implode('', $array) . ')';
@@ -421,12 +445,14 @@ class TradeRecordParser
     }
 
     /**
-     * @param $payee
-     * @param $payer
-     * @param $payee_acc
-     * @param $payer_acc
+     * 在交易详情的交易账户和对方账号中加上支付账户信息
+     *
+     * @param   string $payee     当前收款方
+     * @param   string $payer     当前支付方
+     * @param   string $payee_acc 收款方账号
+     * @param   string $payer_acc 支付方账号
      */
-    private function recomposeMemberAccount($payee, $payer, $payee_acc, $payer_acc)
+    private function _recomposeMemberAccount($payee, $payer, $payee_acc, $payer_acc)
     {
         if (!empty($this->record[ $payee ])) {
             $this->record[ $payee ] .= self::join_bracket(['平台账户:', $payee_acc]);
