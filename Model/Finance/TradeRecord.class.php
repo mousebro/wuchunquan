@@ -53,12 +53,13 @@ class TradeRecord extends Model
 
             $data[] = $parser->setRecord($record)
                 ->parseTradeType('|')
-                ->parseMember(false, true)
-                ->parseMoney(true)
+                ->parseMember(false)
+                ->parseMoney()
                 ->parsePayType()
                 ->parseChannel()
                 //->parsePayee()
                 ->parseTradeContent()
+                ->excelWrap(['payer_acc','payee_acc','dmoney','lmoney','trade_no','orderid'])
                 ->getRecord();
         }
     }

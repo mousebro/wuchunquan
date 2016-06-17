@@ -58,7 +58,7 @@ class TradeRecordParser
      *
      * @return $this
      */
-    public function parseMember($separator = '<br>', $excel = false)
+    public function parseMember($separator = '<br>')
     {
         $options['opid'] = 'oper';
 
@@ -143,28 +143,20 @@ class TradeRecordParser
             $this->record['counter'] = ltrim($this->record['counter'] . $separator . $partner_info, $separator);
         }
 
-        if ($excel) {
-            self::wrapStr($this->record['payer_acc']);
-            self::wrapStr($this->record['payee_acc']);
-        }
-
         return $this;
     }
 
     /**
      * 转换金额
      */
-    public function parseMoney($excel = false)
+    public function parseMoney()
     {
-        $this->record['lmoney'] = strval(sprintf($this->record['lmoney'] / 100, 2));
-        $this->record['dmoney'] = strval(sprintf($this->record['dmoney'] / 100, 2));
-        $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
-
-        if ($excel) {
-            self::wrapStr($this->record['dmoney']);
-            self::wrapStr($this->record['lmoney']);
+        $options = ['dmoney', 'lmoney'];
+        foreach ($options as $money) {
+            $this->record[$money] = strval(sprintf($this->record[$money] / 100, 2));
         }
 
+        $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
         return $this;
     }
 
@@ -348,13 +340,15 @@ class TradeRecordParser
 
         foreach ($options as $key => $value) {
             if (!$this->record[ $key ]) {
-                continue;
+                $this->record[ $value ] = '';
+                $account[ $key ] = '';
+            }else{
+                $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ], 'dname') ?: '';
+                $account[ $key ] = $account[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
+                    'account') ?: '';
             }
-            $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ], 'dname') ?: '';
-            $account[ $key ] = $account[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
-                'account') ?: '';
         }
-
+        
         switch ($this->record['ptype']) {
             //平台账户
             case 0:
@@ -391,26 +385,7 @@ class TradeRecordParser
                 if ($this->record['payer_acc'] && $this->record['ptype'] == 1) {
                     $payer_acc .= ':' . $this->record['payer_acc'];
                 }
-
-                if ($is_acc_reverse ^ $this->record['daction'] == 0) {
-                    $this->record['member'] .= self::join_bracket(['平台账户:', $account['member']]);
-                    if(!empty($account['counter'])){
-                        if(!empty($this->record['payer_cc'])){
-                            $this->record['counter'] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
-                        }else{
-                            $this->record['counter'] .= self::join_bracket([$payer_acc]);
-                        }
-                    }else{
-                        $this->record['counter'] .= $payer_acc;
-                    }
-                } else {
-                    $this->record['counter'] .= self::join_bracket(['平台账户:', $account['counter']]);
-                    if (!empty($account['member']) && !empty($this->record['payer_cc'])) {
-                        $this->record['member'] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
-                    } else {
-                        $this->record['member'] .= self::join_bracket(['平台账户:', $account['member']]);
-                    }
-                }
+                $this->_recomposeMember($account, $payer_acc,  [$options['aid'],$options['fid']]);
                 break;
             default:
                 break;
@@ -419,10 +394,50 @@ class TradeRecordParser
         return $this;
     }
 
+    public function excelWrap(array $field){
+        foreach($field as $key){
+            if(!empty($this->record[$key])){
+                self::wrapStr($this->record[$key]);
+            }
+        }
+        return $this;
+    }
+
     static function join_bracket($array)
     {
         $str = '(' . implode('', $array) . ')';
 
         return $str;
+    }
+
+    /**
+     * @param $account
+     * @param $payer_acc
+     */
+    private function _recomposeMember($account, $payer_acc, array $memberOrder)
+    {
+        //if($this->record['daction']==0){
+        //    $aid = $memberOrder[0];
+        //    $fid = $memberOrder[1];
+        //}else{
+            $fid = $memberOrder[0];
+            $aid = $memberOrder[1];
+        //}
+
+        if (!empty($this->record[$aid])) {
+            $this->record[$aid] .= self::join_bracket(['平台账户:', $account[$aid]]);
+        } else {
+            $this->record[$aid] = '平台账户';
+        }
+
+        if (!empty($account[$fid])) {
+            if (!empty($this->record['payer_cc'])) {
+                $this->record[$fid] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
+            } else {
+                $this->record[$fid] .= self::join_bracket([$payer_acc]);
+            }
+        } else {
+            $this->record[$fid] .= $payer_acc;
+        }
     }
 }
