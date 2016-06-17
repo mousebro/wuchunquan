@@ -20,50 +20,12 @@ class WxTemplateMsg
     private $url = '';
     private $color = '';
 
-    /**
-     * @param mixed $data
-     */
-    public function setData($data)
+    public function __set($property, $value)
     {
-        $this->data = $data;
-    }
-
-
-    /**
-     * @param mixed $openid
-     */
-    public function setOpenid($openid)
-    {
-        $this->openid = $openid;
-    }
-
-    /**
-     * @param mixed $tplId
-     */
-    public function setTplId($tplId)
-    {
-        $this->tplId = $tplId;
-    }
-
-    /**
-     * @param mixed $url
-     */
-    public function setUrl($url)
-    {
-        $this->url = $url;
-    }
-
-    /**
-     * @param mixed $color
-     */
-    public function setColor($color)
-    {
-        $this->color = $color;
-    }
-
-    public function setParams()
-    {
-
+        if (property_exists($this, $property)) {
+            $this->$property = $value;
+        }
+        return $this;
     }
     public function Send()
     {
