@@ -381,10 +381,28 @@ class TradeRecordParser
             case 11:
                 $pay_types = C('pay_type');
 
+                //交易账户类型
                 $payer_acc = $pay_types[ $this->record['ptype'] ][1];
+                //显示支付宝账号
                 if ($this->record['payer_acc'] && $this->record['ptype'] == 1) {
                     $payer_acc .= ':' . $this->record['payer_acc'];
                 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 $this->_recomposeMember($account, $payer_acc,  [$options['aid'],$options['fid']]);
                 break;
             default:
@@ -420,24 +438,32 @@ class TradeRecordParser
         //    $aid = $memberOrder[0];
         //    $fid = $memberOrder[1];
         //}else{
-            $fid = $memberOrder[0];
-            $aid = $memberOrder[1];
+            $fid = $memberOrder[1];
+            $aid = $memberOrder[0];
         //}
 
-        if (!empty($this->record[$aid])) {
-            $this->record[$aid] .= self::join_bracket(['平台账户:', $account[$aid]]);
-        } else {
-            $this->record[$aid] = '平台账户';
+        if($this->record['daction']==0){
+            $payer = $aid;
+            $payee = $fid;
+        }else{
+            $payer = $fid;
+            $payee = $aid;
         }
 
-        if (!empty($account[$fid])) {
+        if (!empty($this->record[$payee])) {
+            $this->record[$payee] .= self::join_bracket(['平台账户:', $account[$payee]]);
+        } else {
+            $this->record[$payee] = '平台账户';
+        }
+
+        if (!empty($account[$payer])) {
             if (!empty($this->record['payer_cc'])) {
-                $this->record[$fid] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
+                $this->record[$payer] .= self::join_bracket([$payer_acc, $this->record['payer_cc']]);
             } else {
-                $this->record[$fid] .= self::join_bracket([$payer_acc]);
+                $this->record[$payer] .= self::join_bracket([$payer_acc]);
             }
         } else {
-            $this->record[$fid] .= $payer_acc;
+            $this->record[$payer] .= $payer_acc;
         }
     }
 }
