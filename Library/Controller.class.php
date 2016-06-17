@@ -20,6 +20,13 @@ class Controller {
     const  CODE_METHOD_NOT_ALLOW = 405;
 
     /**
+     * 模板参数信息
+     *
+     * @var array
+     */
+    protected $setOptions   = array();
+
+    /**
      *  
      * @author dwer
      * @date   2016-03-04
@@ -228,6 +235,110 @@ class Controller {
             "location" => "http://localhost/open/openService/pft_insideMX.php",
             "uri" => "www.16u.com?ac_16u={$ac}|pw_16u={$pw}|auth_16u=true"));
         return $soap;
+    }
+
+    /**
+     * 设置视图变量
+     *
+     * @access public
+     * @param mixed $key    视图变量名
+     * @param string $value 视图变量数值
+     * @return mixed
+     */
+    protected function assign($key, $value = null){
+        if(!$key) {
+           return false;
+        }
+        if(is_array($key)) {
+           foreach ($key as $k=>$v){
+             $this->setOptions[$k] = $v;
+           }
+        }else{
+           $this->setOptions[$key] = $value;
+        }
+
+        return true;
+    }
+
+    /**
+     * 缓存重写分析
+     *
+     * 判断缓存文件是否需要重新生成. 返回true时,为需要;返回false时,则为不需要
+     * @access protected
+     * @param string $view_file     视图文件名
+     * @param string $compile_file  视图编译文件名
+     * @return boolean
+     */
+    protected function isCompile($view_file, $compile_file) {
+        if(is_file($compile_file) && (filemtime($compile_file) >= filemtime($view_file))){
+           return false;;
+        }else{
+           return true;
+        }
+    }
+
+    /**
+     * 生成视图编译文件
+     *
+     * @access protected
+     * @param string $compile_file 编译文件名
+     * @param string $content   编译文件内容
+     * @return void
+     */
+    protected function createCompileFile($compileFile, $content) {
+        //分析编译文件目录
+        $compileDir = dirname($compileFile);
+
+        if(!is_dir($compileDir)) {
+            mkdir($compileDir, 0777, true);
+        }else if(!is_writable($compileDir)) {
+           chmod($compileDir, 0777);
+        }
+
+        return file_put_contents($compileFile, $content, LOCK_EX);
+    }
+
+    /**
+     * 显示视图文件
+     *
+     * @access public
+     * @param string $fileName 视图名 - card/index
+     * @return void
+     */
+    public function display($fileName = null) {
+        //视图变量
+        if(!empty($this->setOptions)) {
+           extract($this->setOptions, EXTR_PREFIX_SAME, 'data');
+           $this->setOptions = array();
+        }
+
+        if(is_null($fileName)) {
+           exit("文件名不能为空");
+        }
+
+        $viewPath       = defined('HTML') ? HTML . '/Views/' : '/var/www/html/Views/';
+        $compilePath    = defined('HTML') ? HTML . '/Compile/' : '/var/www/html/Compile/';
+
+        //如果视图文件命名包含'/'下划线，加载子目录视图，一层目录已满足大部分应用，因此框架这里只支持一层目录
+        if(strpos($fileName, '/')) {
+           $_tmpAr      = explode('/', $fileName);
+           $path        = $_tmpAr[0];
+           $fileName    = $_tmpAr[1];
+           $viewFile    = $viewPath . $path . '/' . $fileName . '.html';
+           $compileFile = $compilePath . $path . '/' . $fileName . '.cache.php';
+        }else {
+           $viewFile    = $viewPath . $fileName . '.html';
+           $compileFile = $compilePath . $fileName . '.cache.php';
+        }
+
+        if($this->isCompile($viewFile, $compileFile)) {
+           $viewContent = file_get_contents($viewFile);
+           $this->createCompileFile($compileFile, $viewContent);
+        }
+
+        //加载编译缓存文件
+        include $compileFile;
+
     }
 }
 ?>
