@@ -43,7 +43,7 @@ class TradeRecord extends Model
                 }
             }
 
-            if ($ordernum && isset($payAcc) && $ordernum && array_key_exists($ordernum, $payAcc)) {
+            if ($ordernum && isset($payAcc) && array_key_exists($ordernum, $payAcc)) {
                 $record = array_merge($record, $payAcc[ $ordernum ]);
             }
 
@@ -188,7 +188,6 @@ class TradeRecord extends Model
         //整合数据
         $data = [];
         $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $data);
-
         return $data;
     }
 
