@@ -112,6 +112,7 @@ return array(
         'jobs' => array(
             'Dog_Job', //小狗队列
             'Mail_Job', //邮件队列
+            'WxNotify_Job', //微信通知队列
         )
     ),
 );
