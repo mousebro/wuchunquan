@@ -127,6 +127,7 @@ class SettleBlance extends Controller {
         $settleBlanceModel = $this->model('Finance/SettleBlance');
 
         $settleList = $settleBlanceModel->getSettleList(1, 100);
+
         foreach($settleList as $item) {
             //清算金额
             $fid        = $item['fid'];
@@ -154,12 +155,12 @@ class SettleBlance extends Controller {
                 $amoney      = round($settleInfo['amoney']/100, 2);
                 $freezeMoney = round($settleInfo['freeze_money']/100, 2);
 
-                $settleBlanceModel->stopSettle($id, '账号余额不足，账户余额：{$amoney}元，清分冻结余额：{$freezeMoney}元');
+                $settleBlanceModel->stopSettle($id, "账号余额不足，账户余额：{$amoney}元，清分冻结余额：{$freezeMoney}元");
             } else {
                 //正常清算
-                 $freezeMoney   = $settleInfo['freeze_money'];
+                 $freezeMoney   = $settleInfo['freeze_money']; 
                  $transferMoney = $settleInfo['transfer_money'];
-                 $remarkData      = $settleInfo['remark_data'];
+                 $remarkData    = $settleInfo['remark_data'];
 
                  if(isset($remarkData['type'])) {
                     if($remarkData['type'] == 1) {
@@ -170,7 +171,7 @@ class SettleBlance extends Controller {
                  } else {
                     //未使用订单
                     $tmpMoney = round($freezeMoney/100, 2);
-                    $remark = "未使用在线支付订单情况：总订单数={$remarkData['type']}, 总票数={$remarkData['type']}, 总金额={$tmpMoney}元";
+                    $remark = "未使用在线支付订单情况：总订单数={$remarkData['order_num']}, 总票数={$remarkData['ticket_num']}, 总金额={$tmpMoney}元";
                  }
 
                  $res = $settleBlanceModel->updateSettleInfo($id, $freezeMoney, $transferMoney, $remark);
@@ -191,12 +192,46 @@ class SettleBlance extends Controller {
 
         $transferList = $settleBlanceModel->getTransferList(1, 100);
         foreach($transferList as $item) {
-            //调用自动提现的接口
-            
-            
+            //参数
+            $id            = $item['id'];
+            $fid           = $item['fid'];
+            $freezeMoney   = $item['freeze_money'];
+            $transferMoney = $item['transfer_money'];
 
-            //更新数据
-            $settleBlanceModel->updateTransferInfo($id, $status);
+            //调用自动提现的接口
+            $transInfo = $settleBlanceModel->transMoney($id, $fid, $freezeMoney, $transferMoney);
+
+            //错误处理
+            $status = $transInfo['status'];
+            if($status === -1) {
+                //配置出错了
+                $res = $settleBlanceModel->updateTransferInfo($id, 1, '自动清分配置错误');
+            } else if($status == -2) {
+                //账户余额没有钱
+                $amoney = round($transInfo['amoney']/100, 2);
+                $res = $settleBlanceModel->updateTransferInfo($id, 1, "账号余额已经没有钱了，账户余额：{$amoney}元");
+            } else if($status == -3) {
+                //余额不够，不能清分
+                $amoney        = round($transInfo['amoney']/100, 2);
+                $freezeMoney   = round($transInfo['freeze_money']/100, 2);
+                $transferMoney = round($transInfo['transfer_money']/100, 2);
+
+                $res = $settleBlanceModel->updateTransferInfo($id, 1, "账号余额不足，账户余额：{$amoney}元，提现余额：{$transferMoney}元，不可提现余额：{$freezeMoney}元");
+            } else if($status == -4) {
+                //剩余金额不足以支付提现手续费
+                $amoney        = round($transInfo['amoney']/100, 2);
+                $feeMoney      = round($transInfo['fee_money']/100, 2);
+                $transferMoney = round($transInfo['transfer_money']/100, 2);
+
+                $res = $settleBlanceModel->updateTransferInfo($id, 1, "剩余金额不足以支付提现手续费，账户余额：{$amoney}元，提现余额：{$transferMoney}元，提现手续费：{$feeMoney}元");
+            } else if($status == -5) {
+                //系统错误了，提现出现问题
+                $res = $settleBlanceModel->updateTransferInfo($id, 3, "系统错误了，提现出现问题");
+            } else {
+                //提现成功
+                $res = $settleBlanceModel->updateTransferInfo($id, 0, "提现成功");
+            }
+
         }
 
     }

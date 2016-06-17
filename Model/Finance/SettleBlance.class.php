@@ -386,7 +386,6 @@ class SettleBlance extends Model{
         }
 
         $data = [
-            'fid'            => $fid,
             'freeze_money'   => $freezeMoney,
             'transfer_money' => $transferMoney,
             'is_settle'      => 1,
@@ -439,18 +438,23 @@ class SettleBlance extends Model{
      * @date   2016-06-08
      *
      * @param  $id 记录ID
-     * @param  $status 转账的时候出现的状态 0：默认有效的，1=无效的，余额不够转了就会设置为无效 2=提现出错了
+     * @param  $status 转账的时候出现的状态 0：默认有效的，1=无效的，余额不够转了就会设置为无效，2=清算终止, 3=提现出错了
      * @return
      */
-    public function updateTransferInfo($id, $status) {
-        if(!$id || !in_array($status, [0, 1, 2])) {
+    public function updateTransferInfo($id, $status, $transRemark = '') {
+        if(!$id || !in_array($status, [0, 1, 2, 3])) {
             return false;
         }
 
         $data = [
+            'is_transfer' => 1,
             'status'      => $status,
             'update_time' => time()
         ];
+
+        if($transRemark) {
+            $data['trans_remark'] = $transRemark;
+        }
 
         $res = $this->table($this->_recordTable)->where(['id' => $id])->save($data);
         return $res === false ? false : true;
@@ -584,7 +588,7 @@ class SettleBlance extends Model{
             } else {
                 //固定金额
                 $freezeMoney = $value * 100;//转化为分
-                if($freezeMoney >= $amoney) {
+                if($freezeMoney >= $amoney) { 
                     //账号余额不足冻结金额
                     return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
                 }
@@ -598,12 +602,13 @@ class SettleBlance extends Model{
             ];
         }
 
+
         $res = [
             'status'         => 1,
             'amoney'         => $amoney,
             'transfer_money' => $transferMoney,
-            'freeze_moeny'   => $freezeMoney,
-            'remark_data'         => $remarkData
+            'freeze_money'   => $freezeMoney,
+            'remark_data'    => $remarkData
          ];
 
         return $res;
@@ -614,24 +619,24 @@ class SettleBlance extends Model{
      * @author dwer
      * @date   2016-06-16
      *
-     * @param  $id
-     * @param  $fid
-     * @param  $freezeMoney
-     * @param  $transferMoney
+     * @param  $id 自动清分记录ID
+     * @param  $fid 用户ID
+     * @param  $freezeMoney 冻结金额 - 分
+     * @param  $transferMoney 提现金额 - 分
      * @return
      */
     public function transMoney($id, $fid, $freezeMoney, $transferMoney) {
         $freezeMoney   = intval($freezeMoney);
         $transferMoney = intval($transferMoney);
 
-        if(!$id || !$fid) {
-            return false;
+        if(!$id || !$fid || $transferMoney <= 0) {
+            return ['status' => -1];
         }
 
         //获取配置信息
         $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('account_info, service_fee, status')->find();
         if(!$settingInfo) {
-            return false;
+            return ['status' => -1];
         }
 
         $serviceFee  = floatval($settingInfo['service_fee']);
@@ -639,42 +644,44 @@ class SettleBlance extends Model{
 
         //参数判断
         if(($serviceFee > 1000) || !is_array($accountInfo)) {
-            return false;
+            return ['status' => -1];
         }
 
         //判断现在的账号余额是不是够清分
         $memberModel = new Member();
         $amoney = $memberModel->getMoney($fid, 0);
         if($amoney <= 0) {
-            return ['status' => -3, 'amoney' => $amoney];
+            return ['status' => -2, 'amoney' => $amoney];
         }
 
         if($amoney < ($freezeMoney + $transferMoney)) {
             //余额不够，不能清分
-
+            return ['status' => -3, 'amoney' => $amoney, 'freeze_money' => $freezeMoney, 'transfer_money' => $transferMoney];
         }
 
         //剩余的账号金额
         $leftMoney = $amoney - $transferMoney;
 
-        //计算手续费 - 分为单位
-        $feeMoney = $transferMoney * ($serviceFee / 1000); 
+        //计算手续费，不足一元按一元计算 - 分为单位
+        $feeMoney = intval($transferMoney * ($serviceFee / 1000));
+        $feeMoney = $feeMoney < 100 ? 100 : $feeMoney;
 
         if($feeMoney > $leftMoney ) {
             //剩余金额不足以支付提现手续费
-            
+            return ['status' => -4, 'amoney' => $amoney, 'fee_money' => $feeMoney, 'transfer_money' => $transferMoney];
         }
 
         //提现
         $withdrawModel = new Withdraws();
         $feeCutWay     = 1;
         $accountType   = 1;
-        $res = $withdrawModel->addRecord($fid, $transferMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, true)
+
+        $res = $withdrawModel->addRecord($fid, $transferMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, true);
 
         if($res) {
-            return true;
+            return ['status' => 1];
         } else {
-            return false;
+            return ['status' => -5];
         }
     }
 
@@ -816,12 +823,11 @@ class SettleBlance extends Model{
         $joinSplit   = "left join order_aids_split os on s.ordernum=os.orderid";
         $joinDetail  = "left join uu_order_fx_details fd on s.ordernum=fd.orderid";
 
-
         $where = [
-            'os.sellerid' => $fid, //供应商
-            'status'      => 0, //未使用
-            'paymode'     => ['in', '1, 2, 5, 6, 7, 8, 9, 10, 11'], //在线支付的
-            'pay_status'  => 1 //已经支付
+            'os.sellerid'   => $fid, //供应商
+            's.status'      => 0, //未使用
+            's.paymode'     => ['in', [1, 2, 5, 6, 7, 8, 9, 10, 11]], //在线支付的
+            'fd.pay_status' => 1 //已经支付
         ];
 
         $field = 's.tnum, s.tprice';

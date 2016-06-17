@@ -66,7 +66,7 @@ class Helpers {
             "location"  => "http://localhost/open/openService/pft_insideMX.php",
             "uri"       => "www.16u.com?ac_16u={$ac}|pw_16u={$pw}|auth_16u=true");
 
-        return new SoapClient(null, $param);
+        return new \SoapClient(null, $param);
     }
 
     /**
@@ -80,6 +80,6 @@ class Helpers {
         $url   = 'http://open.12301.cc/openService/MXSE.wsdl';
         $param = array('encoding' =>'UTF-8','cache_wsdl' => 0);
 
-        return new SoapClient($url, $param);
+        return new \SoapClient($url, $param);
     }
 }

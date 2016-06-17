@@ -12,7 +12,7 @@ use Library\Tools\Helpers as Helpers;
 
 class Withdraws extends Model{
 
-    private $_withdrawTable = 'pft_wd_cash';   
+    private $_withdrawTable = 'pft_wd_cash';
 
     /**
      *  获取需要自动提现的列表
@@ -168,10 +168,12 @@ class Withdraws extends Model{
             return false;
         }
 
-        $serviceCharge = $wdMoney * ($serviceFee / 1000);
+        //手续费不足一元按一元计算
+        $serviceCharge = intval($wdMoney * ($serviceFee / 1000));
+        $serviceCharge = $serviceCharge < 100 ? 100 : $serviceCharge;
 
         $wdMoneyV       = round($wdMoney / 100, 2);
-        $serviceChargeV = round($$serviceCharge / 100, 2);
+        $serviceChargeV = round($serviceCharge / 100, 2);
         $transMoneyV    = $feeCutWay == 1 ? $wdMoneyV : round(($wdMoney - $serviceCharge) / 100, 2);
         $cutwayV        = $cutwayArr[$feeCutWay];
 
@@ -204,7 +206,8 @@ class Withdraws extends Model{
                 $data['wd_status']   = 5;
                 $data['push_status'] = 1;
             } else {
-                $data['batchno']     = 'cmbc_' . time();
+                $batchno             = 'cmbc_' . time();
+                $data['batchno']     = $batchno;
                 $data['memo']        = "民生银行代付成功，流水号【{$batchno}】" . ' - ' . $memo;
                 $data['wd_time']     = date('Y-m-d H:i:s');
                 $data['wd_status']   = 2;
