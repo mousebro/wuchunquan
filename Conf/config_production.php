@@ -94,14 +94,14 @@ return array(
             'REDIS_BACKEND' => [
                 [
                     'host' => '10.51.26.214',
-                    'port' => 6379,
+                    'port' => 6679,
                     'password'=>'pft666',
                     'alias'=>'master',
                     'master'=>true
                 ],
                 [
                     'host' => '10.160.4.140',
-                    'port' => 6380,
+                    'port' => 6680,
                     'password'=>'pft666',
                     'alias'=>'slave'
                 ],
