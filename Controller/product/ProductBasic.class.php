@@ -327,7 +327,7 @@ class ProductBasic extends Controller
             }
         }
         if($p_type=='I'){
-            $crdModel = new AnnualCard($ticketData['tid'] + 0);
+            $crdModel = new AnnualCard($ticketData['tid'] + 0, $_SESSION['memberID']);
             if(!isset($crdConf)) $crdConf = [];
             $crdConf['auto_act_day'] = isset($ticketData['auto_act_day']) ? intval($ticketData['auto_act_day']) : -1; //自动激活天数 -1 不自动激活
             $crdConf['srch_limit'] = isset($ticketData['srch_limit']) ? intval($ticketData['srch_limit']) : 1; //购买搜索限制 0 不限制 1：卡号（实体卡/虚拟卡）  2：身份证号 4：手机号
