@@ -108,14 +108,7 @@ class MemberRelationship extends Model
                        ->field($field)
                        ->find();
         $result = $result ? true : false;
-//        $this->test();
-//        var_dump($result);
-//        exit;
         return $result;
-    }
-    private function test(){
-        $str = $this -> getLastSql();
-        print_r($str);
     }
 
     /**
@@ -156,6 +149,11 @@ class MemberRelationship extends Model
             if (strlen($keywords) == 6) {
                 $param['m.account'] = ':account';
                 $bind[':account'] = $keywords;
+            }
+
+            if (strlen($keywords) == 11) {
+                $param['m.mobile'] = ':mobile';
+                $bind[':mobile'] = $keywords;
             }
         }
        

@@ -162,7 +162,7 @@ class TradeRecord extends Model
         $order = 'id asc';
 
         $records = $this->table($table)->field($field)->where($map)->order($order)->select();
-
+        $extInfo = $prod_name = $payAcc = [];
         if (!$records || !is_array($records)) {
             return false;
         } else {
@@ -178,7 +178,7 @@ class TradeRecord extends Model
                 $payAcc = $this->getPayerAccount($orderid);
                 
                 //根据订单中的门票id 查找产品名称
-                if (is_array($extInfo)) {
+                if (count($extInfo)) {
                     $tid = array_unique(array_column($extInfo, 'tid'));
                     $prod_name = $this->getProdNameByTid($tid);
                 }
@@ -354,6 +354,11 @@ class TradeRecord extends Model
             if (strlen($keywords) >= 4) {
                 $where['_complex']['account'] = ':account';
                 $bind[':account'] = $keywords;
+            }
+
+            if (strlen($keywords) == 11) {
+                $where['_complex']['mobile'] = ':mobile';
+                $bind[':mobile'] = $keywords;
             }
 
         }
