@@ -14,11 +14,11 @@ defined('PFT_INIT') or exit('Access Invalid!');
 
 class WxTemplateMsg
 {
-    private $data;
-    private $openid;
-    private $tplId;
-    private $url = '';
-    private $color = '';
+    public $data;
+    public $openid;
+    public $tplId;
+    public $url = '';
+    public $color = '';
 
     public function __set($property, $value)
     {
