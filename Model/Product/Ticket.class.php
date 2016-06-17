@@ -43,9 +43,10 @@ class Ticket extends Model {
      * @param  int $id 票类id
      * @return array   
      */
-    public function getTicketInfoById($id) {
+    public function getTicketInfoById($id, $fields='') {
+        $fields = !empty($fields) ? $fields : $this->ticket_filed;
         return $this->table(self::__TICKET_TABLE__)
-            ->field($this->ticket_filed)
+            ->field($fields)
             ->find($id);
     }
 
