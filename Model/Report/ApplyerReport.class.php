@@ -27,22 +27,25 @@ class ApplyerReport extends Model
      * @param int $date 日期（Ymd）
      * @return bool
      */
-    public function OrderSummaryByLid($date)
+    public function OrderSummaryByLid($date, $lid=0, $getData=false)
     {
         $this->db(0, $this->dbConf['slave'], true);
 
         $startTime = $date . '000000';
         $endTime   = $date . '235959';
+        $where = '';
+        if (is_numeric($lid) && $lid>0) $where = " lid=$lid AND ";
 
         $sql = <<<SQL
 SELECT tid,COUNT(*) AS cnt,SUM(tnum) AS tnum, SUM(totalmoney) AS totalmoney
 FROM uu_ss_order
-WHERE ordertime BETWEEN '$startTime' AND '$endTime'
+WHERE $where ordertime BETWEEN '$startTime' AND '$endTime'
 GROUP BY tid
 SQL;
         //echo $sql;exit;
         $orders = $this->db(0)->query($sql);
         if (!$orders) return false;
+        if ($getData===true) return $orders;
         $output = [];
         foreach ($orders as $order) {
             $output[$order['tid']] = $order;
