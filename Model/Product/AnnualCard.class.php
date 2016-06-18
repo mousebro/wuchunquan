@@ -511,7 +511,7 @@ class AnnualCard extends Model
      * @param  [type] $memberid 会员id
      * @return [type]           [description]
      */
-    public function getRemainTimes($tid, $memberid) {
+    public function getRemainTimes($sid, $tid, $memberid) {
 
         $loop = [
             [
@@ -527,11 +527,11 @@ class AnnualCard extends Model
             []  //总次数
         ];
 
-        $today = $this->_countTimeRangeOrder($tid, $memberid, $loop[0]);
+        $today = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[0]);
 
-        $month = $this->_countTimeRangeOrder($tid, $memberid, $loop[1]);
+        $month = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[1]);
 
-        $all   = $this->_countTimeRangeOrder($tid, $memberid, $loop[2]);
+        $all   = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2]);
 
         return [$today, $month, $all];
     }
@@ -544,9 +544,10 @@ class AnnualCard extends Model
      * @param  [type] $time     [description]
      * @return [type]           [description]
      */
-    private function _countTimeRangeOrder($tid, $memberid, $time) {
+    private function _countTimeRangeOrder($sid, $tid, $memberid, $time) {
 
         $where = [
+            'aid'           => $sid,
             'memberid'      => $memberid,
             'tid'           => $tid,
             'status'        => 1
@@ -556,7 +557,7 @@ class AnnualCard extends Model
             $where['create_time'] = ['between', array_map('strtotime', $time)];
         }
 
-        return $this->table(self::CARD_ORDER_TABLE)->where($where)->count();
+        return $this->table(self::CARD_ORDER_TABLE)->where($where)->sum('num');
     }
 
     /**
@@ -617,6 +618,48 @@ class AnnualCard extends Model
             ->select();
 
         return $tickets ?: [];
+    }
+
+    /**
+     * 记录年卡订单
+     * @param  [type] $ordernum [description]
+     * @param  [type] $tid      [description]
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
+    public function annualOrderRecord($ordernum, $tid, $memberid, $aid, $num) {
+        $data = [
+            'ordernum'      => $ordernum,
+            'tid'           => $tid,
+            'memberid'      => $memberid,
+            'aid'           => $aid,
+            'num'           => $num,
+            'create_time'   => time(),
+            'status'        => 1
+        ];
+
+        return $this->table(self::CARD_ORDER_TABLE)->add($data);
+    }
+
+    /**
+     * 取消年卡订单
+     * @param  [type] $ordernum [description]
+     * @return [type]           [description]
+     */
+    public function cancelOrder($ordernum) {
+        $update = [
+            'status' => 0
+        ];
+
+        return $this->table(self::CARD_ORDER_TABLE)->where(['ordernum' => $ordernum])->save($update);
+    }
+
+    public function changeOrder($ordernum, $num) {
+        $update = [
+            'num' => $num
+        ];
+
+        return $this->table(self::CARD_ORDER_TABLE)->where(['ordernum' => $ordernum])->save($update);
     }
     
 

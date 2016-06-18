@@ -9,7 +9,7 @@ use Model\Product\AnnualCard as CardModel;
 use Model\Member\Member;
 use Model\Product\Ticket;
 
-if ( !defined('PFT_API') ) { exit('Access Deny'); }
+// if ( !defined('PFT_API') ) { exit('Access Deny'); }
 
 
  class AnnualCard extends Controller {
@@ -29,7 +29,7 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
     public function annualConsume() {
         $aid        = I('aid');         //供应商id
         $products   = I('tickets');     //门票 [['pid' => num]]
-        $products   = ['22874' => 2, '25271' => 3];
+        $products   = ['25271' => 2, '25584' => 1];
 
         if (!$aid || !$products) {
             $this->apiReturn(204, [], '参数错误');
@@ -40,11 +40,11 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
         //if ($card['sid'] != $aid) {...}
 
         // 年卡有效期检测
-        if (!$this->_periodOfValidityCheck($card)) {
-            $this->apiReturn(204, [], '年卡已过期');
-        }
+        // if (!$this->_periodOfValidityCheck($card)) {
+        //     $this->apiReturn(204, [], '年卡已过期');
+        // }
 
-        $error = $this->_privilegesCheck($products, $card['pid']);
+        $error = $this->_privilegesCheck($card['sid'], $card['memberid'], $products, $card['pid']);
 
         if (count($error) > 0) {
             //账户余额是否足够支付,一期都是0
@@ -125,7 +125,7 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
      * @param  [type] $pid      [description]
      * @return [type]           [description]
      */
-    private function _privilegesCheck($products, $pid) {
+    private function _privilegesCheck($sid, $memberid, $products, $pid) {
 
         $privileges = $this->_CardModel->getPrivileges($pid);
 
@@ -135,8 +135,9 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
             if (isset($products[$item['pid']])) {
 
                 $res = $this->_isAnnualPayAllowed(
+                    $sid,
                     $item['tid'], 
-                    $card['memberid'], 
+                    $memberid, 
                     $products[$item['pid']], 
                     $item
                 );
@@ -157,22 +158,22 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
      * @param  [type]  $num    购买张数
      * @return boolean         [description]
      */
-    private function _isAnnualPayAllowed($tid, $memberid, $num, $config) {
+    private function _isAnnualPayAllowed($sid, $tid, $memberid, $num, $config) {
 
-        $times = $this->_CardModel->getRemainTimes($tid, $memberid);
+        $times = $this->_CardModel->getRemainTimes($sid, $tid, $memberid);
 
         $limit_count = explode(',', $config['limit_count']);
 
         $left_arr = [];
-        $left_arr = array_filter($limit_count, function($val)use($num, $times) {
-            static $i = 0;
-            
-            if ($val[$i] != -1 && $times[$i] + $num > $val[$i]) {
-                return $val[$i] - $times[$i];
+
+        foreach ($limit_count as $i => $val) {
+
+            if ($val[$i] != -1 && $times[$i] + $num > $val) {
+                $left_arr[] = ($val - $times[$i]);
             }
 
-            $i++;
-        });
+        }
+
 
         if (count($left_arr) > 0) {
             return ['status' => 0, 'left' => min($left_arr)];
@@ -182,10 +183,23 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
     }
 
     private function _orderAction($products, $aid, $memberid, $extra) {
-
+        // $aid=6970;
         include '/var/www/html/new/d/class/DisOrder.php';
         include '/var/www/html/new/d/class/Member.php';
         include '/var/www/html/new/d/class/ProductInfo.php';
+
+        if (!isset($GLOBALS['le'])) {
+            include_once("/var/www/html/new/conf/le.je");
+            $le=new \go_sql();
+            $le->connect();
+            $GLOBALS['le'] = $le;
+        }
+
+        $pid = key($products);  //主票，剩下的为联票
+        $tnum = $products[$pid];
+        unset($products[$pid]);
+
+        $lian = $products;
 
         $soap = $this->getSoap();
 
@@ -193,6 +207,27 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
         $Member     = new \Member($soap, $memberid);
         $DisOrder   = new \DisOrder($soap, $Pro, $Member);
 
+        $options = [
+            'pid'       => $pid,
+            'begintime' => date('Y-m-d'),
+            'ordername' => $Member->m_info['dname'],
+            'ordertel'  => $Member->m_info['mobile'],
+            'tnum'      => $tnum,
+            'c_pids'    => $lian,
+            'paymode'     => 12
+        ];
+
+        try {
+
+            $order_info = $DisOrder->order($options, $aid);
+
+            $this->apiReturn(200, [], '下单成功');
+
+        } catch (DisOrderException $e) {
+
+            $this->api(204, [], $e->getMessage());
+
+        }
 
     }
 

@@ -464,8 +464,10 @@ class AnnualCard extends Controller {
             $this->apiReturn(204, [], '参数错误');
         }
 
-        $vir_storage = $this->_CardModel->getAnnualCardStorage($_SESSION['sid'], $pid, 'virtual');
-        $phy_storage = $this->_CardModel->getAnnualCardStorage($_SESSION['sid'], $pid, 'physics');
+        $sid = $_SESSION['sid'];
+
+        $vir_storage = $this->_CardModel->getAnnualCardStorage($sid, $pid, 'virtual');
+        $phy_storage = $this->_CardModel->getAnnualCardStorage($sid, $pid, 'physics');
 
         $cards = [];
         if ($vir_storage && $phy_storage) {
@@ -475,7 +477,7 @@ class AnnualCard extends Controller {
                 'page'      => I('page', 1, 'intval'),
             ];
 
-            $cards = $this->_CardModel->getAnnualCards($_SESSION['sid'], $pid, $options);
+            $cards = $this->_CardModel->getAnnualCards($sid, $pid, $options);
         }
 
         $return = [
