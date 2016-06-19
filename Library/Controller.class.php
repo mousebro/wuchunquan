@@ -8,6 +8,7 @@
  */
 
 namespace Library;
+use Library\Tools\Helpers;
 
 class Controller {
 
@@ -338,7 +339,105 @@ class Controller {
 
         //加载编译缓存文件
         include $compileFile;
+    }
 
+    /**
+     * 加载头部和尾部的定制信息
+     * @author dwer
+     * @date   2016-06-19
+     *
+     * @return 
+     */
+    protected function loadHConfig() {
+        $httphost   = $_SERVER['HTTP_HOST'];
+        $host       = str_replace('www.', '', $httphost);
+
+        //加载配置
+        $h_config = load_config('h_config', 'hconfig');
+
+        if (!isset($h_config[$httphost])) {
+            $cnt_dot = substr_count($httphost, '.');
+            $isSubDomain = false;
+            if ($cnt_dot==2) {
+                if ( strpos($_SERVER['HTTP_HOST'], 'www') ===false
+                        && strpos($_SERVER['HTTP_HOST'], '12301.cc')!==false ) {
+                    $isSubDomain = true;
+                }
+            } elseif ($cnt_dot==3) {
+                $isSubDomain = true;
+            }
+
+            if ($isSubDomain) {
+                if (!isset($redis)) {
+                    $redis = \Library\Cache\RedisCache::Connect();
+                }
+
+                //二级域名处理
+                //step1:获取供应商账号，再获取id
+                $applyAccount   = substr($host, 0, strpos($host, '12301')-1);
+                $redis_key      = "shop_{$applyAccount}";
+                $shop           = $redis->get($redis_key);
+
+                if (!$shop) {
+                    //从数据库获取二级店铺信息
+                    $subModel = $this->model('Subdomain/SubdomainInfo');
+                    $shop = $subModel->getBindedSubdomainInfo($applyAccount, 'account');
+                    unset($subModel);
+
+                    if ($shop) {
+                        $redis->setex($redis_key, 1800, serialize($shop));
+                    } else {
+                        exit('404');
+                    }
+                } else {
+                    $shop = unserialize($shop);
+                }
+
+                $_SESSION['is_sub_domain'] = $shop['fid'];
+
+                $h_config[$httphost]['name'] = $shop['M_name'];
+                $h_config[$httphost]['logo'] = $shop['M_logo1'];
+                $h_config[$httphost]['navi'] = 0;
+                $h_config[$httphost]['tel']  = $shop['M_tel'] .'&nbsp;&nbsp;&nbsp;'. $shop['M_qq'];
+                $h_config[$httphost]['host'] = ($shop['M_host'])? $shop['M_host']:$shop['M_domain'].'.12301.cc';
+                $h_config[$httphost]['addr'] = $shop['M_addr'];
+            }
+        }
+
+        $showQQ = load_config('showQQ', 'hconfig');
+        $unshowAccountQQ = load_config('unshowAccountQQ', 'hconfig');
+
+        //将配置信息设置到模板中
+        $this->assign('h_config', $h_config);
+        $this->assign('httphost', $httphost);
+        $this->assign('host', $host);
+
+        $this->assign('showQQ', $showQQ);
+        $this->assign('unshowAccountQQ', $unshowAccountQQ);
+    }
+
+    /**
+     * 初始化页面信息
+     * @author dwer
+     * @date   2016-06-20
+     *
+     * @return 
+     */
+    protected function initPage() {
+        //登陆判断
+        $this->isLogin('html');
+
+        //加载头部和尾部的定制信息
+        $this->loadHConfig();
+
+        //加载面包屑
+        $breadCrumb = Helpers::getBreadcrumb();
+
+        //加载侧边栏
+        $leftBar = Helpers::getLeftBar();
+        
+        $this->assign('breadcrumb', $breadCrumb);
+        $this->assign('leftbar', $leftBar);
     }
 }
 ?>

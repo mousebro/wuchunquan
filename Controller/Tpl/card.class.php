@@ -11,8 +11,20 @@
 namespace Controller\Tpl;
 
 use Library\Controller;
+use Library\Tools\Helpers;
 
 class card extends Controller {
+    /**
+     * 如果是需要加载头部和侧边栏，就必须要调用initPage方法
+     * @author dwer
+     * @date   2016-06-20
+     *
+     */
+    public function __construct() {
+        ini_set('display_errors', true);
+        error_reporting(E_ALL);
+        $this->initPage();
+    }
     
     /**
      * 某个功能模块的首页就进入这个方法
@@ -24,7 +36,8 @@ class card extends Controller {
      * @return
      */
     public function index() {
-        $this->assign('dog', 1000);
+        //需要传给模板的参数在这里定义
+        //$this->assign('data', $data);
 
         $this->display('card/index');
     }
