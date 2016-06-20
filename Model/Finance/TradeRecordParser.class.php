@@ -16,6 +16,7 @@ class TradeRecordParser
     private $record;
     private $memberModel;
     private $is_acc_reverse;
+    private $is_online_pay;
 
     /**
      * 传入交易记录
@@ -162,7 +163,7 @@ class TradeRecordParser
             $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
         }
         //var_dump($this->is_acc_reverse);
-        if ($this->is_acc_reverse) {
+        if ($this->is_acc_reverse && $this->is_online_pay) {
             $this->record['daction'] = decbin(!($this->record['daction']));
         }
         //var_dump($this->record['daction']);
@@ -242,7 +243,9 @@ class TradeRecordParser
         if (in_array($ptype, [0, 2, 3]) || ($ptype == 1 && !in_array($this->record['payee_type'], [0, 1]))) {
             $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
             $this->record['trade_no'] = '';
+            $this->is_online_pay = false;
         } else {
+            $this->is_online_pay = true;
             //收入
             if ($this->record['daction'] == 0) {
                 $this->record['payee_acc_type'] = '平台账户';
