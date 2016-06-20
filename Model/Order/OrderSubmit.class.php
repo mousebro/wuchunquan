@@ -29,7 +29,7 @@ class OrderSubmit extends Model
             ->where($map)
             ->bind([':remotenum'=>$remoteNum, ':member'=>$memberId])
             ->limit(1)
-            ->getField('id');
+            ->getField('id,ordernum,code,salerid');
     }
 
     /**
@@ -60,6 +60,13 @@ class OrderSubmit extends Model
         return $id > 0 ? false : true;
     }
 
+    public function get_sale_list($fid, $aid)
+    {
+        $pids = $this->table('pft_product_sale_list')
+            ->where(['fid'=>$fid, 'aid'=>$aid,'status'=>0])
+            ->getField('pids');
+       return $pids;
+    }
     public function getOrderCode($ordernum)
     {
         return $this->table(self::__TBL_ORDER__)->where(['ordernum'=>$ordernum])->getField('code');
@@ -75,6 +82,7 @@ class OrderSubmit extends Model
         }
         return false;
     }
+
 
     /**
      * 获取产品转分销数据
@@ -140,5 +148,23 @@ class OrderSubmit extends Model
     public function addOrderDetail($params)
     {
         return $this->table('uu_order_fx_details')->data($params)->add();
+    }
+    public function addSaleRecord($member, $aid,$ordern,$pid,$tid, $lid, $pMoney, $nMoney, $eMoney )
+    {
+        $params = [
+            'fid'       => $member,
+            'aid'       => $aid,
+            'ordernum'  => $ordern,
+            'pid'       => $pid,
+            'tid'       => $tid,
+            'lid'       => $lid,
+            'pMoney'    => $pMoney,
+            'nMoney'    => $nMoney,
+            'emoney'    => $eMoney,
+            'rectime'   => date('Y-m-d H:i:s'),
+        ];
+        $lastid = $this->table('pft_onsale_record')->data($params)->add();
+        if (!$lastid) pft_log('order/error', 'OrderSubmit.addSaleRecord Error:'.$this->_sql());
+        return $lastid;
     }
 }
