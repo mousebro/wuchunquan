@@ -84,31 +84,6 @@ class OrderSubmit extends Model
         return false;
     }
 
-
-    /**
-     * 获取产品转分销数据
-     *
-     * @param int $pid 产品id
-     * @param int $fid 分销商ID
-     * @param int $aid 供应商ID
-     * @param string $field 获取的字段
-     * @return mixed|array
-     */
-    public function getEvoluteInfo($pid, $fid, $aid, $field='aids')
-    {
-        $map = [
-            'pid'=> ':pid',
-            'fid'=> ':fid',
-            'sid'=> ':sid',
-        ];
-        $bind = [
-            ':pid' => $pid,
-            ':fid' => $fid,
-            ':sid' => $aid,
-        ];
-        $data = $this->table('pft_p_apply_evolute')->field($field)->where($map)->bind($bind)->find();
-        return $data;
-    }
     /**
      * 订单编号生成规则，n(n>=1)个订单表对应一个支付表，
      * 生成订单编号(年取1位 + $pay_id取13位 + 第N个子订单取2位)

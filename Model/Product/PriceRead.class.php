@@ -35,6 +35,39 @@ class PriceRead extends Model
     }
 
     /**
+     * 获取产品转分销数据
+     *
+     * @param int $pid 产品id
+     * @param int $fid 分销商ID
+     * @param int $aid 供应商ID
+     * @param int $status 状态，默认0
+     * @param string $field 获取的字段
+     * @param int $limit 获取的条数
+     * @return mixed|array
+     */
+    public function getEvoluteInfo($pid, $fid, $aid, $status=0, $field='aids',$limit=1)
+    {
+        $map = [
+            'pid'=> ':pid',
+            'fid'=> ':fid',
+            'sid'=> ':sid',
+            'status'=> $status,
+        ];
+        $bind = [
+            ':pid' => $pid,
+            ':fid' => $fid,
+            ':sid' => $aid,
+        ];
+        $query = $this->table('pft_p_apply_evolute')
+            ->field($field)
+            ->where($map)
+            ->bind($bind)
+            ->limit($limit);
+        if ($limit==1) return $query->find();
+        return $query->select();
+    }
+
+    /**
      * @param string $ac 帐号
      * @param int $pid 产品ID
      * @param string $date 日期
@@ -62,7 +95,7 @@ class PriceRead extends Model
                     $a_pids=explode(',',$pids);
                     if (!in_array($pid,$a_pids)) $flag=1;
                 }
-                $aids = $this->table('pft_p_apply_evolute')->where(['pid'=>$pid, 'fid'=>$fxs_id,'sid'=>$m, 'status'=>0])->limit(1)->getField('aids');
+                $aids = $this->getEvoluteInfo($pid, $fxs_id, $m, 0, 'aids')['aids'];
                 if (!$aids) $flag2=1;
                 else $flag2=0;
                 if ($flag==1 && $flag2==1) return 1065;
@@ -253,8 +286,9 @@ class PriceRead extends Model
             'pid'=>$pid,
             'aid'=>$aid,
         ];
-        $query = $this->table('uu_priceset')->where($map)->limit($limit)->field($field);
-        if ($limit==1) return $query->find();
-        return $query->select();
+        $query = $this->table('uu_priceset')->where($map)->limit($limit);
+        if ($limit==1 && strpos($field, ',')===false) return $query->getField($field);
+        elseif ($limit==1) return $query->field($field)->find();
+        return $query->field($field)->select();
     }
 }
