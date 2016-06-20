@@ -17,6 +17,7 @@ use Model\Member\Member;
 
 class SettleBlance extends Controller {
     private $_memberId = null;
+    private $_logPath  = 'auto_withdraw/setting';
 
     private $_modeArr = [
         1, // 日结
@@ -196,6 +197,23 @@ class SettleBlance extends Controller {
         }
 
         if($res) {
+            //写日志
+            $logData = [
+                'updateId'     => $updateId,
+                'fid'          => $fid,
+                'mode'         => $mode,
+                'freezeType'   => $freezeType,
+                'closeDate'    => $closeDate,
+                'closeTime'    => $closeTime,
+                'transferDate' => $transferDate,
+                'transferTime' => $transferTime,
+                'memberId'     => $this->_memberId,
+                'accountInfo'  => $accountInfo,
+                'serviceFee'   => $serviceFee,
+                'freezeData'   => $freezeData,
+            ];
+            pft_log($this->_logPath, json_encode($logData));
+
             $this->apiReturn(200);
         } else {
             $this->apiReturn(500, [], '服务器错误');
@@ -320,6 +338,9 @@ class SettleBlance extends Controller {
         $res = $settleBlanceModel->settingStatus($updateId, $this->_memberId, $status);
 
         if($res) {
+            //写日志
+            pft_log($this->_logPath, json_encode(['id' => $updateId, 'status' => $status]));
+
             $this->apiReturn(200);
         } else {
             $this->apiReturn(500, [], '服务器错误');

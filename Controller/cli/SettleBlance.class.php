@@ -18,7 +18,8 @@ if(!defined('PFT_CLI')) {
 }
 
 class SettleBlance extends Controller {
-    
+    private $_logPath = 'auto_withdraw/auto';
+
     public function __construct() {
         //运行时间不做限制
         set_time_limit(0);
@@ -57,6 +58,10 @@ class SettleBlance extends Controller {
         //获取日结的记录
         $dayMark = date('Ymd');
         $dayList = $settleBlanceModel->getSettingList(1, 200, false, 1, $dayMark);
+
+        //日志数据
+        $logData = [];
+
         foreach($dayList as $item) {
             $timeArr = $settleBlanceModel->createSettleTime($item['mode'], $dayMark, $item['close_time']);
 
@@ -65,6 +70,19 @@ class SettleBlance extends Controller {
             $fid          = $item['fid'];
 
             $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $dayMark);
+
+            //清分数据
+            $logData[] = [
+                'fid'          => $fid,
+                'settleTime'   => $timeArr['settle_time'],
+                'transferTime' => $timeArr['transfer_time'],
+                'result'       => $res ? 1 : 0
+            ];
+        }
+
+        pft_log($this->_logPath, "生成清分记录（日结标识：{$dayMark}）:");
+        foreach($logData as $item) {
+            pft_log($this->_logPath, json_encode($item));
         }
     }
 
@@ -78,6 +96,9 @@ class SettleBlance extends Controller {
     public function runWeekSettle() {
         $settleBlanceModel = $this->model('Finance/SettleBlance');
 
+        //日志数据
+        $logData = [];
+
         //获取周结的记录
         $weekMark = date('Y02W');
         $dayList = $settleBlanceModel->getSettingList(1, 200, false, 2, $weekMark);
@@ -89,6 +110,19 @@ class SettleBlance extends Controller {
             $fid          = $item['fid'];
 
             $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $weekMark);
+
+            //清分数据
+            $logData[] = [
+                'fid'          => $fid,
+                'settleTime'   => $timeArr['settle_time'],
+                'transferTime' => $timeArr['transfer_time'],
+                'result'       => $res ? 1 : 0
+            ];
+        }
+
+        pft_log($this->_logPath, "生成清分记录（周结标识：{$weekMark}）:");
+        foreach($logData as $item) {
+            pft_log($this->_logPath, json_encode($item));
         }
     }
 
@@ -102,6 +136,9 @@ class SettleBlance extends Controller {
     public function runMonthSettle() {
         $settleBlanceModel = $this->model('Finance/SettleBlance');
 
+        //日志数据
+        $logData = [];
+
         //获取月结的记录
         $montyMark = date('Y01m');
         $dayList = $settleBlanceModel->getSettingList(1, 200, false, 3, $montyMark);
@@ -113,6 +150,19 @@ class SettleBlance extends Controller {
             $fid          = $item['fid'];
 
             $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $montyMark);
+
+            //清分数据
+            $logData[] = [
+                'fid'          => $fid,
+                'settleTime'   => $timeArr['settle_time'],
+                'transferTime' => $timeArr['transfer_time'],
+                'result'       => $res ? 1 : 0
+            ];
+        }
+
+        pft_log($this->_logPath, "生成清分记录（月结标识：{$montyMark}）:");
+        foreach($logData as $item) {
+            pft_log($this->_logPath, json_encode($item));
         }
     }
 
@@ -126,8 +176,10 @@ class SettleBlance extends Controller {
     public function runSettleTask() {
         $settleBlanceModel = $this->model('Finance/SettleBlance');
 
-        $settleList = $settleBlanceModel->getSettleList(1, 100);
+        //日志数据
+        $logData = [];
 
+        $settleList = $settleBlanceModel->getSettleList(1, 100);
         foreach($settleList as $item) {
             //清算金额
             $fid        = $item['fid'];
@@ -139,23 +191,23 @@ class SettleBlance extends Controller {
 
             if($status === -1) {
                 //记录数据错误
-                $settleBlanceModel->stopSettle($id, '自动清分配置错误');
+                $res = $settleBlanceModel->stopSettle($id, '自动清分配置错误');
             } else if($status === -2) {
                 //清分关闭
-                $settleBlanceModel->stopSettle($id, '自动清分处于关闭状态');
+                $res = $settleBlanceModel->stopSettle($id, '自动清分处于关闭状态');
             } else if($status === -3) {
                 //账户余额没有钱
                 $amoney = round($settleInfo['amoney']/100, 2);
-                $settleBlanceModel->stopSettle($id, "账号余额已经没有钱了，账户余额：{$amoney}元");
+                $res = $settleBlanceModel->stopSettle($id, "账号余额已经没有钱了，账户余额：{$amoney}元");
             } else if($status === -4) {
                 //获取未使用订单信息的时候报错
-                $settleBlanceModel->stopSettle($id, '获取未使用订单金额的时候系统报错');
+                $res = $settleBlanceModel->stopSettle($id, '获取未使用订单金额的时候系统报错');
 
             } else if($status === -5) {
                 $amoney      = round($settleInfo['amoney']/100, 2);
                 $freezeMoney = round($settleInfo['freeze_money']/100, 2);
 
-                $settleBlanceModel->stopSettle($id, "账号余额不足，账户余额：{$amoney}元，清分冻结余额：{$freezeMoney}元");
+                $res = $settleBlanceModel->stopSettle($id, "账号余额不足，账户余额：{$amoney}元，清分冻结余额：{$freezeMoney}元");
             } else {
                 //正常清算
                  $freezeMoney   = $settleInfo['freeze_money']; 
@@ -176,8 +228,21 @@ class SettleBlance extends Controller {
 
                  $res = $settleBlanceModel->updateSettleInfo($id, $freezeMoney, $transferMoney, $remark);
             }
+
+            //清分数据
+            $logData[] = [
+                'fid'    => $fid,
+                'id'     => $id,
+                'status' => $status,
+                'result' => $res ? 1 : 0
+            ];
         }
 
+        $count = count($logData);
+        pft_log($this->_logPath, "运行清算任务({$count}):");
+        foreach($logData as $item) {
+            pft_log($this->_logPath, json_encode($item));
+        }
     }
 
     /**
@@ -189,6 +254,9 @@ class SettleBlance extends Controller {
      */
     public function runTransTask() {
         $settleBlanceModel = $this->model('Finance/SettleBlance');
+
+        //日志数据
+        $logData = [];
 
         $transferList = $settleBlanceModel->getTransferList(1, 100);
         foreach($transferList as $item) {
@@ -232,7 +300,19 @@ class SettleBlance extends Controller {
                 $res = $settleBlanceModel->updateTransferInfo($id, 0, "提现成功");
             }
 
+            //清分数据
+            $logData[] = [
+                'fid'    => $fid,
+                'id'     => $id,
+                'status' => $status,
+                'result' => $res ? 1 : 0
+            ];
         }
 
+        $count = count($logData);
+        pft_log($this->_logPath, "具体清分任务({$count}):");
+        foreach($logData as $item) {
+            pft_log($this->_logPath, json_encode($item));
+        }
     }
 }
