@@ -533,6 +533,44 @@ class AnnualCard extends Controller {
         $this->apiReturn(200, $tickets);
     }
 
+    /**
+     * 图片上传
+     * @return [type] [description]
+     */
+    public function uploadImg() {
+        include '/var/www/html/new/d/class/Uploader.class.php';
+
+        $callback_id = I('callback_id', 0, 'intval');
+
+        $config = array(
+            "savePath"      => IMAGE_UPLOAD_DIR ."{$_SESSION['account']}/".date('Y-m-d'),
+            "maxSize"       => 2048, //单位KB
+            "allowFiles"    => array(".gif", ".png", ".jpg", ".jpeg", ".bmp"),
+            'simpleFolder'  => true,
+        );
+
+        $file   = key($_FILES);
+        $Upload = new \Uploader($file, $config);
+        $img_info = $Upload->getFileInfo();
+
+        if ($img_info['state'] == 'SUCCESS') {
+
+            $img_url = IMAGE_URL . "/{$_SESSION['account']}/".date('Y-m-d').'/'.$img_info['name'];
+            $r = ['code' => 200, 'data' => ['src' => $img_url]];
+
+        } else {
+            $r = ['code' => 204, 'data' => [], 'msg' => '上传失败']; 
+        }
+
+        $r = json_encode($r);
+
+        $script = '<script type="text/javascript">
+                var FileuploadCallbacks=window.parent.FileuploadCallbacks[1];
+                for(var i in FileuploadCallbacks) FileuploadCallbacks['.$callback_id.']('.$r.');
+                </script>';
+        echo $script;
+    }
+
     //下单页面获取卡片接口
     public function getCardsForOrder() {
 
