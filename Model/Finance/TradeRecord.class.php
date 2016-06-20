@@ -50,11 +50,11 @@ class TradeRecord extends Model
             $data[] = $parser->setRecord($record)
                 ->parseTradeType('|')
                 ->parseMember(false)
-                ->parseMoney()
                 ->parsePayType()
                 ->parseChannel()
                 //->parsePayee()
                 ->parseTradeContent()
+                ->parseMoney()
                 ->excelWrap(['payer_acc','payee_acc','dmoney','lmoney','trade_no','orderid'])
                 ->getRecord();
         }
@@ -126,9 +126,9 @@ class TradeRecord extends Model
             ->parseTradeType()
             ->parseTradeContent()
             ->parseMemberBasic()
-            ->parseMoney()
             ->parsePayType()
             ->parseChannel()
+            ->parseMoney()
             ->getRecord();
 
         return $result;
@@ -307,9 +307,9 @@ class TradeRecord extends Model
                 }
                 $data[] = $parser->setRecord($record)
                     ->parseMember()
-                    ->parseMoney()
                     ->parseTradeType()
                     ->parsePayType()
+                    ->parseMoney()
                     ->getRecord();
             }
         }
