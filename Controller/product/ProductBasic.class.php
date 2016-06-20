@@ -121,6 +121,7 @@ class ProductBasic extends Controller
      */
     protected function SaveTicket($memberId,  $ticketData, Ticket $ticketObj, Land $landObj)
     {
+
         $isSectionTicket = false;// 是否是期票
         if($ticketData['order_start'] && $ticketData['order_end']) $isSectionTicket = true;
         //价格校验
@@ -293,7 +294,7 @@ class ProductBasic extends Controller
         }
         if($p_type=='H'){
             $tkExtAttr['zone_id'] = $ticketData['zone_id']+0;
-        } 
+        }
 
         // 验证时间 08:00|18:00
         $tkExtAttr['v_time_limit'] = '0';
@@ -334,11 +335,11 @@ class ProductBasic extends Controller
             $crdConf['auto_act_day'] = isset($ticketData['auto_active_days']) ? intval($ticketData['auto_active_days']) : -1; //自动激活天数 -1 不自动激活
             $crdConf['srch_limit'] = isset($ticketData['search_limit']) ? intval($ticketData['search_limit']) : 1; //购买搜索限制 0 不限制 1：卡号（实体卡/虚拟卡）  2：身份证号 4：手机号
             $crdConf['cert_limit'] = isset($ticketData['cert_limit']) ? intval($ticketData['cert_limit']) : 0; //身份证限制 0 无需填写 1：需要填写
-            
+
             //激活通知 0 不通知 1 通知游客 2通知供应商 3 通知游客和供应商
             $notice_tourist = isset($ticketData['nts_tour']) ? ($ticketData['nts_tour'] + 0) : 0;
             $notice_supplier = isset($ticketData['nts_sup']) ? ($ticketData['nts_sup'] + 0) : 0;
-            
+
             $crdConf['act_notice'] = 0;
             if($notice_tourist){
                 $crdConf['act_notice'] += 1;
@@ -346,11 +347,11 @@ class ProductBasic extends Controller
             if($notice_supplier){
                 $crdConf['act_notice'] += 2;
             }
-            
+
             if(count($ticketData['priv'])){
-                    $crdInfo = json_encode(['crdConf'=>$crdConf,'crdPriv'=>$ticketData['priv']]);
-                    $crdModel->rmCache();
-                    $crdModel->setCache($crdInfo);
+                $crdInfo = json_encode(['crdConf' => $crdConf, 'crdPriv' => $ticketData['priv']]);
+                $crdModel->rmCache();
+                $crdModel->setCache($crdInfo);
             }else{
                 return self::_return(self::CODE_INVALID_REQUEST, '年卡特权信息未配置',$ticketData['ttitle']);
             }
@@ -367,8 +368,7 @@ class ProductBasic extends Controller
             $ass_station = str_replace('；', ';', $ass_station);
             $tkExtAttr['ass_station'] = serialize(explode(';', $ass_station));
         }
-        
-        
+
         if(isset($ticketData['tid']) && $ticketData['tid']>0)
         {   // 以下编辑操作
             $tid = $ticketData['tid']+0;
@@ -409,7 +409,7 @@ class ProductBasic extends Controller
                     ['verify_time'=>date('Y-m-d H:i:s')],
                     Ticket::__PRODUCT_TABLE__
                 );
-                
+
             }
             if ($ret1===false || $ret2===false || $ret3===false) {
                 return self::_return(self::CODE_CREATED, '保存票类属性失败',$ticketData['ttitle']);
@@ -614,7 +614,6 @@ class ProductBasic extends Controller
         if ($ret!==false) $crdModel->rmCache();
         return $ret;
     }
-    
-    
+
 
 }
