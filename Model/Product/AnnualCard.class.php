@@ -37,9 +37,15 @@ class AnnualCard extends Model
      *
      * @return [type]           [description]
      */
-    public function getAnnualCard($identify, $field = 'id') {
+    public function getAnnualCard($identify, $field = 'id', $options = []) {
 
-        return $this->table(self::ANNUAL_CARD_TABLE)->where([$field => $identify])->find();
+        if (isset($options['where'])) {
+            $where = 1;
+        } else {
+            $where = [$field => $identify];
+        }
+
+        return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->find($options);
 
     }
 
@@ -265,7 +271,8 @@ class AnnualCard extends Model
             'id'            => $card_id,
             'memberid'      => $memberid,
             'status'        => 1,
-            'update_time'   => time()
+            'update_time'   => time(),
+            'active_time'   => time()
         ];
 
         return $this->table(self::ANNUAL_CARD_TABLE)->save($data);
@@ -337,6 +344,20 @@ class AnnualCard extends Model
         $field = 'memberid,card_no,virtual_no,physics_no,status';
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
+    }
+
+    /**
+     * 年卡库存判断
+     * @param [type] $sid  [description]
+     * @param [type] $pid  [description]
+     * @param [type] $num  [description]
+     * @param string $type [description]
+     */
+    public function storageCheck($sid, $pid, $num, $type = 'virtual') {
+
+        $left = $this->getAnnualCardStorage($sid, $pid, $type);
+
+        return $left >= $num ? true : $left;
     }
 
     /**
@@ -425,23 +446,24 @@ class AnnualCard extends Model
      * @return [type]           [description]
      */
     private function _consumeTimesCheck($tid, $memberid, $sid, $config) {
-        //限制消费次数
-        $use_check = false;
 
+        //限制消费次数
         if ($config['use_limit'] == 0) return true;
 
         $limit_count = explode(',', $config['limit_count']);
 
         $loop = [
             [
+                //每日次数
                 date('Y-m-d') . ' 00:00:00',
                 date('Y-m-d') . ' 23:59:59'
             ],
             [
+                //每月次数
                 date('Y-m-01') . ' 00:00:00',
                 date('Y-m-t')  . ' 23:59:59'
             ],
-            []
+            []  //总次数
         ];
 
         foreach ($loop as $key => $time) {

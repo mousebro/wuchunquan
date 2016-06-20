@@ -17,25 +17,6 @@ class AnnualCard extends Controller {
             $this->apiReturn(401, [], '请先登录');
         }
 
-        $reflect = new \ReflectionMethod (__CLASS__, I('a'));
-
-        $document   = $reflect->getDocComment();
-        $start_line = $reflect->getStartLine() - 1;
-        $end_line   = $reflect->getEndLine();
-
-        $output = "<?php \r\n" . $document;
-
-        $file = file($reflect->getFileName()); 
-        for ($i = $start_line; $i <= $end_line; $i++) {
-            $output .= $file[$i];
-        }
-
-        $output .= '?>';
-
-        if (I('debug')) {
-            echo highlight_string($output, true);die;
-        }
-
         // if (!$this->isAjax()) {
         //     $this->apiReturn(403, [], '我要报警了!!!');
         // }
@@ -205,54 +186,101 @@ class AnnualCard extends Controller {
     }
 
     /**
-     * PC端激活年卡,TODO://待优化
+     * PC端供应商手动激活年卡,TODO://待优化
      */
-    public function activateAnnualCard() {
-
-        $this->_activateCheck();
+    public function activateForPc() {
 
         $identify   = I('identify');
         $mobile     = I('mobile');
         $name       = I('name');
 
-        $this->_CardModel->startTrans();
+        $card = $this->_activateCheck($identify, $_SESSION['sid']);
 
+        $replace = I('replace') || false;
+
+        //会员只能某个供应商的一张年卡
+        $memberid = $this->_isNeedToReplace($mobile, $_SESSION['sid'], $replace);
+
+        if (!$this->activeAction($card['id'], $memberid)) {
+
+            $this->apiReturn(200, [], '激活失败');
+
+        }
+
+        $this->apiReturn(200, [], '激活成功');
+
+    }
+
+    /**
+     * 平台销售虚拟卡时激活
+     * @return [type] [description]
+     */
+    public function activeForVirtualSale() {
+        $mobile     = I('mobile');
+        $name       = I('name');
+
+        $replace = I('replace') || false;
+
+        $this->_isNeedToReplace($mobile, $_SESSION['sid'], $replace);
+
+        $options = [
+            'where' => [
+                'card_no'=> '',
+                'status' => 3
+            ]
+        ];
+
+        //从虚拟库存中获取一张未激活的卡片
+        $memberid = $card = $this->_CardModel->getAnnualCard(1, 1, $options);
+
+        if (!$this->activeAction($card['id'], $memberid)) {
+
+            $this->apiReturn(200, [], '激活失败');
+
+        }
+
+        $this->apiReturn(200, [], '激活成功');
+
+    }
+
+    /**
+     * 对会员已绑定的年卡进行替换
+     * @param  [type]  $mobile  [description]
+     * @param  [type]  $sid     [description]
+     * @param  [type]  $replace [description]
+     * @return boolean          [description]
+     */
+    private function _isNeedToReplace($mobile, $sid, $replace) {
         $memberid = $this->_getMemberid($mobile);
 
-        $card = $this->_hasBindAnnualCard($memberid, $_SESSION['sid']);
+        $card = $this->_hasBindAnnualCard($memberid, $sid);
 
-        if ($card && !isset($_REQUEST['update'])) {
-            //需要向用户确认是否进行替换
-            // $this->apiReturn(200, ['exist' => 1, 'name' => '来自汪星人的神秘年卡']);
+        //向用户确认是否进行替换
+        if ($card && !$replace) {
+            $this->apiReturn(200, ['exist' => 1, 'name' => '来自汪星人的神秘年卡']);
         }
-        
-        if ($card && isset($_REQUEST['update'])) { 
-            //确认替换动作,将会员之前绑定的年卡设为禁用状态
+
+        //用户确认进行替换
+        if ($card && $replace) {
             if (!$this->_CardModel->forbiddenAnnualCard($card['id'])) {
-                $this->_CardModel->rollback();
-                $this->apiReturn(204, [], '激活失败');
+                $this->apiReturn(204, [], '替换失败');
             }
-        } 
-
-        if (!$this->activeAction($card_info['id'], $memberid)) {
-            $this->_CardModel->rollback();
-            $this->apiReturn(200, [], '激活失败');
         }
 
-        $this->_CardModel->commit() && $this->apiReturn(200, [], '激活成功');
-
+        return $memberid;
     }
 
     /**
      * pc端年卡激活检测
      * @return [type] [description]
      */
-    private function _activateCheck() {
-        $identify   = I('identify');
-        $mobile     = I('mobile');
-        $name       = I('name');
+    private function _activateCheck($identify, $sid) {
 
-        $identify = "sid={$_SESSION['sid']} and (card_no='{$identify}' or virtual_no='{$identify}' or physics_no='{$identify}')";
+        $identify = "sid={$sid} and 
+            (card_no='{$identify}' or 
+            virtual_no='{$identify}' or 
+            physics_no='{$identify}')";
+
         $card_info = $this->_CardModel->getAnnualCard($identify, '_string');
 
         if (!$card_info) {
@@ -262,6 +290,8 @@ class AnnualCard extends Controller {
         if ($card_info['memberid']) {
             $this->apiReturn(204, [], '该卡已被使用');
         }
+
+        return $card_info;
     }
 
     /**
@@ -305,10 +335,10 @@ class AnnualCard extends Controller {
         }
 
         //卡片激活后，清算订单资金
-        if (0) {
-            $this->_CardModel->rollback();
-            return false;
-        }
+        // if (0) {
+        //     // $this->_CardModel->rollback();
+        //     return false;
+        // }
 
 
         return true;
@@ -484,7 +514,7 @@ class AnnualCard extends Controller {
                 unset($tickets[$key]);
             }
         }
-
+        
         $this->apiReturn(200, $tickets);
     }
 
