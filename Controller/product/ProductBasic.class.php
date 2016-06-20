@@ -526,6 +526,9 @@ class ProductBasic extends Controller
         //$compareSec = array();
         $changeNote = array();
         $original_price = $ticketObj->getPriceSection($pid);
+        if (!$original_price) {
+            return false;
+        }
         foreach($price_section as $row)
         {
             // 期票模式（有效期是时间段）只能全部有价格

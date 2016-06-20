@@ -682,6 +682,9 @@ class Ticket extends Model {
         $today  = date('Y-m-d');
         $priceModel = new PriceRead();
         $price = $priceModel->get_Dynamic_Price_Merge($pid, '', 0, '', '', 0, 1);
+        if (!is_array($price)) {
+            return false;
+        }
         $price_section = array();
          foreach($price as $val){
             if($val['ptype']==0 && $val['end_date']>=$today){
