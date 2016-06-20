@@ -555,7 +555,7 @@ class AnnualCard extends Controller {
 
         if ($img_info['state'] == 'SUCCESS') {
 
-            $img_url = IMAGE_URL . "/{$_SESSION['account']}/".date('Y-m-d').'/'.$img_info['name'];
+            $img_url = IMAGE_URL . "{$_SESSION['account']}/".date('Y-m-d').'/'.$img_info['name'];
             $r = ['code' => 200, 'data' => ['src' => $img_url]];
 
         } else {
@@ -565,8 +565,8 @@ class AnnualCard extends Controller {
         $r = json_encode($r);
 
         $script = '<script type="text/javascript">
-                var FileuploadCallbacks=window.parent.FileuploadCallbacks[1];
-                for(var i in FileuploadCallbacks) FileuploadCallbacks['.$callback_id.']('.$r.');
+                var FileuploadCallbacks=window.parent.FileuploadCallbacks['.$callback_id.'];
+                for(var i in FileuploadCallbacks) FileuploadCallbacks[i]('.$r.');
                 </script>';
         echo $script;
     }
