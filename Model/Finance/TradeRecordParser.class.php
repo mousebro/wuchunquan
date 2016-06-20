@@ -72,16 +72,20 @@ class TradeRecordParser
 
         $partnerId = $this->record['aid'];
         $memberId = $this->record['fid'];
-
-        $partner_acc = $partnerId ? $this->getMemberModel()->getMemberCacheById($partnerId,
+        
+        $partner_acc = ($partnerId && $partnerId != 1) ? $this->getMemberModel()->getMemberCacheById($partnerId,
             'account') : '';
-        $member_acc = $memberId ? $this->getMemberModel()->getMemberCacheById($memberId,
+        $member_acc = ($memberId && $memberId != 1) ? $this->getMemberModel()->getMemberCacheById($memberId,
             'account') : '';
-
 
         foreach ($options as $key => $value) {
             if (array_key_exists($key, $this->record) && $this->record[ $key ]) {
-                $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ], 'dname');
+                if ($this->record[ $key ] == 1) {
+                    $this->record[ $value ] = '票付通信息科技';
+                } else {
+                    $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
+                        'dname');
+                }
             }
             $this->record[ $value ] = !empty($this->record[ $value ]) ? $this->record[ $value ] : '';
         }
@@ -337,6 +341,7 @@ class TradeRecordParser
         //is_acc_reverse: aid作为当前账号
         $is_acc_reverse = $_SESSION['sid'] != $this->record['fid'] && $_SESSION['sid'] != 1;
 
+
         if ($is_acc_reverse) {
             $options['aid'] = 'member';
             $options['fid'] = 'counter';
@@ -349,6 +354,10 @@ class TradeRecordParser
             if (!$this->record[ $key ]) {
                 $this->record[ $value ] = '';
                 $account[ $key ] = '';
+            } elseif ($this->record[ $key ] == 1) {
+                //$is_pft_trade = ($this->record[$key] == 1);
+                $this->record[ $value ] = '票付通信息科技';
+                $account[ $key ] = $account[ $value ] = '';
             } else {
                 $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
                     'dname') ?: '';
