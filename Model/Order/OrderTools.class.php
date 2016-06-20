@@ -271,7 +271,6 @@ SQL;
                 $this->db(0)->execute($sql);
             }
         }
-
     }
 
     /**

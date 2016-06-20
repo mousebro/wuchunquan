@@ -144,7 +144,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['title']   = $ticketData['ttitle'];
         $tkBaseAttr['landid']  = $ticketData['lid']+0;
         $tkBaseAttr['tprice']  = $ticketData['tprice']+0;    // 门市价
-        $tkBaseAttr['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
+        $tkBaseAttr['pay']     = isset($ticketData['pay']) ? ($ticketData['pay']+0) : 1;       // 支付方式 0 现场 1 在线
         //套票只允许在线支付
         if ($p_type=='F' && $tkBaseAttr['pay']==0) {
             if (!$ticketObj->allowOfflinePackage($memberId))
@@ -199,8 +199,8 @@ class ProductBasic extends Controller
         $tkBaseAttr['cancel_auto_onMin'] = abs($ticketData['cancel_auto_onMin']); // 未支付多少分钟内自动取消
 
         // 取消费用（统一）
-        $tkBaseAttr['reb']      = $ticketData['reb']+0;   // 实际值以分为单位
-        $tkBaseAttr['reb_type'] = $ticketData['reb_type'];// 取消费用类型 0 百分比 1 实际值
+        $tkBaseAttr['reb']      = isset($ticketData['reb']) ? $ticketData['reb']+0 : 0;   // 实际值以分为单位
+        $tkBaseAttr['reb_type'] = isset($ticketData['reb_type']) ? $ticketData['reb_type'] : 1;// 取消费用类型 0 百分比 1 实际值
         if($tkBaseAttr['reb_type']==0) {
             $reb = $tkBaseAttr['reb'] / 100;
             if($reb > 100 || $tkBaseAttr['reb']<0)
@@ -261,9 +261,9 @@ class ProductBasic extends Controller
 
 
         // 分批验证设置
-        $tkBaseAttr['batch_check']       = $ticketData['batch_check']+0;
-        $tkBaseAttr['batch_day_check']   = $ticketData['batch_day_check']+0;
-        $tkBaseAttr['batch_diff_identities'] = $ticketData['batch_diff_identities']+0;
+        $tkBaseAttr['batch_check']       = isset($ticketData['batch_check']) ? ($ticketData['batch_check']+0) : 1;
+        $tkBaseAttr['batch_day_check']   = isset($ticketData['batch_day_check']) ? ($ticketData['batch_day_check']+0) : 0;
+        $tkBaseAttr['batch_diff_identities'] = isset($ticketData['batch_diff_identities']) ? ($ticketData['batch_diff_identities']+0) : 0;
 
 
         // 景点类别属性（二次交互）
@@ -281,17 +281,19 @@ class ProductBasic extends Controller
 
         $tkBaseAttr['apply_did'] = $memberId;// 产品供应商
 
-
-
         // 扩展属性 uu_land_f
-        $tkExtAttr['confirm_wx']   = $ticketData['confirm_wx']+0;
-        $tkExtAttr['sendVoucher']  = $ticketData['sendVoucher']+0;
+        $tkExtAttr['confirm_wx']   = isset($ticketData['confirm_wx']) ? ($ticketData['confirm_wx']+0) : 0;
+        $tkExtAttr['sendVoucher']  = isset($ticketData['sendVoucher']) ?($ticketData['sendVoucher']+0) : 0;
         // $fData['confirm_sms']  = $oneTicket['confirm_sms']+0;
-        $tkExtAttr['tourist_info'] = $ticketData['tourist_info']+0;
+        $tkExtAttr['tourist_info'] = isset($ticketData['tourist_info']) ? ($ticketData['tourist_info']+0) : 0;
 
         // 提前预定小时  01:00:00 - 23:59:00
-        $tkExtAttr['dhour'] = str_pad($ticketData['dhour'], 5, 0, STR_PAD_LEFT).':00';
-        if($p_type=='H') $tkExtAttr['zone_id'] = $ticketData['zone_id']+0;
+        if(isset($ticketData['dhour'])){
+            $tkExtAttr['dhour'] = str_pad($ticketData['dhour'], 5, 0, STR_PAD_LEFT).':00';
+        }
+        if($p_type=='H'){
+            $tkExtAttr['zone_id'] = $ticketData['zone_id']+0;
+        } 
 
         // 验证时间 08:00|18:00
         $tkExtAttr['v_time_limit'] = '0';
@@ -327,21 +329,28 @@ class ProductBasic extends Controller
             }
         }
         if($p_type=='I'){
-            $crdModel = new AnnualCard($ticketData['tid'] + 0);
+            $crdModel = new AnnualCard($ticketData['tid'] + 0, $_SESSION['memberID']);
             if(!isset($crdConf)) $crdConf = [];
-            $crdConf['auto_act_day'] = isset($ticketData['auto_act_day']) ? intval($ticketData['auto_act_day']) : -1; //自动激活天数 -1 不自动激活
-            $crdConf['srch_limit'] = isset($ticketData['srch_limit']) ? intval($ticketData['srch_limit']) : 1; //购买搜索限制 0 不限制 1：卡号（实体卡/虚拟卡）  2：身份证号 4：手机号
-            $crdConf['cert_limit'] = isset($ticketData['cert_limit']) ? intval($ticketData['cert_limit']) : 0; //身份证地域限制 0 不限制 其他：限制身份证前n位为'其他'
-            $crdConf['act_notice'] = isset($ticketData['act_notice']) ? intval($ticketData['act_notice']) : 0; //激活通知 0 不通知 1 通知游客 1通知供应商 2 通知游客和供应商
+            $crdConf['auto_act_day'] = isset($ticketData['auto_active_days']) ? intval($ticketData['auto_active_days']) : -1; //自动激活天数 -1 不自动激活
+            $crdConf['srch_limit'] = isset($ticketData['search_limit']) ? intval($ticketData['search_limit']) : 1; //购买搜索限制 0 不限制 1：卡号（实体卡/虚拟卡）  2：身份证号 4：手机号
+            $crdConf['cert_limit'] = isset($ticketData['cert_limit']) ? intval($ticketData['cert_limit']) : 0; //身份证限制 0 无需填写 1：需要填写
+            
+            //激活通知 0 不通知 1 通知游客 2通知供应商 3 通知游客和供应商
+            $notice_tourist = isset($ticketData['nts_tour']) ? ($ticketData['nts_tour'] + 0) : 0;
+            $notice_supplier = isset($ticketData['nts_sup']) ? ($ticketData['nts_sup'] + 0) : 0;
+            
+            $crdConf['act_notice'] = 0;
+            if($notice_tourist){
+                $crdConf['act_notice'] += 1;
+            }
+            if($notice_supplier){
+                $crdConf['act_notice'] += 2;
+            }
+            
             if(count($ticketData['priv'])){
-                $crdPriv = $crdModel->checkPriv($ticketData['priv']);
-                if(is_array($crdPriv)){
-                    $crdInfo = json_encode(['crdConf'=>$crdConf,'crdPriv'=>$crdPriv]);
+                    $crdInfo = json_encode(['crdConf'=>$crdConf,'crdPriv'=>$ticketData['priv']]);
                     $crdModel->rmCache();
                     $crdModel->setCache($crdInfo);
-                }else{
-                    return self::_return(self::CODE_INVALID_REQUEST, '年卡特权信息错误',$ticketData['ttitle']);
-                }
             }else{
                 return self::_return(self::CODE_INVALID_REQUEST, '年卡特权信息未配置',$ticketData['ttitle']);
             }
@@ -358,6 +367,8 @@ class ProductBasic extends Controller
             $ass_station = str_replace('；', ';', $ass_station);
             $tkExtAttr['ass_station'] = serialize(explode(';', $ass_station));
         }
+        
+        
         if(isset($ticketData['tid']) && $ticketData['tid']>0)
         {   // 以下编辑操作
             $tid = $ticketData['tid']+0;
@@ -398,6 +409,7 @@ class ProductBasic extends Controller
                     ['verify_time'=>date('Y-m-d H:i:s')],
                     Ticket::__PRODUCT_TABLE__
                 );
+                
             }
             if ($ret1===false || $ret2===false || $ret3===false) {
                 return self::_return(self::CODE_CREATED, '保存票类属性失败',$ticketData['ttitle']);
@@ -514,6 +526,9 @@ class ProductBasic extends Controller
         //$compareSec = array();
         $changeNote = array();
         $original_price = $ticketObj->getPriceSection($pid);
+        if (!$original_price) {
+            return false;
+        }
         foreach($price_section as $row)
         {
             // 期票模式（有效期是时间段）只能全部有价格
@@ -599,5 +614,7 @@ class ProductBasic extends Controller
         if ($ret!==false) $crdModel->rmCache();
         return $ret;
     }
+    
+    
 
 }

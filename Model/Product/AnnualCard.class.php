@@ -21,23 +21,27 @@ class AnnualCard extends Model
     const LAND_TABLE                = 'uu_land';                    //景区表
     const SALE_LIST_TABLE           = 'pft_product_sale_list';      //一级转分销表
 
-    public function __construct($parent_tid = 0)
+    public function __construct($parent_tid = 0, $sid = 0)
     {
         parent::__construct();
         $this->parent_tid = $parent_tid;
-        $this->cacheKey   = "crd:{$_SESSION['memberID']}";
+        $this->cacheKey   = "crd:{$sid}";
         $this->cache      = Cache::getInstance('redis');
     }
 
     /**
      * 根据字段获取年卡信息
      *
-     * @param  [type] $identify [description]
-     * @param  string $field [description]
+     * @param  [type] $identify 值
+     * @param  string $field    字段
      *
      * @return [type]           [description]
      */
-    public function getAnnualCard($identify, $field = 'id', $options = []) {
+    public function getAnnualCard($identify, $field = 'id', $options = [], $action = 'find') {
+
+        if (in_array($action, ['find,select'])) {
+            return false;
+        }
 
         if (isset($options['where'])) {
             $where = 1;
@@ -45,7 +49,7 @@ class AnnualCard extends Model
             $where = [$field => $identify];
         }
 
-        return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->find($options);
+        return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->$action($options);
 
     }
 
@@ -56,10 +60,10 @@ class AnnualCard extends Model
      */
     public function getAnnualCardConfig($tid) {
 
-        return $this->table(self::CARD_PRIVILEGE_TABLE)
+        return $this->table(self::CARD_CONFIG_TABLE)
             ->join('c left join uu_jq_ticket t on c.tid=t.id')
             ->where(['tid' => $tid])
-            ->field('c.id,c.use_limit,c.limit_count,t.delaytype,t.delaydays,t.order_start,t.order_end')
+            ->field('c.id,c.auto_act_day,c.srch_limit,t.delaytype,t.delaydays,t.order_start,t.order_end')
             ->find();
     }
 
@@ -81,7 +85,7 @@ class AnnualCard extends Model
 
         $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
 
-        $field = 'id,virtual_no,card_no,physics_no,update_time';
+        $field = 'id,virtual_no,card_no,physics_no,create_time';
 
         if ($action == 'select') {
 
@@ -137,29 +141,28 @@ class AnnualCard extends Model
      *
      * @return [type] [description]
      */
-    public function createAnnualCard($num, $sid, $pid)
+    public function createAnnualCard($list, $sid, $pid)
     {
-        $insert_data = $return = [];
 
-        while (1) {
-            $virtual_no = $this->_createVirtualNo();
+        $insert_data = [];
 
-            if ( ! $this->getAnnualCard($virtual_no, 'virtual_no')) {
-                $insert_data[] = ['sid' => $sid, 'pid' => $pid, 'virtual_no' => $virtual_no, 'status' => 3];
-            }
-
-            $return[] = $virtual_no;
-
-            if (count($insert_data) == $num) {
-                break;
-            }
+        foreach ($list as $item) {
+            $insert_data[] = [
+                'sid'           => $sid,
+                'pid'           => $pid,
+                'virtual_no'    => $item['virtual_no'],
+                'physics_no'    => $item['physics_no'],
+                'card_no'       => $item['card_no'],
+                'status'        => 3,
+                'create_time'   => time()
+            ];
         }
 
         if ( ! $this->table(self::ANNUAL_CARD_TABLE)->addAll($insert_data)) {
             return false;
         }
 
-        return $return;
+        return true;
     }
 
     /**
@@ -178,7 +181,7 @@ class AnnualCard extends Model
         $second_part = substr(str_shuffle($string), 0, 3);
         $third_part  = substr(str_shuffle($number), 0, 3);
         $virtual_no .= $head . $second_part . $third_part;
-        $tail = array_sum(str_split($virtual_no));
+        $tail        = array_sum(str_split($virtual_no));
         $virtual_no .= $virtual_no . $tail;
 
         return $virtual_no;
@@ -234,9 +237,34 @@ class AnnualCard extends Model
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->save($update);
     }
 
+
+    /**
+     * 获取年卡产品包含的特权产品
+     * @param  [type] $pid 产品pid
+     * @return [type]      [description]
+     */
+    public function getPrivileges($pid) {
+
+        $ticket = (new Ticket())->getTicketInfoByPid($pid);
+
+        //TODO:是否需要判断产品状态
+        $where = [
+            'pri.parent_tid' => $ticket['id'],
+            'pri.status'    => 1
+        ];
+        $result = $this->table(self::CARD_PRIVILEGE_TABLE)
+            ->join('pri left join uu_jq_ticket t on pri.tid=t.id left join uu_land l on t.landid=l.id')
+            ->where($where)
+            ->field('pri.tid,pri.limit_count,t.title,t.pid,l.title as ltitle')
+            ->select();
+
+        return $result ?: [];
+
+    }
+
     /**
      * 获取年卡库存
-     * @param  [type] $sid  [description]
+     * @param  [type] $sid  供应商id
      * @param  string $type 虚拟卡 OR 物理卡
      *
      * @return [type]       [description]
@@ -261,8 +289,8 @@ class AnnualCard extends Model
 
     /**
      * 激活会员卡
-     * @param  [type] $card_id  [description]
-     * @param  [type] $memberid [description]
+     * @param  [type] $card_id  年卡id
+     * @param  [type] $memberid 会员id
      * @return [type]           [description]
      */
     public function activateAnnualCard($card_id, $memberid) {
@@ -280,7 +308,7 @@ class AnnualCard extends Model
 
     /**
      * 禁用会员卡
-     * @param  [type] $card_id [description]
+     * @param  [type] $card_id 年卡id
      * @return [type]          [description]
      */
     public function forbiddenAnnualCard($card_id) {
@@ -295,8 +323,8 @@ class AnnualCard extends Model
 
     /**
      * 获取年卡会员列表
-     * @param  [type] $sid     [description]
-     * @param  [type] $options [description]
+     * @param  int $sid     供应商id
+     * @param  array $options 额外条件
      * @return [type]          [description]
      */
     public function getMemberList($sid, $options = [], $action = 'select') {
@@ -364,29 +392,30 @@ class AnnualCard extends Model
      * 年卡消费合法性检测
      * @return [type] [description]
      */
-    public function consumeCheck($card_info) {
-        $card_info = $this->getAnnualCard('555555', 'physics_no');  //调试代码
+    // public function consumeCheck($card_info) {
+    //     $card_info = $this->getAnnualCard('555555', 'physics_no');  //调试代码
         
-        extract($card_info);
+    //     extract($card_info);
         
-        $ticket = (new Ticket())->getTicketInfoByPid($pid);
+    //     //这里逻辑有错
+    //     $ticket = (new Ticket())->getTicketInfoByPid($pid);
 
-        $ticket['id'] = 28460;  //调试代码
-        $config = $this->getAnnualCardConfig($ticket['id']);
+    //     $ticket['id'] = 28460;  //调试代码
+    //     $config = $this->getAnnualCardConfig($ticket['id']);
 
-        //年卡有效期检测
-        if (!$this->_periodOfValidityCheck($card_info, $config)) {
-            return false;
-        }
+    //     //年卡有效期检测
+    //     if (!$this->_periodOfValidityCheck($card_info, $config)) {
+    //         return false; 
+    //     }
 
-        //次数限制检测
-        if (!$this->_consumeTimesCheck($tid, $memberid, $sid, $config)) {
-            return false;
-        }
+    //     //次数限制检测
+    //     if (!$this->_consumeTimesCheck($ticket['id'], $memberid, $sid, $config)) {
+    //         return false;
+    //     }
 
-        return true;
+    //     return true;
 
-    }
+    // }
     
     /**
      * 年卡有效期检测
@@ -394,13 +423,12 @@ class AnnualCard extends Model
      * @param  [type] $config    [description]
      * @return [type]            [description]
      */
-    private function _periodOfValidityCheck($card_info, $config) {
-
+    public function _periodOfValidityCheck($card_info, $config) {
         //是否处于未激活状态(待定)
         if ($card_info['status'] != 1) {
             return false;
         }
-        
+
         switch ($config['delaytype']) {
 
             case 0: //激活后有效
@@ -477,6 +505,37 @@ class AnnualCard extends Model
         return true;
     }
 
+    /**
+     * 获取[当日,当月,总数]还剩下的特权次数
+     * @param  [type] $tid      特权产品tid
+     * @param  [type] $memberid 会员id
+     * @return [type]           [description]
+     */
+    public function getRemainTimes($sid, $tid, $memberid) {
+
+        $loop = [
+            [
+                //每日次数
+                date('Y-m-d') . ' 00:00:00',
+                date('Y-m-d') . ' 23:59:59'
+            ],
+            [
+                //每月次数
+                date('Y-m-01') . ' 00:00:00',
+                date('Y-m-t')  . ' 23:59:59'
+            ],
+            []  //总次数
+        ];
+
+        $today = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[0]);
+
+        $month = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[1]);
+
+        $all   = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2]);
+
+        return [$today, $month, $all];
+    }
+
 
     /**
      * 统计时间段内的订单总数
@@ -485,9 +544,10 @@ class AnnualCard extends Model
      * @param  [type] $time     [description]
      * @return [type]           [description]
      */
-    private function _countTimeRangeOrder($tid, $memberid, $time) {
+    private function _countTimeRangeOrder($sid, $tid, $memberid, $time) {
 
         $where = [
+            'aid'           => $sid,
             'memberid'      => $memberid,
             'tid'           => $tid,
             'status'        => 1
@@ -497,7 +557,7 @@ class AnnualCard extends Model
             $where['create_time'] = ['between', array_map('strtotime', $time)];
         }
 
-        return $this->table(self::CARD_ORDER_TABLE)->where($where)->count();
+        return $this->table(self::CARD_ORDER_TABLE)->where($where)->sum('num');
     }
 
     /**
@@ -559,6 +619,48 @@ class AnnualCard extends Model
 
         return $tickets ?: [];
     }
+
+    /**
+     * 记录年卡订单
+     * @param  [type] $ordernum [description]
+     * @param  [type] $tid      [description]
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
+    public function annualOrderRecord($ordernum, $tid, $memberid, $aid, $num) {
+        $data = [
+            'ordernum'      => $ordernum,
+            'tid'           => $tid,
+            'memberid'      => $memberid,
+            'aid'           => $aid,
+            'num'           => $num,
+            'create_time'   => time(),
+            'status'        => 1
+        ];
+
+        return $this->table(self::CARD_ORDER_TABLE)->add($data);
+    }
+
+    /**
+     * 取消年卡订单
+     * @param  [type] $ordernum [description]
+     * @return [type]           [description]
+     */
+    public function cancelOrder($ordernum) {
+        $update = [
+            'status' => 0
+        ];
+
+        return $this->table(self::CARD_ORDER_TABLE)->where(['ordernum' => $ordernum])->save($update);
+    }
+
+    public function changeOrder($ordernum, $num) {
+        $update = [
+            'num' => $num
+        ];
+
+        return $this->table(self::CARD_ORDER_TABLE)->where(['ordernum' => $ordernum])->save($update);
+    }
     
 
      /**
@@ -572,7 +674,7 @@ class AnnualCard extends Model
     {
         $this->startTrans();
         $ret1 = $this->saveCrdConf($crdConf);
-        $ret2 = $this->saveCrdPriv($crdPriv);
+        $ret2 = $this->addCardPrivilege($crdPriv);
         if ($ret1 && $ret2) {
             $this->commit();
 
@@ -596,7 +698,6 @@ class AnnualCard extends Model
     {
 
         $result = $this->table(self::CARD_CONFIG_TABLE)->add($data);
-        $this->log_sql();
 
         return $result;
     }
@@ -609,10 +710,9 @@ class AnnualCard extends Model
      *
      * @return bool|string
      */
-    public function saveCrdPriv(array $data)
+    public function addCardPrivilege(array $data)
     {
         $result = $this->table(self::CARD_PRIVILEGE_TABLE)->addAll($data);
-        $this->log_sql();
 
         return $result;
     }
@@ -631,37 +731,42 @@ class AnnualCard extends Model
     {
         return $this->cache->rm($this->cacheKey);
     }
+    //更新年卡配置
+    public function setCardPrivilege($parentId,$data){
+        $tid_before = $this->getPrivilegeInfo(['parent_id'=>$parentId],'tid');
+        $tid_after = array_column($data,'tid');
 
-    public function checkPriv($arr_list)
-    {
-//        $arr_list = json_decode($json, true);
-        if ( ! is_array($arr_list)) {
-            throw new Exception("年卡特权数据出错");
+        if($tid_before === null){
+            $tid_add = $tid_after;
+        }else{
+            $tid_add = array_diff($tid_after,$tid_before);
+            $tid_delete = array_diff($tid_before,$tid_after);
+            $tid_update = array_diff($tid_after,$tid_add,$tid_delete);
         }
-        $limit_key_list = ['aid', 'tid', 'use_limit', 'limit_count'];
-        foreach ($arr_list as $arr) {
-            foreach ($arr as $key => $val) {
-                if ( ! in_array($key, $limit_key_list) || ! is_numeric($val)) {
-                    echo $key, $val;
-
-                    return false;
-                }
+        $tid_add = $tid_add ?: [];
+        $tid_update = $tid_update ?: [];
+        $tid_delete = $tid_delete ?: [];
+        foreach($data as $setting){
+            if(in_array($setting['tid'],$tid_delete)){
+                $data_delete[] = $setting;
+            }else if(in_array($setting['tid'],$tid_update)){
+                $data_update[] = $setting;
+            }else if(in_array($setting['tid'],$tid_add)){
+                $data_add[] = $setting;
             }
         }
-
-        return $arr_list;
-    }
-
-    public function log_sql()
-    {
-        if (ENV != 'production') {
-            $sql   = $this->getLastSql();
-            $error = $this->getDbError();
-            $sql .= $error ? $error : '';
-
-            \pft_log('annual_card/sql', 'sql#' . $sql . 'err#' . $error);
-
+        if(isset($data_delete)){
+            $this->deleteCardPrivilege($data_delete);
         }
-
+        if(isset($data_update)){
+            $this->updateCardPrivilege($data_update);
+        }
+        if(isset($data_add)){
+            $this->addCardPrivilege($data_add);
+        }
+    }
+    //获取年卡产品特权信息
+    public function getPrivilegeInfo($condition,$field){
+        return $this->table(self::CARD_PRIVILEGE_TABLE)->where($condition)->getField($field,true);
     }
 }
