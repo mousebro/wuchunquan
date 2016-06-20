@@ -24,4 +24,36 @@ class scenic extends ProductBasic
         $land = new Land();
         $this->SaveBasicInfo($this->memberID, $land);
     }
+
+    /**
+     * 景区编辑页面，获取景区信息接口(暂时只适配年卡产品)
+     * @return [type] [description]
+     */
+    public function get() {
+        $lid = I('lid', '', 'intval');
+
+        if ($lid < 1) {
+            $this->apiReturn(204, [], '参数错误');
+        }
+
+        $LandModel = new Land();
+
+        $land = $LandModel->getLandInfo($lid);
+
+        if (!$land) {
+            $this->apiReturn(204, [], '景区未找到');
+        }
+
+        $return = [
+            'title'     => $land['title'],
+            'province'  => explode('|', $land['area'])[0],
+            'city'      => explode('|', $land['area'])[1],
+            'telphone'  => $land['tel'],
+            'image'     => $land['imgpath'],
+            'introduce' => $land['bhjq']
+        ];
+
+        $this->apiReturn(200, $return);
+    }
+
 }
