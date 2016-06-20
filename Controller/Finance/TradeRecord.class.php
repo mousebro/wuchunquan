@@ -95,15 +95,20 @@ class TradeRecord extends Controller
             $map = [];
 
             //被查询会员id
-            $fid = intval(I('fid'));
-            //fid=0时可查看所有会员记录
 
-            $fid = ($this->memberId == 1) ? ($fid ?: 0) : $this->memberId;
+            //fid=0时可查看所有会员记录
+            if ($this->memberId == 1 && isset($_REQUEST['fid'])) {
+                $fid = intval(I('fid'));
+            } else {
+                $fid = $this->memberId;
+            }
 
             $partner_id = intval(I('partner_id'));
             $partner_id = $partner_id ?: 0;
 
-
+            if ($this->memberId == 1 && !$fid && $partner_id) {
+                $this->apiReturn(220, [], '请先选择交易商户');
+            }
             //支付方式
             $this->_parsePayType($fid, $partner_id, $map);
 
@@ -159,7 +164,8 @@ class TradeRecord extends Controller
         if($this->memberId==1){
             $fid =  \safe_str(I('fid'));
             if(!$fid){
-                $this->apiReturn('220','请先选择交易商户');
+                $this->srchMem($srch);
+                exit;
             }else{
                 $memberId = $fid;
             }
@@ -185,10 +191,13 @@ class TradeRecord extends Controller
      * @param   string [srch]       会员名称/会员id/会员账号
      * @param   string [ptypes]     支付类型                0-查看当前用户授信; 1-查看分销商授信
      */
-    public function srchMem()
+    public function srchMem($srch = null)
     {
-        $this->memberId = $this->isLogin('ajax');
-        $srch = \safe_str(I('srch'));
+        if (!$srch) {
+            $this->memberId = $this->isLogin('ajax');
+            $srch = \safe_str(I('srch'));
+        }
+
         //$limit = intval(I('limit')) ?: 20;
 
         try {
