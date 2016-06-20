@@ -281,14 +281,12 @@ class TradeRecord extends Controller
                 break;
             case 1:
                 $data = $recordModel->getExList($map);
-
-                if (is_array($data)) {
-                    $filename = date('YmdHis') . '交易记录';
-
-                    $this->_exportExcel($data, $filename);
-                } else {
-                    throw new Exception('查询结果为空', 207);
+                if (!is_array($data)) {
+                    $data = [];
                 }
+                $filename = date('YmdHis') . '交易记录';
+
+                $this->_exportExcel($data, $filename);
                 break;
             case 2:
                 $data = $recordModel->getSummary($map);
