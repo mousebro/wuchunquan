@@ -64,6 +64,7 @@ class OrderSubmit extends Model
     {
         $pids = $this->table('pft_product_sale_list')
             ->where(['fid'=>$fid, 'aid'=>$aid,'status'=>0])
+            ->limit(1)
             ->getField('pids');
        return $pids;
     }
