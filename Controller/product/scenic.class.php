@@ -38,19 +38,23 @@ class scenic extends ProductBasic
 
         $LandModel = new Land();
 
-        $land = $LandModel->getLandInfo($lid);
+        $field = 'land.title,land.area,land.jqts,land.address,land.imgpath,land.tel,f.p_type';
+
+        $land = $LandModel->getLandInfo($lid, true, $field);
 
         if (!$land) {
             $this->apiReturn(204, [], '景区未找到');
         }
 
         $return = [
-            'title'     => $land['title'],
-            'province'  => explode('|', $land['area'])[0],
-            'city'      => explode('|', $land['area'])[1],
-            'telphone'  => $land['tel'],
-            'image'     => $land['imgpath'],
-            'introduce' => $land['bhjq']
+            'product_name'      => $land['title'],
+            'product_type'      => $land['p_type'],
+            'province'          => explode('|', $land['area'])[0],
+            'city'              => explode('|', $land['area'])[1],
+            'address'           => $land['address'],
+            'telphone'          => $land['tel'],
+            'image'             => $land['imgpath'],
+            'jqts'         => $land['jqts']
         ];
 
         $this->apiReturn(200, $return);
