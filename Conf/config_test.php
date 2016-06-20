@@ -93,8 +93,6 @@ return array(
                     'port' => 6379,
                     'password'=>'pft666',
                     'db'=>10,
-                    'alias'=>'master',
-                    'master'=>true
                 ],
             ],
             'REDIS_BACKEND_DATABASE' => 10,
