@@ -107,7 +107,7 @@ class Helpers {
         //外部没有传当前页的时候去获取
         if($currentPage === false) {
             $tmp         = parse_url($_SERVER['REQUEST_URI']);
-            $currentPage = $tmp['path'];
+            $currentPage = trim($tmp['path'], '/');
         }
 
         $res = [
@@ -189,6 +189,9 @@ class Helpers {
             if(isset($row['left']) && $row['left']=="none") {
                 continue;
             }
+
+            //地址处理
+            $row['url'][0] = '/' . $row['url'][0];
 
             if(isset($leftNaviArray[$row['group']])) {
                 $leftNaviArray[$row['group']]['row'][] = $row;

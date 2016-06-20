@@ -21,8 +21,6 @@ class card extends Controller {
      *
      */
     public function __construct() {
-        ini_set('display_errors', true);
-        error_reporting(E_ALL);
         $this->initPage();
     }
     
@@ -52,7 +50,7 @@ class card extends Controller {
      * @return
      */
     public function user() {
-
+        $this->display('card/user');
     }
 
 }
