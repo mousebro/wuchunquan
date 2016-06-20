@@ -41,12 +41,16 @@ class SettleBlance extends Controller {
 
     public function __construct() {
         //只有管理员才能进行操作
-        $tmpId = 1;//$this->isLogin('ajax');
+        $sid      = $this->isLogin('ajax');
+        $memberID = $_SESSION['memberID'];
+        $qx       = $_SESSION['qx'];
 
         //角色判斷
-        
+        if(!($memberID == 1 || ($sid == 1 && strpos($qx,'fees')))){
+            $this->apiReturn(403, [], '没有权限');
+        }
 
-        $this->_memberId = $tmpId;
+        $this->_memberId = $memberID;
     }
 
     /**
@@ -55,7 +59,7 @@ class SettleBlance extends Controller {
      *
      * @param $fid 用户ID
      * @param $mode 自动清分模式，1=日结，2=周结，3=月结
-     * @param $freeze_type 资金冻结类型，1=冻结未使用的总额，2=按比例冻结
+     * @param $freeze_type 资金冻结类型，1=冻结未使用的总额，2=按比例或是具体金额冻结
      * @param $close_date 结算日期，日结（几点），月结（几号），周结（周1-周7）
      * @param $close_time 结算时间，具体几点
      * @param $transfer_date 转账日期，日结（几点），月结（几号），周结（周几）
@@ -173,8 +177,11 @@ class SettleBlance extends Controller {
 
         //冻结资金配置
         if($freezeType == 2) {
-            if($moneyValue < 0 || $moneyValue > 100) {
-                $this->apiReturn(400, [], '冻结金额错误');
+            //如果是百分比就要进行判断
+            if($moneyType == 1) {
+                if($moneyValue < 0 || $moneyValue > 100) {
+                    $this->apiReturn(400, [], '冻结金额错误');
+                }
             }
 
             $freezeData = ['type' => $moneyType, 'value' => $moneyValue];
@@ -391,8 +398,17 @@ class SettleBlance extends Controller {
             }
         }
 
+        //同时在这里返回默认的提现配置
+        $defaultConf = load_config('withdraw_default');
+        unset($defaultConf['day']['limit_money'], $defaultConf['week']['limit_money'], $defaultConf['month']['limit_money']);
+
+        $data = [
+            'default_config' => $defaultConf,
+            'account_info'   => $res
+        ];
+
         //返回账号信息
-        $this->apiReturn(200, $res);
+        $this->apiReturn(200, $data);
     }
 
     /**

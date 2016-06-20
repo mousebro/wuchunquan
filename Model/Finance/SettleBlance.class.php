@@ -89,13 +89,11 @@ class SettleBlance extends Model{
 
         //参数统一校验，格式化
         $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData);
-
         if(!$data) {
             return false;
         }
 
         $res = $this->table($this->_settingTable)->where(['id' => $id])->save($data);
-
         return $res === false ? false : true;
     }
 

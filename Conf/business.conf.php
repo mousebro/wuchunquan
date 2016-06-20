@@ -20,11 +20,34 @@ return array(
         'relation'        => '{dname}您好！【{aname}】添加您为平台分销商。帐号为您的手机号,密码{pwd},赶快登录www.12301.cc或关注"票付通"、"pft_12301"微信公众号，绑定账号分销{aname}的产品吧~帮助：t.cn/RZG1HLA',
         'wechat_bind'     => '您正在使用微信绑定功能，验证码：{vcode}',
     ),
+
+    //黑名单
     'black_list' => array(
         'mobile' => array('18661797480','13026506113'),
         'ip'     => array()
-    )
+    ),
 
+    //自动提现默认配置
+    'withdraw_default' => array(
+        'day' => array(
+            'service_fee'   => 5, //默认千分之五
+            'reserve_money' => 200, //默认冻结多少钱
+            'reserve_scale' => 20,  //默认冻结的比例
+            'limit_money'   => 200  //最低需要达到多少才能体现
+        ),
+        'week' => array(
+            'service_fee'   => 5, //默认千分之五
+            'reserve_money' => 200, //默认冻结多少钱
+            'reserve_scale' => 20,  //默认冻结的比例
+            'limit_money'   => 200  //最低需要达到多少才能体现
+        ),
+        'month' => array(
+            'service_fee'   => 5, //默认千分之五
+            'reserve_money' => 200, //默认冻结多少钱
+            'reserve_scale' => 20,  //默认冻结的比例
+            'limit_money'   => 200  //最低需要达到多少才能体现
+        )
+    )
 );
 
 
