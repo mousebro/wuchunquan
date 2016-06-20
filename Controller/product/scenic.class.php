@@ -52,9 +52,9 @@ class scenic extends ProductBasic
             'province'          => explode('|', $land['area'])[0],
             'city'              => explode('|', $land['area'])[1],
             'address'           => $land['address'],
-            'telphone'          => $land['tel'],
-            'image'             => $land['imgpath'],
-            'jqts'         => $land['jqts']
+            'tel'               => $land['tel'],
+            'img_path'          => $land['imgpath'],
+            'jqts'              => $land['jqts']
         ];
 
         $this->apiReturn(200, $return);
