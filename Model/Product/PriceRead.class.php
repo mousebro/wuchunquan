@@ -106,8 +106,6 @@ class PriceRead extends Model
 
                 $ex_price+=$tt_dprice;
 
-            }else{
-                $ex_price=0;
             }
         }
         $dprice      = isset($ex_price) ? $ex_price : 0; // 差价
@@ -129,13 +127,19 @@ class PriceRead extends Model
     public function get_Dynamic_Price_Merge($pid, $date='', $mode=0, $sdate='', $edate='', $ptype=0, $get_storage=0, $add_dprice=0)
     {
         //取单个价格
+        $price = '';
         if ($mode==1 && $date){
-            return $this->getSpecialPeice($pid, $ptype, $date, $get_storage) + $add_dprice;
+            $price = $this->getSpecialPrice($pid, $ptype, $date, $get_storage);
+            if ($price!=-1) $price += $add_dprice;
         }
         elseif($mode==2){
-            return $this->getLowestPrice($pid, $ptype) + $add_dprice;
+            $price = $this->getLowestPrice($pid, $ptype);
+            if ($price!=-1) $price += $add_dprice;
         }
-        return $this->getPriceList($pid, $sdate, $edate, $add_dprice);
+        elseif ($mode==0 || $mode==3) {
+            $price = $this->getPriceList($pid, $sdate, $edate, $add_dprice);
+        }
+        return $price;
     }
 
     /**
@@ -146,7 +150,7 @@ class PriceRead extends Model
      * @param $date
      * @return int|string
      */
-    private function getSpecialPeice($pid, $ptype, $date, $get_storage)
+    private function getSpecialPrice($pid, $ptype, $date, $get_storage)
     {
         $onday=date('w',strtotime($date));
         $fields = ['storage'];
