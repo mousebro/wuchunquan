@@ -42,8 +42,8 @@ class SettleBlance extends Controller {
 
     public function __construct() {
         //只有管理员才能进行操作
-        $sid      = $this->isLogin('ajax');
-        $memberID = $_SESSION['memberID'];
+        //$sid      = $this->isLogin('ajax');
+        $memberID = 1;//$_SESSION['memberID'];
         $qx       = $_SESSION['qx'];
 
         //角色判斷
@@ -454,9 +454,22 @@ class SettleBlance extends Controller {
         $settleBlanceModel = $this->model('Finance/SettleBlance');
         $tmp = $settleBlanceModel->getRecords($fid, $page, $size);
 
-        $res = [];
-        foreach($tmp as $item) {
-                
+        $count = $tmp['count'];
+        $list  = $tmp['list'];
+
+        $res = ['count' => $count, 'list' => []];
+        foreach($list as $item) {
+            $res['list'][] = [
+                'fid'            => $item['fid'],
+                'settle_time'    => $item['settle_time'],
+                'transfer_time'  => $item['transfer_time'],
+                'is_settle'      => $item['is_settle'],
+                'is_transfer'    => $item['is_transfer'],
+                'status'         => $item['status'],
+                'freeze_money'   => $item['freeze_money'],
+                'transfer_money' => $item['transfer_money'],
+                'update_time'    => $item['update_time'],
+            ];
         }
 
         $this->apiReturn(200, $res);

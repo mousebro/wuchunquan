@@ -538,9 +538,10 @@ class SettleBlance extends Model{
 
         $order = 'update_time desc';
 
-         $res = $this->table($this->_recordTable)->where($where)->order($order)->page($page . ',' . $size)->select();
+        $count = $this->table($this->_recordTable)->where($where)->order($order)->count();
+        $list  = $this->table($this->_recordTable)->where($where)->order($order)->page($page . ',' . $size)->select();
 
-         return $res === false ? [] : $res;
+        return ['count' => $count, 'list' => $list];
     }
 
     /**
