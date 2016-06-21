@@ -339,7 +339,26 @@ class Member extends Model
         $this->rollback();
         return ['code'=>401, 'msg'=>'sql:'.$this->getLastSql() .',errmsg:'.  $this->getDbError()];
     }
-
+    public function addMemberJournal($id, $opID, $Mmoney, $action=0, $aid=NULL,
+                                     $dtype=NULL, $ptype=NULL, $orderid='', $memo='')
+    {
+        $journalData = [
+            'fid'       => $id,
+            'opid'      => $opID,
+            'aid'       => $aid ? $aid : 0,
+            'dmoney'    => $Mmoney,
+            'orderid'   => $orderid,
+            'daction'   => $action,
+            'dtype'     => $dtype,
+            'ptype'     => $ptype,
+            'memo'      => $memo,
+            'rectime'   => date('Y-m-d H:i:s'),
+        ];
+        $result2 = $this->table('pft_member_journal')
+            ->data($journalData)
+            ->add();
+        return $result2;
+    }
     /**
      * 收取短信费
      * @author Guangpeng Chen

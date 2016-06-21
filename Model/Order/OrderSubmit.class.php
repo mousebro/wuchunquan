@@ -143,4 +143,6 @@ class OrderSubmit extends Model
         if (!$lastid) pft_log('order/error', 'OrderSubmit.addSaleRecord Error:'.$this->_sql());
         return $lastid;
     }
+
+
 }
