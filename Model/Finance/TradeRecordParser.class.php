@@ -72,7 +72,7 @@ class TradeRecordParser
 
         $partnerId = $this->record['aid'];
         $memberId = $this->record['fid'];
-        
+
         $partner_acc = ($partnerId && $partnerId != 1) ? $this->getMemberModel()->getMemberCacheById($partnerId,
             'account') : '';
         $member_acc = ($memberId && $memberId != 1) ? $this->getMemberModel()->getMemberCacheById($memberId,

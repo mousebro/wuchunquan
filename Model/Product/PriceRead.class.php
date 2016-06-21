@@ -20,6 +20,132 @@ class PriceRead extends Model
     }
 
     /**
+     * 联盟检测
+     *
+     * @param int $fid 发起人ID
+     * @param int $mid 分销商ID
+     * @return bool
+     */
+    protected function PFT_D_Union_ZK_SE($fid, $mid){
+        $id = $this->table('pft_union_member_info_SE')
+            ->where(['fid'=>$fid,'memberID'=>$mid,'dstatus'=>0])
+            ->limit(1)
+            ->getField('id');
+        return $id > 0 ? true : false;
+    }
+
+    /**
+     * 获取产品转分销数据
+     *
+     * @param int $pid 产品id
+     * @param int $fid 分销商ID
+     * @param int $aid 供应商ID
+     * @param int $status 状态，默认0
+     * @param string $field 获取的字段
+     * @param int $limit 获取的条数
+     * @return mixed|array
+     */
+    public function getEvoluteInfo($pid, $fid, $aid, $status=0, $field='aids',$limit=1)
+    {
+        $map = [
+            'pid'=> ':pid',
+            'fid'=> ':fid',
+            'sid'=> ':sid',
+            'status'=> $status,
+        ];
+        $bind = [
+            ':pid' => $pid,
+            ':fid' => $fid,
+            ':sid' => $aid,
+        ];
+        $query = $this->table('pft_p_apply_evolute')
+            ->field($field)
+            ->where($map)
+            ->bind($bind)
+            ->limit($limit);
+        if ($limit==1) return $query->find();
+        return $query->select();
+    }
+
+    /**
+     * @param string $ac 帐号
+     * @param int $pid 产品ID
+     * @param string $date 日期
+     * @param int $mode 模式[1单个价格 2单个最低价 3时间段XML格式价格]
+     * @param int $ptype 类型[0分销价 1零售价]
+     * @param int $get_storage 获取当日库存上限返回-1无限
+     * @param int $m 供应商ID
+     * @param string $sdate 开始时间
+     * @param string $edate 结束时间
+     * @return int|mixed  101 无此帐号 103 pid参数错误   1065 数据错误   105 无此价格
+     *
+     */
+    public function Dynamic_Price_And_Storage($ac, $pid, $date='', $mode=0, $ptype=0, $get_storage=0, $m, $sdate='', $edate='')
+    {
+        if (is_numeric($pid)===false) return 105;
+        if ($ptype==0){
+            $fxs_id = $this->table('pft_member')->where(['account'=>$ac, 'status'=>0])->limit(1)->getField('id');
+            if (!$fxs_id) return 101;
+            $apply_did = $this->table('uu_jq_ticket')->where(['pid'=>$pid])->limit(1)->getField('apply_did');
+            if ($apply_did!=$fxs_id){
+                //判断是否可以购买此供应商下的产品
+                $pids = $this->table('pft_product_sale_list')->where(['fid'=>$fxs_id, 'aid'=>$apply_did, 'status'=>0])->limit(1)->getField('pids');
+                $flag=0;
+                if ($pids!='A'){
+                    $a_pids=explode(',',$pids);
+                    if (!in_array($pid,$a_pids)) $flag=1;
+                }
+                $aids = $this->getEvoluteInfo($pid, $fxs_id, $m, 0, 'aids')['aids'];
+                if (!$aids) $flag2=1;
+                else $flag2=0;
+                if ($flag==1 && $flag2==1) return 1065;
+
+                $arr_aids=explode(',',$aids);
+
+                $ci=count($arr_aids);
+                $ex_price=0;
+                for ($i=0;$i<$ci;$i++){
+                    if ($i==0) continue;
+                    $j  = $i-1;
+                    if ($i==1) {
+                        //取得此分销商的差价
+                        $priceRet = $this->get_price_set($pid, $arr_aids[$i], 0);
+                        $aid_dprice=$priceRet['dprice'];
+                        if (!$aid_dprice) $aid_dprice=0;
+                        //分销联盟会员等价发起人1
+                        if ($this->PFT_D_Union_ZK_SE($apply_did,$arr_aids[$i])) $aid_dprice=0;
+                    }else{
+                        //计算供应商应扣多少钱
+                        $priceRet = $this->get_price_set($pid, $arr_aids[$i], $arr_aids[$j]);
+                        $aid_dprice = $priceRet['dprice'];
+                        if (!$aid_dprice) $aid_dprice=0;
+                        //分销联盟会员等价发起人2
+                        if ($this->PFT_D_Union_ZK_SE($arr_aids[$j],$arr_aids[$i])) $aid_dprice=0;
+                    }
+                    //增量价格
+                    $ex_price += $aid_dprice;
+                }
+                $j++;
+                $last_apply_did =$arr_aids[$j]?$arr_aids[$j]:0;
+                $priceRet       = $this->get_price_set($pid, $fxs_id, $last_apply_did, 1, 'id,dprice');
+                if (!$priceRet) $tt_dprice=0;
+                else $tt_dprice=$priceRet['dprice'];
+
+                if ($last_apply_did == 0 && !$priceRet['id']) return 1065;
+
+                //分销联盟会员折扣3
+                $LM_apply_did=$arr_aids[$j]?$arr_aids[$j]:$apply_did;
+                if ($this->PFT_D_Union_ZK_SE($LM_apply_did,$fxs_id)) $tt_dprice=0;
+
+                $ex_price+=$tt_dprice;
+
+            }
+        }
+        $dprice      = isset($ex_price) ? $ex_price : 0; // 差价
+        return $this->get_Dynamic_Price_Merge($pid, $date, $mode, $sdate, $edate, $ptype, $get_storage, $dprice);
+    }
+
+    /**
      * 动态价格获取 Copy from ServerInside.class.php
      * @author GuangpengChen
      * @param int $pid  产品ID
@@ -31,16 +157,22 @@ class PriceRead extends Model
      * @param int $get_storage 是否需要获取库存1需要
      * @return int|null|string
      */
-    public function get_Dynamic_Price_Merge($pid, $date='', $mode=0, $sdate='', $edate='', $ptype=0, $get_storage=0)
+    public function get_Dynamic_Price_Merge($pid, $date='', $mode=0, $sdate='', $edate='', $ptype=0, $get_storage=0, $add_dprice=0)
     {
         //取单个价格
+        $price = '';
         if ($mode==1 && $date){
-            return $this->getSpecialPeice($pid, $ptype, $date, $get_storage);
+            $price = $this->getSpecialPrice($pid, $ptype, $date, $get_storage);
+            if ($price!=-1) $price += $add_dprice;
         }
         elseif($mode==2){
-            return $this->getLowestPrice($pid, $ptype);
+            $price = $this->getLowestPrice($pid, $ptype);
+            if ($price!=-1) $price += $add_dprice;
         }
-       return $this->getPriceList($pid, $sdate, $edate);
+        elseif ($mode==0 || $mode==3) {
+            $price = $this->getPriceList($pid, $sdate, $edate, $add_dprice);
+        }
+        return $price;
     }
 
     /**
@@ -51,12 +183,12 @@ class PriceRead extends Model
      * @param $date
      * @return int|string
      */
-    private function getSpecialPeice($pid, $ptype, $date, $get_storage)
+    private function getSpecialPrice($pid, $ptype, $date, $get_storage)
     {
         $onday=date('w',strtotime($date));
         $fields = ['storage'];
         $q_s_price=($ptype==0)?'s_price':'l_price as s_price';
-        $fields['q_s_price'] = $q_s_price;
+        $fields[1] = $q_s_price;
         $where = [
             'start_date'=>['elt',$date],
             'end_date'  =>['egt', $date],
@@ -72,7 +204,7 @@ class PriceRead extends Model
             else return $s_price;
         }
         $q_s_price=($ptype==0)?'n_price':'l_price as n_price';
-        $fields['q_s_price'] = $q_s_price;
+        $fields[1] = $q_s_price;
         $where['ptype'] = 0;
         $data = $this->table($this->price_table)->field($fields)->where($where)->order("id desc")->find();
         $n_price=$data['n_price'];
@@ -91,14 +223,14 @@ class PriceRead extends Model
      * @param string $edate
      * @return mixed
      */
-    private function getPriceList($pid,$sdate='', $edate='')
+    private function getPriceList($pid,$sdate='', $edate='', $add_dprice=0)
     {
         $where = "pid=$pid";
         if ($sdate!=='' && $edate!==''){
             $where .= " AND greatest(start_date,'$sdate')<=least(end_date,'$edate')";
         }
         $data = $this->table($this->price_table)
-            ->field('id,pid,ptype,n_price,s_price,l_price,start_date,end_date,memo,weekdays,storage')
+            ->field("id,pid,ptype,(n_price+$add_dprice) as n_price,(s_price+$add_dprice) as s_price,l_price,start_date,end_date,memo,weekdays,storage")
             ->where($where)->order('id desc')
             ->select();
         //echo $this->getLastSql();
@@ -145,5 +277,18 @@ class PriceRead extends Model
         elseif ($mp!==NULL && $np!==NULL) $lp=($mp>$np) ? $np: $mp;
         else $lp=-1;
         return $lp;
+    }
+
+    public function get_price_set($tid, $pid, $aid, $limit=1, $field='dprice')
+    {
+        $map = [
+            'tid'=>$tid,
+            'pid'=>$pid,
+            'aid'=>$aid,
+        ];
+        $query = $this->table('uu_priceset')->where($map)->limit($limit);
+        if ($limit==1 && strpos($field, ',')===false) return $query->getField($field);
+        elseif ($limit==1) return $query->field($field)->find();
+        return $query->field($field)->select();
     }
 }

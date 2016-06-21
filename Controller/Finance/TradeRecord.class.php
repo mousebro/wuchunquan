@@ -324,6 +324,9 @@ class TradeRecord extends Controller
     {
         $ptype = \safe_str(I('ptypes'));
 
+        $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
+        $online_pay_type = array_keys($pay_types, 0);
+
         if (!is_numeric($ptype)) {
             return false;
         }
@@ -333,9 +336,8 @@ class TradeRecord extends Controller
             case 99:
                 $map['ptype'] = ['in', [2, 3]];
                 break;
-            case 98:
-                $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
-                $map['ptype'] = ['in', array_keys($pay_types, 0)];
+            case 98: //获取在线支付类
+                $map['ptype'] = ['in', $online_pay_type];
                 break;
             case 100:
                 break;
@@ -347,8 +349,8 @@ class TradeRecord extends Controller
                 if (!$partnerId) {
                     $map['_complex'][] = [
                         [
-                            'aid' => $fid,
-                            'ptype' => ['in', '2,3'],
+                            'aid'   => $fid,
+                            'ptype' => ['neq', 0],
                         ],
                         'fid' => $fid,
                         '_logic' => 'or',
@@ -356,9 +358,31 @@ class TradeRecord extends Controller
                 } else {
                     $map['_complex'][] = [
                         [
+                            'aid'   => $fid,
+                            'fid'   => $partnerId,
+                            'ptype' => ['neq', 0],
+                        ],
+                        [
+                            'aid' => $partnerId,
+                            'fid' => $fid,
+                        ],
+                        '_logic' => 'or',
+                    ];
+                }
+            }
+        } else if (in_array($ptype, $online_pay_type) || 98 == $ptype) {
+            if ($fid) {
+                if (!$partnerId) {
+                    $map['_complex'][] = [
+                        'aid'    => $fid,
+                        'fid'    => $fid,
+                        '_logic' => 'or',
+                    ];
+                } else {
+                    $map['_complex'][] = [
+                        [
                             'aid' => $fid,
                             'fid' => $partnerId,
-                            'ptype' => ['in', '2,3'],
                         ],
                         [
                             'aid' => $partnerId,
@@ -386,9 +410,7 @@ class TradeRecord extends Controller
             if ($partnerId) {
                 $map[$other] = $partnerId;
             }
-
         }
-
         return $ptype;
     }
 
