@@ -206,7 +206,7 @@ if (!function_exists('load_config')) {
         if(isset($_load_config[$type])) {
             $configArr = $_load_config[$type];
         } else {
-            $configFile = HTML_DIR . "Service/Conf/{$type}.conf.php";
+            $configFile = HTML_DIR . "/Service/Conf/{$type}.conf.php";
             if(file_exists($configFile)) {
                 $configArr = include($configFile);
             } else {
@@ -857,4 +857,37 @@ if (!function_exists('get_obj_instance')) {
         }
     }
 }
+if(!function_exists('safe_str')){
+    /**
+     * 纯文本输入
+     * @param $text
+     *
+     * @return mixed|string
+     */
+    function safe_str($text){
+        $text = trim($text);
+        $text = strip_tags ( $text );
+        $text = htmlspecialchars ( $text, ENT_QUOTES,"UTF-8");
+        $text = str_replace ( "'", "", $text );
+
+        return $text;
+    }
+}
+if(!function_exists('chk_date')){
+    /**
+     * 纯文本输入
+     * @param $text
+     *
+     * @return mixed|string
+     */
+    function chk_date($mydate){
+        list($yy,$mm,$dd)=explode("-",$mydate);
+        if (is_numeric($yy) && is_numeric($mm) && is_numeric($dd)){
+            return checkdate($mm,$dd,$yy);
+        }
+        return false;
+    }
+}
+
+
 
