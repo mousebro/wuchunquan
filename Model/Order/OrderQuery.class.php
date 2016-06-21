@@ -473,4 +473,33 @@ class OrderQuery extends Model
         }
         return array_values($output);
     }
+
+    /**
+     * 获取一条订单数据
+     *
+     * @param string $ordernum 订单号
+     * @param string $fields 需要的字段
+     * @return mixed
+     */
+    public function GetOrderInfo($tbl, $ordernum, $fields="*")
+    {
+        $map = [];
+        if ($tbl == self::__ORDER_TABLE__) $map['ordernum'] = "'{$ordernum}'";
+        else $map['orderid'] = "'{$ordernum}'";
+        return $this->table(self::__ORDER_TABLE__)->field($fields)
+            ->where($map)
+            ->select();
+    }
+
+    public function GetLinkOrders($parent_ordernum,$fields="*")
+    {
+        $map = [
+            'concat_id'=> $parent_ordernum,
+            'orderid'  => ['neq', $parent_ordernum],
+        ];
+        $order_num_list = $this->table(self::__ORDER_DETAIL_TABLE__)
+                        ->where($map)
+                        ->getField('orderid', true);
+        return $this->GetOrderInfo(self::__ORDER_TABLE__, $order_num_list, $fields);
+    }
 }
