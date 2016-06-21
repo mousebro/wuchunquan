@@ -192,9 +192,9 @@ class SettleBlance extends Model{
         $where = [
             'is_transfer' => 1,
             'status'      => 0,
-            'fid' => $fid
+            'fid'         => $fid
         ];
-        $order = 'transfer_time,desc';
+        $order = 'transfer_time desc';
 
         $info = $this->table($this->_recordTable)->where($where)->order($order)->find();
         return $info;
