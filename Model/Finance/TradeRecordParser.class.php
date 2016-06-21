@@ -16,7 +16,6 @@ class TradeRecordParser
     private $record;
     private $memberModel;
     private $is_acc_reverse;
-    private $is_online_pay;
 
     /**
      * 传入交易记录
@@ -35,8 +34,6 @@ class TradeRecordParser
         }
 
         $this->is_acc_reverse = !((isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid']) || $_SESSION['sid'] == 1);
-
-        //var_dump($this->record['fid']);
 
         return $this;
     }
@@ -65,7 +62,7 @@ class TradeRecordParser
     {
         $options['opid'] = 'oper';
 
-        if (isset($this->record['aid']) && $_SESSION['sid'] == $this->record['aid'] && $_SESSION != 1) {
+        if ($this->is_acc_reverse) {
             $options['aid'] = 'member';
             $options['fid'] = 'counter';
         } else {
@@ -75,7 +72,7 @@ class TradeRecordParser
 
         $partnerId = $this->record['aid'];
         $memberId = $this->record['fid'];
-        
+
         $partner_acc = ($partnerId && $partnerId != 1) ? $this->getMemberModel()->getMemberCacheById($partnerId,
             'account') : '';
         $member_acc = ($memberId && $memberId != 1) ? $this->getMemberModel()->getMemberCacheById($memberId,
@@ -105,7 +102,7 @@ class TradeRecordParser
                     $this->record['payer_acc'] = $member_acc;
                     $this->record['payee_acc'] = $partner_acc;
                 }
-                $partner_info = ($_SESSION['sid'] == $this->record['fid'] || $_SESSION['sid'] == 1) ? $partner_acc : $member_acc;
+                $partner_info = (!$this->is_acc_reverse) ? $partner_acc : $member_acc;
                 break;
             //在线支付
             case 1:
@@ -133,7 +130,7 @@ class TradeRecordParser
             case 2:
                 // no break;
             case 3:
-                $partner_info = ($_SESSION['sid'] == $this->record['fid']) ? '(供应商)授信账户' : '(分销商)授信账户';
+                $partner_info = (!$this->is_acc_reverse) ? '(供应商)授信账户' : '(分销商)授信账户';
                 if ($this->record['daction'] == 0) {
                     $this->record['payer_acc'] = $partner_acc;
                     $this->record['payee_acc'] = $member_acc;
@@ -162,11 +159,7 @@ class TradeRecordParser
         foreach ($options as $money) {
             $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
         }
-        //var_dump($this->is_acc_reverse);
-        if ($this->is_acc_reverse && $this->is_online_pay) {
-            $this->record['daction'] = decbin(!($this->record['daction']));
-        }
-        //var_dump($this->record['daction']);
+
         $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
 
         return $this;
@@ -243,9 +236,7 @@ class TradeRecordParser
         if (in_array($ptype, [0, 2, 3]) || ($ptype == 1 && !in_array($this->record['payee_type'], [0, 1]))) {
             $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
             $this->record['trade_no'] = '';
-            $this->is_online_pay = false;
         } else {
-            $this->is_online_pay = true;
             //收入
             if ($this->record['daction'] == 0) {
                 $this->record['payee_acc_type'] = '平台账户';
@@ -348,10 +339,10 @@ class TradeRecordParser
     public function parseMemberBasic()
     {
         //is_acc_reverse: aid作为当前账号
-        $is_acc_reverse = $_SESSION['sid'] != $this->record['fid'] && $_SESSION['sid'] != 1;
+        //$is_acc_reverse = $_SESSION['sid'] != $this->record['fid'] && $_SESSION['sid'] != 1;
 
 
-        if ($is_acc_reverse) {
+        if ($this->is_acc_reverse) {
             $options['aid'] = 'member';
             $options['fid'] = 'counter';
         } else {
@@ -392,8 +383,8 @@ class TradeRecordParser
             case 2:
                 // no break;
             case 3:
-                $this->record['counter'] .= $is_acc_reverse ? '(分销商授信账户)' : '(供应商授信账户)';
-                $this->record['member'] .= $is_acc_reverse ? '(供应商授信账户)' : '(分销商授信账户)';
+                $this->record['counter'] .= $this->is_acc_reverse ? '(分销商授信账户)' : '(供应商授信账户)';
+                $this->record['member'] .= $this->is_acc_reverse ? '(供应商授信账户)' : '(分销商授信账户)';
                 break;
             //在线支付
             case 1:
@@ -413,19 +404,13 @@ class TradeRecordParser
                 if ($this->record['payer_acc'] && $this->record['ptype'] == 1) {
                     $payer_acc .= ':' . $this->record['payer_acc'];
                 }
-                if ($this->is_acc_reverse) {
-                    $self = 'counter';
-                    $other = 'member';
-                } else {
-                    $self = 'member';
-                    $other = 'counter';
-                }
+
                 if ($this->record['daction'] == 0) { //收入
-                    $payee = $self;
-                    $payer = $other;
+                    $payee = 'member';
+                    $payer = 'counter';
                 } else {
-                    $payee = $other;
-                    $payer = $self;
+                    $payee = 'counter';
+                    $payer = 'member';
                 }
                 $this->_recomposeMemberAccount($payee, $payer, $account[ $payee ], $payer_acc);
                 break;
