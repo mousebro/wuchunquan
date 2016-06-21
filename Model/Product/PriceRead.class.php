@@ -26,7 +26,7 @@ class PriceRead extends Model
      * @param int $mid 分销商ID
      * @return bool
      */
-    protected function PFT_D_Union_ZK_SE($fid, $mid){
+    public function PFT_D_Union_ZK_SE($fid, $mid){
         $id = $this->table('pft_union_member_info_SE')
             ->where(['fid'=>$fid,'memberID'=>$mid,'dstatus'=>0])
             ->limit(1)
