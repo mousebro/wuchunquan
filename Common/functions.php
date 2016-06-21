@@ -206,7 +206,7 @@ if (!function_exists('load_config')) {
         if(isset($_load_config[$type])) {
             $configArr = $_load_config[$type];
         } else {
-            $configFile = HTML_DIR . "Service/Conf/{$type}.conf.php";
+            $configFile = HTML_DIR . "/Service/Conf/{$type}.conf.php";
             if(file_exists($configFile)) {
                 $configArr = include($configFile);
             } else {

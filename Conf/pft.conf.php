@@ -65,3 +65,6 @@ elseif (ENV=='DEVELOP') {
 
 //定义html目录的路径，方便后面的文件查找
 define('HTML_DIR', '/var/www/html');
+
+//定义新的模板路径
+define('VIEWS', HTML_DIR . '/Views');
