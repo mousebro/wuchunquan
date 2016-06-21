@@ -121,7 +121,6 @@ class ProductBasic extends Controller
      */
     protected function SaveTicket($memberId,  $ticketData, Ticket $ticketObj, Land $landObj)
     {
-
         $isSectionTicket = false;// 是否是期票
         if($ticketData['order_start'] && $ticketData['order_end']) $isSectionTicket = true;
         //价格校验
@@ -282,6 +281,7 @@ class ProductBasic extends Controller
 
         $tkBaseAttr['apply_did'] = $memberId;// 产品供应商
 
+
         // 扩展属性 uu_land_f
         $tkExtAttr['confirm_wx']   = isset($ticketData['confirm_wx']) ? ($ticketData['confirm_wx']+0) : 0;
         $tkExtAttr['sendVoucher']  = isset($ticketData['sendVoucher']) ?($ticketData['sendVoucher']+0) : 0;
@@ -290,7 +290,7 @@ class ProductBasic extends Controller
 
         // 提前预定小时  01:00:00 - 23:59:00
         if(isset($ticketData['dhour'])){
-            $tkExtAttr['dhour'] = str_pad($ticketData['dhour'], 5, 0, STR_PAD_LEFT).':00';
+            $tkExtAttr['dhour'] = str_pad($ticketData['dhour'], 5, 0, STR_PAD_LEFT) . ':00';
         }
         if($p_type=='H'){
             $tkExtAttr['zone_id'] = $ticketData['zone_id']+0;
@@ -368,7 +368,6 @@ class ProductBasic extends Controller
             $ass_station = str_replace('；', ';', $ass_station);
             $tkExtAttr['ass_station'] = serialize(explode(';', $ass_station));
         }
-
         if(isset($ticketData['tid']) && $ticketData['tid']>0)
         {   // 以下编辑操作
             $tid = $ticketData['tid']+0;
@@ -409,7 +408,6 @@ class ProductBasic extends Controller
                     ['verify_time'=>date('Y-m-d H:i:s')],
                     Ticket::__PRODUCT_TABLE__
                 );
-
             }
             if ($ret1===false || $ret2===false || $ret3===false) {
                 return self::_return(self::CODE_CREATED, '保存票类属性失败',$ticketData['ttitle']);
@@ -533,7 +531,7 @@ class ProductBasic extends Controller
         {
             // 期票模式（有效期是时间段）只能全部有价格
             if($isSectionTicket && ($row['weekdays']!='0,1,2,3,4,5,6'))
-                return $this->_return(self::CODE_INVALID_REQUEST, '期票模式必须每天都有价格','');
+                return $this->_return(self::CODE_INVALID_REQUEST, '期票模式必须每天都有价格', '');
             if(($tableId = ($row['id']+0))==0) continue; // 已存在表ID
             $section = $row['sdate'].' 至 '.$row['edate'];
             $diff_js = $original_price[$tableId]['js'] - $row['js'];
