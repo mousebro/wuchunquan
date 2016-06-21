@@ -16,6 +16,7 @@ class TradeRecordParser
     private $record;
     private $memberModel;
     private $is_acc_reverse;
+    private $is_online_pay;
 
     /**
      * 传入交易记录
@@ -33,7 +34,9 @@ class TradeRecordParser
             throw new Exception('数据未读取', 301);
         }
 
-        $this->is_acc_reverse = !(isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid']);
+        $this->is_acc_reverse = !((isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid']) || $_SESSION['sid'] == 1);
+
+        //var_dump($this->record['fid']);
 
         return $this;
     }
@@ -72,16 +75,20 @@ class TradeRecordParser
 
         $partnerId = $this->record['aid'];
         $memberId = $this->record['fid'];
-
-        $partner_acc = $partnerId ? $this->getMemberModel()->getMemberCacheById($partnerId,
+        
+        $partner_acc = ($partnerId && $partnerId != 1) ? $this->getMemberModel()->getMemberCacheById($partnerId,
             'account') : '';
-        $member_acc = $memberId ? $this->getMemberModel()->getMemberCacheById($memberId,
+        $member_acc = ($memberId && $memberId != 1) ? $this->getMemberModel()->getMemberCacheById($memberId,
             'account') : '';
-
 
         foreach ($options as $key => $value) {
             if (array_key_exists($key, $this->record) && $this->record[ $key ]) {
-                $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ], 'dname');
+                if ($this->record[ $key ] == 1) {
+                    $this->record[ $value ] = '票付通信息科技';
+                } else {
+                    $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
+                        'dname');
+                }
             }
             $this->record[ $value ] = !empty($this->record[ $value ]) ? $this->record[ $value ] : '';
         }
@@ -155,7 +162,11 @@ class TradeRecordParser
         foreach ($options as $money) {
             $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
         }
-
+        //var_dump($this->is_acc_reverse);
+        if ($this->is_acc_reverse && $this->is_online_pay) {
+            $this->record['daction'] = decbin(!($this->record['daction']));
+        }
+        //var_dump($this->record['daction']);
         $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
 
         return $this;
@@ -232,7 +243,9 @@ class TradeRecordParser
         if (in_array($ptype, [0, 2, 3]) || ($ptype == 1 && !in_array($this->record['payee_type'], [0, 1]))) {
             $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
             $this->record['trade_no'] = '';
+            $this->is_online_pay = false;
         } else {
+            $this->is_online_pay = true;
             //收入
             if ($this->record['daction'] == 0) {
                 $this->record['payee_acc_type'] = '平台账户';
@@ -337,6 +350,7 @@ class TradeRecordParser
         //is_acc_reverse: aid作为当前账号
         $is_acc_reverse = $_SESSION['sid'] != $this->record['fid'] && $_SESSION['sid'] != 1;
 
+
         if ($is_acc_reverse) {
             $options['aid'] = 'member';
             $options['fid'] = 'counter';
@@ -349,6 +363,10 @@ class TradeRecordParser
             if (!$this->record[ $key ]) {
                 $this->record[ $value ] = '';
                 $account[ $key ] = '';
+            } elseif ($this->record[ $key ] == 1) {
+                //$is_pft_trade = ($this->record[$key] == 1);
+                $this->record[ $value ] = '票付通信息科技';
+                $account[ $key ] = $account[ $value ] = '';
             } else {
                 $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
                     'dname') ?: '';
@@ -395,13 +413,19 @@ class TradeRecordParser
                 if ($this->record['payer_acc'] && $this->record['ptype'] == 1) {
                     $payer_acc .= ':' . $this->record['payer_acc'];
                 }
-
-                if ($this->record['daction'] == 0) { //收入
-                    $payee = 'member';
-                    $payer = 'counter';
+                if ($this->is_acc_reverse) {
+                    $self = 'counter';
+                    $other = 'member';
                 } else {
-                    $payee = 'counter';
-                    $payer = 'member';
+                    $self = 'member';
+                    $other = 'counter';
+                }
+                if ($this->record['daction'] == 0) { //收入
+                    $payee = $self;
+                    $payer = $other;
+                } else {
+                    $payee = $other;
+                    $payer = $self;
                 }
                 $this->_recomposeMemberAccount($payee, $payer, $account[ $payee ], $payer_acc);
                 break;

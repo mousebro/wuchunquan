@@ -95,15 +95,20 @@ class TradeRecord extends Controller
             $map = [];
 
             //被查询会员id
-            $fid = intval(I('fid'));
-            //fid=0时可查看所有会员记录
 
-            $fid = ($this->memberId == 1) ? ($fid ?: 0) : $this->memberId;
+            //fid=0时可查看所有会员记录
+            if ($this->memberId == 1 && isset($_REQUEST['fid'])) {
+                $fid = intval(I('fid'));
+            } else {
+                $fid = $this->memberId;
+            }
 
             $partner_id = intval(I('partner_id'));
             $partner_id = $partner_id ?: 0;
 
-
+            if ($this->memberId == 1 && !$fid && $partner_id) {
+                $this->apiReturn(220, [], '请先选择交易商户');
+            }
             //支付方式
             $this->_parsePayType($fid, $partner_id, $map);
 
@@ -159,7 +164,8 @@ class TradeRecord extends Controller
         if($this->memberId==1){
             $fid =  \safe_str(I('fid'));
             if(!$fid){
-                $this->apiReturn('220','请先选择交易商户');
+                $this->srchMem($srch);
+                exit;
             }else{
                 $memberId = $fid;
             }
@@ -185,10 +191,13 @@ class TradeRecord extends Controller
      * @param   string [srch]       会员名称/会员id/会员账号
      * @param   string [ptypes]     支付类型                0-查看当前用户授信; 1-查看分销商授信
      */
-    public function srchMem()
+    public function srchMem($srch = null)
     {
-        $this->memberId = $this->isLogin('ajax');
-        $srch = \safe_str(I('srch'));
+        if (!$srch) {
+            $this->memberId = $this->isLogin('ajax');
+            $srch = \safe_str(I('srch'));
+        }
+
         //$limit = intval(I('limit')) ?: 20;
 
         try {
@@ -315,6 +324,9 @@ class TradeRecord extends Controller
     {
         $ptype = \safe_str(I('ptypes'));
 
+        $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
+        $online_pay_type = array_keys($pay_types, 0);
+
         if (!is_numeric($ptype)) {
             return false;
         }
@@ -324,9 +336,8 @@ class TradeRecord extends Controller
             case 99:
                 $map['ptype'] = ['in', [2, 3]];
                 break;
-            case 98:
-                $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
-                $map['ptype'] = ['in', array_keys($pay_types, 0)];
+            case 98: //获取在线支付类
+                $map['ptype'] = ['in', $online_pay_type];
                 break;
             case 100:
                 break;
@@ -338,8 +349,8 @@ class TradeRecord extends Controller
                 if (!$partnerId) {
                     $map['_complex'][] = [
                         [
-                            'aid' => $fid,
-                            'ptype' => ['in', '2,3'],
+                            'aid'   => $fid,
+                            'ptype' => ['neq', 0],
                         ],
                         'fid' => $fid,
                         '_logic' => 'or',
@@ -347,9 +358,31 @@ class TradeRecord extends Controller
                 } else {
                     $map['_complex'][] = [
                         [
+                            'aid'   => $fid,
+                            'fid'   => $partnerId,
+                            'ptype' => ['neq', 0],
+                        ],
+                        [
+                            'aid' => $partnerId,
+                            'fid' => $fid,
+                        ],
+                        '_logic' => 'or',
+                    ];
+                }
+            }
+        } else if (in_array($ptype, $online_pay_type) || 98 == $ptype) {
+            if ($fid) {
+                if (!$partnerId) {
+                    $map['_complex'][] = [
+                        'aid'    => $fid,
+                        'fid'    => $fid,
+                        '_logic' => 'or',
+                    ];
+                } else {
+                    $map['_complex'][] = [
+                        [
                             'aid' => $fid,
                             'fid' => $partnerId,
-                            'ptype' => ['in', '2,3'],
                         ],
                         [
                             'aid' => $partnerId,
@@ -377,9 +410,7 @@ class TradeRecord extends Controller
             if ($partnerId) {
                 $map[$other] = $partnerId;
             }
-
         }
-
         return $ptype;
     }
 
