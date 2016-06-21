@@ -42,8 +42,8 @@ class SettleBlance extends Controller {
 
     public function __construct() {
         //只有管理员才能进行操作
-        //$sid      = $this->isLogin('ajax');
-        $memberID = 1;//$_SESSION['memberID'];
+        $sid      = $this->isLogin('ajax');
+        $memberID = $_SESSION['memberID'];
         $qx       = $_SESSION['qx'];
 
         //角色判斷
@@ -468,6 +468,8 @@ class SettleBlance extends Controller {
                 'status'         => $item['status'],
                 'freeze_money'   => $item['freeze_money'],
                 'transfer_money' => $item['transfer_money'],
+                'settle_remark'  => $item['remark'],
+                'trans_remark'  => $item['trans_remark'],
                 'update_time'    => $item['update_time'],
             ];
         }
