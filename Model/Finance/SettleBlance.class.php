@@ -515,6 +515,35 @@ class SettleBlance extends Model{
     }
 
     /**
+     * 获取转账详情列表
+     * @author dwer
+     * @date   2016-06-08
+     * 
+     * @param  $fid 根据提现用户来查
+     * @param  $page 第几页
+     * @param  $size 记录数
+     * @return
+     */
+    public function getRecords($fid, $page, $size) {
+        if(!$fid) {
+            return false;
+        }
+
+        $page = intval($page);
+        $size = intval($size);
+
+        $where = [
+            'fid'      => $fid
+        ];
+
+        $order = 'update_time desc';
+
+         $res = $this->table($this->_recordTable)->where($where)->order($order)->page($page . ',' . $size)->select();
+
+         return $res === false ? [] : $res;
+    }
+
+    /**
      * 清算账号信息
      * @author dwer
      * @date   2016-06-15

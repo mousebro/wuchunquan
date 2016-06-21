@@ -433,6 +433,36 @@ class SettleBlance extends Controller {
     }
 
     /**
+     * 获取具体的转账记录
+     * @author dwer
+     * @date   2016-06-21
+     *
+     * @return  
+     */
+    public function getRecords() {
+        $fid  = intval(I('post.fid'));
+        $page = intval(I('post.page'));
+        $size = intval(I('post.size'));
+
+        if(!$fid) {
+            $this->apiReturn(400, [], '参数错误');
+        }
+
+        $page = max($page, 1);
+        $size = $size < 0 ? 20 : ($size > 100 ? $size : $size);
+
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+        $tmp = $settleBlanceModel->getRecords($fid, $page, $size);
+
+        $res = [];
+        foreach($tmp as $item) {
+                
+        }
+
+        $this->apiReturn(200, $res);
+    }
+
+    /**
      * 检测银行账户信息是不是可以自动转账
      * @author dwer
      * @date   2016-06-13
