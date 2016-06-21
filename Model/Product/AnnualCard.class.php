@@ -53,6 +53,8 @@ class AnnualCard extends Model
 
     }
 
+    
+
     /**
      * 获取年卡配置
      * @param  [type] $tid [description]
@@ -506,12 +508,12 @@ class AnnualCard extends Model
     }
 
     /**
-     * 获取[当日,当月,总数]还剩下的特权次数
+     * 获取[当日,当月,总数]已使用
      * @param  [type] $tid      特权产品tid
      * @param  [type] $memberid 会员id
      * @return [type]           [description]
      */
-    public function getRemainTimes($sid, $tid, $memberid) {
+    public function getRemainTimes($sid, $tid, $memberid, $only_all = false) {
 
         $loop = [
             [
@@ -527,13 +529,16 @@ class AnnualCard extends Model
             []  //总次数
         ];
 
+        if ($only_all) {
+            $all = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2]);
+            return (int)$all;
+        }
+
         $today = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[0]);
 
         $month = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[1]);
 
-        $all   = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2]);
-
-        return [$today, $month, $all];
+        return [(int)$today, (int)$month, (int)$all];
     }
 
 
@@ -700,6 +705,56 @@ class AnnualCard extends Model
         $result = $this->table(self::CARD_CONFIG_TABLE)->add($data);
 
         return $result;
+    }
+
+    /**
+     * 获取年卡激活配置信息
+     * @param  [type] $tid [description]
+     * @return [type]      [description]
+     */
+    public function getCrdConf($tid) {
+
+        $return = [];
+
+        $config = $this->table(self::CARD_CONFIG_TABLE)->where(['tid' => $tid])->find();
+
+        $return['auto_act_day'] = $config['auto_act_day'];
+        $return['srch_limit'] = $config['srch_limit'];
+        $return['cert_limit'] = $config['cert_limit'];
+
+        switch ($config['act_notice']) {
+            case 0:
+                $retrun['nts_tour'] = $return['nts_sup'] = 0;
+                break;
+
+            case 1:
+                $return['nts_tour'] = 1;
+                $retrun['nts_sup'] = 0;
+                break;
+
+            case 2:
+                $return['nts_tour'] = 0;
+                $retrun['nts_sup'] = 1;
+                break;
+
+            case 3:
+                $return['nts_tour'] = 1;
+                $retrun['nts_sup'] = 1;
+                break;
+
+            default:
+                $retrun['nts_tour'] = $return['nts_sup'] = 0;
+                break;
+        }
+
+        $return['pri'] = $this->table(self::CARD_PRIVILEGE_TABLE)
+            ->join('p left join uu_jq_ticket t on p.tid=t.id left join uu_land l on l.id=t.landid')
+            ->where(['p.parent_tid' => $tid, 'p.status' => 1])
+            ->field('p.tid,p.use_limit,p.limit_count,l.title as ltitle,t.title')
+            ->select();
+
+        return $return;
+
     }
 
 
