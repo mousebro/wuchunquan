@@ -119,9 +119,10 @@ class TradeRecord extends Controller
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
                 $map['orderid'] = $orderid;
-                if (isset($map['rectime'])) {
-                    unset($map['rectime']);
-                }
+                // 满纸荒唐言，一把辛酸泪。都言作者痴，谁解其中味。
+                //if (isset($map['rectime'])) {
+                //    unset($map['rectime']);
+                //}
             }
             //支付方式
             $this->_parsePayType($fid, $partner_id, $map, $interval);
@@ -146,7 +147,7 @@ class TradeRecord extends Controller
             $form = intval(I('form'));
 
             $recordModel = $this->_getTradeModel();
-            $this->_output($form, $recordModel, $map, $page, $limit, $interval);
+            $this->_output($form, $recordModel, $map, $page, $limit, $interval, $fid, $partner_id);
 
         } catch (Exception $e) {
             \pft_log('trade_record/err', 'get_list|' . $e->getCode() . "|" . $e->getMessage(), 'month');
@@ -279,11 +280,20 @@ class TradeRecord extends Controller
      *
      * @throws \Library\Exception
      */
-    private function _output($form, \Model\Finance\TradeRecord $recordModel, $map, $page, $limit, $interval)
+    private function _output(
+        $form,
+        \Model\Finance\TradeRecord $recordModel,
+        $map,
+        $page,
+        $limit,
+        $interval,
+        $fid,
+        $partner_id
+    )
     {
         switch ($form) {
             case 0:
-                $data = $recordModel->getList($map, $page, $limit);
+                $data = $recordModel->getList($map, $page, $limit, $fid, $partner_id);
                 if (is_array($data)) {
                     $data['btime'] = $interval[0];
                     $data['etime'] = $interval[1];
@@ -293,7 +303,7 @@ class TradeRecord extends Controller
                 }
                 break;
             case 1:
-                $data = $recordModel->getExList($map);
+                $data = $recordModel->getExList($map, $fid, $partner_id);
                 if (!is_array($data)) {
                     $data = [];
                 }
@@ -413,7 +423,9 @@ class TradeRecord extends Controller
             $partnerId_as_self = ['fid' => $partnerId];
             $partnerId_as_other = ['aid' => $partnerId];
             $fid_as_other_origin[] = $partnerId_as_self;
-            $fid_as_other_renewed[] = $partnerId_as_self;
+            if ($fid_as_other_renewed) {
+                $fid_as_other_renewed[] = $partnerId_as_self;
+            }
             $fid_as_self[] = $partnerId_as_other;
         }
 
@@ -427,12 +439,15 @@ class TradeRecord extends Controller
             if (isset($map['rectime'])) {
                 unset($map['rectime']);
             }
-            if (!isset($map['orderid'])) {
-                $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
+
+            $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
+            if ($fid_as_other_renewed) {
                 $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
-                $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
+                $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
+            } else {
+                $fid_as_other = $fid_as_other_origin;
             }
-            $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
+            $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
         }
         
         $map['_complex'][] = count($fid_as_other) ? ([$fid_as_other, $fid_as_self] + $logic) : $fid_as_self;

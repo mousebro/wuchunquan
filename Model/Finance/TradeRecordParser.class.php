@@ -28,15 +28,25 @@ class TradeRecordParser
      * @return $this
      * @throws Exception
      */
-    public function setRecord(array $record)
+    public function setRecord(array $record, $fid = 0, $partner_id = 0)
     {
         if (!isset($this->record)) {
             $this->record = $record;
         } else {
             throw new Exception('数据未读取', 301);
         }
+        if ($fid) {
+            $this->fid = $fid;
+        }
+        if ($partner_id) {
+            $this->partner_id = $partner_id;
+        }
+        if (isset($this->fid)) {
+            $this->is_acc_reverse = $this->record['fid'] != $this->fid;
+        } else {
+            $this->is_acc_reverse = isset($this->record['fid']) && ($this->record['fid'] != $_SESSION['sid'] || $_SESSION['sid'] == 1);
+        }
 
-        $this->is_acc_reverse = !((isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid']) || $_SESSION['sid'] == 1);
         $this->is_fid_payee = $this->record['daction'] == 0;
         $this->is_self_payee = ($this->record['daction'] == 0 && !$this->is_acc_reverse) || ($this->record['action'] && $this->is_acc_reverse);
         //var_dump($this->record['fid']);
@@ -121,6 +131,7 @@ class TradeRecordParser
                 }
                 if ($this->record['payer_acc'] && $this->record['ptype'] == 1) {
                     $payer_acc .= ':' . $this->record['payer_acc'];
+                    $this->record['payer_acc'] = $payer_acc;
                 }
                 if ($this->is_self_payee) {
                     $partner_info = $payer_acc;
@@ -226,9 +237,13 @@ class TradeRecordParser
 
         //支付账户类型代码
         $p_acc = $ptype_list[ $ptype ][0];
+
         $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
+
         $this->record['payer_acc'] = (in_array($ptype, [0, 1, 2, 3])) ? $this->record['payer_acc'] : '';
-        $this->record['taccount'] = $acc_type_list[ $p_acc ];
+
+        $this->record['taccount'] = $acc_type_list[ $p_acc ];//默认交易账户取对应记录值
+
 
         //非在线支付类型的交易 与 支付宝收款方非票付通账户的 收款方账户类型与支付方式一致
         if (in_array($ptype, [0, 2, 3]) || ($ptype == 1 && !in_array($this->record['payee_type'], [0, 1]))) {
@@ -238,13 +253,8 @@ class TradeRecordParser
         } else {
             $this->is_online_pay = true;
             //收入
-            if ($this->record['daction'] == 0) {
-                $this->record['payee_acc_type'] = '平台账户';
-                $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
-            } else {
-                $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
-                $this->record['payer_acc_type'] = '平台账户';
-            }
+            $this->record['payee_acc_type'] = '平台账户';
+            $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
         }
 
         if ((!$this->is_acc_reverse && $this->record['daction'] == 0) || ($this->is_acc_reverse && $this->record['daction'] == 1)) {
