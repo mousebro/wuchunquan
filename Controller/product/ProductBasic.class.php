@@ -632,7 +632,6 @@ class ProductBasic extends Controller
         $crdConf['tid'] = $parent_tid;
         $crdConf['aid'] = $aid;
         $ret = $crdModel->saveCardConfig($parent_tid, $crdConf, $crdPriv);
-
         if ($ret!==false) $crdModel->rmCache();
         return $ret;
     }
