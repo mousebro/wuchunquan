@@ -121,6 +121,7 @@ class TradeRecordParser
                 }
                 if ($this->record['payer_acc'] && $this->record['ptype'] == 1) {
                     $payer_acc .= ':' . $this->record['payer_acc'];
+                    $this->record['payer_acc'] = $payer_acc;
                 }
                 if ($this->is_self_payee) {
                     $partner_info = $payer_acc;
