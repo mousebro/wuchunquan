@@ -227,9 +227,13 @@ class TradeRecordParser
 
         //支付账户类型代码
         $p_acc = $ptype_list[ $ptype ][0];
+
         $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
+
         $this->record['payer_acc'] = (in_array($ptype, [0, 1, 2, 3])) ? $this->record['payer_acc'] : '';
-        $this->record['taccount'] = $acc_type_list[ $p_acc ];
+
+        $this->record['taccount'] = $acc_type_list[ $p_acc ];//默认交易账户取对应记录值
+
 
         //非在线支付类型的交易 与 支付宝收款方非票付通账户的 收款方账户类型与支付方式一致
         if (in_array($ptype, [0, 2, 3]) || ($ptype == 1 && !in_array($this->record['payee_type'], [0, 1]))) {
@@ -239,13 +243,8 @@ class TradeRecordParser
         } else {
             $this->is_online_pay = true;
             //收入
-            if ($this->record['daction'] == 0) {
-                $this->record['payee_acc_type'] = '平台账户';
-                $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
-            } else {
-                $this->record['payee_acc_type'] = $acc_type_list[ $p_acc ];
-                $this->record['payer_acc_type'] = '平台账户';
-            }
+            $this->record['payee_acc_type'] = '平台账户';
+            $this->record['payer_acc_type'] = $acc_type_list[ $p_acc ];
         }
 
         if ((!$this->is_acc_reverse && $this->record['daction'] == 0) || ($this->is_acc_reverse && $this->record['daction'] == 1)) {
