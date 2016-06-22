@@ -17,6 +17,8 @@ class TradeRecordParser
     private $memberModel;
     private $is_acc_reverse;
     private $is_online_pay;
+    private $is_fid_payee;
+    private $is_self_payee;
 
     /**
      * 传入交易记录
@@ -35,7 +37,8 @@ class TradeRecordParser
         }
 
         $this->is_acc_reverse = !((isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid']) || $_SESSION['sid'] == 1);
-
+        $this->is_fid_payee = $this->record['daction'] == 0;
+        $this->is_self_payee = ($this->record['daction'] == 0 && !$this->is_acc_reverse) || ($this->record['action'] && $this->is_acc_reverse);
         //var_dump($this->record['fid']);
 
         return $this;
@@ -64,70 +67,23 @@ class TradeRecordParser
     public function parseMember($separator = '<br>')
     {
         $options['opid'] = 'oper';
-
-        if ($this->is_acc_reverse) {
-            $options['aid'] = 'member';
-            $options['fid'] = 'counter';
-        } else {
-            $options['aid'] = 'counter';
-            $options['fid'] = 'member';
-        }
-
-        $partnerId = $this->record['aid'];
-        $memberId = $this->record['fid'];
-
-        $partner_acc = ($partnerId && $partnerId != 1) ? $this->getMemberModel()->getMemberCacheById($partnerId,
-            'account') : '';
-        $member_acc = ($memberId && $memberId != 1) ? $this->getMemberModel()->getMemberCacheById($memberId,
-            'account') : '';
-
-        foreach ($options as $key => $value) {
-            if (array_key_exists($key, $this->record) && $this->record[ $key ]) {
-                if ($this->record[ $key ] == 1) {
-                    $this->record[ $value ] = '票付通信息科技';
-                } else {
-                    $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
-                        'dname');
-                }
-            }
-            $this->record[ $value ] = !empty($this->record[ $value ]) ? $this->record[ $value ] : '';
-        }
+        $account = [];
+        $this->getMemberAccInfo($account);
 
         $pay_types = C('pay_type');
+        $payer_acc = $pay_types[ $this->record['ptype'] ][1];
         switch ($this->record['ptype']) {
             //平台账户
             case 0:
                 $this->record['counter'] = $this->record['counter'] ?: '';
-                if ($this->record['daction'] == 0) {
-                    $this->record['payer_acc'] = $partner_acc;
-                    $this->record['payee_acc'] = $member_acc;
+                if ($this->is_fid_payee) {
+                    $this->record['payer_acc'] = $account['aid'];
+                    $this->record['payee_acc'] = $account['fid'];
                 } else {
-                    $this->record['payer_acc'] = $member_acc;
-                    $this->record['payee_acc'] = $partner_acc;
+                    $this->record['payer_acc'] = $account['fid'];
+                    $this->record['payee_acc'] = $account['aid'];
                 }
-                $partner_info = (!$this->is_acc_reverse) ? $partner_acc : $member_acc;
-                break;
-            //在线支付
-            case 1:
-                if ($this->record['daction'] == 0 && in_array($this->record['payee_type'], [0, 1])) {//收入-收款方
-                    $this->record['payee_acc'] = $member_acc;
-                }
-                $partner_info = $pay_types[ $this->record['ptype'] ][1];
-                $partner_info .= $this->record['payer_acc'] ? "（{$this->record['payer_acc']}）" : "";
-
-                break;
-            case 4:
-                // no break;
-            case 5:
-                // no break;
-            case 6:
-                // no break;
-            case 11:
-                // no break;
-                if ($this->record['daction'] == 0 && in_array($this->record['payee_type'], [0, 1])) {//收入-收款方
-                    $this->record['payee_acc'] = $member_acc;
-                }
-                $partner_info = $pay_types[ $this->record['ptype'] ][1];
+                $partner_info = (!$this->is_acc_reverse) ? $account['aid'] : $account['fid'];
                 break;
             // 授信账户
             case 2:
@@ -135,14 +91,47 @@ class TradeRecordParser
             case 3:
                 $partner_info = (!$this->is_acc_reverse) ? '(供应商)授信账户' : '(分销商)授信账户';
                 if ($this->record['daction'] == 0) {
-                    $this->record['payer_acc'] = $partner_acc;
-                    $this->record['payee_acc'] = $member_acc;
+                    $this->record['payer_acc'] = $account['aid'];
+                    $this->record['payee_acc'] = $account['fid'];;
                 } else {
-                    $this->record['payer_acc'] = $member_acc;
-                    $this->record['payee_acc'] = $partner_acc;
+                    $this->record['payer_acc'] = $account['fid'];;
+                    $this->record['payee_acc'] = $account['aid'];
                 }
                 break;
+
+            ////在线支付
+            //case 1:
+            //    // no break;
+            //case 4:
+            //    // no break;
+            //case 5:
+            //    // no break;
+            //case 6:
+            //    // no break;
+            //case 11:
+            //    // no break;
             default:
+                //显示支付宝账号
+                if ($this->is_acc_reverse) {
+                    $self = 'aid';
+                    $other = 'fid';
+                } else {
+                    $self = 'fid';
+                    $other = 'aid';
+                }
+                if ($this->record['payer_acc'] && $this->record['ptype'] == 1) {
+                    $payer_acc .= ':' . $this->record['payer_acc'];
+                }
+                if ($this->is_self_payee) {
+                    $partner_info = $payer_acc;
+                    if (in_array($this->record['payee_type'], [0, 1])) {
+                        $this->record['payee_acc'] = $account[ $self ];
+                    }
+                } else {
+                    $partner_info = $account[ $other ];
+                    $this->record['payer_acc'] = $payer_acc;
+                    $this->record['payee_acc'] = $account[ $other ];
+                }
                 break;
         }
 
@@ -158,13 +147,15 @@ class TradeRecordParser
      */
     public function parseMoney()
     {
+        $renew_time = C('update_time')[ ENV ];
         $options = ['dmoney', 'lmoney'];
         foreach ($options as $money) {
             $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
         }
-        //var_dump($this->is_acc_reverse);
-        if ($this->is_acc_reverse && $this->is_online_pay) {
+
+        if ($this->is_acc_reverse && $this->is_online_pay && $this->record['rectime'] < $renew_time) {
             $this->record['daction'] = decbin(!($this->record['daction']));
+            $this->record['lmoney'] = '';
         }
         //var_dump($this->record['daction']);
         $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
@@ -256,6 +247,12 @@ class TradeRecordParser
             }
         }
 
+        if ((!$this->is_acc_reverse && $this->record['daction'] == 0) || ($this->is_acc_reverse && $this->record['daction'] == 1)) {
+            $this->record['taccount'] = $this->record['payee_acc_type'];
+        } else {
+            $this->record['taccount'] = $this->record['payer_acc_type'];
+        }
+
         return $this;
     }
 
@@ -343,37 +340,13 @@ class TradeRecordParser
     /**
      * 查看交易详情会员
      *
+     * @param array $account
+     *
      * @return $this
      */
-    public function parseMemberBasic()
+    public function parseMemberBasic(&$account = [])
     {
-        //is_acc_reverse: aid作为当前账号
-        //$is_acc_reverse = $_SESSION['sid'] != $this->record['fid'] && $_SESSION['sid'] != 1;
-
-
-        if ($this->is_acc_reverse) {
-            $options['aid'] = 'member';
-            $options['fid'] = 'counter';
-        } else {
-            $options['aid'] = 'counter';
-            $options['fid'] = 'member';
-        }
-
-        foreach ($options as $key => $value) {
-            if (!$this->record[ $key ]) {
-                $this->record[ $value ] = '';
-                $account[ $key ] = '';
-            } elseif ($this->record[ $key ] == 1) {
-                //$is_pft_trade = ($this->record[$key] == 1);
-                $this->record[ $value ] = '票付通信息科技';
-                $account[ $key ] = $account[ $value ] = '';
-            } else {
-                $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
-                    'dname') ?: '';
-                $account[ $key ] = $account[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
-                    'account') ?: '';
-            }
-        }
+        $account = $this->getMemberAccInfo($account);
 
         switch ($this->record['ptype']) {
             //平台账户
@@ -395,16 +368,18 @@ class TradeRecordParser
                 $this->record['counter'] .= $this->is_acc_reverse ? '(分销商授信账户)' : '(供应商授信账户)';
                 $this->record['member'] .= $this->is_acc_reverse ? '(供应商授信账户)' : '(分销商授信账户)';
                 break;
-            //在线支付
-            case 1:
-                // no break;
-            case 4:
-                // no break;
-            case 5:
-                // no break;
-            case 6:
-                // no break;
-            case 11:
+            ////在线支付
+            //case 1:
+            //    // no break;
+            //case 4:
+            //    // no break;
+            //case 5:
+            //    // no break;
+            //case 6:
+            //    // no break;
+            //case 11:
+            //    // no break;
+            default:
                 $pay_types = C('pay_type');
 
                 //交易账户类型
@@ -428,8 +403,6 @@ class TradeRecordParser
                     $payer = $self;
                 }
                 $this->_recomposeMemberAccount($payee, $payer, $account[ $payee ], $payer_acc);
-                break;
-            default:
                 break;
         }
 
@@ -493,5 +466,39 @@ class TradeRecordParser
         } else {
             $this->record[ $payer ] = $payer_acc;
         }
+    }
+
+    /**
+     * @param $account
+     *
+     * @return mixed
+     */
+    protected function getMemberAccInfo(&$account)
+    {
+        if ($this->is_acc_reverse) {
+            $options['aid'] = 'member';
+            $options['fid'] = 'counter';
+        } else {
+            $options['aid'] = 'counter';
+            $options['fid'] = 'member';
+        }
+
+        foreach ($options as $key => $value) {
+            if (!$this->record[ $key ]) {
+                $this->record[ $value ] = '';
+                $account[ $key ] = '';
+            } elseif ($this->record[ $key ] == 1) {
+                //$is_pft_trade = ($this->record[$key] == 1);
+                $this->record[ $value ] = '票付通信息科技';
+                $account[ $key ] = $account[ $value ] = '';
+            } else {
+                $this->record[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
+                    'dname') ?: '';
+                $account[ $key ] = $account[ $value ] = $this->getMemberModel()->getMemberCacheById($this->record[ $key ],
+                    'account') ?: '';
+            }
+        }
+
+        return $account;
     }
 }
