@@ -414,7 +414,9 @@ class TradeRecord extends Controller
             $partnerId_as_self = ['fid' => $partnerId];
             $partnerId_as_other = ['aid' => $partnerId];
             $fid_as_other_origin[] = $partnerId_as_self;
-            $fid_as_other_renewed[] = $partnerId_as_self;
+            if ($fid_as_other_renewed) {
+                $fid_as_other_renewed[] = $partnerId_as_self;
+            }
             $fid_as_self[] = $partnerId_as_other;
         }
 
@@ -430,10 +432,13 @@ class TradeRecord extends Controller
             }
 
             $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
-            $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
+            if ($fid_as_other_renewed) {
+                $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
+                $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
+            } else {
+                $fid_as_other = $fid_as_other_origin;
+            }
             $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
-
-            $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
         }
         
         $map['_complex'][] = count($fid_as_other) ? ([$fid_as_other, $fid_as_self] + $logic) : $fid_as_self;
