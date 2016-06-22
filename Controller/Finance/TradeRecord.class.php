@@ -114,10 +114,8 @@ class TradeRecord extends Controller
             //时段
             $interval = $this->_parseTime();
             $map['rectime'] = array('between', $interval);
-
-            //支付方式
-            $this->_parsePayType($fid, $partner_id, $map, $interval);
             //订单号
+
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
                 $map['orderid'] = $orderid;
@@ -125,6 +123,9 @@ class TradeRecord extends Controller
                     unset($map['rectime']);
                 }
             }
+            //支付方式
+            $this->_parsePayType($fid, $partner_id, $map, $interval);
+
 
             //交易大类
             $subtype = $this->_parseTradeCategory($map);
@@ -398,9 +399,10 @@ class TradeRecord extends Controller
      */
     private function _parseRectTime($ptype, $fid, $partnerId, &$map, $type, $begin_time, $end_time, $renew_time)
     {
-        if (!$fid && in_array($ptype, [0, 2, 3])) {
+        if (!$fid || in_array($ptype, [0, 2, 3])) {
             return false;
         }
+
         $logic = ['_logic' => 'or'];
 
         $fid_as_other_origin = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['neq', 0],] : ['aid' => $fid,];
@@ -425,10 +427,12 @@ class TradeRecord extends Controller
             if (isset($map['rectime'])) {
                 unset($map['rectime']);
             }
-            $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
-            $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
+            if (!isset($map['orderid'])) {
+                $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
+                $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
+                $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
+            }
             $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
-            $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
         }
         
         $map['_complex'][] = count($fid_as_other) ? ([$fid_as_other, $fid_as_self] + $logic) : $fid_as_self;
