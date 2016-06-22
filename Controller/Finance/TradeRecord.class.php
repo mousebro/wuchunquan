@@ -117,12 +117,13 @@ class TradeRecord extends Controller
 
             //支付方式
             $this->_parsePayType($fid, $partner_id, $map, $interval);
-
             //订单号
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
                 $map['orderid'] = $orderid;
-                unset($map['rectime']);
+                if (isset($map['rectime'])) {
+                    unset($map['rectime']);
+                }
             }
 
             //交易大类
@@ -348,7 +349,8 @@ class TradeRecord extends Controller
                 $map['ptype'] = $ptype;
         }
         //支付方式中包含在线支付
-        if (in_array($ptype, $online_pay_type) || $ptype == 100 || $ptype = 98) {
+
+        if (in_array($ptype, $online_pay_type) || 100 == $ptype || 98 == $ptype) {
             //参数初始化
             $begin_time = min($interval);
             $end_time = max($interval);
@@ -381,7 +383,6 @@ class TradeRecord extends Controller
                 $map[ $other ] = $partnerId;
             }
         }
-
         return $ptype;
     }
 
@@ -397,7 +398,7 @@ class TradeRecord extends Controller
      */
     private function _parseRectTime($ptype, $fid, $partnerId, &$map, $type, $begin_time, $end_time, $renew_time)
     {
-        if (!$fid) {
+        if (!$fid && in_array($ptype, [0, 2, 3])) {
             return false;
         }
         $logic = ['_logic' => 'or'];
