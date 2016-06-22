@@ -270,7 +270,19 @@ class AnnualCard extends Controller {
 
         //向用户确认是否进行替换
         if ($card && !$replace) {
-            $this->apiReturn(200, ['exist' => 1, 'name' => '来自汪星人的神秘年卡', 'left' => '1/20']);
+
+            $product = (new Ticket)->getProductInfo($card['pid'], ['field' => 'p_name']);
+            // $ticket = (new Ticket)->getTicketInfoByPid($card['pid']);
+
+            // $use = $this->_CardModel->getRemainTimes($card['sid'], $ticket['id'], $memberid, true);
+
+            $data = [
+                'exist' => 1,
+                'name' => $product['p_name'],
+                // 'left' => '1/20'
+            ];
+
+            $this->apiReturn(200, $data);
         }
 
         //用户确认进行替换
@@ -730,6 +742,7 @@ class AnnualCard extends Controller {
 
 
     public function test() {
+        // echo json_encode(($this->_CardModel->getCrdConf(5938)), JSON_UNESCAPED_UNICODE);die;
         var_dump((new \Api\AnnualCard())->annualConsume());
         // $this->_CardModel->consumeCheck(3385, 3385, 28460);
     }
