@@ -486,6 +486,19 @@ class TradeRecord extends Controller
                     ];
                 }
             }
+        } else {
+            if ($fid) {
+                if (!$partnerId) {
+                    $map['_complex'][] = [
+                        'fid' => $fid,
+                    ];
+                } else {
+                    $map['_complex'][] = [
+                        'aid' => $partnerId,
+                        'fid' => $fid,
+                    ];
+                }
+            }
         }
 
         return $ptype;
@@ -549,6 +562,50 @@ class TradeRecord extends Controller
                             'rectime' => ['between', [$begin_time, $end_time]],
                         ],
                         '_logic' => 'or',
+                    ];
+                }
+            }
+        } else {
+            if ($fid) {
+                if (!$partnerId) {
+                    $map['_complex'][] = [
+                        [
+                            [
+                                'aid'    => $fid,
+                                'fid'    => $fid,
+                                '_logic' => 'or',
+                            ],
+                            'rectime' => ['between', [$begin_time, $renew_time]],
+                        ],
+                        [
+                            'fid'     => $fid,
+                            'rectime' => ['between', [$renew_time, $end_time]],
+                        ],
+                        '_logic' => 'or',
+                    ];
+                } else {
+                    $map['_complex'][] = [
+                        [
+                            [
+                                [
+                                    'aid' => $fid,
+                                    'fid' => $partnerId,
+                                ],
+                                [
+                                    'aid' => $partnerId,
+                                    'fid' => $fid,
+                                ],
+                                '_logic' => 'or',
+                            ],
+                            'rectime' => ['between', [$begin_time, $renew_time]],
+                        ],
+                        [
+                            'aid'     => $partnerId,
+                            'fid'     => $fid,
+                            'rectime' => ['between', [$renew_time, $end_time]],
+                        ],
+                        '_logic' => 'or',
+
                     ];
                 }
             }
