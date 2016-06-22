@@ -515,8 +515,6 @@ class ProductBasic extends Controller
                     array_diff_assoc($row, $this->original_price[$tableId]) : $row;
                 if(count($intersect)==0) continue;
             }
-            $row['weekdays'] = '1,2,3,4,5,6,7';
-            $row['storage'] = -1;
             $action = ($tableId>0) ? 1:0;// 0 插入 1 修改
             $sdate  = date('Y-m-d', strtotime($row['sdate']));
             $edate  = date('Y-m-d', strtotime($row['edate']));
@@ -634,7 +632,6 @@ class ProductBasic extends Controller
         $crdConf['tid'] = $parent_tid;
         $crdConf['aid'] = $aid;
         $ret = $crdModel->saveCardConfig($parent_tid, $crdConf, $crdPriv);
-
         if ($ret!==false) $crdModel->rmCache();
         return $ret;
     }

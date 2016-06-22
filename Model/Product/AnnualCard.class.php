@@ -759,7 +759,7 @@ class AnnualCard extends Model
 
         $config = $this->table(self::CARD_CONFIG_TABLE)->where(['tid' => $tid])->find();
 
-        $return['auto_act_day'] = $config['auto_act_day'];
+        $return['auto_act_days'] = $config['auto_act_day'];
         $return['srch_limit'] = $config['srch_limit'];
         $return['cert_limit'] = $config['cert_limit'];
 
@@ -788,10 +788,10 @@ class AnnualCard extends Model
                 break;
         }
 
-        $return['pri'] = $this->table(self::CARD_PRIVILEGE_TABLE)
+        $return['priv'] = $this->table(self::CARD_PRIVILEGE_TABLE)
             ->join('p left join uu_jq_ticket t on p.tid=t.id left join uu_land l on l.id=t.landid')
             ->where(['p.parent_tid' => $tid, 'p.status' => 1])
-            ->field('p.tid,p.use_limit,p.limit_count,l.title as ltitle,t.title')
+            ->field('p.tid,p.aid,p.use_limit,l.title as ltitle,t.title')
             ->select();
 
         return $return;
@@ -810,8 +810,8 @@ class AnnualCard extends Model
     }
 
     public function rmCache()
-    {
-        return $this->cache->rm($this->cacheKey);
+    {   
+        // return $this->cache->rm($this->cacheKey);
     }
     //
 
@@ -932,19 +932,19 @@ class AnnualCard extends Model
 
     public function createDefaultParams() {
         $default = [
-            'ddays' => 0,
-            'v_time_limit' => 0,
-            'order_limit' => '1,2,3,4,5,6,7',
-            'refund_audit' => 0,
-            'refund_rule' => 0,
-            'cancel_notify_supplier' => 0,
-            'p_type' => 'I',
-            'confirm_sms' => 0,
-            'sendVoucher' => 0,
-            'pid'   => 0,
-            'reb_type' => 1,
-            'buy_limit_low' => 1,
-            'buy_limit_up' => 0,
+            'ddays'                 => 0,
+            'v_time_limit'          => 0,
+            'order_limit'           => '1,2,3,4,5,6,7',
+            'refund_audit'          => 0,
+            'refund_rule'           => 0,
+            'cancel_notify_supplier'=> 0,
+            'p_type'                => 'I',
+            'confirm_sms'           => 0,
+            'sendVoucher'           => 0,
+            'pid'                   => 0,
+            'reb_type'              => 1,
+            'buy_limit_low'         => 1,
+            'buy_limit_up'          => 0,
         ];
 
         return $default;
