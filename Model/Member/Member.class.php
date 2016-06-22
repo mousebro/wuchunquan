@@ -24,6 +24,7 @@ class Member extends Model
     const ACCOUNT_MONEY             = 0;//账户余额
     const ACCOUNT_APPLYER_MONEY     = 1;//可用供应商余额
     const ACCOUNT_APPLYER_CREDIT    = 2;//信用额度
+    const ACCOUNT_APPLYER_BOTH      = 3;//可用供应商余额 & 信用额度
 
     const D_TYPE_BUY                = 0;//下单
     const D_TYPE_CANCEL_ORDER       = 1;//取消
@@ -53,6 +54,11 @@ class Member extends Model
     const P_TYPE_ONLINE_HXPAY       = 6;//环迅
 
     protected $connection = '';
+
+    public function __construct($defaultDb='localhost', $tablePrefix='pft')
+    {
+        parent::__construct($defaultDb, $tablePrefix);
+    }
 
     private function getLimitReferer()
     {
@@ -195,11 +201,12 @@ class Member extends Model
      * 查询账户余额或授信额度
      *
      * @param int $mid 会员ID
-     * @param int $dmode 查询模式0账户余额1授信额度2授信余额
+     * @param int $dmode 查询模式0账户余额1授信额度2授信余额3授信额度和授信余额
      * @param int $aid 供应商ID dmode>0必须
+     * @param bool $order 是否按数组键值方式返回
      * @return mixed
      */
-    private function getMoney($mid, $dmode, $aid=0)
+    public function getMoney($mid, $dmode, $aid=0, $ret_arr=false)
     {
         if ($dmode==0) {
             return $this->table('pft_member_money')
@@ -208,9 +215,17 @@ class Member extends Model
         }
         $field  = 'kmoney';
         if ($dmode==2) $field='basecredit';
-        return $this->table('pft_member_credit')
-            ->where(['fid'=>$mid, 'aid'=>$aid])
-            ->getField($field);
+        elseif ($dmode==3) $field .= ',basecredit';
+        $query = $this->table('pft_member_credit')->where(['fid'=>$mid, 'aid'=>$aid]);
+        if ($ret_arr===true) {
+            return $query->field($field)->find();
+        }
+
+        return $query->getField($field);
+        //echo $this->_sql();
+        //echo $this->getDbError();
+        //print_r($ret);
+
     }
 
     /**
@@ -324,7 +339,33 @@ class Member extends Model
         $this->rollback();
         return ['code'=>401, 'msg'=>'sql:'.$this->getLastSql() .',errmsg:'.  $this->getDbError()];
     }
+    public function addMemberJournal($id, $opID, $Mmoney, $action=0, $aid=NULL,
+                                     $dtype=NULL, $ptype=NULL, $orderid='', $memo='', $tradeNo = false)
+    {
+        $journalData = [
+            'fid'       => $id,
+            'opid'      => $opID,
+            'aid'       => $aid ? $aid : 0,
+            'dmoney'    => $Mmoney,
+            'orderid'   => $orderid,
+            'daction'   => $action,
+            'dtype'     => $dtype,
+            'ptype'     => $ptype,
+            'memo'      => $memo,
+            'rectime'   => date('Y-m-d H:i:s'),
+        ];
 
+        //添加外部流水号
+        if($tradeNo !== false) {
+            $tradeNo = strval($tradeNo);
+            $journalData['trade_no'] = $tradeNo;
+        }
+
+        $result2 = $this->table('pft_member_journal')
+            ->data($journalData)
+            ->add();
+        return $result2;
+    }
     /**
      * 收取短信费
      * @author Guangpeng Chen

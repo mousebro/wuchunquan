@@ -32,13 +32,14 @@ class TradeRecord extends Controller
      */
     static function array_recompose(array $data, array $format)
     {
-        $format_data = array_fill_keys($format,'');
+        $format_data = array_fill_keys($format, '');
         foreach ($data as $key => $value) {
             if (!in_array($key, $format)) {
                 continue;
             }
-            $format_data[$key] = $data[$key];
+            $format_data[ $key ] = $data[ $key ];
         }
+
         return $format_data;
 
     }
@@ -95,27 +96,34 @@ class TradeRecord extends Controller
             $map = [];
 
             //被查询会员id
-            $fid = intval(I('fid'));
-            //fid=0时可查看所有会员记录
 
-            $fid = ($this->memberId == 1) ? ($fid ?: 0) : $this->memberId;
+            //fid=0时可查看所有会员记录
+            if ($this->memberId == 1 && isset($_REQUEST['fid'])) {
+                $fid = intval(I('fid'));
+            } else {
+                $fid = $this->memberId;
+            }
 
             $partner_id = intval(I('partner_id'));
             $partner_id = $partner_id ?: 0;
 
-
-            //支付方式
-            $this->_parsePayType($fid, $partner_id, $map);
+            if ($this->memberId == 1 && !$fid && $partner_id) {
+                $this->apiReturn(220, [], '请先选择交易商户');
+            }
 
             //时段
             $interval = $this->_parseTime();
             $map['rectime'] = array('between', $interval);
 
+            //支付方式
+            $this->_parsePayType($fid, $partner_id, $map, $interval);
             //订单号
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
                 $map['orderid'] = $orderid;
-                unset($map['rectime']);
+                if (isset($map['rectime'])) {
+                    unset($map['rectime']);
+                }
             }
 
             //交易大类
@@ -156,14 +164,15 @@ class TradeRecord extends Controller
     {
         $srch = \safe_str(I('srch'));
 
-        if($this->memberId==1){
-            $fid =  \safe_str(I('fid'));
-            if(!$fid){
-                $this->apiReturn('220','请先选择交易商户');
-            }else{
+        if ($this->memberId == 1) {
+            $fid = \safe_str(I('fid'));
+            if (!$fid) {
+                $this->srchMem($srch);
+                exit;
+            } else {
                 $memberId = $fid;
             }
-        }else{
+        } else {
             $memberId = $this->memberId;
         }
         $limit = intval(I('limit')) ?: 20;
@@ -185,10 +194,13 @@ class TradeRecord extends Controller
      * @param   string [srch]       会员名称/会员id/会员账号
      * @param   string [ptypes]     支付类型                0-查看当前用户授信; 1-查看分销商授信
      */
-    public function srchMem()
+    public function srchMem($srch = null)
     {
-        $this->memberId = $this->isLogin('ajax');
-        $srch = \safe_str(I('srch'));
+        if (!$srch) {
+            $this->memberId = $this->isLogin('ajax');
+            $srch = \safe_str(I('srch'));
+        }
+
         //$limit = intval(I('limit')) ?: 20;
 
         try {
@@ -311,9 +323,13 @@ class TradeRecord extends Controller
      * @return bool|mixed|string
      * @throws Exception
      */
-    private function _parsePayType($fid, $partnerId, &$map)
+    private function _parsePayType($fid, $partnerId, &$map, $interval)
     {
+        //接收参数
         $ptype = \safe_str(I('ptypes'));
+
+        $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
+        $online_pay_type = array_keys($pay_types, 0);
 
         if (!is_numeric($ptype)) {
             return false;
@@ -324,41 +340,30 @@ class TradeRecord extends Controller
             case 99:
                 $map['ptype'] = ['in', [2, 3]];
                 break;
-            case 98:
-                $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
-                $map['ptype'] = ['in', array_keys($pay_types, 0)];
+            case 98: //获取在线支付类
+                $map['ptype'] = ['in', $online_pay_type];
                 break;
             case 100:
                 break;
             default:
                 $map['ptype'] = $ptype;
         }
-        if ($ptype == 100) {
-            if($fid){
-                if (!$partnerId) {
-                    $map['_complex'][] = [
-                        [
-                            'aid' => $fid,
-                            'ptype' => ['in', '2,3'],
-                        ],
-                        'fid' => $fid,
-                        '_logic' => 'or',
-                    ];
-                } else {
-                    $map['_complex'][] = [
-                        [
-                            'aid' => $fid,
-                            'fid' => $partnerId,
-                            'ptype' => ['in', '2,3'],
-                        ],
-                        [
-                            'aid' => $partnerId,
-                            'fid' => $fid,
-                        ],
-                        '_logic' => 'or',
-                    ];
-                }
+        //支付方式中包含在线支付
+
+        if (in_array($ptype, $online_pay_type) || 100 == $ptype || 98 == $ptype) {
+            //参数初始化
+            $begin_time = min($interval);
+            $end_time = max($interval);
+            $renew_time = C('update_time')[ ENV ];
+
+            if ($begin_time > $renew_time) {
+                $type = 'renewed';
+            } elseif ($end_time < $renew_time) {
+                $type = 'origin';
+            } else {
+                $type = 'mixed';
             }
+            $this->_parseRectTime($ptype, $fid, $partnerId, $map, $type, $begin_time, $end_time, $renew_time);
         } else {
             if ($ptype == 99) {
                 $self = 'aid';
@@ -371,15 +376,62 @@ class TradeRecord extends Controller
                 throw new Exception('无权限查看', 201);
             } else {
                 if ($fid) {
-                    $map[$self] = $fid;
+                    $map[ $self ] = $fid;
                 }
             }
             if ($partnerId) {
-                $map[$other] = $partnerId;
+                $map[ $other ] = $partnerId;
             }
+        }
+        return $ptype;
+    }
 
+    /**
+     * 查询时段只包含旧的在线支付记录方式
+     *
+     * @param $ptype
+     * @param $fid
+     * @param $partnerId
+     * @param $map
+     *
+     * @return mixed
+     */
+    private function _parseRectTime($ptype, $fid, $partnerId, &$map, $type, $begin_time, $end_time, $renew_time)
+    {
+        if (!$fid && in_array($ptype, [0, 2, 3])) {
+            return false;
+        }
+        $logic = ['_logic' => 'or'];
+
+        $fid_as_other_origin = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['neq', 0],] : ['aid' => $fid,];
+        $fid_as_other_renewed = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['in', [2, 3],]] : [];
+        $fid_as_self = ['fid' => $fid];
+
+        if ($partnerId) {
+            $partnerId_as_self = ['fid' => $partnerId];
+            $partnerId_as_other = ['aid' => $partnerId];
+            $fid_as_other_origin[] = $partnerId_as_self;
+            $fid_as_other_renewed[] = $partnerId_as_self;
+            $fid_as_self[] = $partnerId_as_other;
         }
 
+        if ($type == 'origin') {
+            $fid_as_other = $fid_as_other_origin;
+            $fid_as_self = ['fid' => $fid];
+        } elseif ($type == 'renewed') {
+            $fid_as_other = $fid_as_other_renewed;
+            $fid_as_self = ['fid' => $fid];
+        } else {
+            if (isset($map['rectime'])) {
+                unset($map['rectime']);
+            }
+            $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
+            $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
+            $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
+            $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
+        }
+        
+        $map['_complex'][] = count($fid_as_other) ? ([$fid_as_other, $fid_as_self] + $logic) : $fid_as_self;
         return $ptype;
     }
 
