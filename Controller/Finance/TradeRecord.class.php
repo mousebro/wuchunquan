@@ -353,13 +353,15 @@ class TradeRecord extends Controller
             $begin_time = min($interval);
             $end_time = max($interval);
             $renew_time = C('update_time')[ ENV ];
+
             if ($begin_time > $renew_time) {
-                $this->_parsePayTypeRenewed($ptype, $fid, $partnerId, $map);
+                $type = 'renewed';
             } elseif ($end_time < $renew_time) {
-                $this->_parsePayTypeOrigin($ptype, $fid, $partnerId, $map);
+                $type = 'origin';
             } else {
-                $this->_parsePayTypeMixed($ptype, $fid, $partnerId, $map, $begin_time, $end_time, $renew_time);
+                $type = 'mixed';
             }
+            $this->_parseRectTime($ptype, $fid, $partnerId, $map, $type, $begin_time, $end_time, $renew_time);
         } else {
             if ($ptype == 99) {
                 $self = 'aid';
@@ -393,224 +395,42 @@ class TradeRecord extends Controller
      *
      * @return mixed
      */
-    private function _parsePayTypeOrigin($ptype, $fid, $partnerId, &$map)
+    private function _parseRectTime($ptype, $fid, $partnerId, &$map, $type, $begin_time, $end_time, $renew_time)
     {
-        if ($ptype == 100) {
-            if ($fid) {
-                if (!$partnerId) {
-                    $map['_complex'][] = [
-                        [
-                            'aid'   => $fid,
-                            'ptype' => ['neq', 0],
-                        ],
-                        'fid'    => $fid,
-                        '_logic' => 'or',
-                    ];
-                } else {
-                    $map['_complex'][] = [
-                        [
-                            'aid'   => $fid,
-                            'fid'   => $partnerId,
-                            'ptype' => ['neq', 0],
-                        ],
-                        [
-                            'aid' => $partnerId,
-                            'fid' => $fid,
-                        ],
-                        '_logic' => 'or',
-                    ];
-                }
-            }
-        } else {
-            if ($fid) {
-                if (!$partnerId) {
-                    $map['_complex'][] = [
-                        'aid'    => $fid,
-                        'fid'    => $fid,
-                        '_logic' => 'or',
-                    ];
-                } else {
-                    $map['_complex'][] = [
-                        [
-                            'aid' => $fid,
-                            'fid' => $partnerId,
-                        ],
-                        [
-                            'aid' => $partnerId,
-                            'fid' => $fid,
-                        ],
-                        '_logic' => 'or',
-                    ];
-                }
-            }
+        if (!$fid) {
+            return false;
+        }
+        $logic = ['_logic' => 'or'];
+
+        $fid_as_other_origin = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['neq', 0],] : ['aid' => $fid,];
+        $fid_as_other_renewed = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['in', [2, 3],]] : ['aid' => $fid,];
+        $fid_as_self = ['fid' => $fid];
+
+        if ($partnerId) {
+            $partnerId_as_self = ['fid' => $partnerId];
+            $partnerId_as_other = ['aid' => $partnerId];
+            $fid_as_other_origin[] = $partnerId_as_self;
+            $fid_as_other_renewed[] = $partnerId_as_self;
+            $fid_as_self[] = $partnerId_as_other;
         }
 
-        return $ptype;
-    }
-
-    /**
-     * 查询时段只包含新的在线支付记录方式
-     *
-     * @param $ptype
-     * @param $fid
-     * @param $partnerId
-     * @param $map
-     *
-     * @return mixed
-     */
-    private function _parsePayTypeRenewed($ptype, $fid, $partnerId, &$map)
-    {
-        if ($ptype == 100) {
-            if ($fid) {
-                if (!$partnerId) {
-                    $map['_complex'][] = [
-                        [
-                            'aid'   => $fid,
-                            'ptype' => ['in', [2, 3]],
-                        ],
-                        'fid'    => $fid,
-                        '_logic' => 'or',
-                    ];
-                } else {
-                    $map['_complex'][] = [
-                        [
-                            'aid'   => $fid,
-                            'fid'   => $partnerId,
-                            'ptype' => ['in', [2, 3]],
-                        ],
-                        [
-                            'aid' => $partnerId,
-                            'fid' => $fid,
-                        ],
-                        '_logic' => 'or',
-                    ];
-                }
-            }
+        if ($type == 'origin') {
+            $fid_as_other = $fid_as_other_origin;
+            $fid_as_self = ['fid' => $fid];
+        } elseif ($type == 'renewed') {
+            $fid_as_other = $fid_as_other_renewed;
+            $fid_as_self = ['fid' => $fid];
         } else {
-            if ($fid) {
-                if (!$partnerId) {
-                    $map['_complex'][] = [
-                        'fid' => $fid,
-                    ];
-                } else {
-                    $map['_complex'][] = [
-                        'aid' => $partnerId,
-                        'fid' => $fid,
-                    ];
-                }
-            }
-        }
-
-        return $ptype;
-    }
-
-    /**
-     * 查询时段包含新旧两种在线支付记录方式
-     *
-     * @param $ptype
-     * @param $fid
-     * @param $partnerId
-     * @param $map
-     * @param $begin_time
-     * @param $end_time
-     * @param $renew_time
-     *
-     * @return mixed
-     */
-    private function _parsePayTypeMixed($ptype, $fid, $partnerId, &$map, $begin_time, $end_time, $renew_time)
-    {
-        if ($ptype == 100) {
             if (isset($map['rectime'])) {
                 unset($map['rectime']);
             }
-            if ($fid) {
-                if (!$partnerId) {
-                    $map['_complex'][] = [
-                        [
-                            'aid'     => $fid,
-                            'ptype'   => ['neq', 0],
-                            'rectime' => ['between', [$begin_time, $renew_time]],
-                        ],
-                        [
-                            'aid'     => $fid,
-                            'ptype'   => ['in', [2, 3]],
-                            'rectime' => ['between', [$renew_time, $end_time]],
-                        ],
-                        [
-                            'fid'     => $fid,
-                            'rectime' => ['between', [$begin_time, $end_time]],
-                        ],
-                        '_logic' => 'or',
-                    ];
-                } else {
-                    $map['_complex'][] = [
-                        [
-                            'aid'     => $fid,
-                            'fid'     => $partnerId,
-                            'ptype'   => ['neq', 0],
-                            'rectime' => ['between', [$begin_time, $renew_time]],
-                        ],
-                        [
-                            'aid'     => $fid,
-                            'fid'     => $partnerId,
-                            'ptype'   => ['in', [2, 3]],
-                            'rectime' => ['between', [$renew_time, $end_time]],
-                        ],
-                        [
-                            'aid'     => $partnerId,
-                            'fid'     => $fid,
-                            'rectime' => ['between', [$begin_time, $end_time]],
-                        ],
-                        '_logic' => 'or',
-                    ];
-                }
-            }
-        } else {
-            if ($fid) {
-                if (!$partnerId) {
-                    $map['_complex'][] = [
-                        [
-                            [
-                                'aid'    => $fid,
-                                'fid'    => $fid,
-                                '_logic' => 'or',
-                            ],
-                            'rectime' => ['between', [$begin_time, $renew_time]],
-                        ],
-                        [
-                            'fid'     => $fid,
-                            'rectime' => ['between', [$renew_time, $end_time]],
-                        ],
-                        '_logic' => 'or',
-                    ];
-                } else {
-                    $map['_complex'][] = [
-                        [
-                            [
-                                [
-                                    'aid' => $fid,
-                                    'fid' => $partnerId,
-                                ],
-                                [
-                                    'aid' => $partnerId,
-                                    'fid' => $fid,
-                                ],
-                                '_logic' => 'or',
-                            ],
-                            'rectime' => ['between', [$begin_time, $renew_time]],
-                        ],
-                        [
-                            'aid'     => $partnerId,
-                            'fid'     => $fid,
-                            'rectime' => ['between', [$renew_time, $end_time]],
-                        ],
-                        '_logic' => 'or',
-
-                    ];
-                }
-            }
+            $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
+            $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
+            $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
+            $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
         }
 
+        $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
         return $ptype;
     }
 
