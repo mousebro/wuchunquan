@@ -14,6 +14,7 @@ use Model\Product\Land;
 use Model\Product\PackTicket;
 use Model\Product\PriceWrite;
 use Model\Product\Round;
+use Model\Product\AnnualCard;
 
 class ticket extends ProductBasic
 {
@@ -188,6 +189,12 @@ class ticket extends ProductBasic
             }
             $data['ddays'] = $advance;
         }
+
+        //年卡产品
+        if ($landData['p_type'] == 'I') {
+            $data = array_merge($data, (new AnnualCard())->getCrdConf($tid));
+        }
+
         $landData = $data;
         // 闸机绑定
         $apply_did = $_SESSION['sid'];

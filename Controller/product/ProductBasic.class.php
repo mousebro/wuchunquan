@@ -138,6 +138,14 @@ class ProductBasic extends Controller
         if (!$landInfo || ($landInfo['apply_did']!=$memberId && $memberId!=0)) {
             return self::_return(self::CODE_NO_CONTENT,  '景区不存在',$ticketData['ttitle']);
         }
+
+        if ($p_type == 'I') {
+            $crdModel = $this->getCardObj($ticketData['tid'] + 0);
+            // $this->cardObj =  new AnnualCard($ticketData['tid'] + 0, $_SESSION['memberID']);
+            $default = $crdModel->createDefaultParams();
+            $ticketData = array_merge($ticketData, $default);
+        }
+
         // 整合数据
         $tkBaseAttr = array();
         $tkExtAttr = array();
@@ -150,7 +158,6 @@ class ProductBasic extends Controller
             if (!$ticketObj->allowOfflinePackage($memberId))
                 return self::_return(self::CODE_INVALID_REQUEST,  '套票产品只允许在线支付',$ticketData['ttitle']);
         }
-
 
         if ($ticketData['fax']) {
             $landObj->UpdateAttrbites(['id'=>$lid], ['fax'=>$ticketData['fax']]);
@@ -329,8 +336,28 @@ class ProductBasic extends Controller
                 }
             }
         }
-        if($p_type=='I'){
-            $crdModel = new AnnualCard($ticketData['tid'] + 0, $_SESSION['memberID']);
+
+        //线路产品属性
+        if ($p_type == 'B') {
+            $tkExtAttr['rdays'] = $ticketData['rdays'] + 0;// 游玩天数
+            $tkExtAttr['series_model'] = '';
+            if (isset($ticketData['g_number']) && $ticketData['g_number']) {
+                $tkExtAttr['series_model'] = $ticketData['g_number'] . '{fck_date}';
+            }
+            if (isset($ticketData['s_number']) && $ticketData['s_number'] && $tkExtAttr['series_model']) {
+                $tkExtAttr['series_model'] .= '-' . $ticketData['s_number'];
+            }
+            $ass_station = $ticketData['ass_station'];
+            $ass_station = str_replace('；', ';', $ass_station);
+            $tkExtAttr['ass_station'] = serialize(explode(';', $ass_station));
+        }
+
+        //接收年卡配置信息
+        if($p_type=='I') {
+            // if (!isset($this->cardObj)) {
+            //     $this->cardObj = new AnnualCard($ticketData['tid'] + 0, $_SESSION['memberID']);
+            // }
+            $crdModel = $this->getCardObj($ticketData['tid'] + 0);
             if(!isset($crdConf)) $crdConf = [];
             $crdConf['auto_act_day'] = isset($ticketData['auto_active_days']) ? intval($ticketData['auto_active_days']) : -1; //自动激活天数 -1 不自动激活
             $crdConf['srch_limit'] = isset($ticketData['search_limit']) ? intval($ticketData['search_limit']) : 1; //购买搜索限制 0 不限制 1：卡号（实体卡/虚拟卡）  2：身份证号 4：手机号
@@ -357,17 +384,7 @@ class ProductBasic extends Controller
             }
         }
 
-        //线路产品属性
-        if($p_type=='B')
-        {
-            $tkExtAttr['rdays'] = $ticketData['rdays']+0;// 游玩天数
-            $tkExtAttr['series_model'] = '';
-            if(isset($ticketData['g_number']) && $ticketData['g_number']) $tkExtAttr['series_model'] = $ticketData['g_number'].'{fck_date}';
-            if(isset($ticketData['s_number']) && $ticketData['s_number'] && $tkExtAttr['series_model']) $tkExtAttr['series_model'].= '-'.$ticketData['s_number'];
-            $ass_station = $ticketData['ass_station'];
-            $ass_station = str_replace('；', ';', $ass_station);
-            $tkExtAttr['ass_station'] = serialize(explode(';', $ass_station));
-        }
+
         if(isset($ticketData['tid']) && $ticketData['tid']>0)
         {   // 以下编辑操作
             $tid = $ticketData['tid']+0;
@@ -470,8 +487,8 @@ class ProductBasic extends Controller
             $output['data']['savePackResult'] = $packRet;
         }
 
-        if($ticketData['p_type']=='I'){
-            $cardRet = $this->saveCardConfig($tid,$crdModel);
+        if($ticketData['p_type']=='I') {
+            $cardRet = $this->saveCardConfig($memberId, $tid, $crdModel);
             $output['data']['saveCardResult'] = $cardRet;
         }
 
@@ -498,6 +515,8 @@ class ProductBasic extends Controller
                     array_diff_assoc($row, $this->original_price[$tableId]) : $row;
                 if(count($intersect)==0) continue;
             }
+            $row['weekdays'] = '1,2,3,4,5,6,7';
+            $row['storage'] = -1;
             $action = ($tableId>0) ? 1:0;// 0 插入 1 修改
             $sdate  = date('Y-m-d', strtotime($row['sdate']));
             $edate  = date('Y-m-d', strtotime($row['edate']));
@@ -524,9 +543,6 @@ class ProductBasic extends Controller
         //$compareSec = array();
         $changeNote = array();
         $original_price = $ticketObj->getPriceSection($pid);
-        if (!$original_price) {
-            return false;
-        }
         foreach($price_section as $row)
         {
             // 期票模式（有效期是时间段）只能全部有价格
@@ -597,21 +613,48 @@ class ProductBasic extends Controller
      *
      * @return bool|string
      */
-    private function saveCardConfig($parent_tid,\Model\Product\AnnualCard $crdModel)
+    private function saveCardConfig($aid, $parent_tid,\Model\Product\AnnualCard $crdModel)
     {
         $card_info = $crdModel->getCache();
-        if (empty($card_info) || empty($card_info) ) return false;
+
+        if (empty($card_info) || empty($card_info)) {
+            return false;
+        }
+
         $cardData = json_decode($card_info, true);
+
         $crdConf = $cardData['crdConf'];
+
         $crdPriv = $cardData['crdPriv'];
+
         foreach ($crdPriv as $key => $item) {
             $packData[$key]['parent_tid'] = $parent_tid;
         }
+
         $crdConf['tid'] = $parent_tid;
-        $ret = $crdModel->saveCardConfig($crdConf,$crdPriv);
+        $crdConf['aid'] = $aid;
+        $ret = $crdModel->saveCardConfig($parent_tid, $crdConf, $crdPriv);
+
         if ($ret!==false) $crdModel->rmCache();
         return $ret;
     }
 
+    /**
+     * @param   integer $parent_tid 年卡主产品的门票id
+     *
+     * @return AnnualCard|null
+     */
+    protected function getCardObj($parent_tid)
+    {
 
+        if (!isset($_SESSION['memberID'])) {
+            parent::apiReturn(self::CODE_AUTH_ERROR, [], '未登录');
+        }
+
+        if (!isset($this->cardObj)) {
+            $this->cardObj = new AnnualCard($parent_tid, $_SESSION['memberID']);
+        }
+
+        return $this->cardObj;
+    }
 }

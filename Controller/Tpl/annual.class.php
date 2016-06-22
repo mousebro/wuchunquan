@@ -23,80 +23,15 @@ class annual extends Controller {
         $this->initPage();
     }
     
-    /**
-     * 某个功能模块的首页就进入这个方法
-     * http://www.12301.cc/new/card.html
-     * 
-     * @author dwer
-     * @date   2016-06-18
-     *
-     * @return
-     */
     public function index() {
-        //需要传给模板的参数在这里定义
-        //$this->assign('data', $data);
 
-        $this->display('card/index');
     }
 
-    /**
-     * 某个功能模块的首页就进入这个方法
-     * http://www.12301.cc/new/card.html
-     * 
-     * @author dwer
-     * @date   2016-06-18
-     *
-     * @return
-     */
-    public function order() {
-        //需要传给模板的参数在这里定义
-        //$this->assign('data', $data);
-
-        $this->display('card/order');
-    }
-
-    /**
-     * publish_prod_info页面
-     * 某个功能模块的二级页面就对于的方法
-     * http://www.12301.cc/new/annual_prod.html
-     * 
-     * @author dwer
-     * @date   2016-06-18
-     *
-     * @return
-     */
-    public function prod() {
-
-        $this->display('annual/prod');
-    }
-
-    /**
-     * publish_package_info
-     * 某个功能模块的二级页面就对于的方法
-     * http://www.12301.cc/new/annual_prod.html
-     * 
-     * @author dwer
-     * @date   2016-06-18
-     *
-     * @return
-     */
     public function package() {
-        
         $this->display('annual/package');
     }
 
-    /**
-     * entry_card
-     * 某个功能模块的二级页面就对于的方法
-     * http://www.12301.cc/new/annual_prod.html
-     * 
-     * @author dwer
-     * @date   2016-06-18
-     *
-     * @return
-     */
-    public function entry() {
-        
-        $this->display('annual/entry');
+    public function prod() {
+        $this->display('annual/prod');
     }
 }

@@ -100,9 +100,9 @@ class Ticket extends Model {
      * @param  array $options 
      * @return [type]      [description]
      */
-    public function getProductInfo($pid, $options = []) {
+    public function getProductInfo($options = []) {
 
-        return $this->table(self::__PRODUCT_TABLE__)->where(array('id' => $pid))->find($options);
+        return $this->table(self::__PRODUCT_TABLE__)->find($options);
 
     }
 
