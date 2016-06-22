@@ -85,17 +85,32 @@ class TradeRecordParser
                 }
                 $partner_info = (!$this->is_acc_reverse) ? $account['aid'] : $account['fid'];
                 break;
-            //在线支付
-            case 1:
+            // 授信账户
+            case 2:
                 // no break;
-            case 4:
-                // no break;
-            case 5:
-                // no break;
-            case 6:
-                // no break;
-            case 11:
-                // no break;
+            case 3:
+                $partner_info = (!$this->is_acc_reverse) ? '(供应商)授信账户' : '(分销商)授信账户';
+                if ($this->record['daction'] == 0) {
+                    $this->record['payer_acc'] = $account['aid'];
+                    $this->record['payee_acc'] = $account['fid'];;
+                } else {
+                    $this->record['payer_acc'] = $account['fid'];;
+                    $this->record['payee_acc'] = $account['aid'];
+                }
+                break;
+
+            ////在线支付
+            //case 1:
+            //    // no break;
+            //case 4:
+            //    // no break;
+            //case 5:
+            //    // no break;
+            //case 6:
+            //    // no break;
+            //case 11:
+            //    // no break;
+            default:
                 //显示支付宝账号
                 if ($this->is_acc_reverse) {
                     $self = 'aid';
@@ -118,21 +133,6 @@ class TradeRecordParser
                     $this->record['payee_acc'] = $account[ $other ];
                 }
                 break;
-            // 授信账户
-            case 2:
-                // no break;
-            case 3:
-                $partner_info = (!$this->is_acc_reverse) ? '(供应商)授信账户' : '(分销商)授信账户';
-                if ($this->record['daction'] == 0) {
-                    $this->record['payer_acc'] = $account['aid'];
-                    $this->record['payee_acc'] = $account['fid'];;
-                } else {
-                    $this->record['payer_acc'] = $account['fid'];;
-                    $this->record['payee_acc'] = $account['aid'];
-                }
-                break;
-            default:
-                break;
         }
 
         if ($separator && isset($partner_info)) {
@@ -147,12 +147,13 @@ class TradeRecordParser
      */
     public function parseMoney()
     {
+        $renew_time = C('update_time')[ ENV ];
         $options = ['dmoney', 'lmoney'];
         foreach ($options as $money) {
             $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
         }
-        //var_dump($this->is_acc_reverse);
-        if ($this->is_acc_reverse && $this->is_online_pay) {
+
+        if ($this->is_acc_reverse && $this->is_online_pay && $this->record['rectime'] < $renew_time) {
             $this->record['daction'] = decbin(!($this->record['daction']));
             $this->record['lmoney'] = '';
         }
@@ -367,16 +368,18 @@ class TradeRecordParser
                 $this->record['counter'] .= $this->is_acc_reverse ? '(分销商授信账户)' : '(供应商授信账户)';
                 $this->record['member'] .= $this->is_acc_reverse ? '(供应商授信账户)' : '(分销商授信账户)';
                 break;
-            //在线支付
-            case 1:
-                // no break;
-            case 4:
-                // no break;
-            case 5:
-                // no break;
-            case 6:
-                // no break;
-            case 11:
+            ////在线支付
+            //case 1:
+            //    // no break;
+            //case 4:
+            //    // no break;
+            //case 5:
+            //    // no break;
+            //case 6:
+            //    // no break;
+            //case 11:
+            //    // no break;
+            default:
                 $pay_types = C('pay_type');
 
                 //交易账户类型
@@ -400,8 +403,6 @@ class TradeRecordParser
                     $payer = $self;
                 }
                 $this->_recomposeMemberAccount($payee, $payer, $account[ $payee ], $payer_acc);
-                break;
-            default:
                 break;
         }
 

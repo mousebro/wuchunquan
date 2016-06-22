@@ -403,7 +403,7 @@ class TradeRecord extends Controller
         $logic = ['_logic' => 'or'];
 
         $fid_as_other_origin = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['neq', 0],] : ['aid' => $fid,];
-        $fid_as_other_renewed = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['in', [2, 3],]] : ['aid' => $fid,];
+        $fid_as_other_renewed = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['in', [2, 3],]] : [];
         $fid_as_self = ['fid' => $fid];
 
         if ($partnerId) {
@@ -429,8 +429,8 @@ class TradeRecord extends Controller
             $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
             $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
         }
-
-        $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
+        
+        $map['_complex'][] = count($fid_as_other) ? ([$fid_as_other, $fid_as_self] + $logic) : $fid_as_self;
         return $ptype;
     }
 
