@@ -119,9 +119,10 @@ class TradeRecord extends Controller
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
                 $map['orderid'] = $orderid;
-                if (isset($map['rectime'])) {
-                    unset($map['rectime']);
-                }
+                // 满纸荒唐言，一把辛酸泪。都言作者痴，谁解其中味。
+                //if (isset($map['rectime'])) {
+                //    unset($map['rectime']);
+                //}
             }
             //支付方式
             $this->_parsePayType($fid, $partner_id, $map, $interval);
@@ -427,11 +428,11 @@ class TradeRecord extends Controller
             if (isset($map['rectime'])) {
                 unset($map['rectime']);
             }
-            if (!isset($map['orderid'])) {
-                $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
-                $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
-                $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
-            }
+
+            $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
+            $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
+            $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
+
             $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
         }
         

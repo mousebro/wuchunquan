@@ -290,16 +290,11 @@ class TradeRecord extends Model
             ->field($field)
             ->select();
 
+        $data = [];
         if (is_array($records) && count($records)) {
             $orderIds = array_filter(array_column($records, 'orderid'));
             $online_pay_info = $this->getPayerAccount($orderIds);
-        } else {
-            return false;
-        }
-
-        $data = [];
-        $parser = $this->_getParser();
-        if (is_array($records)) {
+            $parser = $this->_getParser();
             foreach ($records as $record) {
                 $orderid = $record['orderid'];
                 if (is_array($online_pay_info) && array_key_exists($orderid, $online_pay_info)) {
