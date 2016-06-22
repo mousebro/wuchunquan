@@ -27,7 +27,7 @@ class TradeRecord extends Model
      *
      * @return array
      */
-    private function _recomposeExcelData($records, $extInfo, $prod_name, $payAcc)
+    private function _recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $fid, $partner_id)
     {
         $data = [];
         $parser = $this->_getParser();
@@ -47,7 +47,7 @@ class TradeRecord extends Model
                 $record = array_merge($record, $payAcc[ $ordernum ]);
             }
 
-            $data[] = $parser->setRecord($record)
+            $data[] = $parser->setRecord($record, $fid, $partner_id)
                 ->parseTradeType('|')
                 ->parseMember(false)
                 ->parsePayType()
@@ -142,7 +142,7 @@ class TradeRecord extends Model
      *
      * @return  array
      */
-    public function getExList($map)
+    public function getExList($map, $fid, $partner_id)
     {
         $table = "{$this->_trade_record_table}";
 
@@ -173,13 +173,13 @@ class TradeRecord extends Model
             $orderid = array_unique(array_filter(array_column($records, 'orderid')));
 
             if (count($orderid)) {
-                
+
                 //获取订单号/交易号对应信息
                 $extInfo = $this->getExtendInfo($orderid);
-                
+
                 //根据外部订单号获取在线支付信息
                 $payAcc = $this->getPayerAccount($orderid);
-                
+
                 //根据订单中的门票id 查找产品名称
                 if (count($extInfo)) {
                     $tid = array_unique(array_filter(array_column($extInfo, 'tid')));
@@ -189,7 +189,7 @@ class TradeRecord extends Model
         }
 
         //整合数据
-        $data = $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc);
+        $data = $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $fid, $partner_id);
         return $data;
     }
 
@@ -259,7 +259,7 @@ class TradeRecord extends Model
      *
      * @return  array
      */
-    public function getList($map, $page, $limit)
+    public function getList($map, $page, $limit, $fid, $partner_id)
     {
         $table = "{$this->_trade_record_table}";
 
@@ -300,7 +300,7 @@ class TradeRecord extends Model
                 if (is_array($online_pay_info) && array_key_exists($orderid, $online_pay_info)) {
                     $record = array_merge($record, $online_pay_info[ $orderid ]);
                 }
-                $data[] = $parser->setRecord($record)
+                $data[] = $parser->setRecord($record, $fid, $partner_id)
                     ->parseMember()
                     ->parseTradeType()
                     ->parsePayType()

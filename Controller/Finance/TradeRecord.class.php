@@ -147,7 +147,7 @@ class TradeRecord extends Controller
             $form = intval(I('form'));
 
             $recordModel = $this->_getTradeModel();
-            $this->_output($form, $recordModel, $map, $page, $limit, $interval);
+            $this->_output($form, $recordModel, $map, $page, $limit, $interval, $fid, $partner_id);
 
         } catch (Exception $e) {
             \pft_log('trade_record/err', 'get_list|' . $e->getCode() . "|" . $e->getMessage(), 'month');
@@ -280,11 +280,20 @@ class TradeRecord extends Controller
      *
      * @throws \Library\Exception
      */
-    private function _output($form, \Model\Finance\TradeRecord $recordModel, $map, $page, $limit, $interval)
+    private function _output(
+        $form,
+        \Model\Finance\TradeRecord $recordModel,
+        $map,
+        $page,
+        $limit,
+        $interval,
+        $fid,
+        $partner_id
+    )
     {
         switch ($form) {
             case 0:
-                $data = $recordModel->getList($map, $page, $limit);
+                $data = $recordModel->getList($map, $page, $limit, $fid, $partner_id);
                 if (is_array($data)) {
                     $data['btime'] = $interval[0];
                     $data['etime'] = $interval[1];
@@ -294,7 +303,7 @@ class TradeRecord extends Controller
                 }
                 break;
             case 1:
-                $data = $recordModel->getExList($map);
+                $data = $recordModel->getExList($map, $fid, $partner_id);
                 if (!is_array($data)) {
                     $data = [];
                 }

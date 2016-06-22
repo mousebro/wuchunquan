@@ -28,15 +28,25 @@ class TradeRecordParser
      * @return $this
      * @throws Exception
      */
-    public function setRecord(array $record)
+    public function setRecord(array $record, $fid = 0, $partner_id = 0)
     {
         if (!isset($this->record)) {
             $this->record = $record;
         } else {
             throw new Exception('数据未读取', 301);
         }
+        if ($fid) {
+            $this->fid = $fid;
+        }
+        if ($partner_id) {
+            $this->partner_id = $partner_id;
+        }
+        if (isset($this->fid)) {
+            $this->is_acc_reverse = $this->record['fid'] != $this->fid;
+        } else {
+            $this->is_acc_reverse = isset($this->record['fid']) && ($this->record['fid'] != $_SESSION['sid'] || $_SESSION['sid'] == 1);
+        }
 
-        $this->is_acc_reverse = !((isset($this->record['fid']) && $_SESSION['sid'] == $this->record['fid']) || $_SESSION['sid'] == 1);
         $this->is_fid_payee = $this->record['daction'] == 0;
         $this->is_self_payee = ($this->record['daction'] == 0 && !$this->is_acc_reverse) || ($this->record['action'] && $this->is_acc_reverse);
         //var_dump($this->record['fid']);
