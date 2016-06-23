@@ -11,6 +11,7 @@
  * @ptype: 产品类型
  * @ltitle: 产品名称
  * @aid: 上级供应商ID
+ * @pid: 产品ID
  */
 class OrderNotify_Job {
     public function perform(){

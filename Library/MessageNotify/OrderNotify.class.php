@@ -13,6 +13,7 @@ use Model\Order\OrderQuery;
 class OrderNotify {
     private $order_tel;
     private $unit;
+    private $pid;
     private $p_type;
     private $order_num;
     private $source_apply_did;
@@ -32,7 +33,7 @@ class OrderNotify {
 //此为凭证，请妥善保管。详情及二维码:http://12301.cc/3u5235
 //发给供应商的短信：
 
-    public function __construct($ordernum, $apply_did, $mobile, $ptype, $aid)
+    public function __construct($ordernum, $apply_did, $mobile, $ptype, $aid, $pid)
     {
         $this->model            = new Model('slave');
         $this->order_num        = $ordernum;
@@ -41,6 +42,7 @@ class OrderNotify {
         $this->p_type           = $ptype;
         $this->unit             = $ptype=='C' ? '间' : '张';
         $this->aid              = $aid;
+        $this->pid              = $pid;
     }
 
     private function get_default_tpl($ptype)
@@ -202,7 +204,7 @@ class OrderNotify {
     {
         $Model = new Model('slave');
         $row   = $Model->table('uu_sms_format') ->field('cformat,dtype,sms_account,sms_sign')
-            ->where(['pid'=>$this->ticketInfo['pid']])
+            ->where(['pid'=>$this->pid])
             ->find();
 
         if (!$row) {
