@@ -24,7 +24,7 @@ class annual extends Controller {
     }
     
     public function index() {
-
+        $this->display('annual/index');
     }
 
     public function package() {
@@ -33,5 +33,13 @@ class annual extends Controller {
 
     public function prod() {
         $this->display('annual/prod');
+    }
+
+    public function entry() {
+        $this->display('annual/entry');
+    }
+
+    public function order() {
+        $this->display('annual/order');
     }
 }
