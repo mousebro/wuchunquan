@@ -41,10 +41,10 @@ class TradeRecordParser
         if ($partner_id) {
             $this->partner_id = $partner_id;
         }
-        if (isset($this->fid)) {
+        if (isset($this->fid) && $this->fid) {
             $this->is_acc_reverse = $this->record['fid'] != $this->fid;
         } else {
-            $this->is_acc_reverse = isset($this->record['fid']) && ($this->record['fid'] != $_SESSION['sid'] || $_SESSION['sid'] == 1);
+            $this->is_acc_reverse = isset($this->record['fid']) && ($this->record['fid'] != $_SESSION['sid'] && $_SESSION['sid'] != 1);
         }
 
         $this->is_fid_payee = $this->record['daction'] == 0;
