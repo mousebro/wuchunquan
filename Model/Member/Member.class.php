@@ -340,7 +340,7 @@ class Member extends Model
         return ['code'=>401, 'msg'=>'sql:'.$this->getLastSql() .',errmsg:'.  $this->getDbError()];
     }
     public function addMemberJournal($id, $opID, $Mmoney, $action=0, $aid=NULL,
-                                     $dtype=NULL, $ptype=NULL, $orderid='', $memo='')
+                                     $dtype=NULL, $ptype=NULL, $orderid='', $memo='', $tradeNo = false)
     {
         $journalData = [
             'fid'       => $id,
@@ -354,6 +354,13 @@ class Member extends Model
             'memo'      => $memo,
             'rectime'   => date('Y-m-d H:i:s'),
         ];
+
+        //添加外部流水号
+        if($tradeNo !== false) {
+            $tradeNo = strval($tradeNo);
+            $journalData['trade_no'] = $tradeNo;
+        }
+
         $result2 = $this->table('pft_member_journal')
             ->data($journalData)
             ->add();
