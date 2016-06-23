@@ -119,10 +119,10 @@ class TradeRecord extends Controller
             $orderid = \safe_str(I('orderid'));
             if ($orderid) {
                 $map['orderid'] = $orderid;
-                // 满纸荒唐言，一把辛酸泪。都言作者痴，谁解其中味。
-                //if (isset($map['rectime'])) {
-                //    unset($map['rectime']);
-                //}
+                if (!$_REQUEST['btime'] && !$_REQUEST['etime']) {
+                    unset($map['rectime']);
+                    $interval = ['', ''];
+                }
             }
             //支付方式
             $this->_parsePayType($fid, $partner_id, $map, $interval);
@@ -416,32 +416,28 @@ class TradeRecord extends Controller
         $logic = ['_logic' => 'or'];
 
         $fid_as_other_origin = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['neq', 0],] : ['aid' => $fid,];
-        $fid_as_other_renewed = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['in', [2, 3],]] : [];
+        $fid_as_other_renewed = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['in', [2, 3],]] : ['aid' => $fid];
         $fid_as_self = ['fid' => $fid];
 
         if ($partnerId) {
             $partnerId_as_self = ['fid' => $partnerId];
             $partnerId_as_other = ['aid' => $partnerId];
-            $fid_as_other_origin[] = $partnerId_as_self;
-            if ($fid_as_other_renewed) {
-                $fid_as_other_renewed[] = $partnerId_as_self;
-            }
-            $fid_as_self[] = $partnerId_as_other;
+            $fid_as_other_origin += $partnerId_as_self;
+            $fid_as_other_renewed += $partnerId_as_self;
+            $fid_as_self += $partnerId_as_other;
         }
 
         if ($type == 'origin') {
             $fid_as_other = $fid_as_other_origin;
-            $fid_as_self = ['fid' => $fid];
         } elseif ($type == 'renewed') {
             $fid_as_other = $fid_as_other_renewed;
-            $fid_as_self = ['fid' => $fid];
         } else {
             if (isset($map['rectime'])) {
                 unset($map['rectime']);
             }
 
             $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
-            if ($fid_as_other_renewed) {
+            if ($fid_as_other_renewed && $ptype == 100) {
                 $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
                 $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
             } else {
@@ -449,8 +445,8 @@ class TradeRecord extends Controller
             }
             $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
         }
-        
-        $map['_complex'][] = count($fid_as_other) ? ([$fid_as_other, $fid_as_self] + $logic) : $fid_as_self;
+
+        $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
         return $ptype;
     }
 
