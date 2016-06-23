@@ -9,6 +9,7 @@
 namespace Library\MessageNotify;
 
 
+use LaneWeChat\Core\OpenExt;
 use Library\Model;
 use Model\Product\Ticket;
 use Model\Wechat\WxMember;
