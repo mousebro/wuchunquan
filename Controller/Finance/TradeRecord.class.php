@@ -207,7 +207,7 @@ class TradeRecord extends Controller
 
         try {
             if (empty($srch)) {
-                throw new Exception('传入参数错误', 210);
+                $this->apiReturn(200, [], '查询结果为空');
             }
 
             if ($this->memberId != 1) {
