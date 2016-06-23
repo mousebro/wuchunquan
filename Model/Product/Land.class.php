@@ -117,8 +117,8 @@ class Land extends Model
 
     /**
      * 更新景区信息
-     * @param  int $apply_did 供应商id
-     * @param  int $lid       景区id
+     * @param  int   $apply_did 供应商id
+     * @param  int   $lid       景区id
      * @param  array $params  更新数据
      * @return [type]         [description]
      */
@@ -130,7 +130,12 @@ class Land extends Model
 
         $result = $this->table('uu_land')->where($where)->save($params);
 
-        return $result !== false ? true : false;
+        if ($result !== false) {
+            return ['code' => 200, 'data'=>['lastid'=>$lid]];
+        } else {
+            return ['code' => 0, 'msg'=>'添加失败，服务器发生错误'];
+        }
+
     }
 
     public function UpdateAttrbites(Array $where, Array $attrs)
