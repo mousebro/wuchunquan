@@ -465,7 +465,7 @@ class TradeRecord extends Controller
         //开始时间
         $btime = $this->_validateTime('btime', "today midnight", "00:00:00");
         //结束时间 - 默认为当前时间
-        $etime = $this->_validateTime('etime', "now", "23:59:59");
+        $etime = $this->_validateTime('etime', "today 23:59:59", "23:59:59");
         $interval = [$btime, $etime];
 
         return $interval;
