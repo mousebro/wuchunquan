@@ -121,24 +121,27 @@ class AnnualCard extends Model
     {
 
         $where = [
-            'apply_did' => $sid,
-            'p_type'    => 'I',
-            'p_status'  => '0',
+            'p.apply_did' => $sid,
+            'p.p_status'  => '0',
+            'l.p_type'    => 'I',
         ];
 
         $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
 
-        $field = 'id,p_name';
+        $field = 'p.id,p.p_name';
+
+        $join_str = 'p left join uu_land l on p.contact_id=l.id';
 
         if ($action == 'select') {
             return $this->table(self::PRODUCT_TABLE)
+                ->join($join_str)
                 ->where($where)
                 ->field($field)
                 ->limit($limit)
                 ->select();
 
         } else {
-            return $this->table(self::PRODUCT_TABLE)->where($where)->count();
+            return $this->table(self::PRODUCT_TABLE)->join($join_str)->where($where)->count();
         }
 
     }
@@ -630,6 +633,7 @@ class AnnualCard extends Model
         $where = [
             'p.id'          => ['in', implode(',', $pid_arr)],
             'l.title'       => ['like', "%{$keyword}%"],
+            'l.p_type'      => ['in', ['A', 'B']],
             'p.p_status'    => 0,
             'p.apply_limit' => 1,
         ];
@@ -839,7 +843,8 @@ class AnnualCard extends Model
 
         //已记录在库的特权门票
         $exists_tids = $this->getPrivilegeInfo(['parent_tid' => $parentId], 'tid,id');
-        $exists_tids = array_keys($exists_tids) ?: [];
+        $exists_tids = $exists_tids ?: [];
+        $exists_tids = array_keys($exists_tids);
 
         //本次提交的特权门票
         $submit_tids = array_keys($data);
