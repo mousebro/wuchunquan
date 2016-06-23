@@ -1,5 +1,5 @@
 env.php
 *.txt
 .idea/
-Test/
+Test/*
 test.php
