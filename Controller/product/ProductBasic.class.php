@@ -87,6 +87,11 @@ class ProductBasic extends Controller
         $params['area']     = "$province|$city|$zone";
         //预订须知
         $params['jqts']     = I('post.notice', '', 'strip_tags,addslashes');
+
+        if (I('jqts')) {
+            $params['jqts'] = I('jqts', '', 'strip_tags,addslashes');
+        }
+
         //景点详情-图文
         $params['bhjq']     = I('post.details','', 'htmlspecialchars,addslashes');
         //交通指南
