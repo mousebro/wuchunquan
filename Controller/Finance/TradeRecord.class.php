@@ -367,13 +367,14 @@ class TradeRecord extends Controller
             $end_time = max($interval);
             $renew_time = C('update_time')[ ENV ];
 
-            if ($begin_time > $renew_time) {
+            if ($begin_time == $end_time || $begin_time > $renew_time) {
                 $type = 'renewed';
             } elseif ($end_time < $renew_time) {
                 $type = 'origin';
             } else {
                 $type = 'mixed';
             }
+
             $this->_parseRectTime($ptype, $fid, $partnerId, $map, $type, $begin_time, $end_time, $renew_time);
         } else {
             if ($ptype == 99) {
