@@ -743,7 +743,18 @@ class AnnualCard extends Model
      */
     public function saveCrdConf($data)
     {
-        $result = $this->table(self::CARD_CONFIG_TABLE)->add($data);
+        $where = [
+            'tid' => $data['tid'],
+            'aid' => $data['aid']
+        ];
+
+        $exist = $this->table(self::CARD_CONFIG_TABLE)->where($where)->getField('id');
+
+        if ($exist) {
+            $result = $this->table(self::CARD_CONFIG_TABLE)->where(['id' => $exist])->save($data);
+        } else {
+            $this->table(self::CARD_CONFIG_TABLE)->add($data);
+        }
 
         return $result;
     }
@@ -759,32 +770,32 @@ class AnnualCard extends Model
 
         $config = $this->table(self::CARD_CONFIG_TABLE)->where(['tid' => $tid])->find();
 
-        $return['auto_act_days'] = $config['auto_act_day'];
-        $return['srch_limit'] = $config['srch_limit'];
+        $return['auto_active_days'] = $config['auto_act_day'];
+        $return['search_limit'] = $config['srch_limit'];
         $return['cert_limit'] = $config['cert_limit'];
 
         switch ($config['act_notice']) {
             case 0:
-                $retrun['nts_tour'] = $return['nts_sup'] = 0;
+                $return['nts_tour'] = $return['nts_sup'] = 0;
                 break;
 
             case 1:
                 $return['nts_tour'] = 1;
-                $retrun['nts_sup'] = 0;
+                $return['nts_sup'] = 0;
                 break;
 
             case 2:
                 $return['nts_tour'] = 0;
-                $retrun['nts_sup'] = 1;
+                $return['nts_sup'] = 1;
                 break;
 
             case 3:
                 $return['nts_tour'] = 1;
-                $retrun['nts_sup'] = 1;
+                $return['nts_sup'] = 1;
                 break;
 
             default:
-                $retrun['nts_tour'] = $return['nts_sup'] = 0;
+                $return['nts_tour'] = $return['nts_sup'] = 0;
                 break;
         }
 
@@ -825,53 +836,31 @@ class AnnualCard extends Model
      */
     public function setCardPrivilege($parentId, $data)
     {
-        $tid_before = $this->getPrivilegeInfo(['parent_tid' => $parentId], 'tid');
-        $tid_after = array_keys($data);
 
-        //计算哪些特权景区被更新、删除或添加
-        if ($tid_before === null) {
-            $tid_delete = $tid_update = [];
-            $tid_add = $tid_after;
-        } else {
-            $tid_add = array_diff($tid_after, $tid_before);
-            $tid_delete = array_diff($tid_before, $tid_after);
-            $tid_update = array_diff($tid_after, $tid_add, $tid_delete);
-        }
-        $condition['parent_tid'] = $parentId;
-        $condition_delete = $condition_add = $condition_update = $condition;
-        $data_delete = $data_add = [];
-        foreach ($data as $tid => $setting) {
-            if (in_array($tid, $tid_delete)) {
-                $condition_delete['_complex'][] = [
-                    'tid' => $tid,
-                    'aid' => $setting['aid'],
-                ];
-                $data_delete[] = $setting;
-            } elseif (in_array($tid, $tid_update)) {
-                $condition_update[] = [
-                    'tid' => $tid,
-                    'aid' => $setting['aid'],
-                ];
-                $this->updateCardPrivilege($condition, $setting);
-                $condition_update = $condition;
-            } elseif (in_array($tid, $tid_add)) {
-                $setting['tid'] = $tid;
-                $setting['parent_tid'] = $parentId;
-                $data_add[] = $setting;
-            } else {
-                continue;
-            }
+        //已记录在库的特权门票
+        $exists_tids = $this->getPrivilegeInfo(['parent_tid' => $parentId], 'tid,id');
+        $exists_tids = array_keys($exists_tids) ?: [];
+
+        //本次提交的特权门票
+        $submit_tids = array_keys($data);
+
+        $to_insert = array_diff($submit_tids, $exists_tids);
+
+        $to_update = array_intersect($submit_tids, $exists_tids);
+
+        $to_delete = array_diff($exists_tids, $submit_tids);
+
+        //TODO:事务
+        if ($to_delete) {
+            $this->deleteCardPrivilege($parentId, $to_delete);
         }
 
-        if (isset($data_delete)) {
-            if ($condition_delete['_complex'] > 1) {
-                $condition_delete['_complex'] += ['_logic' => 'or'];
-            }
-            $this->deleteCardPrivilege($condition_delete);
+        if ($to_update) {
+            $this->updateCardPrivilege($parentId, $data, $to_update);
         }
 
-        if (isset($data_add)) {
-            $this->addCardPrivilege($data_add);
+        if ($to_insert) {
+            $this->addCardPrivilege($parentId, $data, $to_insert);
         }
 
         return true;
@@ -897,11 +886,20 @@ class AnnualCard extends Model
      *
      * @return bool|string
      */
-    public function addCardPrivilege(array $data)
+    public function addCardPrivilege($parent_tid, $data, $to_insert)
     {
-        $result = $this->table(self::CARD_PRIVILEGE_TABLE)->addAll($data);
+        $insert = [];
+        foreach ($to_insert as $tid) {
+            $insert[] = [
+                'parent_tid'    => $parent_tid,
+                'aid'           => $data[$tid]['aid'],
+                'tid'           => $tid,
+                'use_limit'     => $data[$tid]['use_limit'],
+                'status'        => 1
+            ];
+        }   
 
-        return $result;
+        return $this->table(self::CARD_PRIVILEGE_TABLE)->addAll($insert);
     }
 
 
@@ -912,9 +910,15 @@ class AnnualCard extends Model
      *
      * @return bool
      */
-    public function deleteCardPrivilege($condition)
+    public function deleteCardPrivilege($parent_tid, $tid_arr)
     {
-        return $this->table(self::CARD_PRIVILEGE_TABLE)->where($condition)->setField('status', 0);
+        $where = [
+            'parent_tid'    => $parent_tid,
+            'tid'            => ['in', implode(',', $tid_arr)],
+            'status'        => 1
+        ];
+
+        return $this->table(self::CARD_PRIVILEGE_TABLE)->where($where)->setField('status', 0);
     }
 
     /**
@@ -925,9 +929,22 @@ class AnnualCard extends Model
      *
      * @return bool
      */
-    public function updateCardPrivilege($condition, $data)
+    public function updateCardPrivilege($parent_tid, $data, $tid_arr)
     {
-        return $this->table(self::CARD_PRIVILEGE_TABLE)->where($condition)->data($data)->save();
+        foreach ($tid_arr as $tid) {
+
+            $where = [
+                'parent_tid' => $parent_tid,
+                'tid'        => $tid,
+            ];
+
+            $update = [
+                'use_limit'     => $data[$tid]['use_limit'],
+                'status'        => 1
+            ];
+
+            $this->table(self::CARD_PRIVILEGE_TABLE)->where($where)->save($update);
+        }
     }
 
     public function createDefaultParams() {
