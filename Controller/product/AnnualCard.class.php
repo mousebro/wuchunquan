@@ -470,14 +470,45 @@ class AnnualCard extends Controller {
             $this->apiReturn(204, [], '参数错误');
         }
 
-        $result = $this->_CardModel->getMemberDetail($_SESSION['sid'], $memberid);
-        $result = $result ?: [];
+        $sid = $_SESSION['sid'];
 
-        foreach ($result as $item) {
+        $list = $this->_CardModel->getMemberDetail($sid, $memberid);
+        $list = $list ?: [];
 
+        $member_info = (new Member())->getMemberInfo($memberid);
+
+        $return['member'] = [
+            'account'   => $member_info['account'],
+            'mobile'    => $member_info['mobile']
+        ];
+
+        // $Ticket = new Ticket();
+
+        foreach ($list as $key => $item) {
+
+            $valid_time = $this->_CardModel->getPeriodOfValidity($sid, 29082);
+
+            $list[$key]['valid_time'] = $valid_time;
+
+            $privs = $this->_CardModel->getPrivileges($item['pid']);
+
+            foreach ($privs as $priv) {
+
+                $use = $this->_CardModel->getRemainTimes($sid, $priv['tid'], $memberid, true);
+
+                $all = $priv['use_limit'] == -1 ?: explode(',', $priv['use_limit'])[2];
+
+                $list[$key]['priv'][] = [
+                    'title' => $priv['ltitle'] . '-' . $priv['title'],
+                    'use'   => $use . '/' . $all
+                ];
+
+            }
         }
 
-        $this->apiReturn(200, $result, []);
+        $return['list'] = $list;
+
+        $this->apiReturn(200, $return, []);
     }
 
     /**
