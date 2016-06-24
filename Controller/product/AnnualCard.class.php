@@ -140,12 +140,16 @@ class AnnualCard extends Controller {
             'id'        => $pid,
             'apply_did' => $sid,
             'p_status'  => 0,
-            'p_type'    => 'I'
+            // 'p_type'    => 'I'
         ];
 
-        $find = (new Ticket())->getProductInfo($options);
+        $Ticket = new Ticket();
 
-        return $find ? true : false;
+        $find = $Ticket->getProductInfo($options);
+
+        $type = $Ticket->getProductType($pid);
+
+        return $find && $type == 'I' ? true : false;
     }
 
 
