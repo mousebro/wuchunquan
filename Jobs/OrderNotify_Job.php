@@ -5,13 +5,14 @@
  *
  * Class SmsNotify_Job
  * 参数列表：
- * @memberId : 收取短信费的那个人的会员ID
+ * @sellerId : 收取短信费的那个人的会员ID
  * @mobile: 手机号
  * @ordernum: 订单号
  * @ptype: 产品类型
  * @ltitle: 产品名称
  * @aid: 上级供应商ID
  * @pid: 产品ID
+ * @buyerId: 购买人ID
  */
 class OrderNotify_Job {
     public function perform(){

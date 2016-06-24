@@ -1,9 +1,11 @@
 <?php
 namespace Library\MessageNotify;
+use LaneWeChat\Core\OpenExt;
 use Library\Model;
 use Library\Resque\Queue;
 use Model\Member\Member;
 use Model\Order\OrderQuery;
+use Model\Wechat\WxMember;
 
 /**
  * 【票付通】凭证号:{code}，您已成功购买了【{dname}】{pname}:{tnum}间，
@@ -16,7 +18,9 @@ class OrderNotify {
     private $pid;
     private $p_type;
     private $order_num;
-    private $source_apply_did;
+    private $sellerId;
+    private $title;
+    private $buyerId;
 
     /**
      * @var Model
@@ -33,16 +37,34 @@ class OrderNotify {
 //此为凭证，请妥善保管。详情及二维码:http://12301.cc/3u5235
 //发给供应商的短信：
 
-    public function __construct($ordernum, $apply_did, $mobile, $ptype, $aid, $pid)
+    public function __construct($ordernum, $buyerId, $aid, $mobile,$pid=0, $sellerID=0, $ptype=0, $title='')
     {
         $this->model            = new Model('slave');
         $this->order_num        = $ordernum;
-        $this->source_apply_did = $apply_did;
+        $this->sellerId         = $sellerID;
+        $this->buyerId          = $buyerId;
         $this->order_tel        = $mobile;
         $this->p_type           = $ptype;
         $this->unit             = $ptype=='C' ? '间' : '张';
         $this->aid              = $aid;
         $this->pid              = $pid;
+        $this->title            = $title;
+    }
+
+    public function Send( $code=0 )
+    {
+        $infos = $this->getOrderInfo();
+        if (!$this->pid) {
+            $lid = $infos['lid'];
+            $land= $this->model->table('uu_land')->limit(1)->getField('title,p_type,apply_did');
+            $this->p_type = $land['p_type'];
+            $this->title  = $land['title'];
+            $this->sellerId = $land['apply_did'];
+            $this->pid    = $infos['master_pid'];
+            unset($land);
+        }
+        $this->BuyerNotify($infos, $code);
+        $this->SellerNotify($infos);
     }
 
     private function get_default_tpl($ptype)
@@ -64,31 +86,62 @@ class OrderNotify {
     {
         $order_info = $this->model->table('uu_ss_order')->where(['ordernum'=>$this->order_num])
             ->limit(1)
-            ->field('tid,tnum,begintime,endtime,code')
+            ->field('lid,tid,tnum,ordername,begintime,endtime,code,memo')
             ->find();
-        $tid_list = [ $order_info['tid']=>$order_info['tnum'] ];
+        $tid_list = [
+            $order_info['tid']=>$order_info['tnum'],
+        ];
+        $time_list = [ $order_info['begintime'] ];
+
         $linksOrder = $this->model->table('uu_ss_order s')
-            ->join('left join uu_order_fx_detail f ON s.ordernum=f.orderid')
-            ->where(['f.concat_id'=>$this->order_num])
-            ->field('s.tid,s.tnum')
+            ->join('left join uu_order_fx_details f ON s.ordernum=f.orderid')
+            ->where(['f.concat_id'=>$this->order_num, 's.ordernum'=>['neq',$this->order_num]])
+            ->field('s.tid,s.tnum,s.begintime')
             ->select();
         if ($linksOrder) {
             foreach ($linksOrder as $item) {
                 $tid_list[$item['tid']] = $item['tnum'];
+                $time_list[] = $item['begintime'];
             }
+        }
+        else {
+            $time_list[] = $order_info['begintime'];
+        }
+        $begin_time = $order_info['begintime'];
+        $end_time   = $order_info['endtime'];
+        //酒店类型比较特殊
+        if ($this->p_type=='C') {
+            sort($time_list);
+            $begin_time = array_shift($time_list);
+            $end_time   = array_pop($time_list);
+            $end_time   = date('Y-m-d', strtotime('+1 days', strtotime($end_time)));
         }
         $tickets = $this->model->table('uu_jq_ticket')
             ->where( ['id'=>['in', array_keys($tid_list) ] ])
-            ->getField('id, title', true);
-        $pname = '';
+            ->getField('id, pid, title,getaddr', true);
+        $pname   =  '';
+        $getaddr = '';
+        $pid_list = [];
         foreach ($tid_list as $tid=>$tnum) {
-            $pname .= "{$tickets[$tid]}{$tnum}" . $this->unit;
+            if ($tid==$order_info['tid']) $master_pid = $tickets[$tid]['pid'];
+            $getaddr = $tickets[$tid]['getaddr'];
+            $pname  .= "{$tickets[$tid]['title']}{$tnum}{$this->unit},";
+            $pid_list[] = $tickets[$tid]['pid'];
         }
+
+
+
         return [
-            'pname'     => $pname,
+            'lid'       => $order_info['lid'],
+            'buyer'     => $order_info['ordername'],
+            'pname'     => rtrim($pname, ','),
             'code'      => $order_info['code'],
-            'begintime' => $order_info['begintime'],
-            'endtime'   => $order_info['endtime'],
+            'begintime' => $begin_time,
+            'endtime'   => $end_time,
+            'getaddr'   => $getaddr,
+            'memo'      => $order_info['memo'],//订单备注信息
+            'pid_list'  => $pid_list,
+            'master_pid'=> $master_pid,
         ];
     }
     /**
@@ -105,7 +158,7 @@ class OrderNotify {
      * @param bool|false $manualQr 是否显示二维码（小彭对接时调用）
      * @return array|mixed|string
      */
-    private function SmsContent($p_name, $begin_time, $end_time,$cformat='', $code=0,
+    private function SmsContent($p_name, $getaddr, $begin_time, $end_time,$cformat='', $code=0,
                                 $ret_format=1, $manualQr=false)
     {
         $search_replace = array();
@@ -118,7 +171,7 @@ class OrderNotify {
         $search_replace['{tnum}']       = '';
         $search_replace['{begintime}']  = date('m月d日', strtotime($begin_time));
         $search_replace['{endtime}']    = date('m月d日', strtotime($end_time));
-        $search_replace['{getaddr}']    = $this->ticketInfo['getaddr'];
+        $search_replace['{getaddr}']    = $getaddr;
         //演出类产品
         if ($this->p_type=='H') {
             $PerInfo='';
@@ -157,40 +210,136 @@ class OrderNotify {
         return $send_msg_word;
     }
 
-    public function Send( $code=0 )
+    /**
+     * 购买者短信通知
+     *
+     * @param array $infos
+     * @param $code
+     * @return bool
+     */
+    public function BuyerNotify(Array $infos, $code)
     {
         $this->p_type = $p_type = strtoupper($this->p_type);
         $sms_tpl = $this->SmsTemplate();
         $cformat = $sms_sign = '';
+        $sms_channel = 0;
+        $sms_account = '';
         if ($sms_tpl) {
-            $cformat = $sms_tpl['cformat'];
-            $sms_sign = $sms_tpl['sms_sign'];
+            $cformat        = $sms_tpl['cformat'];
+            $sms_sign       = $sms_tpl['sms_sign'];
+            $sms_channel    = $sms_tpl['dtype'];
+            $sms_account    = $sms_tpl['sms_account'];
         }
-        $infos = $this->getOrderInfo();
         $code  = $code==0 ? $infos['code'] : $code;
-        //离店时间要加一天
-        $end_time = date('Y-m-d', strtotime('+1 days', strtotime($infos['endtime'])));
-        $sms_content = $this->SmsContent($infos['pname'], $infos['begintime'], $end_time, $cformat, $code);
+        $sms_content = $this->SmsContent($this->title . $infos['pname'],  $infos['getaddr'], $infos['begintime'], $infos['endtime'], $cformat, $code);
         if (!empty($sms_sign)) {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
-        switch ( $sms_tpl['dtype']) {
+        return $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account);
+    }
+
+    /**
+     * 向供应商发送通知信息
+     *
+     * @param array $infos 参数
+     *              pid_list 预定的产品id
+     *              ordername 下单人姓名
+     *              pname 购买的产品
+     *              note 备注信息
+     *              play_time 消费日期
+     * @return bool
+     */
+    public function SellerNotify(Array $infos)
+    {
+        //查看哪些产品需要发送短信给供应商
+        $data = self::GetSellerTel($infos['pid_list']);
+        $sms_notify_num = null;
+        $confirm_wx     = 0;//接收微信通知标记
+        foreach ($data as $row) {
+            if ($row['confirm_wx']) {
+                $confirm_wx = 1;
+            }
+            if (($row['confirm_sms'] == 1 || $row['confirm_sms']==3 ) && $row['fax']) {
+                $sms_notify_num = $row['fax'];
+                break;
+            }
+        }
+        $sms_tpl = '预订通知：客人{dname}预订了{product_content}，{play_time}订单号：{ordernum}。联系电话：{tel}。';
+
+        if ($infos['memo']) {
+            $sms_tpl .= "客人备注信息：{$infos['memo']}。";
+        }
+        //微信通知
+        if ($confirm_wx && ($wx_open_id = $this->WxNotifyChk($this->sellerId)) ) {
+            //如果绑定了多个微信号
+            if (is_array($wx_open_id)) {
+                foreach ($wx_open_id as $openid) {
+                    $this->WxNotifyProvider(
+                        $openid,
+                        $this->order_num,
+                        $this->title ,
+                        $infos['pname'],
+                        $this->pid
+                    );
+                }
+            }
+            else {
+                $this->WxNotifyProvider(
+                    $wx_open_id,
+                    $this->order_num,
+                    $this->title ,
+                    $infos['pname'],
+                    $this->pid
+                );
+            }
+        }
+        //短信通知
+        if (!is_null($sms_notify_num) && ismobile($sms_notify_num)) {
+            if ($this->p_type=='C') {
+                $sms_tpl = '预订通知：客人{dname}预订了{product_content}，{begintime}入住，{endtime}离店，订单号：{ordernum}。联系电话：{tel}。客人备注信息：{note}。';
+                $search  = array('{dname}', '{product_content}', '{begintime}', '{endtime}', '{ordernum}', '{tel}', '{note}',);
+                $replace = array($infos['ordername'], $this->title . $infos['pname'],
+                    $infos['begintime'], $infos['endtime'], $this->order_num,
+                    $this->order_tel, $infos['memo'],);
+            }
+            else {
+                $search  = array('{dname}', '{product_content}', '{ordernum}', '{tel}', '{play_time}');
+                $replace =  array($infos['ordername'], $this->title . $infos['pname'], $this->order_num, $this->order_tel, $infos['begintime']);
+            }
+            $sms_word = str_replace($search, $replace, $sms_tpl);
+            return $this->SendSMS($sms_notify_num, $sms_word);
+        }
+        return true;
+    }
+
+    /**
+     * 发送短信统一接口
+     *
+     * @param string $mobile 手机号
+     * @param string $content 短信内容
+     * @param int $sms_channel 发送渠道
+     * @param string $sms_account 短信账号
+     * @return bool
+     */
+    private function SendSMS($mobile, $content, $sms_channel=0, $sms_account='')
+    {
+        switch ( $sms_channel ) {
             case 1:
-                $res = \Library\MessageNotify\HongQunSms::doSendSMS($this->order_tel, $sms_content);
+                $res = \Library\MessageNotify\HongQunSms::doSendSMS($mobile, $content);
                 break;
             default:
-                $res = \Library\MessageNotify\VComSms::doSendSMS($this->order_tel,
-                    $sms_content,  $this->order_num,
-                    $sms_tpl['sms_account']);
+                $res = \Library\MessageNotify\VComSms::doSendSMS($mobile,
+                    $content,  $this->order_num,
+                    $sms_account);
                 break;
         }
-        $msglen     = utf8Length($sms_content);
+        $msglen     = utf8Length($content);
         if ($res['code']==200) {
             //扣费
             $m      = ceil($msglen/67);
             $memOjb = new \Model\Member\Member();
-            $res    = $memOjb->ChargeSms($this->source_apply_did, $m, $this->order_num, $buyerId);
-            return $res==200;
+            $res    = $memOjb->ChargeSms($this->sellerId, $m, $this->order_num, $this->buyerId);
+            return $res['code']==200;
         }
         return false;
     }
@@ -209,9 +358,122 @@ class OrderNotify {
 
         if (!$row) {
             $row   = $Model->table('uu_sms_format') ->field('cformat,dtype,sms_account,sms_sign')
-                ->where(['aid'=>$this->source_apply_did, 'pid'=>0])
+                ->where(['aid'=>$this->sellerId, 'pid'=>0])
                 ->find();
         }
         return $row;
+    }
+
+    private function GetSellerTel($pids)
+    {
+        $map    = is_array($pids) ? ['pid'=>['in', $pids]] : ['pid'=>$pids];
+        $model  = new Model('slave');
+        return $model->table('uu_land_f f')->join('uu_land l on l.id=f.lid')
+            ->field('f.pid,f.confirm_sms,f.confirm_wx,l.fax')
+            ->where($map)
+            ->select();
+    }
+    /**
+     * 检查是否可以通过微信发送通知
+     *
+     * @param int $fid 会员id
+     * @return bool/string false/微信openid
+     */
+    public function WxNotifyChk($fid, $useOtherAppid=false)
+    {
+        $wx = new WxMember();
+        if (is_bool($useOtherAppid)) {
+            $appid = $useOtherAppid ? WECHAT_APPID : OpenExt::PFT_APP_ID;
+        } else {
+            $appid = $useOtherAppid;
+        }
+        $data = $wx->getWxInfo($fid, $appid);
+
+        $tmp    = array();
+        $openid = array();
+        foreach ($data as $row) {
+            if ($row['verifycode']==1) {
+                $openid[] = $row['fromusername'];
+            }
+            $tmp[] = $row['fromusername'];
+        }
+        $cnt = count($openid);
+        if (($cnt==1||$cnt==0) && count($tmp)) {
+            //如果都没有设置的话，那么随机选择一个
+            return array_shift($tmp);
+        }
+        elseif(count($openid)) {
+            return $openid;
+        }
+        return false;
+
+    }
+
+    /**
+     * @param string $wx_open_id openid
+     * @param string $ordernum 订单号
+     * @param string $p_name 产品名称
+     * @param string $remark 文字说明
+     * @param string $pid 产品编号
+     * @return string
+     */
+    public function WxNotifyProvider($wx_open_id, $ordernum, $p_name, $remark, $pid = '')
+    {
+//        {{first.DATA}}
+//        订单号：{{OrderId.DATA}}
+//        产品编号：{{ProductId.DATA}}
+//        产品名称：{{ProductName.DATA}}
+//        {{remark.DATA}}
+//        您好！您有新订单：
+        //2015年5月30日 22:02:13,更新：通知供应商只能通过票付通公众号来通知。
+        $data = array(
+            'first' => array('value' => '您好！您有新订单：', 'color' => '#173177'),
+            'OrderId' => array('value' => $ordernum, 'color' => '#173177'),
+            'ProductId' => array('value' => $pid, 'color' => '#ff9900'),
+            'ProductName' => array('value' => $p_name, 'color' => '#173177'),
+            'remark' => array('value' => $remark, 'color' => ''),
+        );
+        $jobId = Queue::push('notify',
+            'WxNotify_Job', array(
+                'openid'    => $wx_open_id,
+                'data'      => $data,
+                'tplId'     => 'HOTEL_ORDER_MSG',
+                'color'     => '#FF0000',
+                'url'       => "http://wx.12301.cc/html/order_detail.html?fromt=f542e9fac6e76f4b3b66422d49e5585c&ordernum=$ordernum"
+            )
+        );
+        return $jobId;
+    }
+
+    /**
+     * 短信凭证号加密编码
+     *
+     * @param $n
+     * @return string
+     */
+    public static function url_sms($n){
+        $hashids = new \Library\Hashids\SmsHashids();
+        return 'M'.$hashids->encode($n);
+    }
+
+    /**
+     * 短信凭证号解密编码
+     * @param $n
+     * @return array|string
+     */
+    public static function url_sms_decode($n){
+        if (strpos($n, 'M')!==false) {
+            $n = substr($n, 1);
+            $hashids = new \Library\Hashids\SmsHashids();
+            return $hashids->decode($n);
+        }
+        $na=array("u","l","5","4","3","2","1","y","s","t");
+        $n=(string)$n;
+        $s="";
+        $len=strlen($n);
+        for ($i=0;$i<$len;$i++){
+            $s.=array_search($n[$i], $na);
+        }
+        return $s;
     }
 }
