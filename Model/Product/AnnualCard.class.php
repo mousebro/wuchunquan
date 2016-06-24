@@ -11,15 +11,17 @@ use Model\Product\Ticket;
 class AnnualCard extends Model
 {
 
-    const ANNUAL_CARD_TABLE = 'pft_annual_card';            //卡片信息表
-    const CARD_CONFIG_TABLE = 'pft_annual_card_conf';       //年卡激活配置表
-    const CARD_PRIVILEGE_TABLE = 'pft_annual_card_privilege';  //年卡景区特权表
-    const CARD_ORDER_TABLE = 'pft_annual_card_order';       //年卡订单记录表
+    const ANNUAL_CARD_TABLE     = 'pft_annual_card';            //卡片信息表
+    const CARD_CONFIG_TABLE     = 'pft_annual_card_conf';       //年卡激活配置表
+    const CARD_PRIVILEGE_TABLE  = 'pft_annual_card_privilege';  //年卡景区特权表
+    const CARD_ORDER_TABLE      = 'pft_annual_card_order';      //年卡订单记录表
 
-    const PRODUCT_TABLE = 'uu_products';                //产品信息表
-    const TICKET_TABLE = 'uu_jq_ticket';               //门票信息表
-    const LAND_TABLE = 'uu_land';                    //景区表
-    const SALE_LIST_TABLE = 'pft_product_sale_list';      //一级转分销表
+    const PRODUCT_TABLE         = 'uu_products';                //产品信息表
+    const TICKET_TABLE          = 'uu_jq_ticket';               //门票信息表
+    const LAND_TABLE            = 'uu_land';                    //景区表
+    const SALE_LIST_TABLE       = 'pft_product_sale_list';      //一级转分销表
+
+    const VIRTUAL_LEN           = 8;    //虚拟卡号长度 
 
     public function __construct($parent_tid = 0, $sid = 0)
     {
@@ -186,13 +188,13 @@ class AnnualCard extends Model
         $number = '0123456789';
         $mix = $string . $number;
 
-        $virtual_no = '';
-        $head = str_shuffle($string)[0];
-        $second_part = substr(str_shuffle($string), 0, 3);
-        $third_part = substr(str_shuffle($number), 0, 3);
-        $virtual_no .= $head . $second_part . $third_part;
-        $tail = array_sum(str_split($virtual_no));
-        $virtual_no .= $virtual_no . $tail;
+        $virtual_no     = '';
+        $head           = str_shuffle($string)[0];
+        $second_part    = substr(str_shuffle($string), 0, 3);
+        $third_part     = substr(str_shuffle($number), 0, 3);
+        $virtual_no    .= $head . $second_part . $third_part;
+        $tail           = array_sum(str_split($virtual_no));
+        $virtual_no    .= $virtual_no . $tail;
 
         return $virtual_no;
     }
@@ -247,6 +249,23 @@ class AnnualCard extends Model
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->save($update);
     }
 
+    /**
+     * 解析标识的类型(手机号|卡号|物理卡号|虚拟卡后)
+     * @param  [type] $identify [description]
+     * @return [type]           [description]
+     */
+    public function parseIdentifyType($identify) {
+
+        if (is_mobile($identify)) {
+            return 'mobile';
+        }
+
+        if (strlen($identify) == self::VIRTUAL_LEN) {
+            // if ()
+        }
+
+    }
+
 
     /**
      * 获取年卡产品包含的特权产品
@@ -268,7 +287,7 @@ class AnnualCard extends Model
         $result = $this->table(self::CARD_PRIVILEGE_TABLE)
             ->join('pri left join uu_jq_ticket t on pri.tid=t.id left join uu_land l on t.landid=l.id')
             ->where($where)
-            ->field('pri.tid,pri.limit_count,t.title,t.pid,l.title as ltitle')
+            ->field('pri.tid,pri.use_limit,t.title,t.pid,l.title as ltitle')
             ->select();
 
         return $result ?: [];
@@ -553,7 +572,6 @@ class AnnualCard extends Model
 
     public function getRemainTimes($sid, $tid, $memberid, $only_all = false) {
 
-
         $loop = [
             [
                 //每日次数
@@ -735,6 +753,12 @@ class AnnualCard extends Model
     {
         $ret1 = $this->saveCrdConf($crdConf);
         $ret2 = $this->setCardPrivilege($parent_tid, $crdPriv);
+
+        if ($ret1 && $ret2) {
+            return 'success';
+        } else {
+            return 'fail';
+        }
     }
 
 
@@ -757,10 +781,10 @@ class AnnualCard extends Model
         if ($exist) {
             $result = $this->table(self::CARD_CONFIG_TABLE)->where(['id' => $exist])->save($data);
         } else {
-            $this->table(self::CARD_CONFIG_TABLE)->add($data);
+            $result = $this->table(self::CARD_CONFIG_TABLE)->add($data);
         }
 
-        return $result;
+        return $result !== false ? true : false;
     }
 
     /**
