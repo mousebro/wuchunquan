@@ -19,7 +19,7 @@ class TradeRecord extends Controller
     public function __construct()
     {
         C(include __DIR__ . '/../../Conf/trade_record.conf.php');
-        $this->memberId = $this->isLogin('ajax');
+        $this->memberId = $this->isLogin();
     }
 
     /**
@@ -289,8 +289,7 @@ class TradeRecord extends Controller
         $interval,
         $fid,
         $partner_id
-    )
-    {
+    ) {
         switch ($form) {
             case 0:
                 $data = $recordModel->getList($map, $page, $limit, $fid, $partner_id);
@@ -334,7 +333,7 @@ class TradeRecord extends Controller
      * @return bool|mixed|string
      * @throws Exception
      */
-    private function _parsePayType($fid, $partnerId, &$map, $interval)
+    private function _parsePayType($fid, $partnerId, &$map)
     {
         //接收参数
         $ptype = \safe_str(I('ptypes'));
@@ -360,94 +359,37 @@ class TradeRecord extends Controller
                 $map['ptype'] = $ptype;
         }
         //支付方式中包含在线支付
-
-        if (in_array($ptype, $online_pay_type) || 100 == $ptype || 98 == $ptype) {
-            //参数初始化
-            $begin_time = min($interval);
-            $end_time = max($interval);
-            $renew_time = C('update_time')[ ENV ];
-
-            if ($begin_time == $end_time || $begin_time > $renew_time) {
-                $type = 'renewed';
-            } elseif ($end_time < $renew_time) {
-                $type = 'origin';
-            } else {
-                $type = 'mixed';
-            }
-
-            $this->_parseRectTime($ptype, $fid, $partnerId, $map, $type, $begin_time, $end_time, $renew_time);
-        } else {
-            if ($ptype == 99) {
-                $self = 'aid';
-                $other = 'fid';
-            } else {
-                $self = 'fid';
-                $other = 'aid';
-            }
-            if (!$fid && $this->memberId != 1) {
+        if (!$fid) {
+            if ($this->memberId != 1) {
                 throw new Exception('无权限查看', 201);
             } else {
-                if ($fid) {
-                    $map[ $self ] = $fid;
-                }
-            }
-            if ($partnerId) {
-                $map[ $other ] = $partnerId;
+                return false;
             }
         }
-        return $ptype;
-    }
-
-    /**
-     * 查询时段只包含旧的在线支付记录方式
-     *
-     * @param $ptype
-     * @param $fid
-     * @param $partnerId
-     * @param $map
-     *
-     * @return mixed
-     */
-    private function _parseRectTime($ptype, $fid, $partnerId, &$map, $type, $begin_time, $end_time, $renew_time)
-    {
-        if (!$fid || in_array($ptype, [0, 2, 3])) {
-            return false;
-        }
-
+        //参数初始化
+        $self = 'fid';
+        $other = 'aid';
         $logic = ['_logic' => 'or'];
 
-        $fid_as_other_origin = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['neq', 0],] : ['aid' => $fid,];
-        $fid_as_other_renewed = ($ptype == 100) ? ['aid' => $fid, 'ptype' => ['in', [2, 3],]] : ['aid' => $fid];
-        $fid_as_self = ['fid' => $fid];
+        $fid_as_self = [$self => $fid];
+        $fid_as_other = [$other => $fid];
 
+        //选择了对方商户
         if ($partnerId) {
-            $partnerId_as_self = ['fid' => $partnerId];
-            $partnerId_as_other = ['aid' => $partnerId];
-            $fid_as_other_origin += $partnerId_as_self;
-            $fid_as_other_renewed += $partnerId_as_self;
-            $fid_as_self += $partnerId_as_other;
+            $fid_as_other += [$self => $partnerId];
+            $fid_as_self += [$other => $partnerId];
         }
 
-        if ($type == 'origin') {
-            $fid_as_other = $fid_as_other_origin;
-        } elseif ($type == 'renewed') {
-            $fid_as_other = $fid_as_other_renewed;
+        if ($ptype == 100) {
+            $fid_as_other += [$other => $fid, 'ptype' => ['in', [2, 3],]];
+            $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
+        } elseif ($ptype == 99) {
+            $fid_as_other += [$other => $fid, 'ptype' => ['in', [2, 3],]];
+            $map += $fid_as_other;
         } else {
-            if (isset($map['rectime'])) {
-                unset($map['rectime']);
-            }
-
-            $fid_as_other_origin['rectime'] = ['between', [$begin_time, $renew_time]];
-            if ($fid_as_other_renewed && $ptype == 100) {
-                $fid_as_other_renewed['rectime'] = ['between', [$renew_time, $end_time]];
-                $fid_as_other = [$fid_as_other_origin, $fid_as_other_renewed] + $logic;
-            } else {
-                $fid_as_other = $fid_as_other_origin;
-            }
-            $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
+            $map += $fid_as_self;
         }
 
-        $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
         return $ptype;
     }
 
