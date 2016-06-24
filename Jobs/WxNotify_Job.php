@@ -9,6 +9,10 @@ class WxNotify_Job {
         $db = \PFT\Db::Connect();
 
         pft_log('queue', json_encode($this->args));
+        if (ENV!='PRODUCTION') {
+            pft_log('queue/vcom', "发送微信|" .  json_encode($this->args, JSON_UNESCAPED_UNICODE));
+            return true;
+        }
         $wx = new \Library\MessageNotify\WxTemplateMsg();
         $wx->color  = $this->args['color'];
         $wx->url    = $this->args['url'];

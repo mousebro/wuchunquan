@@ -51,7 +51,7 @@ class OrderNotify {
         $this->title            = $title;
     }
 
-    public function Send( $code=0 )
+    public function Send( $code=0, $manualQr=false )
     {
         $infos = $this->getOrderInfo();
         if (!$this->pid) {
@@ -64,7 +64,7 @@ class OrderNotify {
             $this->pid    = $infos['master_pid'];
             unset($land);
         }
-        $this->BuyerNotify($infos, $code);
+        $this->BuyerNotify($infos, $code, $manualQr);
         $this->SellerNotify($infos);
         return true;
     }
@@ -139,7 +139,7 @@ class OrderNotify {
      * @param $code
      * @return bool
      */
-    public function BuyerNotify(Array $infos, $code)
+    public function BuyerNotify(Array $infos, $code, $manualQr)
     {
         $this->p_type = $p_type = strtoupper($this->p_type);
         $sms_tpl = $this->SmsTemplate();
@@ -153,7 +153,8 @@ class OrderNotify {
             $sms_account    = $sms_tpl['sms_account'];
         }
         $code  = $code==0 ? $infos['code'] : $code;
-        $sms_content = $this->SmsContent($this->title . $infos['pname'],  $infos['getaddr'], $infos['begintime'], $infos['endtime'], $cformat, $code);
+        $sms_content = $this->SmsContent($this->title . $infos['pname'],  $infos['getaddr'],
+            $infos['begintime'], $infos['endtime'], $cformat, $code, 1, $manualQr);
         if (!empty($sms_sign)) {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
@@ -267,7 +268,7 @@ class OrderNotify {
      */
     private function SendSMS($mobile, $content, $sms_channel=0, $sms_account='')
     {
-        $content = str_replace("\n",'', $content);//过滤换行符
+        $content = str_replace(["\n", " ", "　",],'', $content);//过滤换行符，空格
         switch ( $sms_channel ) {
             case 1:
                 $res = \Library\MessageNotify\HongQunSms::doSendSMS($mobile, $content);
@@ -315,7 +316,6 @@ class OrderNotify {
                                 $ret_format=1, $manualQr=false)
     {
         $search_replace = array();
-        $orderObj   = new OrderQuery();
         $search_replace['{code}'] = (string)$code;
         $memberObj  = new Member();
         $dname      = $memberObj->getMemberCacheById($this->aid, 'dname');
@@ -328,7 +328,10 @@ class OrderNotify {
         //演出类产品
         if ($this->p_type=='H') {
             $PerInfo='';
-            $orderInfo  = $orderObj->GetOrderInfo(OrderQuery::__ORDER_DETAIL_TABLE__, $this->order_num, 'series');
+            $orderObj   = new OrderQuery();
+            $orderInfo  = $orderObj->GetOrderInfo(OrderQuery::__ORDER_DETAIL_TABLE__,
+                $this->order_num, 'series');
+
             if ($orderInfo[0]['series']){
                 $PerInfo=unserialize($orderInfo[0]['series'])[6];
             }
@@ -358,8 +361,6 @@ class OrderNotify {
             $send_msg_word = str_replace(array_keys($search_replace),
                 array_values($search_replace), $sms_tpl);
         }
-        $send_msg_word = trim($send_msg_word);
-        $send_msg_word = str_replace(array(" ", "　"), array("", ""), $send_msg_word);
         return $send_msg_word;
     }
 
