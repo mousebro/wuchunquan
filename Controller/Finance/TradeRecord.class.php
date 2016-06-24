@@ -424,14 +424,21 @@ class TradeRecord extends Controller
             $partnerId_as_self = ['fid' => $partnerId];
             $partnerId_as_other = ['aid' => $partnerId];
             $fid_as_other_origin += $partnerId_as_self;
-            $fid_as_other_renewed += $partnerId_as_self;
+            if ($ptype == 100) {
+                $fid_as_other_renewed += $partnerId_as_self;
+            }
             $fid_as_self += $partnerId_as_other;
         }
 
         if ($type == 'origin') {
             $fid_as_other = $fid_as_other_origin;
         } elseif ($type == 'renewed') {
-            $fid_as_other = $fid_as_other_renewed;
+            if ($ptype == 100) {
+                $fid_as_other = $fid_as_other_renewed;
+            } else {
+                $fid_as_other = '';
+            }
+
         } else {
             if (isset($map['rectime'])) {
                 unset($map['rectime']);
@@ -446,8 +453,15 @@ class TradeRecord extends Controller
             }
             $fid_as_self['rectime'] = ['between', [$begin_time, $end_time]];
         }
+        if ($fid_as_other) {
+            $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
+        } else {
+            $map[] = $fid_as_self;
+        }
 
-        $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
+//print_r($fid_as_self);
+//        print_r($map['_complex']);
+//        exit;
         return $ptype;
     }
 
