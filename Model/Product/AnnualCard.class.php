@@ -254,16 +254,21 @@ class AnnualCard extends Model
      * @param  [type] $identify [description]
      * @return [type]           [description]
      */
-    public function parseIdentifyType($identify) {
+    public function parseIdentifyType($identify, $type = 'physics') {
 
-        if (is_mobile($identify)) {
+        if (ismobile($identify)) {
             return 'mobile';
         }
 
         if (strlen($identify) == self::VIRTUAL_LEN) {
-            // if ()
+            if (ctype_alpha($identify[0])) {
+                return 'virtual_no';
+            } 
         }
 
+        if (ctype_digit($identify)) {
+            return $type == 'physics' ? 'card_no' : 'physics_no';
+        }
     }
 
 
@@ -307,12 +312,14 @@ class AnnualCard extends Model
         if ($type == 'virtual') {
             $where = [
                 'sid'     => $sid,
+                'pid'     => $pid,
                 'card_no' => '',
                 'status'  => 3,
             ];
         } else {
             $where = [
                 'sid'     => $sid,
+                'pid'     => $pid,
                 'card_no' => array('neq', ''),
                 'status'  => 3,
             ];
