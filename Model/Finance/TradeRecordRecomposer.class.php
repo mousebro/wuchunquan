@@ -11,7 +11,7 @@ namespace Model\Finance;
 use Library\Exception;
 use Model\Member\Member;
 
-class TradeRecordParser
+class TradeRecordRecomposer
 {
     private $record;
     private $memberModel;
@@ -74,7 +74,7 @@ class TradeRecordParser
      *
      * @return $this
      */
-    public function parseMember($separator = '<br>')
+    public function recomposeMember($separator = '<br>')
     {
         $options['opid'] = 'oper';
         $account = [];
@@ -156,7 +156,7 @@ class TradeRecordParser
     /**
      * 转换金额
      */
-    public function parseMoney()
+    public function recomposeMoney()
     {
         $renew_time = C('update_time')[ ENV ];
         $options = ['dmoney', 'lmoney'];
@@ -177,7 +177,7 @@ class TradeRecordParser
     /**
      * 转换交易渠道
      */
-    public function parseChannel()
+    public function recomposeChannel()
     {
         $channel_list = C('order_channel');
         if (array_key_exists($this->record['order_channel'], $channel_list)) {
@@ -192,7 +192,7 @@ class TradeRecordParser
     /**
      * 转换交易内容
      */
-    public function parseTradeContent()
+    public function recomposeTradeContent()
     {
         if (empty($this->record['body']) && isset($this->record['p_name'])) {
             $this->record['body'] = $this->record['p_name'];
@@ -221,7 +221,7 @@ class TradeRecordParser
      *
      * @return $this
      */
-    public function parsePayType()
+    public function recomposePayType()
     {
         if (!isset($this->record['ptype'])) {
             return $this;
@@ -273,7 +273,7 @@ class TradeRecordParser
      *
      * @return $this
      */
-    public function parseTradeType($separator = '-')
+    public function recomposeTradeType($separator = '-')
     {
         if (isset($this->record['dtype'])) {
             $dtype_list = array_column(C('item_category'), 1);
@@ -295,7 +295,7 @@ class TradeRecordParser
     /**
      * 转换支付方账号
      */
-    public function parsePayee()
+    public function recomposePayee()
     {
         if (isset($this->record['payee_type'])) {
             $this->record['payee_type'] = C('payee_type')[ $this->record['payee_type'] ];
@@ -307,7 +307,7 @@ class TradeRecordParser
     /**
      * 转换收款方账号
      */
-    public function parsePayer()
+    public function recomposePayer()
     {
         if (array_key_exists('payer_acc', $this->record)) {
             if (!($this->record['payer_acc'])) {
@@ -354,7 +354,7 @@ class TradeRecordParser
      *
      * @return $this
      */
-    public function parseMemberBasic(&$account = [])
+    public function recomposeMemberBasic(&$account = [])
     {
         $account = $this->getMemberAccInfo($account);
 

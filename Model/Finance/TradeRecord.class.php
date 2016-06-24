@@ -17,7 +17,7 @@ class TradeRecord extends Model
     private $_trade_record_table = 'pft_member_journal';
     private $_ticket_table = "uu_jq_ticket";
     private $_alipay_table = "pft_alipay_rec";
-    private $parser;
+    private $recomposer;
 
     /**
      * @param $records
@@ -30,7 +30,7 @@ class TradeRecord extends Model
     private function _recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $fid, $partner_id)
     {
         $data = [];
-        $parser = $this->_getParser();
+        $recomposer = $this->_getRecomposer();
         foreach ($records as $record) {
             $ordernum = $record['orderid'];
 
@@ -47,14 +47,14 @@ class TradeRecord extends Model
                 $record = array_merge($record, $payAcc[ $ordernum ]);
             }
 
-            $data[] = $parser->setRecord($record, $fid, $partner_id)
-                ->parseTradeType('|')
-                ->parseMember(false)
-                ->parsePayType()
-                ->parseChannel()
-                //->parsePayee()
-                ->parseTradeContent()
-                ->parseMoney()
+            $data[] = $recomposer->setRecord($record, $fid, $partner_id)
+                ->recomposeTradeType('|')
+                ->recomposeMember(false)
+                ->recomposePayType()
+                ->recomposeChannel()
+                //->recomposePayee()
+                ->recomposeTradeContent()
+                ->recomposeMoney()
                 ->excelWrap(['payer_acc','payee_acc','dmoney','lmoney','trade_no','orderid'])
                 ->getRecord();
         }
@@ -65,15 +65,15 @@ class TradeRecord extends Model
     /**
      * 获取交易记录转换实例
      *
-     * @return TradeRecordParser
+     * @return TradeRecordRecomposer
      */
-    private function _getParser()
+    private function _getRecomposer()
     {
-        if (is_null($this->parser)) {
-            $this->parser = new TradeRecordParser();
+        if (is_null($this->recomposer)) {
+            $this->recomposer = new TradeRecordRecomposer();
         }
 
-        return $this->parser;
+        return $this->recomposer;
     }
 
     /**
@@ -121,14 +121,14 @@ class TradeRecord extends Model
             return false;
         }
 
-        $result = $this->_getParser()
+        $result = $this->_getRecomposer()
             ->setRecord($record)
-            ->parseTradeType()
-            ->parseTradeContent()
-            ->parseMemberBasic()
-            ->parsePayType()
-            ->parseChannel()
-            ->parseMoney()
+            ->recomposeTradeType()
+            ->recomposeTradeContent()
+            ->recomposeMemberBasic()
+            ->recomposePayType()
+            ->recomposeChannel()
+            ->recomposeMoney()
             ->getRecord();
 
         return $result;
@@ -294,17 +294,17 @@ class TradeRecord extends Model
         if (is_array($records) && count($records)) {
             $orderIds = array_filter(array_column($records, 'orderid'));
             $online_pay_info = $this->getPayerAccount($orderIds);
-            $parser = $this->_getParser();
+            $recomposer = $this->_getRecomposer();
             foreach ($records as $record) {
                 $orderid = $record['orderid'];
                 if (is_array($online_pay_info) && array_key_exists($orderid, $online_pay_info)) {
                     $record = array_merge($record, $online_pay_info[ $orderid ]);
                 }
-                $data[] = $parser->setRecord($record, $fid, $partner_id)
-                    ->parseMember()
-                    ->parseTradeType()
-                    ->parsePayType()
-                    ->parseMoney()
+                $data[] = $recomposer->setRecord($record, $fid, $partner_id)
+                    ->recomposeMember()
+                    ->recomposeTradeType()
+                    ->recomposePayType()
+                    ->recomposeMoney()
                     ->getRecord();
             }
         }
