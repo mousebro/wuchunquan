@@ -105,7 +105,7 @@ class TradeRecord extends Model
             'tr.trade_no',                          //交易流水
             'tr.memo',                              //备注
             'tr.daction',                           //收支
-            'tr.payee_type',                        //收款账户类型
+            'tr.account_type',                      //交易账户类型
             'o.ordermode as order_channel',         //交易渠道
             'p.p_name',                             //产品名称
             'a.buyer_email as payer_acc',           //支付方账号
@@ -157,7 +157,7 @@ class TradeRecord extends Model
             'lmoney',       //账户余额
             'ptype',        //支付方式
             'daction',      //0-收入 1-支出
-            'payee_type',   //收款方账号
+            'account_type',   //收款方账号
             'trade_no',     //支付流水号
             'memo',         //备注
         ];
@@ -275,7 +275,8 @@ class TradeRecord extends Model
             'lmoney',
             'ptype',
             'memo',
-            'payee_type',
+            'trade_no',
+            'account_type',
         ];
 
         $field = join(',', $field);
@@ -293,6 +294,9 @@ class TradeRecord extends Model
         $data = [];
         if (is_array($records) && count($records)) {
             $orderIds = array_filter(array_column($records, 'orderid'));
+            $trade_no = array_filter(array_column($records, 'trade_no'));
+            $partner_account_type = $this->getPartnerAccountType($trade_no);
+            
             $online_pay_info = $this->getPayerAccount($orderIds);
             $recomposer = $this->_getRecomposer();
             foreach ($records as $record) {
@@ -427,5 +431,15 @@ class TradeRecord extends Model
         ];
 
         return $return;
+    }
+
+    public function getPartnerAccountType($trade_no, $fid)
+    {
+        $where = [
+            'trade_no' => ['in', $trade_no],
+            'aid'      => $fid,
+        ];
+
+        return $this->table($this->_trade_record_table)->where($where)->getField("trade_no,account_type as partner_account_type");
     }
 }

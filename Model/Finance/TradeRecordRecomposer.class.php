@@ -511,4 +511,12 @@ class TradeRecordRecomposer
 
         return $account;
     }
+
+
+    private function recomposeAccountType()
+    {
+        //$fid_acc_type = C('account_type')[$this->record['account_type']];
+        //
+        //$this->record['payer_acc_type'] = 
+    }
 }

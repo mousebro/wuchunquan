@@ -97,6 +97,7 @@ class TradeRecord extends Controller
         try {
             $map = [];
             $fid = ($this->memberId == 1 && isset($_REQUEST['fid'])) ? intval(I('fid')) : $this->memberId;
+            //var_dump($fid);
             $partner_id = intval(I('partner_id')) ?: 0;
             
             if ($this->memberId == 1 && !$fid && $partner_id) {
@@ -117,7 +118,7 @@ class TradeRecord extends Controller
                 }
             }
             //支付方式
-            $this->_parsePayType($fid, $partner_id, $map, $interval);
+            $this->_parseAccountType($this->memberId, $fid, $partner_id, $map);
 
 
             //交易大类
@@ -187,7 +188,7 @@ class TradeRecord extends Controller
      * 管理员模糊搜索会员
      *
      * @param   string [srch]       会员名称/会员id/会员账号
-     * @param   string [ptypes]     支付类型                0-查看当前用户授信; 1-查看分销商授信
+     * @param   string [ptypes]     交易账户类型                0-查看当前用户授信; 1-查看分销商授信
      */
     public function srchMem($srch = null)
     {
@@ -316,5 +317,17 @@ class TradeRecord extends Controller
         }
     }
 
+    //www.12301.local/route/c=Finance_TradeRecord&a=testModel
+    public function testModel()
+    {
+        $map['fid'] = 113;
+        $page = 1;
+        $limit = 20;
+        $fid = 113;
+        $partner_id = 0;
+
+        $result = $this->_getTradeModel()->getList($map, $page, $limit, $fid, $partner_id);
+        print_r($result);
+    }
 
 }

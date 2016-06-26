@@ -24,30 +24,30 @@ trait TradeRecordParser
      * @return bool|mixed|string
      * @throws Exception
      */
-    protected function _parsePayType($memberId, $fid, $partnerId, &$map)
+    protected function _parseAccountType($memberId, $fid, $partnerId, &$map)
     {
         //接收参数
-        $ptype = \safe_str(I('ptypes'));
+        $account_type = \safe_str(I('ptypes'));
 
         $pay_types = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
         $online_pay_type = array_keys($pay_types, 0);
 
-        if (!is_numeric($ptype)) {
+        if (!is_numeric($account_type)) {
             return false;
         }
 
-        switch ($ptype) {
+        switch ($account_type) {
             case 2: //no break;
             case 99:
-                $map['ptype'] = ['in', [2, 3]];
+                $map['account_type'] = ['in', [2, 3]];
                 break;
             case 98: //获取在线支付类
-                $map['ptype'] = ['in', $online_pay_type];
+                $map['account_type'] = ['in', $online_pay_type];
                 break;
             case 100:
                 break;
             default:
-                $map['ptype'] = $ptype;
+                $map['account_type'] = $account_type;
         }
         //支付方式中包含在线支付
         if (!$fid) {
@@ -71,17 +71,17 @@ trait TradeRecordParser
             $fid_as_self += [$other => $partnerId];
         }
 
-        if ($ptype == 100) {
-            $fid_as_other += [$other => $fid, 'ptype' => ['in', [2, 3],]];
+        if ($account_type == 100) {
+            $fid_as_other += [$other => $fid, 'account_type' => ['in', [2, 3],]];
             $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
-        } elseif ($ptype == 99) {
-            $fid_as_other += [$other => $fid, 'ptype' => ['in', [2, 3],]];
+        } elseif ($account_type == 99) {
+            $fid_as_other += [$other => $fid, 'account_type' => ['in', [2, 3],]];
             $map += $fid_as_other;
         } else {
             $map += $fid_as_self;
         }
 
-        return $ptype;
+        return $account_type;
     }
 
     /**
