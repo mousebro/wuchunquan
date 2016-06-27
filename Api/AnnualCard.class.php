@@ -8,7 +8,7 @@ use Library\Controller;
 use Model\Product\AnnualCard as CardModel;
 use Model\Member\Member;
 use Model\Product\Ticket;
-use Controller\Product\AnnualCard as CardCtrl;
+use Controller\product\AnnualCard as CardCtrl;
 
 // if ( !defined('PFT_API') ) { exit('Access Deny'); }
 
@@ -18,6 +18,10 @@ use Controller\Product\AnnualCard as CardCtrl;
     private $_CardModel = null;
 
     private $_config = [];
+
+    private $_privileges = [];
+
+    private $_pri_left = [];
 
     public function __construct() {
 
@@ -53,7 +57,7 @@ use Controller\Product\AnnualCard as CardCtrl;
         if ($card['sid'] != $aid) {
              $this->apiReturn(204, [], '无法使用特权支付');
         }
-
+ 
         // 年卡有效期检测
         if (!$this->_periodOfValidityCheck($card)) {
             $this->apiReturn(204, [], '年卡已过期');
@@ -73,7 +77,38 @@ use Controller\Product\AnnualCard as CardCtrl;
             $this->api(204, [], $e->getMessage());
         }
 
-        $this->apiReturn(200, [], '下单成功');
+        $data = $this->_getExtraData($card);
+
+        $this->apiReturn(200, $data, '下单成功');
+
+    }
+
+    private function _getExtraData($card) {
+        $Member = new Member();
+
+        $member = $Member->getMemberInfo($card['memberid']);
+
+        $supply = $Member->getMemberInfo($card['sid']);
+
+        $product = (new Ticket)->getProductInfo($card['pid'], ['field' => 'p_name']);
+
+        $data = [
+            'mobile'        => $member['mobile'],
+            'card_title'    => $product['p_name'],
+            'card_no'       => $card['card_no'],
+            'virtual_no'    => $card['virtual_no'],
+            'valid_time'    => '2016-01-01~2016-08-01',
+            'supply'        => $supply['dname'],
+        ];
+
+        foreach ($this->_privileges as $item) {
+            $data['pri'][] = [
+                'title' => $item['ltitle'] . $item['title'],
+                'left' => implode(',', $this->_pri_left[$item['tid']])
+            ];
+        }
+
+        return $data;
 
     }
 
@@ -82,6 +117,12 @@ use Controller\Product\AnnualCard as CardCtrl;
      * @return [type] [description]
      */
     public function activate() {
+
+        // $string = '{"aid":3385,"mobile":"13123196340","identify":"13123196340","id_card":"777777777777777777"}';
+
+        // $_POST = $_GET = json_decode($string, true);
+        // 
+        // var_dump(file_exists('/var/www/html/Service/Controller/product/AnnualCard.class.php'));die;
 
         $Ctrl = new CardCtrl();
 
@@ -185,6 +226,8 @@ use Controller\Product\AnnualCard as CardCtrl;
             $this->apiReturn(204, [], '未找到任何特权产品');
         }
 
+        $this->_privileges = $privileges;
+
         $error = [];
         foreach ($products as $pid => $num) {
 
@@ -221,6 +264,7 @@ use Controller\Product\AnnualCard as CardCtrl;
 
         //不限制
         if ($config['use_limit'] == -1) {
+            $this->_pri_left[$tid] = -1;
             return ['status' => 1];
         }
 
@@ -234,6 +278,8 @@ use Controller\Product\AnnualCard as CardCtrl;
             if ($val[$i] != -1 && $times[$i] + $num > $val) {
                 $left_arr[] = ($val - $times[$i]);
             }
+
+            $this->_pri_left[$tid][] = $val[$i] == -1 ? -1 : $val - ($times[$i] + $num);
         }
 
         if (count($left_arr) > 0) {
@@ -289,6 +335,8 @@ use Controller\Product\AnnualCard as CardCtrl;
         $order_info = $DisOrder->order($options, $aid);
 
     }
+
+    
 
  }
 

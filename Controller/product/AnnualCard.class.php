@@ -14,9 +14,9 @@ class AnnualCard extends Controller {
 
     public function __construct() {
 
-        if (!isset($_SESSION['memberID'])) {
-            $this->apiReturn(401, [], '请先登录');
-        }
+        // if (!isset($_SESSION['memberID'])) {
+        //     $this->apiReturn(401, [], '请先登录');
+        // }
 
         // if (!$this->isAjax()) {
         //     $this->apiReturn(403, [], '我要报警了!!!');
@@ -306,9 +306,9 @@ class AnnualCard extends Controller {
      */
     private function _activateCheck($identify, $type, $sid) {
 
-        $type = $this->CardModel->parseIdentifyType($identify, $type);
+        $type = $this->_CardModel->parseIdentifyType($identify, $type);
 
-        if (!in_array($type, ['card_no', 'virtual_no', 'physics_no'])) {
+        if (!in_array($type, ['card_no', 'virtual_no', 'physics_no', 'mobile'])) {
             $this->apiReturn(204, [], '类型参数错误');
         }
 
