@@ -397,7 +397,6 @@ class SellerStorage extends Model{
         $pid        = intval($pid);
         $setterUid  = intval($setterUid);
         $res         = $this->table($this->_infoTable)->where(array('pid' => $pid, 'setter_uid' => $setterUid))->find();
-
         if($res && $res['status'] == 1) {
             //开启
             return true;
@@ -1365,12 +1364,12 @@ class SellerStorage extends Model{
     /**
      * 判断库存是否充足
      * 
-     * @param pid 产品ID
-     * @param setterUid 供应商ID或是上级分销商ID
-     * @param resellerUid 分销商ID
-     * @param date 日期 - 2016-10-23
-     * @param buyNum 需要购买的数量
-     * @param attr 产品属性，这边可能是场次
+     * @param int pid 产品ID
+     * @param int setterUid 供应商ID或是上级分销商ID
+     * @param  intresellerUid 分销商ID
+     * @param string $date 日期 - 2016-10-23
+     * @param int $buyNum 需要购买的数量
+     * @param bool attr 产品属性，这边可能是场次
      *
      * @return bool / int
      *         -1    : 参数错误
