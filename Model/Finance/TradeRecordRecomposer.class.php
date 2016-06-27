@@ -210,7 +210,7 @@ class TradeRecordRecomposer
     public function recomposeMemberInfo($separator = '<br/>')
     {
         $this->record['taccount'] = $this->self['acc_type'];
-
+        $this->record['member'] = $this->self['dname'];
         $this->record['counter'] = self::combineStr([$this->other['dname'], $this->other['acc_type']], $separator);
 
         return $this;
