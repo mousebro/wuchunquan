@@ -197,13 +197,8 @@ class TradeRecordRecomposer
 
     public function recomposeMemberDetail()
     {
-        if ($this->is_acc_reverse) {
-            $this->record['member'] = $this->_recomposeMemberDetail($this->partner);
-            $this->record['counter'] = $this->_recomposeMemberDetail($this->member);
-        } else {
-            $this->record['member'] = $this->_recomposeMemberDetail($this->member);
-            $this->record['counter'] = $this->_recomposeMemberDetail($this->partner);
-        }
+        $this->record['member'] = $this->_recomposeMemberDetail($this->self);
+        $this->record['counter'] = $this->_recomposeMemberDetail($this->other);
         return $this;
     }
 

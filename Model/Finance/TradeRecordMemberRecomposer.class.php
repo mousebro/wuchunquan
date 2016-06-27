@@ -24,16 +24,16 @@ trait TradeRecordMemberRecomposer
         $this->online_pay_type = array_keys($pay_types, 0);
     }
 
-    private function getPartnerAccountType($partner_acc_type, $pay_type)
+    private function getDefaultAccountType($acc_type, $is_payee)
     {
-        if (!$partner_acc_type) {
-            if (in_array($pay_type, [0, 2, 3])) {
-                return $pay_type;
+        if (!$acc_type || $acc_type == -1) {
+            if (in_array($this->record['ptype'], [0, 2, 3]) || !$is_payee) {
+                return $this->record['ptype'];
             } else {
                 return 0;
             }
         } else {
-            return $partner_acc_type;
+            return $acc_type;
         }
     }
 
@@ -49,7 +49,7 @@ trait TradeRecordMemberRecomposer
     {
         if (isset($member['acc_type'])) {
             $extend_info = $member['acc_type'];
-            if (isset($member['account'])) {
+            if (isset($member['account']) && in_array($member['acc_type'], [0, 1])) {
                 $extend_info = self::combineStr([$extend_info, $member['account']], ':');
             }
             $extend_info = self::join_bracket([$extend_info]);
@@ -105,10 +105,11 @@ trait TradeRecordMemberRecomposer
     {
         $this->member['id'] = $this->record['fid'];
         $this->partner['id'] = $this->record['aid'];
-        $this->member['acc_type'] = $this->record['member_acc_type'];
-        $this->partner['acc_type'] = $this->getPartnerAccountType($this->record['partner_acc_type'],
-            $this->record['ptype']);
         $this->whoIsPayee();
+        $this->member['acc_type'] = $this->getDefaultAccountType($this->record['member_acc_type'],
+            $this->member['is_payee']);
+        $this->partner['acc_type'] = $this->getDefaultAccountType($this->record['partner_acc_type'],
+            $this->partner['is_payee']);
         $this->getMemberInfo($this->member, true);
         $this->getMemberInfo($this->partner, false);
     }
