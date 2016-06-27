@@ -17,11 +17,11 @@ use Controller\product\AnnualCard as CardCtrl;
 
     private $_CardModel = null;
 
-    private $_config = [];
+    private $_config = [];  //年卡配置
 
-    private $_privileges = [];
+    private $_privileges = [];  //年卡特权信息
 
-    private $_pri_left = [];
+    private $_pri_left = [];    //特权剩余次数
 
     public function __construct() {
 
@@ -38,8 +38,8 @@ use Controller\product\AnnualCard as CardCtrl;
         $products   = I('tickets');     //门票 [['pid' => num]]
         $identify   = I('identify');
         $type       = I('type');
-
-        $products   = ['2380' => 1];
+// 9595,1,22323,2
+        $products   = ['3026' => 1, '24696' => 2];
 
         if (!$aid || !$products || !$identify || !$type) {
             $this->apiReturn(204, [], '参数错误');
@@ -68,14 +68,22 @@ use Controller\product\AnnualCard as CardCtrl;
         if (count($error) > 0) {
             //账户余额是否足够支付,一期都是0
             // $this->_balanceEnough();    
-            $this->apiReturn(203, $error, ['特权次数不足']);
+            $left = [];
+            foreach ($error as $pid=> $item) {
+                $tmp = $this->_privileges[$pid];
+                $left['remain'][] = [
+                    'title' => $tmp['ltitle'] . $tmp['title'],
+                    'left'  => $item
+                ];
+            }
+            $this->apiReturn(203, $left, ['特权次数不足']);
         }
 
         try {
             $this->_orderAction($products, $aid, $card['memberid'], I(null));
         } catch (DisOrderException $e) {
             $this->api(204, [], $e->getMessage());
-        }
+        } 
 
         $data = $this->_getExtraData($card);
 
@@ -90,7 +98,7 @@ use Controller\product\AnnualCard as CardCtrl;
 
         $supply = $Member->getMemberInfo($card['sid']);
 
-        $product = (new Ticket)->getProductInfo($card['pid'], ['field' => 'p_name']);
+        $product = (new Ticket)->getProductInfo($card['pid']);
 
         $data = [
             'mobile'        => $member['mobile'],
@@ -102,6 +110,11 @@ use Controller\product\AnnualCard as CardCtrl;
         ];
 
         foreach ($this->_privileges as $item) {
+
+            if (!isset($this->_pri_left[$item['tid']])) {
+                continue;
+            }
+
             $data['pri'][] = [
                 'title' => $item['ltitle'] . $item['title'],
                 'left' => implode(',', $this->_pri_left[$item['tid']])
