@@ -26,7 +26,7 @@ class PriceRead extends Model
      * @param int $mid 分销商ID
      * @return bool
      */
-    protected function PFT_D_Union_ZK_SE($fid, $mid){
+    public function PFT_D_Union_ZK_SE($fid, $mid){
         $id = $this->table('pft_union_member_info_SE')
             ->where(['fid'=>$fid,'memberID'=>$mid,'dstatus'=>0])
             ->limit(1)
@@ -80,11 +80,11 @@ class PriceRead extends Model
      * @return int|mixed  101 无此帐号 103 pid参数错误   1065 数据错误   105 无此价格
      *
      */
-    public function Dynamic_Price_And_Storage($ac, $pid, $date='', $mode=0, $ptype=0, $get_storage=0, $m, $sdate='', $edate='')
+    public function Dynamic_Price_And_Storage($ac, $pid, $date='', $mode=0, $ptype=0, $get_storage=0, $m, $sdate='', $edate='', $queryKey='account')
     {
         if (is_numeric($pid)===false) return 105;
         if ($ptype==0){
-            $fxs_id = $this->table('pft_member')->where(['account'=>$ac, 'status'=>0])->limit(1)->getField('id');
+            $fxs_id = $this->table('pft_member')->where([$queryKey=>$ac, 'status'=>0])->limit(1)->getField('id');
             if (!$fxs_id) return 101;
             $apply_did = $this->table('uu_jq_ticket')->where(['pid'=>$pid])->limit(1)->getField('apply_did');
             if ($apply_did!=$fxs_id){
@@ -109,15 +109,13 @@ class PriceRead extends Model
                     $j  = $i-1;
                     if ($i==1) {
                         //取得此分销商的差价
-                        $priceRet = $this->get_price_set($pid, $arr_aids[$i], 0);
-                        $aid_dprice=$priceRet['dprice'];
+                        $aid_dprice = $this->get_price_set($pid, $arr_aids[$i], 0);
                         if (!$aid_dprice) $aid_dprice=0;
                         //分销联盟会员等价发起人1
                         if ($this->PFT_D_Union_ZK_SE($apply_did,$arr_aids[$i])) $aid_dprice=0;
                     }else{
                         //计算供应商应扣多少钱
-                        $priceRet = $this->get_price_set($pid, $arr_aids[$i], $arr_aids[$j]);
-                        $aid_dprice = $priceRet['dprice'];
+                        $aid_dprice = $this->get_price_set($pid, $arr_aids[$i], $arr_aids[$j]);
                         if (!$aid_dprice) $aid_dprice=0;
                         //分销联盟会员等价发起人2
                         if ($this->PFT_D_Union_ZK_SE($arr_aids[$j],$arr_aids[$i])) $aid_dprice=0;
