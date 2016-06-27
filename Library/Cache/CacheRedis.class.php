@@ -201,6 +201,7 @@ class CacheRedis extends Cache
     }
 
     private function _key($str) {
+        return $str;
         return $this->prefix.$this->type.$str;
     }
 
