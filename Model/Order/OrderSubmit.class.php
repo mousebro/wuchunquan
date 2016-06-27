@@ -116,7 +116,7 @@ class OrderSubmit extends Model
                 ->join(' s left join uu_order_addon a on s.ordernum=a.orderid')
                 ->where(['s.code'=>$code, 'a.ifpack'=>1, ])
                 ->limit(1)
-                ->getField('id');
+                ->getField('s.id');
         }
         else {
             $map = ['lid'=>':lid', 'code'=>':code','status'=>0];
