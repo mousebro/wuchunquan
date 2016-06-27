@@ -17,7 +17,7 @@ class CacheRedis extends Cache
     private $connected;
     private $type;
     private $prefix;
-    private $_instance = array();
+
     public function __construct() {
         $this->config = C('redis');
         if (empty($this->config['slave'])) $this->config['slave'] = $this->config['master'];
@@ -28,11 +28,9 @@ class CacheRedis extends Cache
     }
 
     private function init_master(){
-        static $_cache = array();
-        $md5    =   md5(serialize($this->config['master']));
-
-        if (isset($_cache[$md5])){
-            $this->handler = $_cache[$md5];
+        static $_cache;
+        if (isset($_cache)){
+            $this->handler = $_cache;
         }else{
             $func = $this->config['pconnect'] ? 'pconnect' : 'connect';
             $this->handler  = new Redis;
@@ -40,25 +38,23 @@ class CacheRedis extends Cache
             if (isset($this->config['master']['db_pwd'])) {
                 $this->handler->auth($this->config['master']['db_pwd']);
             }
-            $_cache[$md5] = $this->handler;
+            $_cache = $this->handler;
             //$_cache->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_PHP);
         }
     }
 
     private function init_slave(){
-        static $_cache  = array();
-        $md5    =   md5(serialize($this->config['slave']));
-        if (isset($_cache[$md5])){
-            $this->handler = $_cache[$md5];
-        } else{
+        static $_cache;
+        if (isset($_cache)){
+            $this->handler = $_cache;
+        }else{
             $func = $this->config['pconnect'] ? 'pconnect' : 'connect';
             $this->handler = new Redis;
             $this->enable = $this->handler->$func($this->config['slave']['db_host'], $this->config['slave']['db_port']);
             if (isset($this->config['slave']['db_pwd'])) {
                 $this->handler->auth($this->config['slave']['db_pwd']);
             }
-            $_cache[$md5] = $this->handler;
-            //$_cache = $this->handler;
+            $_cache = $this->handler;
             //$_cache->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_PHP);
         }
     }
@@ -72,7 +68,9 @@ class CacheRedis extends Cache
         $this->init_slave();
         if (!$this->enable) return false;
         $this->type = $type;
+        //var_dump($this->_key($key));
         $value = $this->handler->get($this->_key($key));
+        //var_dump($value);
         return $unserizlize ? unserialize($value) :  $value;
     }
 
@@ -95,30 +93,17 @@ class CacheRedis extends Cache
         }else{
             $result = $this->handler->set($this->_key($key), $value);
         }
+        //echo $this->_key($key);
+        //echo $value,'---';
+        //echo $this->handler->get($this->_key($key));exit;
         return $result;
     }
-
-    public function expire($key, $expire=1800)
+    public function incrBy($key)
     {
-        if ($expire<=0) return false;
-        return $this->handler->expire($this->_key($key), $expire);
-    }
-
-    public function incrBy($key, $val=1)
-    {
-        if ($this->get($key, '', false) !== false) {;
-            $result = $this->handler->incrBy($this->_key($key), $val);
+        if ($this->get($key, '', true) !== false) {;
+            $result = $this->handler->incr($this->_key($key));
         } else {
-            $result = $this->set($key, $val, '', 1800, false);
-        }
-        return $result;
-    }
-    public function decrBy($key, $val=1)
-    {
-        if ($this->get($key, '', false) !== false) {;
-            $result = $this->handler->decrBy($this->_key($key), $val);
-        } else {
-            $result = $this->set($key, $val, '', 1800, false);
+            $result = $this->set($key, 1, '', 1800, true);
         }
         return $result;
     }
