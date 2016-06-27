@@ -318,7 +318,7 @@ class SettleBlance extends Model{
      * @param  $cycleMark 提现周期标识，可明显看出提什么时候的钱，日（20160612）-月（20160104）-周（20160238）
      * @return
      */
-    public function createAutoRecord($fid, $settleTime, $transferTime, $cycleMark) {
+    public function createAutoRecord($fid, $settleTime, $transferTime, $cycleMark, $mode) {
         if(!$fid || !$settleTime || !$transferTime || !$cycleMark) {
             return falsel;
         }
@@ -331,7 +331,8 @@ class SettleBlance extends Model{
             'fid'           => $fid,
             'settle_time'   => $settleTime,
             'transfer_time' => $transferTime,
-            'cycle_mark'   => $cycleMark,
+            'cycle_mark'    => $cycleMark,
+            'mode'          => $mode,
             'update_time'   => time()
         ];
 

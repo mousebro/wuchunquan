@@ -69,7 +69,7 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $dayMark);
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $dayMark, 1);
 
             //清分数据
             $logData[] = [
@@ -109,7 +109,7 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $weekMark);
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $weekMark, 2);
 
             //清分数据
             $logData[] = [
@@ -149,7 +149,7 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $montyMark);
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $montyMark, 3);
 
             //清分数据
             $logData[] = [
