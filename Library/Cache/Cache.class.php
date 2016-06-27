@@ -19,6 +19,9 @@ class Cache {
 
     protected $params;
     protected $enable;
+    /**
+     * @var \Redis
+     */
     protected $handler;
 
     /**

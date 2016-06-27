@@ -9,12 +9,16 @@
 namespace Model\Order;
 
 
+use Library\Cache\Cache;
 use Library\Model;
 
 class OrderSubmit extends Model
 {
     const __TBL_ORDER__ = 'uu_ss_order';
-
+    /**
+     * @var \Library\Cache\CacheRedis;
+     */
+    private $cache;
     /**
      * 检测远端订单号是否唯一
      *
@@ -32,6 +36,72 @@ class OrderSubmit extends Model
             ->getField('id,ordernum,code,salerid');
     }
 
+    /**
+     * 限购票判断
+     *
+     * @param int $tid 票ID
+     * @param int $limitNum 限购票数
+     * @param int $buyNum 本次欲购买票数
+     * @param string $dateType 限购时间类型,0:不限，1:每日，2:每周，3:每月
+     * @param string $mobile 手机号
+     * @param string $idCard 身份证
+     * @param string $chk_column 校验的值,1手机号，2身份证
+     * @return bool | int
+     */
+    public function buyLimitCheck($tid, $limitNum, $buyNum, $dateType, $mobile, $idCard, $chk_column)
+    {
+        $now = time();
+        $today = date('Y-m-d');
+        $cache_key = "$tid:$dateType:" . ($chk_column==1 ? $mobile : $idCard);
+        switch ($dateType) {
+            case 1:
+                $expire = strtotime($today . ' 23:59:59') - $now;
+                break;
+            case 2:
+                $w = date('w');
+                $diff = $w==0 ? 0 : 7-$w;
+                $expire = strtotime("+$diff days");
+                break;
+            case 3:
+                $diff = date('t') - date('j');
+                $expire = strtotime("+$diff days");
+                break;
+            default:
+                $expire = 0;
+                break;
+        }
+
+        /**
+         * @var $cache \Library\Cache\CacheRedis
+         */
+        $cache = Cache::getInstance('redis');
+        $this->cache = $cache;
+        $cacheNum = $cache->get($cache_key);
+        $totalNum = $cacheNum + $buyNum;
+        if ($cacheNum>0 && $cacheNum >= $limitNum || $totalNum > $limitNum) return false;
+        return [$expire, $cache_key];
+    }
+
+    /**
+     * 购票限制-操作缓存数据
+     *
+     * @param int $buyNum 0 增加1减少
+     * @param string $key 键值
+     * @param int $buyNum 数量
+     * @param int $expire 过期时间
+     * @return bool
+     */
+    public function UpdateBuyLimit($action, $key, $buyNum, $expire)
+    {
+        if ($action==0) {
+            $res = $this->cache->incrBy($key, $buyNum);
+            $this->cache->expire($key, $expire);
+        }
+        else {
+            $this->cache->decrBy($key, $buyNum);
+        }
+        return true;
+    }
     /**
      * 检测凭证号是否有效
      *
