@@ -469,8 +469,9 @@ class SettleBlance extends Controller {
                 'freeze_money'   => $item['freeze_money'],
                 'transfer_money' => $item['transfer_money'],
                 'settle_remark'  => $item['remark'],
-                'trans_remark'  => $item['trans_remark'],
+                'trans_remark'   => $item['trans_remark'],
                 'update_time'    => $item['update_time'],
+                'mode'           => $item['mode'],
             ];
         }
 
