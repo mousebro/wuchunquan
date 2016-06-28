@@ -161,7 +161,7 @@ class TradeRecord extends Model
      */
     public function getExList($map, $fid, $partner_id)
     {
-        $order = 'id asc';
+        $order = 'rectime asc';
         $records = $this->getTradeRecord($map, $order);
 
         $extInfo = $prod_name = $payAcc = $account_types = $online_pay_info = [];
@@ -285,7 +285,7 @@ class TradeRecord extends Model
     public function getList($map, $page, $limit, $fid, $partner_id)
     {
         // 1 从交易记录表中获取基本交易信息
-        $order = 'id desc';
+        $order = 'rectime desc';
         $records = $this->getTradeRecord($map, $order, $limit, $page);
 
         //2 获取其他交易信息
