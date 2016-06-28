@@ -50,10 +50,10 @@ trait TradeRecordMemberRecomposer
                 if (!in_array($this->record['dtype'], [1, 17])) {
                     return 0;
                 } else {
-                    if ($memberid != 112) {
-                        return 0;
-                    } else {
+                    if($memberid == 112 || !$memberid) {
                         return '';
+                    } else {
+                        return 0;
                     }
                 }
             default:
