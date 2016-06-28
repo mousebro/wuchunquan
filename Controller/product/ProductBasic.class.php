@@ -248,6 +248,16 @@ class ProductBasic extends Controller
         $cancel_sms  = isset($ticketData['cancel_sms']) ? $ticketData['cancel_sms']+0:0;
         $confirm_sms = isset($ticketData['confirm_sms']) ? $ticketData['confirm_sms']+0:0;
         $tkExtAttr['confirm_sms']  = bindec($cancel_sms.$confirm_sms);
+        $tkExtAttr['buy_limit']  = $ticketData['buy_limit']+0;
+        $tkExtAttr['buy_limit_date']  = $ticketData['buy_limit_date']+0;
+        $tkExtAttr['buy_limit_num']  = $ticketData['buy_limit_num']+0;
+
+        if ($tkExtAttr['buy_limit']>2) {
+            return self::_return(self::CODE_INVALID_REQUEST,  '购票限制参数错误，大于0小于2',$ticketData['ttitle']);
+        }
+        if ($tkExtAttr['buy_limit_date']>3) {
+            return self::_return(self::CODE_INVALID_REQUEST,  '购票限制时间类型参数错误，大于0小于3',$ticketData['ttitle']);
+        }
 
         // 取消通知供应商 0 不通知 1 通知
         if(isset($ticketData['cancel_notify_supplier']))

@@ -210,13 +210,13 @@ class Member extends Model
     {
         if ($dmode==0) {
             return $this->table('pft_member_money')
-                ->where(['fid'=>$mid])
+                ->where(['fid'=>$mid])->limit(1)
                 ->getField('amoney');
         }
         $field  = 'kmoney';
         if ($dmode==2) $field='basecredit';
         elseif ($dmode==3) $field .= ',basecredit';
-        $query = $this->table('pft_member_credit')->where(['fid'=>$mid, 'aid'=>$aid]);
+        $query = $this->table('pft_member_credit')->where(['fid'=>$mid, 'aid'=>$aid])->limit(1);
         if ($ret_arr===true) {
             return $query->field($field)->find();
         }
@@ -262,10 +262,12 @@ class Member extends Model
      * @param null $memo string 备注说明
      * @return int|string
      */
-    public function PFT_Member_Fund_Modify($id, $opID, $Mmoney, $action=0, $dmode=0, $aid=NULL,
+    public function PFT_Member_Fund_Modify( $id, $opID, $Mmoney, $action=0, $dmode=0, $aid=NULL,
                                            $dtype=NULL, $ptype=NULL, $orderid='', $memo='')
     {
         if ($dmode>0 && (!$aid || $aid<0)) return false;
+        $id  = (int)$id;
+        $aid = (int)$aid;
         $act    = $action ? "-" : "+";
         $act_res= $action ? "+" : "-";
         if ($dmode>0 && $dtype==6) {
@@ -291,7 +293,7 @@ class Member extends Model
             $result1 = $this->Table('pft_member_money')
                 ->where(['fid'=>$id])
                 ->data(['amoney'=>['exp', "amoney{$act}{$Mmoney}"]])
-                ->save();
+                ->limit(1)->save();
             if ($dtype==6){
                 $result3 = $this->Table('pft_member_money')
                     ->where(['fid'=>$id])
@@ -299,7 +301,7 @@ class Member extends Model
                             'frozentime'=> time(),
                             'fmoney'    => ['exp', "fmoney{$act_res}{$Mmoney}"],
                         ])
-                    ->save();
+                    ->limit(1)->save();
                 ;
             }
             $journalData['dtype']  = (!is_numeric($dtype)) ? 3 : $dtype;
@@ -311,7 +313,7 @@ class Member extends Model
             $result1 = $this->Table('pft_member_credit')
                 ->where(['fid'=>$id,'aid'=>$aid])
                 ->data(['kmoney'=>['exp', "kmoney{$act}{$Mmoney}"]])
-                ->save();
+                ->limit(1)->save();
             $journalData['dtype']  = (!is_numeric($dtype))?4:$dtype;
             $journalData['ptype']  = (!is_numeric($ptype))?1:$ptype;
         }
@@ -324,7 +326,7 @@ class Member extends Model
                     'baseauthority' => $opID,
                     'basecredit'    => ['exp', "basecredit{$act}{$Mmoney}"]
                     ] )
-                ->save();
+                ->limit(1)->save();
             $journalData['dtype'] =(!is_numeric($dtype)) ? 11 : $dtype;
             $journalData['ptype'] =(!is_numeric($ptype)) ? 3  : $ptype;
         }

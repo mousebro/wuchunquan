@@ -103,6 +103,7 @@ class Order extends Controller
         $tradeno        = I('post.tradeno');//流水号
         $pay_conf       = include '/var/www/html/Service/Conf/pay.conf.php';
         $pay_account    = I('post.pay_account');
+        $app_id         = I('post.app_id', 0);
         if ($pay_account!='' && in_array($pay_account, $pay_conf['pft']['lakala'])) {
             $pay_to_pft = true;
             $sourceT    = 7;//平台拉卡拉
@@ -117,6 +118,9 @@ class Order extends Controller
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单金额格式不对');
         }
         $this->soap();
+        if ($app_id=='android_terminal') {
+            $pay_channel = 20;
+        }
         $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {

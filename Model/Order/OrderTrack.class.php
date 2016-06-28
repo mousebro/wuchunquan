@@ -63,6 +63,7 @@ class OrderTrack extends Model
             17=>'外部接口',
             18=>'undefined',
             19=>'自运行服务',
+            20=>'安卓智能终端机',
         ];
     }
     public static function getActionList()

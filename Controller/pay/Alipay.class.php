@@ -144,7 +144,7 @@ class Alipay
         //服务器异步通知页面路径
         //$notify_url = "http://wx.12301.cc/pay/alipay_v3.3/notify_url.php";
         //2016年4月21日17:59:51，切换
-        $notify_url = "http://pay.12301.cc/order/mobile_alipay_notify.php";
+        $notify_url = PAY_DOMAIN.'/order/mobile_alipay_notify.php';
         //需http://格式的完整路径，不允许加?id=123这类自定义参数
         //页面跳转同步通知页面路径
         $call_back_url = "{$domain}html/success.html";

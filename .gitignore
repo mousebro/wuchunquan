@@ -3,3 +3,5 @@ env.php
 .idea/
 Test/*
 test.php
+*~
+.DS_Store
