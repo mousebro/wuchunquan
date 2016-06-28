@@ -14,7 +14,7 @@ class TradeRecordRecomposer
 {
     use TradeRecordMemberRecomposer;
     private $record;
-
+    private $ptype;
     private $member;
     private $partner;
     private $self;
@@ -98,7 +98,12 @@ class TradeRecordRecomposer
         foreach ($options as $money) {
             $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
         }
-        $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
+        if ($this->is_acc_reverse && !in_array($this->ptype, [2, 3])) {
+            $this->record['dmoney'] = $this->record['daction'] == 0 ? ("-" . $this->record['dmoney']) : ("+" . $this->record['dmoney']);
+            $this->record['lmoney'] = '';
+        } else {
+            $this->record['dmoney'] = $this->record['daction'] == 0 ? ("+" . $this->record['dmoney']) : ("-" . $this->record['dmoney']);
+        }
 
         return $this;
     }
@@ -180,6 +185,7 @@ class TradeRecordRecomposer
             $this->other = $this->partner;
             $this->self = $this->member;
         }
+        $this->ptype = $this->record['ptype'];
         return $this;
     }
 
