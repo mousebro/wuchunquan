@@ -85,6 +85,7 @@ class Land extends Model
     {
         $params['terminal']      = self::getTerminalId();
         $params['terminal_type'] = 1;
+        $params['status'] = 1;
         $memParams = array(
             'dname'     => $params['title'],
             'dtype'     => 2,//直接供应方
