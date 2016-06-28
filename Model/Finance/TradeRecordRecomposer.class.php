@@ -46,6 +46,8 @@ class TradeRecordRecomposer
      */
     public function getRecord()
     {
+        $this->record['fid'] = $this->self['id'];
+        $this->record['aid'] = $this->other['id'];
         $record = $this->record;
         unset($this->record);
 
