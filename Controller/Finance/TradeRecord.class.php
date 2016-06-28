@@ -146,9 +146,6 @@ class TradeRecord extends Controller
 
             //数据输出形式
             $form = intval(I('form'));
-//print_r($map);
-//            exit;
-            
             $recordModel = $this->_getTradeModel();
             $this->_output($form, $recordModel, $map, $page, $limit, $interval, $fid, $partner_id);
 

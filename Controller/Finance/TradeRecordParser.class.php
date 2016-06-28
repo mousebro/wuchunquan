@@ -38,7 +38,8 @@ trait TradeRecordParser
 
         switch ($account_type) {
             case 2: //no break;
-            case 99:
+            case 99: //no break;
+            case 97:
                 $map['account_type'] = ['in', [2, 3]];
                 break;
             case 98: //获取在线支付类
@@ -77,6 +78,8 @@ trait TradeRecordParser
         } elseif ($account_type == 99) {
             $fid_as_other += [$other => $fid, 'account_type' => ['in', [2, 3],]];
             $map += $fid_as_other;
+        } elseif ($account_type == 97) {
+            $map['_complex'][] = [$fid_as_other, $fid_as_self] + $logic;
         } else {
             $map += $fid_as_self;
         }
