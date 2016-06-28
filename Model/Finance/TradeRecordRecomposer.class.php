@@ -68,6 +68,14 @@ class TradeRecordRecomposer
         return $str;
     }
 
+    /**
+     * 去除数组中的空字符串后连接字符串
+     *
+     * @param $array
+     * @param $glue
+     *
+     * @return string
+     */
     static function combineStr($array, $glue)
     {
         $array = array_filter($array);
@@ -110,6 +118,11 @@ class TradeRecordRecomposer
         return $this;
     }
 
+    /**
+     * 导出报表中区分收入与支出
+     *
+     * @return $this
+     */
     public function recompseExcelMoney()
     {
 
@@ -202,6 +215,7 @@ class TradeRecordRecomposer
             $this->self = $this->member;
         }
         $this->ptype = $this->record['ptype'];
+
         return $this;
     }
 
@@ -216,14 +230,26 @@ class TradeRecordRecomposer
 
     }
 
-
+    /**
+     * 提取交易记录详情所需会员信息
+     *
+     * @return $this
+     */
     public function recomposeMemberDetail()
     {
         $this->record['member'] = $this->_recomposeMemberDetail($this->self);
         $this->record['counter'] = $this->_recomposeMemberDetail($this->other);
+
         return $this;
     }
 
+    /**
+     * 提取交易记录列表所需会员信息
+     *
+     * @param string $separator
+     *
+     * @return $this
+     */
     public function recomposeMemberInfo($separator = '<br/>')
     {
         $this->record['taccount'] = $this->self['acc_type'];
@@ -233,6 +259,11 @@ class TradeRecordRecomposer
         return $this;
     }
 
+    /**
+     * 提取交易记录导出所需会员信息
+     *
+     * @return $this
+     */
     public function recomposeMemberExcel()
     {
         $this->record['member'] = $this->self['dname'];
@@ -252,6 +283,11 @@ class TradeRecordRecomposer
         return $this;
     }
 
+    /**
+     * 重组支付类型
+     *
+     * @return $this
+     */
     public function recomposePayType()
     {
         if (!isset($this->record['ptype'])) {

@@ -24,21 +24,30 @@ trait TradeRecordMemberRecomposer
         $this->online_pay_type = array_keys($pay_types, 0);
     }
 
+    /**
+     * 获取交易账户类型
+     *
+     * @param   int $acc_type 账户类型
+     * @param   int $is_payee 是否收款方
+     * @param   int $memberid 会员id
+     *
+     * @return int|string
+     */
     private function getDefaultAccountType($acc_type, $is_payee, $memberid)
     {
         if ($acc_type && $acc_type != -1) {
             return $acc_type;
         }
-        //if($memberid == 112){
-        //    return '';
-        //}
+
         switch ($this->record['ptype']) {
+            //授信账户和现金账户双方账户类型相同
             case 2: //no break;
             case 3: //no break;
             case 9: //no break;
                 return $this->record['ptype'];
             case 0:
-                if ($this->record['dtype'] != 1) {
+                //非取消订单
+                if (!in_array($this->record['dtype'], [1, 17])) {
                     return 0;
                 } else {
                     if ($memberid != 112) {
@@ -56,14 +65,23 @@ trait TradeRecordMemberRecomposer
         }
     }
 
-//获取会员账号
 
+    /**
+     * 判断双方用户的收付款关系
+     */
     private function whoIsPayee()
     {
         $this->member['is_payee'] = ($this->record['daction'] == 0);
         $this->partner['is_payee'] = !($this->member['is_payee']);
     }
 
+    /**
+     * 重组交易详情中的会员信息
+     *
+     * @param array $member 会员
+     *
+     * @return string
+     */
     private function _recomposeMemberDetail($member)
     {
         if (isset($member['acc_type'])) {
@@ -80,6 +98,14 @@ trait TradeRecordMemberRecomposer
         return $result;
     }
 
+    /**
+     * 获取商户的交易账户类型说明
+     *
+     * @param $acc_type
+     * @param $is_fid
+     *
+     * @return string
+     */
     private function getMemberAccountType($acc_type, $is_fid)
     {
         if (in_array($acc_type, [2, 3])) {
@@ -89,6 +115,12 @@ trait TradeRecordMemberRecomposer
         return $this->account_types[ $acc_type ];
     }
 
+    /**
+     * 获取商户基本信息
+     *
+     * @param array $member 会员
+     * @param bool  $is_fid 是否为fid
+     */
     private function getMemberInfo(&$member, $is_fid)
     {
         $member['dname'] = $this->getMemberName($member['id']);
@@ -97,6 +129,13 @@ trait TradeRecordMemberRecomposer
         $member['acc_type'] = $this->getMemberAccountType($member['acc_type'], $is_fid);
     }
 
+    /**
+     * 获取商户名
+     *
+     * @param int $memberid 会员id
+     *
+     * @return string
+     */
     private function getMemberName($memberid)
     {
         if (!$memberid) {
@@ -109,6 +148,13 @@ trait TradeRecordMemberRecomposer
         }
     }
 
+    /**
+     * 获取会员交易账号
+     *
+     * @param   bool $is_payee 是否收款方
+     *
+     * @return  mixed
+     */
     private function getMemberTradeAccount($is_payee)
     {
         if ($is_payee) {
@@ -118,8 +164,10 @@ trait TradeRecordMemberRecomposer
         }
     }
 
-    //获取会员名(dname)
 
+    /**
+     * 初始化交易双方信息
+     */
     private function initMemberInfo()
     {
         $this->member['id'] = $this->record['fid'];
@@ -133,6 +181,15 @@ trait TradeRecordMemberRecomposer
         $this->getMemberInfo($this->partner, false);
     }
 
+    /**
+     * 获取商家账号
+     *
+     * @param   int $memberid  商户id
+     * @param   int $acc_type  交易账户类型
+     * @param   int $trade_acc 交易账户
+     *
+     * @return string
+     */
     private function getMemberAccount($memberid, $acc_type, $trade_acc)
     {
         if (!$memberid || $memberid == 1) {

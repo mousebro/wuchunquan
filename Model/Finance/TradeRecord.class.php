@@ -20,12 +20,19 @@ class TradeRecord extends Model
     private $recomposer;
 
     /**
-     * @param $records
-     * @param $extInfo
-     * @param $prod_name
-     * @param $payAcc
+     * 重组导出报表的数据
+     *
+     * @param   array $records         交易记录
+     * @param   array $extInfo         交易记录表之外的补充信息
+     * @param   array $prod_name       交易内容
+     * @param   array $payAcc          交易账户
+     * @param   int   $fid             被查询商户
+     * @param   int   $partner_id      被查询对方商户
+     * @param   array $account_types   交易账户类型
+     * @param   array $online_pay_info 在线交易信息
      *
      * @return array
+     * @throws \Library\Exception
      */
     private function _recomposeExcelData(
         $records,
@@ -123,7 +130,7 @@ class TradeRecord extends Model
             'tr.trade_no',                          //交易流水
             'tr.memo',                              //备注
             'tr.daction',                           //收支
-            'tr.account_type as member_acc_type',                      //交易账户类型
+            'tr.account_type as member_acc_type',   //交易账户类型
             'o.ordermode as order_channel',         //交易渠道
             'p.p_name',                             //产品名称
             'a.buyer_email as payer_acc',           //支付方账号
@@ -174,7 +181,6 @@ class TradeRecord extends Model
                 list($account_types, $online_pay_info, $extInfo, $prod_name) = $this->getExpandInfo($records, true);
             }
         }
-
 
         //整合数据
         $data = $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $fid, $partner_id, $account_types,
@@ -297,7 +303,6 @@ class TradeRecord extends Model
 
             foreach ($records as $record) {
                 $this->integrateTradeAccount($record, $online_pay_acc);
-                //$this->integratePartnerAccount($record, $account_types);
                 $record['partner_acc_type'] = '';
                 $data[] = $recomposer->setRecord($record, $fid, $partner_id)
                     ->recomposeMemberInfo()
@@ -438,23 +443,9 @@ class TradeRecord extends Model
     }
 
     /**
-     * 根据外部交易流水号，查询交易双方的id和交易账号类型
+     * 获取交易记录表外的补充信息
      *
-     * @param $trade_no
-     *
-     * @return mixed
-     */
-    public function getPartnerAccountType($trade_no)
-    {
-        $where = [
-            'trade_no' => ['in', $trade_no],
-        ];
-
-        return $this->table($this->_trade_record_table)->where($where)->getField("trade_no,fid,aid,account_type as partner_account_type,ptype");
-    }
-
-    /**
-     * @param $records
+     * @param   array $records 交易记录列表
      *
      * @return array
      */
@@ -462,12 +453,6 @@ class TradeRecord extends Model
     {
         //默认值
         $account_types = $online_pay_acc = $extInfo = $prod_name = [];
-
-        //$trade_no = array_filter(array_column($records, 'trade_no')); //外部交易流水号
-        //if (is_array($trade_no)) {
-        //    $account_types = $this->getPartnerAccountType($trade_no); //根据外部交易流水查询交易账户类型
-        //}
-
         $orderIds = array_unique(array_filter(array_column($records, 'orderid'))); //交易号或订单号
         if (is_array($orderIds)) {
             $online_pay_acc = $this->getPayerAccount($orderIds);
@@ -489,27 +474,11 @@ class TradeRecord extends Model
 
     }
 
-    ///**
-    // * @param $record
-    // * @param $account_types
-    // */
-    //private function integratePartnerAccount(&$record, $account_types=)
-    //{
-    //    //if (is_array($account_types)
-    //    //    && isset($account_types[ $record['trade_no'] ]['fid'])
-    //    //    && $account_types[ $record['trade_no'] ]['fid'] != $record['fid']
-    //    //    && $account_types[ $record['trade_no'] ]['ptype'] == $record['ptype']
-    //    //) {
-    //    //    $record['partner_acc_type'] = $account_types[ $record['trade_no'] ]['partner_acc_type'];
-    //    //} else {
-    //    //    $record['partner_acc_type'] = '';
-    //    //}
-    //    return $record['partner_acc_type'] = '';
-    //}
-
     /**
-     * @param $record
-     * @param $online_pay_acc
+     * 合并在线交易信息
+     *
+     * @param   array $record         单条交易记录
+     * @param   array $online_pay_acc 在线交易记录账户列表
      */
     private function integrateTradeAccount(&$record, $online_pay_acc)
     {

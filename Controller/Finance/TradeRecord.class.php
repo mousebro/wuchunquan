@@ -13,7 +13,7 @@ use Model\Member\MemberRelationship;
 class TradeRecord extends Controller
 {
     use TradeRecordParser;
-    
+
     private $tradeModel;   //交易记录模型
 
     private $memberId;
@@ -60,7 +60,7 @@ class TradeRecord extends Controller
             $this->apiReturn(201, [], '传入参数不合法');
         }
         $fid = ($this->memberId == 1 && isset($_REQUEST['fid'])) ? intval(I('fid')) : $this->memberId;
-        //var_dump($fid);
+
         $partner_id = intval(I('partner_id')) ?: 0;
 
         if ($this->memberId == 1 && !$fid && $partner_id) {
@@ -104,9 +104,9 @@ class TradeRecord extends Controller
         try {
             $map = [];
             $fid = ($this->memberId == 1 && isset($_REQUEST['fid'])) ? intval(I('fid')) : $this->memberId;
-            //var_dump($fid);
+
             $partner_id = intval(I('partner_id')) ?: 0;
-            
+
             if ($this->memberId == 1 && !$fid && $partner_id) {
                 $this->apiReturn(220, [], '请先选择交易商户');
             }
@@ -127,13 +127,8 @@ class TradeRecord extends Controller
             //支付方式
             $this->_parseAccountType($this->memberId, $fid, $partner_id, $map);
 
-
             //交易大类
-            //$subtype = $this->_parseTradeCategory($map);
             $this->_parseTradeCategory($map);
-
-            //交易类型
-            //$this->_parseTradeType($subtype, $map);
 
             //交易金额为0的交易记录不显示
             $map['dmoney'] = ['gt', 0];
@@ -202,8 +197,6 @@ class TradeRecord extends Controller
             $this->memberId = $this->isLogin('ajax');
             $srch = \safe_str(I('srch'));
         }
-
-        //$limit = intval(I('limit')) ?: 20;
 
         try {
             if (empty($srch)) {
@@ -322,18 +315,4 @@ class TradeRecord extends Controller
                 throw new Exception('传入参数错误', 210);
         }
     }
-
-    //www.12301.local/route/c=Finance_TradeRecord&a=testModel
-    public function testModel()
-    {
-        $map['fid'] = 113;
-        $page = 1;
-        $limit = 20;
-        $fid = 113;
-        $partner_id = 0;
-
-        $result = $this->_getTradeModel()->getList($map, $page, $limit, $fid, $partner_id);
-        print_r($result);
-    }
-
 }

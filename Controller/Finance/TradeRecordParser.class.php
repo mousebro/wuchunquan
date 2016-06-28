@@ -146,38 +146,6 @@ trait TradeRecordParser
     }
 
     /**
-     * 解析交易类型
-     *
-     * @param   string $subtype 交易类型
-     * @param   array  $map     查询条件
-     *
-     * @return mixed
-     * @throws \Library\Exception
-     */
-    protected function _parseTradeType($subtype, &$map)
-    {
-        if (!isset($_REQUEST['dtype'])) {
-            return false;
-        }
-
-        $dtype = \safe_str(I('dtype'));
-        if ($dtype == '') {
-            return false;
-        }
-        $item_cat = C('item_category');
-        if (is_numeric($dtype) && in_array($dtype, array_column($item_cat, 0))) {
-            if (is_array($subtype) && !in_array($dtype, $subtype)) {
-                throw new Exception('交易类型与交易类目不符', 205);
-            }
-            $map['dtype'] = $dtype;
-        } else {
-            throw new Exception('交易类型错误:', 206);
-        }
-
-        return false;
-    }
-
-    /**
      * @param   string $timeTag    时间字段
      * @param   string $defaultVal 绝对默认时间
      * @param   string $postfix    相对默认时间：未传入时分秒时的默认时间
