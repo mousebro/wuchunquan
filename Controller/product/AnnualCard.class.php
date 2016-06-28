@@ -277,6 +277,7 @@ class AnnualCard extends Controller {
         if ($card && !$replace) {
 
             $product = (new Ticket)->getProductInfo($card['pid'], ['field' => 'p_name']);
+
             // $ticket = (new Ticket)->getTicketInfoByPid($card['pid']);
 
             // $use = $this->_CardModel->getRemainTimes($card['sid'], $ticket['id'], $memberid, true);
@@ -520,26 +521,36 @@ class AnnualCard extends Controller {
             $this->apiReturn(204, [], '参数错误');
         }
 
+        $product = (new Ticket)->getProductInfo($pid);
+
         $sid = $_SESSION['sid'];
 
         $vir_storage = $this->_CardModel->getAnnualCardStorage($sid, $pid, 'virtual');
         $phy_storage = $this->_CardModel->getAnnualCardStorage($sid, $pid, 'physics');
 
+        $page_size  = I('page_size', '10', 'intval');
+        $page       = I('page', 1, 'intval');
+
         $cards = [];
-        if ($vir_storage && $phy_storage) {
+        if ($vir_storage ||  $phy_storage) {
             $options = [
                 'status'    => 3,
-                'page_size' => I('page_size', '10', 'intval'),
-                'page'      => I('page', 1, 'intval'),
+                'page_size' => $page_size,
+                'page'      => $page,
             ];
 
             $cards = $this->_CardModel->getAnnualCards($sid, $pid, $options);
+            $total = $this->_CardModel->getAnnualCards($sid, $pid, $options, 'count');
+            // var_dump($total);die;
         }
 
         $return = [
-            'cards'   => $cards,
-            'virtual' => $vir_storage,
-            'physics' => $phy_storage
+            'title'         => $product['p_name'],
+            'cards'         => $cards,
+            'virtual'       => $vir_storage,
+            'physics'       => $phy_storage,
+            'page'          => $page,
+            'total_page'    => ceil($total / $page_size) 
         ];
 
         $this->apiReturn(200, $return);
@@ -804,6 +815,7 @@ class AnnualCard extends Controller {
 
 
     public function test() {
+        $this->_CardModel->getPeriodOfValidity(3385, 29155);die;
         // var_dump((new \Api\AnnualCard())->activate());die;
         // echo json_encode(($this->_CardModel->getCrdConf(5938)), JSON_UNESCAPED_UNICODE);die;
         var_dump((new \Api\AnnualCard())->annualConsume());

@@ -611,6 +611,8 @@ class AnnualCard extends Model
 
         $config = $this->getAnnualCardConfig($tid);
 
+        var_dump($config);die;
+
         return '2016-01-11~2016-02-11';
     }
 
