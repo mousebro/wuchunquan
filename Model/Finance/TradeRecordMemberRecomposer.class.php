@@ -122,8 +122,10 @@ trait TradeRecordMemberRecomposer
             if (in_array($acc_type, [0, 2, 3])) {
                 return $this->getMemberModel()->getMemberCacheById($memberid,
                     'account') ?: '';
-            } else {
+            } elseif ($acc_type == 1) {
                 return $trade_acc;
+            } else {
+                return '';
             }
         }
     }
