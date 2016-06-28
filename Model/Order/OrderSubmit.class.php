@@ -93,6 +93,9 @@ class OrderSubmit extends Model
      */
     public function UpdateBuyLimit($action, $key, $buyNum, $expire)
     {
+        if (is_null($this->cache)) {
+            $this->cache = Cache::getInstance('redis');
+        }
         if ($action==0) {
             $res = $this->cache->incrBy($key, $buyNum);
             $this->cache->expire($key, $expire);

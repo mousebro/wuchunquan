@@ -266,7 +266,7 @@ class OrderNotify {
      * @param string $sms_account 短信账号
      * @return bool
      */
-    private function SendSMS($mobile, $content, $sms_channel=0, $sms_account='')
+    public function SendSMS($mobile, $content, $sms_channel=0, $sms_account='')
     {
         $content = str_replace(["\n", " ", "　",],'', $content);//过滤换行符，空格
         switch ( $sms_channel ) {
