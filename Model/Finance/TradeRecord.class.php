@@ -89,14 +89,18 @@ class TradeRecord extends Model
 
         return $this->recomposer;
     }
+
     /**
      * 获取交易记录详情
+     * 
+*@param $trade_id
+     * @param $fid
+     * @param $partner_id
      *
-     * @param $trade_id
-     *
-     * @return array|mixed
+     * @return array|bool
+     * @throws \Library\Exception
      */
-    public function getDetails($trade_id)
+    public function getDetails($trade_id, $fid, $partner_id)
     {
         $table = "{$this->_trade_record_table} AS tr";
 
@@ -135,7 +139,7 @@ class TradeRecord extends Model
         }
 
         $result = $this->_getRecomposer()
-            ->setRecord($record)
+            ->setRecord($record, $fid, $partner_id)
             ->recomposeTradeType()
             ->recomposeTradeContent()
             ->recomposeMemberDetail()

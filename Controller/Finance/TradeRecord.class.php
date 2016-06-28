@@ -59,8 +59,15 @@ class TradeRecord extends Controller
         if (!$trade_id) {
             $this->apiReturn(201, [], '传入参数不合法');
         }
+        $fid = ($this->memberId == 1 && isset($_REQUEST['fid'])) ? intval(I('fid')) : $this->memberId;
+        //var_dump($fid);
+        $partner_id = intval(I('partner_id')) ?: 0;
 
-        $record = $this->_getTradeModel()->getDetails($trade_id);
+        if ($this->memberId == 1 && !$fid && $partner_id) {
+            $this->apiReturn(220, [], '请先选择交易商户');
+        }
+
+        $record = $this->_getTradeModel()->getDetails($trade_id, $fid, $partner_id);
 
         //无权查看时返回数据为空
         if (isset($record['fid'], $record['aid']) && in_array($this->memberId, [1, $record['fid'], $record['aid']])) {
