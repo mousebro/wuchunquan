@@ -8,6 +8,7 @@ use Library\Controller;
 use Model\Product\AnnualCard as CardModel;
 use Model\Member\Member;
 use Model\Product\Ticket;
+use Controller\product\AnnualCard as CardCtrl;
 
 // if ( !defined('PFT_API') ) { exit('Access Deny'); }
 
@@ -15,6 +16,12 @@ use Model\Product\Ticket;
  class AnnualCard extends Controller {
 
     private $_CardModel = null;
+
+    private $_config = [];  //年卡配置
+
+    private $_privileges = [];  //年卡特权信息
+
+    private $_pri_left = [];    //特权剩余次数
 
     public function __construct() {
 
@@ -29,33 +36,110 @@ use Model\Product\Ticket;
     public function annualConsume() {
         $aid        = I('aid');         //供应商id
         $products   = I('tickets');     //门票 [['pid' => num]]
-        $products   = ['25271' => 2, '25584' => 1];
+        $identify   = I('identify');
+        $type       = I('type');
+// 9595,1,22323,2
+        $products   = ['3026' => 1, '24696' => 2];
 
-        if (!$aid || !$products) {
+        if (!$aid || !$products || !$identify || !$type) {
             $this->apiReturn(204, [], '参数错误');
         }
 
-        $card = $this->_parseAnnualCard($aid, I('identify'), I('type'));
+        $card = $this->_parseAnnualCard($aid, $identify, $type);
 
-        //if ($card['sid'] != $aid) {...}
+        //未激活
+        if ($card['status'] == 3) {
+            $this->apiReturn(204, [], '年卡处于未出售状态');
+        } elseif ($card['status'] == 0) {
+            $this->apiReturn(202, [], '请先激活');
+        }
 
+        if ($card['sid'] != $aid) {
+             $this->apiReturn(204, [], '无法使用特权支付');
+        }
+ 
         // 年卡有效期检测
-        // if (!$this->_periodOfValidityCheck($card)) {
-        //     $this->apiReturn(204, [], '年卡已过期');
-        // }
+        if (!$this->_periodOfValidityCheck($card)) {
+            $this->apiReturn(204, [], '年卡已过期');
+        }
 
         $error = $this->_privilegesCheck($card['sid'], $card['memberid'], $products, $card['pid']);
 
         if (count($error) > 0) {
             //账户余额是否足够支付,一期都是0
             // $this->_balanceEnough();    
-            
-            $this->apiReturn(202, $error, ['特权次数不足']);
+            $left = [];
+            foreach ($error as $pid=> $item) {
+                $tmp = $this->_privileges[$pid];
+                $left['remain'][] = [
+                    'title' => $tmp['ltitle'] . $tmp['title'],
+                    'left'  => $item
+                ];
+            }
+            $this->apiReturn(203, $left, ['特权次数不足']);
         }
 
-        $this->_orderAction($products, $aid, $card['memberid'], I(null));
+        try {
+            $this->_orderAction($products, $aid, $card['memberid'], I(null));
+        } catch (DisOrderException $e) {
+            $this->api(204, [], $e->getMessage());
+        } 
 
+        $data = $this->_getExtraData($card);
 
+        $this->apiReturn(200, $data, '下单成功');
+
+    }
+
+    private function _getExtraData($card) {
+        $Member = new Member();
+
+        $member = $Member->getMemberInfo($card['memberid']);
+
+        $supply = $Member->getMemberInfo($card['sid']);
+
+        $product = (new Ticket)->getProductInfo($card['pid']);
+
+        $data = [
+            'mobile'        => $member['mobile'],
+            'card_title'    => $product['p_name'],
+            'card_no'       => $card['card_no'],
+            'virtual_no'    => $card['virtual_no'],
+            'valid_time'    => '2016-01-01~2016-08-01',
+            'supply'        => $supply['dname'],
+        ];
+
+        foreach ($this->_privileges as $item) {
+
+            if (!isset($this->_pri_left[$item['tid']])) {
+                continue;
+            }
+
+            $data['pri'][] = [
+                'title' => $item['ltitle'] . $item['title'],
+                'left' => implode(',', $this->_pri_left[$item['tid']])
+            ];
+        }
+
+        return $data;
+
+    }
+
+    /**
+     * 终端年卡激活接口
+     * @return [type] [description]
+     */
+    public function activate() {
+
+        // $string = '{"aid":3385,"mobile":"13123196340","identify":"13123196340","id_card":"777777777777777777"}';
+
+        // $_POST = $_GET = json_decode($string, true);
+        // 
+        // var_dump(file_exists('/var/www/html/Service/Controller/product/AnnualCard.class.php'));die;
+
+        $Ctrl = new CardCtrl();
+
+        $Ctrl->activateForPc(I('aid', '', 'intval'));
     }
 
     /**
@@ -67,14 +151,18 @@ use Model\Product\Ticket;
      */
     private function _parseAnnualCard($aid, $identify, $type = 'physics_no') {
 
+        $type = $this->_CardModel->parseIdentifyType($identify, $type);
+
         $options = [];
 
         switch ($type) {
 
             case 'physics_no':
+            case 'card_no':
+            case 'virtual_no':
                 $options['where'] = [
-                    'sid'        => $aid,
-                    'physics_no' => $identify
+                    'sid' => $aid,
+                    $type => $identify
                 ];
 
                 break;
@@ -98,7 +186,18 @@ use Model\Product\Ticket;
 
         }
 
-        $card = $this->_CardModel->getAnnualCard(1,1, $options);
+        $card = $this->_CardModel->getAnnualCard(1, 1, $options);
+
+        if (!$card) {
+            $this->apiReturn(204, [], '查无此年卡');
+        }
+
+        $ticket = (new Ticket())->getTicketInfoByPid($card['pid']);
+
+        $config = $this->_CardModel->getAnnualCardConfig($ticket['id']);
+        //TODO:可用验证方式判断
+
+        $this->_config = $config;
 
         return $card ?: false;
 
@@ -112,7 +211,9 @@ use Model\Product\Ticket;
     private function _periodOfValidityCheck($card) {
         $ticket = (new Ticket())->getTicketInfoByPid($card['pid']);
 
-        $config = $this->_CardModel->getAnnualCardConfig($ticket['id']);
+        if (!$config = $this->_config) {
+            $config = $this->_CardModel->getAnnualCardConfig($ticket['id']);
+        }
 
         $res = $this->_CardModel->_periodOfValidityCheck($card, $config);
 
@@ -129,22 +230,36 @@ use Model\Product\Ticket;
 
         $privileges = $this->_CardModel->getPrivileges($pid);
 
+        foreach ($privileges as $key => $item) {
+            $privileges[$item['pid']] = $item;
+            unset($privileges[$key]);
+        }
+
+        if (!$privileges) {
+            $this->apiReturn(204, [], '未找到任何特权产品');
+        }
+
+        $this->_privileges = $privileges;
+
         $error = [];
-        foreach ($privileges as $item) {
-            //特权产品
-            if (isset($products[$item['pid']])) {
+        foreach ($products as $pid => $num) {
+
+            if (isset($privileges[$pid])) {
 
                 $res = $this->_isAnnualPayAllowed(
                     $sid,
-                    $item['tid'], 
+                    $privileges[$pid]['tid'], 
                     $memberid, 
-                    $products[$item['pid']], 
-                    $item
+                    $num, 
+                    $privileges[$pid]
                 );
 
                 if ($res['status'] == 0) {
-                    $error[$item['pid']] = $res['left'];
+                    $error[$pid] = $res['left'];
                 }
+
+            } else {
+                $error[$pid] = 0;
             }
         }
 
@@ -156,24 +271,29 @@ use Model\Product\Ticket;
      * 特权支付剩余次数
      * @param  [type]  $config 特权配置
      * @param  [type]  $num    购买张数
-     * @return boolean         [description]
+     * @return array         [description]
      */
     private function _isAnnualPayAllowed($sid, $tid, $memberid, $num, $config) {
 
+        //不限制
+        if ($config['use_limit'] == -1) {
+            $this->_pri_left[$tid] = -1;
+            return ['status' => 1];
+        }
+
         $times = $this->_CardModel->getRemainTimes($sid, $tid, $memberid);
 
-        $limit_count = explode(',', $config['limit_count']);
+        $limit_count = explode(',', $config['use_limit']);
 
         $left_arr = [];
 
         foreach ($limit_count as $i => $val) {
-
             if ($val[$i] != -1 && $times[$i] + $num > $val) {
                 $left_arr[] = ($val - $times[$i]);
             }
 
+            $this->_pri_left[$tid][] = $val[$i] == -1 ? -1 : $val - ($times[$i] + $num);
         }
-
 
         if (count($left_arr) > 0) {
             return ['status' => 0, 'left' => min($left_arr)];
@@ -182,15 +302,23 @@ use Model\Product\Ticket;
         }
     }
 
-    private function _orderAction($products, $aid, $memberid, $extra) {
-        // $aid=6970;
-        include '/var/www/html/new/d/class/DisOrder.php';
-        include '/var/www/html/new/d/class/Member.php';
-        include '/var/www/html/new/d/class/ProductInfo.php';
+    /**
+     * 下单动作
+     * @param  [type] $products [[pid => num]]
+     * @param  [type] $aid      供应商id
+     * @param  [type] $memberid 会员id
+     * @param  [type] $extra    额外信息
+     * @return [type]           [description]
+     */
+    private function _orderAction($products, $aid, $memberid, $extra = []) {
+
+        array_map(function($class) {
+            include '/var/www/html/new/d/class/' . $class;
+        }, ['DisOrder.php', 'Member.php', 'ProductInfo.php']);
 
         if (!isset($GLOBALS['le'])) {
             include_once("/var/www/html/new/conf/le.je");
-            $le=new \go_sql();
+            $le = new \go_sql();
             $le->connect();
             $GLOBALS['le'] = $le;
         }
@@ -214,22 +342,14 @@ use Model\Product\Ticket;
             'ordertel'  => $Member->m_info['mobile'],
             'tnum'      => $tnum,
             'c_pids'    => $lian,
-            'paymode'     => 12
+            'paymode'   => 12
         ];
 
-        try {
-
-            $order_info = $DisOrder->order($options, $aid);
-
-            $this->apiReturn(200, [], '下单成功');
-
-        } catch (DisOrderException $e) {
-
-            $this->api(204, [], $e->getMessage());
-
-        }
+        $order_info = $DisOrder->order($options, $aid);
 
     }
+
+    
 
  }
 

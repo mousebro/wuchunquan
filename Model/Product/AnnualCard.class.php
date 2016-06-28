@@ -417,12 +417,13 @@ class AnnualCard extends Model
      */
     public function getMemberDetail($sid, $memberid)
     {
-        $where = [
-            'sid'      => $sid,
-            'memberid' => $memberid,
-        ];
+        if ($sid != 1) {
+            $where['sid'] = $sid;
+        }
 
-        $field = 'memberid,card_no,virtual_no,physics_no,status';
+        $where['memberid'] = $memberid;
+
+        $field = 'pid,memberid,card_no,virtual_no,physics_no,status';
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
     }
@@ -604,6 +605,15 @@ class AnnualCard extends Model
 
         return [(int)$today, (int)$month, (int)$all];
 
+    }
+
+    public function getPeriodOfValidity($sid, $tid) {
+
+        $config = $this->getAnnualCardConfig($tid);
+
+        var_dump($config);die;
+
+        return '2016-01-11~2016-02-11';
     }
 
 
