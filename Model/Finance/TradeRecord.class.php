@@ -69,7 +69,8 @@ class TradeRecord extends Model
                 ->recomposeChannel()
                 ->recomposeTradeContent()
                 ->recomposeMoney()
-                ->excelWrap(['payer_acc', 'payee_acc', 'dmoney', 'lmoney', 'trade_no', 'orderid'])
+                ->recompseExcelMoney()
+                ->excelWrap(['payer_acc', 'payee_acc', 'outcome', 'income', 'lmoney', 'trade_no', 'orderid'])
                 ->getRecord();
         }
 

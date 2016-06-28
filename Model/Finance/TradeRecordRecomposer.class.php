@@ -110,6 +110,20 @@ class TradeRecordRecomposer
         return $this;
     }
 
+    public function recompseExcelMoney()
+    {
+
+        $dmoney = ltrim($this->record['dmoney'], '+');
+        $this->record['income'] = $this->record['outcome'] = '';
+        if ($dmoney > 0) {
+            $this->record['income'] = $dmoney;
+        } else {
+            $this->record['outcome'] = $dmoney;
+        }
+
+        return $this;
+    }
+
     /**
      * 转换交易内容
      * 如果pft_alipay_rec表中没有对应记录，则取p_name
