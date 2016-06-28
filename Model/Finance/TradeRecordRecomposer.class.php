@@ -213,14 +213,14 @@ class TradeRecordRecomposer
 
     public function recomposeMemberExcel()
     {
-        $this->record['member'] = $this->member['dname'];
-        $this->record['counter'] = $this->partner['dname'];
-        if ($this->member['is_payee']) {
-            $payee = $this->member;
-            $payer = $this->partner;
+        $this->record['member'] = $this->self['dname'];
+        $this->record['counter'] = $this->other['dname'];
+        if ($this->self['is_payee']) {
+            $payee = $this->self;
+            $payer = $this->other;
         } else {
-            $payee = $this->partner;
-            $payer = $this->member;
+            $payee = $this->other;
+            $payer = $this->self;
         }
         $this->record['payer_acc'] = $payer['account'];
         $this->record['payee_acc'] = $payee['account'];

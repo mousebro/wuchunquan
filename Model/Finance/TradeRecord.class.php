@@ -89,7 +89,6 @@ class TradeRecord extends Model
 
         return $this->recomposer;
     }
-
     /**
      * 获取交易记录详情
      *
@@ -144,7 +143,6 @@ class TradeRecord extends Model
             ->recomposeChannel()
             ->recomposeMoney()
             ->getRecord();
-
         return $result;
 
     }
