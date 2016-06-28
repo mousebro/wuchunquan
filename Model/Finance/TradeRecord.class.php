@@ -59,7 +59,7 @@ class TradeRecord extends Model
             ) {
                 $record = array_merge($record, $online_pay_info[ $ordernum ]);
             };
-            if (isset($account_types) && is_array($account_types) && $account_types[ $record['trade_no'] ]['fid'] != $record['fid']) {
+            if (isset($account_types) && is_array($account_types) && $account_types[ $record['trade_no'] ]['fid'] != $record['fid'] && $account_types[ $record['trade_no'] ]['ptype'] == $record['ptype']) {
                 $record['partner_acc_type'] = $account_types[ $record['trade_no'] ]['partner_acc_type'];
             }
             $data[] = $recomposer->setRecord($record, $fid, $partner_id)
@@ -92,8 +92,8 @@ class TradeRecord extends Model
 
     /**
      * 获取交易记录详情
-     * 
-*@param $trade_id
+     *
+     * @param $trade_id
      * @param $fid
      * @param $partner_id
      *
@@ -147,6 +147,7 @@ class TradeRecord extends Model
             ->recomposeChannel()
             ->recomposeMoney()
             ->getRecord();
+
         return $result;
 
     }
@@ -168,23 +169,12 @@ class TradeRecord extends Model
         if (!$records || !is_array($records)) {
             return false;
         } else {
-            $trade_no = array_filter(array_column($records, 'trade_no')); //外部交易流水号
-            if (is_array($trade_no)) {
-                $account_types = $this->getPartnerAccountType($trade_no); //根据外部交易流水查询交易账户类型
+            if (is_array($records) && count($records)) {
+                list($account_types, $online_pay_info, $extInfo, $prod_name) = $this->getExpandInfo($records, true);
             }
-
-            $orderIds = array_unique(array_filter(array_column($records, 'orderid'))); //交易号或订单号
-            if (is_array($orderIds)) {
-                $online_pay_info = $this->getPayerAccount($orderIds); //根据交易号查询交易账号
-                $extInfo = $this->getExtendInfo($orderIds);
-
-                if (count($extInfo)) {
-                    $tid = array_unique(array_filter(array_column($extInfo, 'tid')));
-                    $prod_name = $this->getProdNameByTid($tid);
-                }
-            }
-
         }
+
+
         //整合数据
         $data = $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $fid, $partner_id, $account_types,
             $online_pay_info);
@@ -459,7 +449,7 @@ class TradeRecord extends Model
             'trade_no' => ['in', $trade_no],
         ];
 
-        return $this->table($this->_trade_record_table)->where($where)->getField("trade_no,fid,aid,account_type as partner_account_type");
+        return $this->table($this->_trade_record_table)->where($where)->getField("trade_no,fid,aid,account_type as partner_account_type,ptype");
     }
 
     /**
@@ -467,22 +457,35 @@ class TradeRecord extends Model
      *
      * @return array
      */
-    private function getExpandInfo($records)
+    private function getExpandInfo($records, $getProdInfo = false)
     {
         //默认值
-        $account_types = $online_pay_acc = [];
+        $account_types = $online_pay_acc = $extInfo = $prod_name = [];
 
         $trade_no = array_filter(array_column($records, 'trade_no')); //外部交易流水号
         if (is_array($trade_no)) {
             $account_types = $this->getPartnerAccountType($trade_no); //根据外部交易流水查询交易账户类型
         }
 
-        $orderIds = array_filter(array_column($records, 'orderid')); //交易号或订单号
+        $orderIds = array_unique(array_filter(array_column($records, 'orderid'))); //交易号或订单号
         if (is_array($orderIds)) {
             $online_pay_acc = $this->getPayerAccount($orderIds);
         }
+        if ($getProdInfo) {
+            if (is_array($orderIds)) {
+                $extInfo = $this->getExtendInfo($orderIds);
+                if (count($extInfo)) {
+                    $tid = array_unique(array_filter(array_column($extInfo, 'tid')));
+                    $prod_name = $this->getProdNameByTid($tid);
+                }
 
-        return array($account_types, $online_pay_acc); //根据交易号查询交易账号
+            }
+
+            return array($account_types, $online_pay_acc, $extInfo, $prod_name);
+        } else {
+            return array($account_types, $online_pay_acc); //根据交易号查询交易账号
+        }
+
     }
 
     /**
@@ -491,7 +494,11 @@ class TradeRecord extends Model
      */
     private function integratePartnerAccount(&$record, $account_types)
     {
-        if (is_array($account_types) && isset($account_types[ $record['trade_no'] ]['fid']) && $account_types[ $record['trade_no'] ]['fid'] != $record['fid']) {
+        if (is_array($account_types)
+            && isset($account_types[ $record['trade_no'] ]['fid'])
+            && $account_types[ $record['trade_no'] ]['fid'] != $record['fid']
+            && $account_types[ $record['trade_no'] ]['ptype'] == $record['ptype']
+        ) {
             $record['partner_acc_type'] = $account_types[ $record['trade_no'] ]['partner_acc_type'];
         } else {
             $record['partner_acc_type'] = '';
