@@ -24,16 +24,35 @@ trait TradeRecordMemberRecomposer
         $this->online_pay_type = array_keys($pay_types, 0);
     }
 
-    private function getDefaultAccountType($acc_type, $is_payee)
+    private function getDefaultAccountType($acc_type, $is_payee, $memberid)
     {
-        if (!$acc_type || $acc_type == -1) {
-            if (in_array($this->record['ptype'], [0, 2, 3]) || !$is_payee) {
-                return $this->record['ptype'];
-            } else {
-                return 0;
-            }
-        } else {
+        if ($acc_type && $acc_type != -1) {
             return $acc_type;
+        }
+        //if($memberid == 112){
+        //    return '';
+        //}
+        switch ($this->record['ptype']) {
+            case 2: //no break;
+            case 3: //no break;
+            case 9: //no break;
+                return $this->record['ptype'];
+            case 0:
+                if ($this->record['dtype'] != 1) {
+                    return 0;
+                } else {
+                    if ($memberid != 112) {
+                        return 0;
+                    } else {
+                        return '';
+                    }
+                }
+            default:
+                if ($is_payee) {
+                    return 0;
+                } else {
+                    return $this->record['ptype'];
+                }
         }
     }
 
@@ -107,9 +126,9 @@ trait TradeRecordMemberRecomposer
         $this->partner['id'] = $this->record['aid'];
         $this->whoIsPayee();
         $this->member['acc_type'] = $this->getDefaultAccountType($this->record['member_acc_type'],
-            $this->member['is_payee']);
+            $this->member['is_payee'], $this->member['id']);
         $this->partner['acc_type'] = $this->getDefaultAccountType($this->record['partner_acc_type'],
-            $this->partner['is_payee']);
+            $this->partner['is_payee'], $this->partner['id']);
         $this->getMemberInfo($this->member, true);
         $this->getMemberInfo($this->partner, false);
     }

@@ -291,13 +291,13 @@ class TradeRecord extends Model
         //2 获取其他交易信息
         $data = [];
         if (is_array($records) && count($records)) {
-            list($account_types, $online_pay_acc) = $this->getExpandInfo($records);
+            list(, $online_pay_acc) = $this->getExpandInfo($records);
             $recomposer = $this->_getRecomposer();
 
             foreach ($records as $record) {
                 $this->integrateTradeAccount($record, $online_pay_acc);
-                $this->integratePartnerAccount($record, $account_types);
-
+                //$this->integratePartnerAccount($record, $account_types);
+                $record['partner_acc_type'] = '';
                 $data[] = $recomposer->setRecord($record, $fid, $partner_id)
                     ->recomposeMemberInfo()
                     ->recomposeTradeType()
@@ -462,10 +462,10 @@ class TradeRecord extends Model
         //默认值
         $account_types = $online_pay_acc = $extInfo = $prod_name = [];
 
-        $trade_no = array_filter(array_column($records, 'trade_no')); //外部交易流水号
-        if (is_array($trade_no)) {
-            $account_types = $this->getPartnerAccountType($trade_no); //根据外部交易流水查询交易账户类型
-        }
+        //$trade_no = array_filter(array_column($records, 'trade_no')); //外部交易流水号
+        //if (is_array($trade_no)) {
+        //    $account_types = $this->getPartnerAccountType($trade_no); //根据外部交易流水查询交易账户类型
+        //}
 
         $orderIds = array_unique(array_filter(array_column($records, 'orderid'))); //交易号或订单号
         if (is_array($orderIds)) {
@@ -488,22 +488,23 @@ class TradeRecord extends Model
 
     }
 
-    /**
-     * @param $record
-     * @param $account_types
-     */
-    private function integratePartnerAccount(&$record, $account_types)
-    {
-        if (is_array($account_types)
-            && isset($account_types[ $record['trade_no'] ]['fid'])
-            && $account_types[ $record['trade_no'] ]['fid'] != $record['fid']
-            && $account_types[ $record['trade_no'] ]['ptype'] == $record['ptype']
-        ) {
-            $record['partner_acc_type'] = $account_types[ $record['trade_no'] ]['partner_acc_type'];
-        } else {
-            $record['partner_acc_type'] = '';
-        }
-    }
+    ///**
+    // * @param $record
+    // * @param $account_types
+    // */
+    //private function integratePartnerAccount(&$record, $account_types=)
+    //{
+    //    //if (is_array($account_types)
+    //    //    && isset($account_types[ $record['trade_no'] ]['fid'])
+    //    //    && $account_types[ $record['trade_no'] ]['fid'] != $record['fid']
+    //    //    && $account_types[ $record['trade_no'] ]['ptype'] == $record['ptype']
+    //    //) {
+    //    //    $record['partner_acc_type'] = $account_types[ $record['trade_no'] ]['partner_acc_type'];
+    //    //} else {
+    //    //    $record['partner_acc_type'] = '';
+    //    //}
+    //    return $record['partner_acc_type'] = '';
+    //}
 
     /**
      * @param $record
