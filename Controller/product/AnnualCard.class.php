@@ -615,7 +615,7 @@ class AnnualCard extends Controller {
             $this->apiReturn(204, [], '参数错误');
         }
 
-        $sid = $_SESSION['sid'];
+        $sid = I('sid', '', 'intval');
 
         $vir_storage = $this->_CardModel->getAnnualCardStorage($sid, $pid, 'virtual');
 
