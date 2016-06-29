@@ -116,7 +116,7 @@ class TradeRecord extends Model
             "LEFT JOIN {$this->_order_table} AS o ON o.ordernum = tr.orderid",
             "LEFT JOIN {$this->_ticket_table} AS t ON o.tid = t.id",
             "LEFT JOIN {$this->_product_table} AS p ON p.id = t.pid",
-            "LEFT JOIN {$this->_alipay_table} AS a ON a.out_trade_no=o.ordernum",
+            "LEFT JOIN {$this->_alipay_table} AS a ON a.out_trade_no=tr.orderid",
         ];
 
         $field = [
