@@ -7,6 +7,7 @@ use Model\Product\AnnualCard as CardModel;
 use Model\Product\Ticket;
 use Model\Product\Land;
 use Model\Member\Member;
+use Model\Order\OrderTools;
 
 class AnnualCard extends Controller {
 
@@ -616,6 +617,29 @@ class AnnualCard extends Controller {
         }
         
         $this->apiReturn(200, $tickets);
+    }
+
+    public function orderSuccess() {
+        $ordernum = I('ordernum', '', 'intval');
+
+        if (!$ordernum) {
+            $this->apiReturn(204, [], '参数错误');
+        }
+
+        $order_info = $this->_CardModel->orderSuccess($ordernum);
+
+        $order_detail = (new OrderTools)->getOrderInfo($ordernum);
+
+        $return = [
+            'ordernum'  => $ordernum,
+            'type'      => $order_info[0]['physics_no'] ? 'physics' : 'virtual',
+            'list'      => $order_info,
+            'price'     => $order_detail['totalmoney'] / 100,
+            'date'      => date('Y-m-d H:i:s', time()) 
+        ];
+
+        $this->apiReturn(200, $return);
+
     }
 
     /**
