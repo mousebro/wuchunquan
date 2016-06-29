@@ -228,6 +228,9 @@ class ProductBasic extends Controller
                 return self::_return(self::CODE_INVALID_REQUEST,  '有效期时间不能为空',$ticketData['ttitle']);
             $tkBaseAttr['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
             $tkBaseAttr['order_start'] = date('Y-m-d 00:00:00', strtotime($ticketData['order_start']));
+            if ($tkBaseAttr['order_start'] > $tkBaseAttr['order_end']) {
+                return self::_return(self::CODE_INVALID_REQUEST,  '订单有效期开始时间不能大于结束时间',$ticketData['ttitle']);
+            }
         }
 
         // 退票规则 0 有效期内、过期可退 1 有效期内可退 2  不可退
