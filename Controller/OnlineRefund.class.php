@@ -185,9 +185,10 @@ class OnlineRefund extends Controller
         include '/var/www/html/alipay/Library/alipay_fuwuchuang/f2fpay/F2fpay.php';
         $f2fpay = new \F2fpay();
         $refund_fee   = number_format($this->data->refund_money / 100, 2);//元为单位
+        $out_request_no = date('YmdHis') . $this->data->ordernum . mt_rand(1000,9999); // 标识一次退款请求，同一笔交易多次退款需要保证唯一，如需部分退款，则此参数必传。
         Api::Log("before:appid={$this->data->appid},trade_no={$this->data->trade_no}, refund_fee=$refund_fee, ordernum={$this->data->ordernum}", $this->req_log);
         //多次退款需要提交原支付订单的商户订单号和设置不同的退款单号
-        $refundResult = $f2fpay->refund($this->data->trade_no, $refund_fee, I('post.ordernum'), $this->data->appid);
+        $refundResult = $f2fpay->refund($this->data->trade_no, $refund_fee, $out_request_no, $this->data->appid);
         Api::Log("result:".json_encode($refundResult), $this->req_log);
         if ($refundResult->alipay_trade_refund_response->code==10000) {
             return ['code'=>200, 'msg'=>'退款成功'];
