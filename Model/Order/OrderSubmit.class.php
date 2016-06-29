@@ -77,6 +77,9 @@ class OrderSubmit extends Model
         $cache = Cache::getInstance('redis');
         $this->cache = $cache;
         $cacheNum = $cache->get($cache_key);
+        if (!$cacheNum) {
+            $cache->set($cache_key, 0, '', $expire);
+        }
         $totalNum = $cacheNum + $buyNum;
         if ($cacheNum>0 && $cacheNum >= $limitNum || $totalNum > $limitNum) return false;
         return [$expire, $cache_key];
@@ -98,7 +101,6 @@ class OrderSubmit extends Model
         }
         if ($action==0) {
             $res = $this->cache->incrBy($key, $buyNum);
-            $this->cache->expire($key, $expire);
         }
         else {
             $this->cache->decrBy($key, $buyNum);
