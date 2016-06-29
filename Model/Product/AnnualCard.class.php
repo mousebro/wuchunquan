@@ -340,12 +340,6 @@ class AnnualCard extends Model
      */
     public function activateAnnualCard($virtual_no, $memberid)
     {
-
-        if (ismobile($memberid)) {
-            $member = (new Member)->getMemberInfo($memberid, 'mobile');
-            $memberid = $member['id'];
-        }
-
         $data = [
             'memberid'    => $memberid,
             'status'      => 1,
@@ -386,7 +380,9 @@ class AnnualCard extends Model
         } else {
             $where['virtual_no'] = ['in', $virtual_no];
             $data = ['status' => 0];
-        }   
+        } 
+
+        $data['sale_time'] = time();  
         
         $this->table(self::ANNUAL_CARD_TABLE)->where($where)->save($data);
     }
@@ -423,7 +419,7 @@ class AnnualCard extends Model
 
         $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
 
-        $field = 'id,sid,memberid,activate_source,pid,status';
+        $field = 'id,sid,virtual_no,card_no,sale_time,memberid,activate_source,pid,status';
 
         if ($action == 'select') {
 
@@ -455,7 +451,7 @@ class AnnualCard extends Model
 
         $where['memberid'] = $memberid;
 
-        $field = 'pid,memberid,card_no,virtual_no,physics_no,status';
+        $field = 'id,sid,pid,memberid,card_no,virtual_no,physics_no,status,active_time,sale_time';
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
     }
@@ -654,11 +650,32 @@ class AnnualCard extends Model
 
     }
 
-    public function getPeriodOfValidity($sid, $tid) {
+    public function getPeriodOfValidity($sid, $tid, $sale_time, $active_time) {
 
         $config = $this->getAnnualCardConfig($tid);
 
-        return '2016-01-11~2016-02-11';
+        $format = 'Y-m-d H:i:s';
+        $day = 3600 * 24;
+
+
+        switch ($config['delaytype']) {
+
+            case 0 :
+                return date($format, $active_time) . '~' . date($format, $active_time + $config['delaydays'] * $day);
+                break;
+
+            case 1 :
+                return date($format, $sale_time) . '~' . date($format, $sale_time + $config['delaydays'] * $day);
+                break;
+
+            case 2:
+                return $config['order_start'] . '~' . $config['order_end'];
+                break;
+
+            default:
+                return 0;
+
+        }
     }
 
 
@@ -804,16 +821,7 @@ class AnnualCard extends Model
     }
 
 
-    public function replaceAnnualCard($mobile, $virtual_no, $sid) {
-
-        $member = (new Member)->getMemberInfo($mobile, 'mobile');
-
-        if (!$member) {
-            return false;
-        }
-
-        $memberid = $member['id'];
-
+    public function replaceAnnualCard($memberid, $virtual_no, $sid) {
 
         $res = $this->table(self::ANNUAL_CARD_TABLE)
             ->where(['sid' => $sid, 'memberid' => $memberid])

@@ -515,11 +515,18 @@ class AnnualCard extends Controller {
             'mobile'    => $member_info['mobile']
         ];
 
-        // $Ticket = new Ticket();
+        $Ticket = new Ticket();
 
         foreach ($list as $key => $item) {
 
-            $valid_time = $this->_CardModel->getPeriodOfValidity($sid, 29082);
+            $ticket = $Ticket->getTicketInfoByPid($item['pid']);
+
+            $valid_time = $this->_CardModel->getPeriodOfValidity(
+                $item['sid'], 
+                $ticket['id'],
+                $item['sale_time'], 
+                $item['active_time']
+            );
 
             $list[$key]['valid_time'] = $valid_time;
 
@@ -535,11 +542,21 @@ class AnnualCard extends Controller {
                     'title' => $priv['ltitle'] . '-' . $priv['title'],
                     'use'   => $use . '/' . $all
                 ];
-
             }
+
+            $sid_arr[] = $item['sid'];
         }
 
+        $supplys = $list ? $this->_getMemberInfoByMulti($sid_arr) : [];
+        $supplys = $this->_replaceKey($supplys, 'id');
+        
+        foreach ($list as $key => $item) {
+            $list[$key]['supply'] = $supplys[$item['sid']][''];
+        }
+
+
         $return['list'] = $list;
+        $return['history'] = [];
 
         $this->apiReturn(200, $return, []);
     }
