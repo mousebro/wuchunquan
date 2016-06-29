@@ -21,7 +21,7 @@ class OrderNotify_Job {
             $this->args['ordernum'],
             $this->args['buyerId'],
             $this->args['aid'],
-            $this->args['mmobile'],
+            $this->args['mobile'],
             $this->args['pid'],
             $this->args['sellerId'],
             $this->args['ptype'],
