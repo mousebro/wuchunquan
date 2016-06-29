@@ -785,6 +785,24 @@ class AnnualCard extends Model
         return $this->table(self::CARD_ORDER_TABLE)->where(['ordernum' => $ordernum])->save($update);
     }
 
+    public function orderSuccess($ordernum) {
+
+        $virtual_no=  $this->table(self::CARD_MAPPING_TABLE)->where(['ordernum' => $ordernum])->getField('virtual_no');
+
+        if (!$virtual_no) {
+            return [];
+        }
+
+        $where = [
+            'virtual_no' => ['in', $virtual_no]
+        ];
+
+        $field = 'virtual_no,physics_no';
+
+        return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
+
+    }
+
 
     /**
      * 保存年卡激活配置信息
