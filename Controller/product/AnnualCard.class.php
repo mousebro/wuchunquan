@@ -8,6 +8,7 @@ use Model\Product\Ticket;
 use Model\Product\Land;
 use Model\Member\Member;
 use Model\Order\OrderTools;
+use pft\Member\MemberAccount;
 
 class AnnualCard extends Controller {
 
@@ -220,7 +221,7 @@ class AnnualCard extends Controller {
         //会员只能某个供应商的一张年卡
         $memberid = $this->_isNeedToReplace($mobile, $_SESSION['sid'], $replace);
 
-        if (!$this->activeAction($card['id'], $memberid)) {
+        if (!$this->activeAction($card['virtual_no'], $memberid)) {
 
             $this->apiReturn(204, [], '激活失败');
 
@@ -252,7 +253,7 @@ class AnnualCard extends Controller {
         //从虚拟库存中获取一张未激活的卡片
         $memberid = $card = $this->_CardModel->getAnnualCard(1, 1, $options);
 
-        if (!$this->activeAction($card['id'], $memberid)) {
+        if (!$this->activeAction($card['virtual_no'], $memberid)) {
 
             $this->apiReturn(200, [], '激活失败');
 
@@ -269,8 +270,8 @@ class AnnualCard extends Controller {
      * @param  [type]  $replace [description]
      * @return boolean          [description]
      */
-    private function _isNeedToReplace($mobile, $sid, $replace) {
-        $memberid = $this->_getMemberid($mobile);
+    private function _isNeedToReplace($mobile, $sid, $replace, $name, $id_card) {
+        $memberid = $this->_getMemberid($mobile, $name, $id_card);
 
         $card = $this->_hasBindAnnualCard($memberid, $sid);
 
@@ -339,10 +340,29 @@ class AnnualCard extends Controller {
      * @param  [type] $mobile [description]
      * @return [type]         [description]
      */
-    private function _getMemberid($mobile) {
+    private function _getMemberid($mobile, $name = '', $id_card = '') {
         $member = (new Member())->getMemberInfo($mobile, 'mobile');
 
         if (!$member) {
+            include '/var/www/html/new/com.inc.php';
+            include '/var/www/html/new/d/common/func.inc.php';
+            include '/var/www/html/new/d/class/MemberAccount.class.php';
+
+            $data = [
+                'dtype' => 1,
+                'dname' => $name,
+                'mobile' => $mobile,
+            ];
+
+            $mem = new MemberAccount($le);
+            $result = $mem->registerMember($data, ['id_card_no' => $id_card]);
+
+            if ($result['status'] == 'fail') {
+                $this->apiReturn(204, [], '会员注册出现异常');
+            } else {
+                $body = explode('|', $result['body']);
+                return $body[0];
+            }
             //注册新会员
         }
 
@@ -367,10 +387,10 @@ class AnnualCard extends Controller {
      * @access  public
      * @return [type] [description]
      */
-    public function activeAction($card_id, $memberid) {
+    public function activeAction($virtual_no, $memberid) {
 
         //状态变更
-        if (!$this->_CardModel->activateAnnualCard($card_id, $memberid)) {
+        if (!$this->_CardModel->activateAnnualCard($virtual_no, $memberid)) {
             return false;
         }
 
@@ -425,10 +445,14 @@ class AnnualCard extends Controller {
 
         $result = $result ?: [];
 
-        $memberid_arr = [];
+        $memberid_arr = $pid_arr = [];
         foreach ($result as $item) {
-            if ($item['memberid'])
+            if ($item['memberid']) {
                 $memberid_arr[] = $item['memberid'];
+                $memberid_arr[] = $item['sid'];
+            }
+
+            $pid_arr[] = $item['pid'];
         }   
 
         $members = $result ? $this->_getMemberInfoByMulti($memberid_arr) : [];
@@ -438,7 +462,14 @@ class AnnualCard extends Controller {
             if (isset($members[$item['memberid']])) {
                 $result[$key]['account'] = $members[$item['memberid']]['account'];
                 $result[$key]['mobile'] = $members[$item['memberid']]['mobile'];
+                $result[$key]['supply'] = $members[$item['sid']]['dname'];
             }
+        }
+
+        $pname_map = $this->_CardModel->getCardName($pid_arr);
+
+        foreach ($result as $key => $item) {
+            $result[$key]['title'] = $pname_map[$item['pid']];
         }
 
         $return = [
@@ -459,7 +490,7 @@ class AnnualCard extends Controller {
      */
     private function _getMemberInfoByMulti($memberid_arr) {
 
-        return (new Member())->getMemberInfoByMulti($memberid_arr, 'id', 'id,account,mobile');
+        return (new Member())->getMemberInfoByMulti($memberid_arr, 'id', 'id,dname,account,mobile');
 
     }
 
@@ -833,7 +864,9 @@ class AnnualCard extends Controller {
             $this->apiReturn(204, [], '参数错误');
         }
 
-        $this->_isNeedToReplace(I('mobile'), $sid, $replace);
+        $this->_isNeedToReplace(I('mobile'), $sid, $replace, $name, $id_card);
+
+        $this->apiReturn(200, ['exist' => 0]);
     }
 
 

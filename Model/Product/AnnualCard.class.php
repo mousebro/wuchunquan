@@ -7,6 +7,7 @@ use Library\Model;
 use Library\Exception;
 use Model\Order\OrderTools;
 use Model\Product\Ticket;
+use Model\Member\Member;
 
 class AnnualCard extends Model
 {
@@ -337,18 +338,22 @@ class AnnualCard extends Model
      *
      * @return [type]           [description]
      */
-    public function activateAnnualCard($card_id, $memberid)
+    public function activateAnnualCard($virtual_no, $memberid)
     {
 
+        if (ismobile($memberid)) {
+            $member = (new Member)->getMemberInfo($memberid, 'mobile');
+            $memberid = $member['id'];
+        }
+
         $data = [
-            'id'          => $card_id,
             'memberid'    => $memberid,
             'status'      => 1,
             'update_time' => time(),
             'active_time' => time(),
         ];
 
-        return $this->table(self::ANNUAL_CARD_TABLE)->save($data);
+        return $this->table(self::ANNUAL_CARD_TABLE)->where(['virtual_no' => $virtual_no])->save($data);
     }
 
     /**
@@ -418,7 +423,7 @@ class AnnualCard extends Model
 
         $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
 
-        $field = 'id,memberid,activate_source,pid';
+        $field = 'id,sid,memberid,activate_source,pid';
 
         if ($action == 'select') {
 
@@ -597,6 +602,21 @@ class AnnualCard extends Model
         return true;
     }
 
+    public function checkStatusForSale(array $virtual_arr) {
+        if (count($virtual_arr) < 1) {
+            return false;
+        }
+
+        $where = [
+            'virtual_no' => ['in', implode(',', $virtual_arr)],
+            'status'    => 3
+        ];
+
+        $count = $this->table(self::ANNUAL_CARD_TABLE)->where($where)->count();
+
+        return $count == count($virtual_arr);
+    }
+
     /**
      * 获取[当日,当月,总数]已使用
      * @param  [type] $tid      特权产品tid
@@ -637,8 +657,6 @@ class AnnualCard extends Model
     public function getPeriodOfValidity($sid, $tid) {
 
         $config = $this->getAnnualCardConfig($tid);
-
-        var_dump($config);die;
 
         return '2016-01-11~2016-02-11';
     }
@@ -785,6 +803,41 @@ class AnnualCard extends Model
         return $this->table(self::CARD_ORDER_TABLE)->where(['ordernum' => $ordernum])->save($update);
     }
 
+
+    public function replaceAnnualCard($mobile, $virtual_no, $sid) {
+
+        $member = (new Member)->getMemberInfo($mobile, 'mobile');
+
+        if (!$member) {
+            return false;
+        }
+
+        $memberid = $member['id'];
+
+
+        $res = $this->table(self::ANNUAL_CARD_TABLE)
+            ->where(['sid' => $sid, 'memberid' => $memberid])
+            ->save(['status' => 2]);
+
+        if ($res) {
+            $data = [
+                'memberid'      => $memberid,
+                'status'        => 1,
+                'active_time'   => time(),
+                'update_time'   => time()
+            ];
+
+            $where = [
+                'sid'           => $sid,
+                'virtual_no'    => $virtual_no
+            ];
+
+            return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->save($data);
+        }
+
+
+    }
+
     public function orderSuccess($ordernum) {
 
         $virtual_no=  $this->table(self::CARD_MAPPING_TABLE)->where(['ordernum' => $ordernum])->getField('virtual_no');
@@ -801,6 +854,22 @@ class AnnualCard extends Model
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
 
+    }
+
+    public function getCardName($pid_arr) {
+
+        $where = [
+            'id' => ['in', implode(',', $pid_arr)]
+        ];
+
+        $list = $this->table(self::PRODUCT_TABLE)->where($where)->field('id,p_name')->select();
+
+        $return = [];
+        foreach ($list as $item) {
+            $return[$item['id']] = $item['p_name'];
+        }
+
+        return $return;
     }
 
 
