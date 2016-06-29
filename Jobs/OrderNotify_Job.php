@@ -13,6 +13,7 @@
  * @aid: 上级供应商ID
  * @pid: 产品ID
  * @buyerId: 购买人ID
+ * @notify int 是否发送通知购买手机（外部接口有不发送的） 0 发送 1不发送
  */
 class OrderNotify_Job {
     public function perform(){
@@ -25,7 +26,8 @@ class OrderNotify_Job {
             $this->args['pid'],
             $this->args['sellerId'],
             $this->args['ptype'],
-            $this->args['ltitle']
+            $this->args['ltitle'],
+            $this->args['notify']
             );
         $code = $manual = 0;//对接第三方系统的
         if (isset($this->args['code'])) $code = $this->args['code'];

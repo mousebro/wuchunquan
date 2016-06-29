@@ -21,6 +21,7 @@ class OrderNotify {
     private $sellerId;
     private $title;
     private $buyerId;
+    private $not_to_buyer;
 
     /**
      * @var Model
@@ -37,7 +38,7 @@ class OrderNotify {
 //此为凭证，请妥善保管。详情及二维码:http://12301.cc/3u5235
 //发给供应商的短信：
 
-    public function __construct($ordernum, $buyerId, $aid, $mobile,$pid=0, $sellerID=0, $ptype=0, $title='')
+    public function __construct($ordernum, $buyerId, $aid, $mobile,$pid=0, $sellerID=0, $ptype=0, $title='', $not_to_buyer=0)
     {
         $this->model            = new Model('slave');
         $this->order_num        = $ordernum;
@@ -49,6 +50,7 @@ class OrderNotify {
         $this->aid              = $aid;
         $this->pid              = $pid;
         $this->title            = $title;
+        $this->not_to_buyer     = $not_to_buyer;
     }
 
     public function Send( $code=0, $manualQr=false )
@@ -64,7 +66,9 @@ class OrderNotify {
             $this->pid    = $infos['master_pid'];
             unset($land);
         }
-        $this->BuyerNotify($infos, $code, $manualQr);
+        if ($this->not_to_buyer!=1) {
+            $this->BuyerNotify($infos, $code, $manualQr);
+        }
         $this->SellerNotify($infos);
         return true;
     }
@@ -118,6 +122,13 @@ class OrderNotify {
             $pname  .= "\n{$tickets[$tid]['title']}{$tnum}{$this->unit},";
             $pid_list[] = $tickets[$tid]['pid'];
         }
+        $map    = count($pid_list)>1 ? ['pid'=>['in', $pid_list]] : ['pid'=>$pid_list[0]];
+        $model  = new Model('slave');
+        $extInfo = $model->table('uu_land_f f')->join('uu_land l on l.id=f.lid')
+            ->field('f.sendVoucher,f.pid,f.confirm_sms,f.confirm_wx,l.fax')
+            ->where($map)
+            ->limit(count($pid_list))
+            ->select();
 
         return [
             'lid'       => $order_info['lid'],
@@ -130,6 +141,7 @@ class OrderNotify {
             'memo'      => $order_info['memo'],//订单备注信息
             'pid_list'  => $pid_list,
             'master_pid'=> $master_pid,
+            'extAttrs'  => $extInfo,
         ];
     }
     /**
@@ -141,6 +153,8 @@ class OrderNotify {
      */
     public function BuyerNotify(Array $infos, $code, $manualQr)
     {
+        //是否发送凭证码（短信）到取票人手机  0 发送 1 不发送
+        if ($infos['extAttrs'][0]['sendVoucher']==1) return true;
         $this->p_type = $p_type = strtoupper($this->p_type);
         $sms_tpl = $this->SmsTemplate();
         $cformat = $sms_sign = '';
@@ -183,10 +197,9 @@ class OrderNotify {
     public function SellerNotify(Array $infos)
     {
         //查看哪些产品需要发送短信给供应商
-        $data = self::GetSellerTel($infos['pid_list']);
         $sms_notify_num = null;
         $confirm_wx     = 0;//接收微信通知标记
-        foreach ($data as $row) {
+        foreach ($infos['extAttrs'] as $row) {
             if ($row['confirm_wx']) {
                 $confirm_wx = 1;
             }
@@ -390,7 +403,7 @@ class OrderNotify {
         $map    = is_array($pids) ? ['pid'=>['in', $pids]] : ['pid'=>$pids];
         $model  = new Model('slave');
         return $model->table('uu_land_f f')->join('uu_land l on l.id=f.lid')
-            ->field('f.pid,f.confirm_sms,f.confirm_wx,l.fax')
+            ->field('f.sendVoucher,f.pid,f.confirm_sms,f.confirm_wx,l.fax')
             ->where($map)
             ->select();
     }
