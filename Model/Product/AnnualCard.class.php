@@ -15,6 +15,7 @@ class AnnualCard extends Model
     const CARD_CONFIG_TABLE     = 'pft_annual_card_conf';       //年卡激活配置表
     const CARD_PRIVILEGE_TABLE  = 'pft_annual_card_privilege';  //年卡景区特权表
     const CARD_ORDER_TABLE      = 'pft_annual_card_order';      //年卡订单记录表
+    const CARD_MAPPING_TABLE    = 'pft_annual_card_mapping';      
 
     const PRODUCT_TABLE         = 'uu_products';                //产品信息表
     const TICKET_TABLE          = 'uu_jq_ticket';               //门票信息表
@@ -366,6 +367,32 @@ class AnnualCard extends Model
         ];
 
         return $this->table(self::ANNUAL_CARD_TABLE)->save($data);
+    }
+
+    /**
+     * [updateStatusForOrder description]
+     * @return [type] [description]
+     */
+    public function updateStatusForOrder($type, $virtual_no) {
+        if ($type == 'virtual') {
+            //购买虚拟卡，直接激活
+            $where['virtual_no'] = $virtual_no;
+            $data = ['status' => 1];
+        } else {
+            $where['virtual_no'] = ['in', $virtual_no];
+            $data = ['status' => 0];
+        }   
+        
+        $this->table(self::ANNUAL_CARD_TABLE)->where($where)->save($data);
+    }
+
+    public function orderMapping($ordernum, $virtual_no) {
+        $data = [
+            'ordernum'      => $ordernum,
+            'virtual_no'    => $virtual_no
+        ];
+
+        $this->table(self::CARD_MAPPING_TABLE)->add($data);
     }
 
     /**

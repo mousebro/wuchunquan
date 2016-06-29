@@ -285,10 +285,10 @@ class AnnualCard extends Controller {
             $data = [
                 'exist' => 1,
                 'name' => $product['p_name'],
-                // 'left' => '1/20'
+                'left' => '1/20'
             ];
 
-            $this->apiReturn(201, $data);
+            $this->apiReturn(200, $data);
         }
 
         //用户确认进行替换
