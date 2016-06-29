@@ -46,4 +46,8 @@ class annual extends Controller {
     public function storage() {
         $this->display('annual/storage');
     }
+
+    public function ordersuccess() {
+        $this->display('annual/ordersuccess');
+    }
 }
