@@ -423,7 +423,7 @@ class AnnualCard extends Model
 
         $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
 
-        $field = 'id,sid,memberid,activate_source,pid';
+        $field = 'id,sid,memberid,activate_source,pid,status';
 
         if ($action == 'select') {
 
