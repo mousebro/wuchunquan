@@ -260,10 +260,14 @@ class Member extends Model
      * @param null $ptype int P_TYPE
      * @param string $orderid string 订单号
      * @param null $memo string 备注说明
+     * @param null $memo string 备注说明
+     * @param false $accountType 收款账号类型(支出流水和ptype一致，收入流水就要看具体去向)：0帐号资金 1支付宝 2供应商处可用资金 3供应商信用额度设置 4财付通 5银联 6环迅 9现金 11商户拉卡拉 12平台拉卡拉
+     *      收入流水需要主动传入该参数（主要是有在线支付的情况下）
+     * @param string $tradeNo 外部流水号
      * @return int|string
      */
-    public function PFT_Member_Fund_Modify( $id, $opID, $Mmoney, $action=0, $dmode=0, $aid=NULL,
-                                           $dtype=NULL, $ptype=NULL, $orderid='', $memo='')
+    public function PFT_Member_Fund_Modify($id, $opID, $Mmoney, $action=0, $dmode=0, $aid=NULL,
+                                           $dtype=NULL, $ptype=NULL, $orderid='', $memo='', $accountType = false, $tradeNo = false)
     {
         if ($dmode>0 && (!$aid || $aid<0)) return false;
         $id  = (int)$id;
@@ -330,6 +334,21 @@ class Member extends Model
             $journalData['dtype'] =(!is_numeric($dtype)) ? 11 : $dtype;
             $journalData['ptype'] =(!is_numeric($ptype)) ? 3  : $ptype;
         }
+
+        //添加收款人标识
+        if($accountType !== false) {
+            $accountType = intval($accountType);
+            $journalData['account_type'] = $accountType;
+        } else {
+            $journalData['account_type'] = $journalData['ptype'];
+        }
+
+        //添加外部流水号
+        if($tradeNo !== false) {
+            $tradeNo = strval($tradeNo);
+            $journalData['trade_no'] = $tradeNo;
+        }
+
         $journalData['lmoney'] = $this->getMoney($id, $dmode, $aid);
         $result2 = $this->table('pft_member_journal')
             ->data($journalData)
@@ -342,7 +361,7 @@ class Member extends Model
         return ['code'=>401, 'msg'=>'sql:'.$this->getLastSql() .',errmsg:'.  $this->getDbError()];
     }
     public function addMemberJournal($id, $opID, $Mmoney, $action=0, $aid=NULL,
-                                     $dtype=NULL, $ptype=NULL, $orderid='', $memo='', $tradeNo = false)
+                                     $dtype=NULL, $ptype=NULL, $orderid='', $memo='', $tradeNo = false, $accountType = false)
     {
         $journalData = [
             'fid'       => $id,
@@ -361,6 +380,12 @@ class Member extends Model
         if($tradeNo !== false) {
             $tradeNo = strval($tradeNo);
             $journalData['trade_no'] = $tradeNo;
+        }
+
+        //添加交易账号类型
+        if($accountType !== false) {
+            $accountType = intval($accountType);
+            $journalData['account_type'] = $accountType;
         }
 
         $result2 = $this->table('pft_member_journal')
