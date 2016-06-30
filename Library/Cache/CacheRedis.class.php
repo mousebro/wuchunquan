@@ -110,7 +110,6 @@ class CacheRedis extends Cache
     public function incrBy($key, $val=1)
     {
         if ($this->get($key, '', false) !== false) {
-            $this->init_master();
             $result = $this->_incrDecr('incrBy', $this->_key($key), $val);
         } else {
             $result = $this->set($key, $val, '', 1800, false);
@@ -120,7 +119,6 @@ class CacheRedis extends Cache
     public function decrBy($key, $val=1)
     {
         if ($this->get($key, '', false) !== false) {
-            $this->init_master();
             $result = $this->_incrDecr('decrBy', $this->_key($key), $val);
         } else {
             $result = $this->set($key, $val, '', 1800, false);
