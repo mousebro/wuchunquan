@@ -23,10 +23,10 @@ class Member extends Controller
             $member_id = I('post.member_id')+0;
         }
         if (!$member_id) parent::apiReturn(parent::CODE_AUTH_ERROR,[], '身份校验失败');
-        $new_password1 = I('post.new_pwd');
-        $new_password2 = I('post.confirm_pwd');
+        $new_password1 = I('post.new_pwd', 'trim');
+        $new_password2 = I('post.confirm_pwd', 'trim');
         if (isset($_POST['old'])) {
-            $old_password  = md5(md5(I('post.old')));
+            $old_password = md5(md5(I('post.old', 'trim')));
             if (! $model->checkOldPassword($member_id, $old_password)) {
                 parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '旧密码不正确');
             }
