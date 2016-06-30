@@ -217,13 +217,13 @@ class AnnualCard extends Controller {
         $id_card    = I('id_card');
         $vcode      = I('vcode');
 
-        // $identify = 'sadasdasd';
+        // $identify = 'asdasdasd';
         // $type = 'physics';
         // $mobile = 13123196340;
         // $name = '翁彬';
         // $id_card = 350181199106012339;
 
-        if (!$identify || !$type || !$mobile || !$name || !$id_card) {
+        if (!$identify || !$type || !$mobile || !$name) {
             $this->apiReturn(204, [], '参数错误');
         }
 
@@ -232,6 +232,14 @@ class AnnualCard extends Controller {
         $sid = $sid ?: $_SESSION['sid'];
 
         $card = $this->_activateCheck($identify, $type, $sid);
+
+        $ticket = (new Ticket)->getTicketInfoByPid($card['pid']);
+
+        $need_ID = $this->_CardModel->isNeedID($sid, $ticket['id']);
+
+        if ($need_ID && !$id_card) {
+            $this->apiReturn(204, [], '请填写身份证号码');
+        }
 
         if ($card['status'] != 0) {
             $this->apiReturn(204, [], '年卡状态有误,请检查是否出售或禁用');

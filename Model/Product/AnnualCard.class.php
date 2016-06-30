@@ -58,6 +58,23 @@ class AnnualCard extends Model
 
     }
 
+    /**
+     * 是否需要填写身份证信息
+     * @param  [type]  $sid [description]
+     * @param  [type]  $tid [description]
+     * @return boolean      [description]
+     */
+    public function isNeedID($sid, $tid) {
+
+        $where = [
+            'aid' => $sid,
+            'tid' => $tid
+        ];
+
+        return $this->table(self::CARD_CONFIG_TABLE)->where($where)->getField('cert_limit');
+
+    }
+
     
 
     /**
@@ -162,7 +179,10 @@ class AnnualCard extends Model
 
         $physics_arr = [];
         foreach ($list as $item) {
-            $physics_arr[] = $item['physics_no'];
+            if ($item['physics_no']) {
+                $physics_arr[] = $item['physics_no'];
+            }
+            
             $insert_data[] = [
                 'sid'         => $sid,
                 'pid'         => $pid,
@@ -174,14 +194,16 @@ class AnnualCard extends Model
             ];
         }
 
-        $where = [
-            'physics_no' => ['in', implode(',', $physics_arr)]
-        ];
+        if ($physics_arr) {
+            $where = [
+                'physics_no' => ['in', implode(',', $physics_arr)]
+            ];
 
-        $count = $this->table(self::ANNUAL_CARD_TABLE)->where($where)->count();
+            $count = $this->table(self::ANNUAL_CARD_TABLE)->where($where)->count();
 
-        if ($count > 0) {
-            return false;
+            if ($count > 0) {
+                return false;
+            }
         }
 
         if (!$this->table(self::ANNUAL_CARD_TABLE)->addAll($insert_data)) {
