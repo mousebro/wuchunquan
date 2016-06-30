@@ -153,6 +153,16 @@ class OrderNotify {
      */
     public function BuyerNotify(Array $infos, $code, $manualQr)
     {
+        $wx_open_id = $this->WxNotifyChk($this->buyerId);
+        if ($wx_open_id!==false) {
+            $this->WxNotifyCustomer($wx_open_id,
+                date('Y-m-d H:i'),
+                $infos['buyer'],
+                $this->title,
+                $infos['pname'],
+                $this->order_num
+            );
+        }
         //是否发送凭证码（短信）到取票人手机  0 发送 1 不发送
         if ($infos['extAttrs'][0]['sendVoucher']==1) return true;
         $this->p_type = $p_type = strtoupper($this->p_type);
@@ -173,14 +183,7 @@ class OrderNotify {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
         $res = $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account);
-        $wx_open_id = $this->WxNotifyChk($this->buyerId);
-        $this->WxNotifyCustomer($wx_open_id,
-            date('Y-m-d H:i'),
-            $infos['buyer'],
-            $this->title,
-            $infos['pname'],
-            $this->order_num
-        );
+
         return $res;
     }
     /**
