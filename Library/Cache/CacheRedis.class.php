@@ -35,7 +35,7 @@ class CacheRedis extends Cache
         }else{
             $func = $this->config['pconnect'] ? 'pconnect' : 'connect';
             $this->handler  = new Redis;
-            $this->enable = $this->handler->$func($this->config['master']['db_host'], $this->config['master']['db_port'], 5);
+            $this->enable = $this->handler->$func($this->config['master']['db_host'], $this->config['master']['db_port']);
             if (isset($this->config['master']['db_pwd'])) {
                 $this->handler->auth($this->config['master']['db_pwd']);
             }
@@ -102,11 +102,16 @@ class CacheRedis extends Cache
         if ($expire<=0) return false;
         return $this->handler->expire($this->_key($key), $expire);
     }
-
+    private function _incrDecr($func, $key, $val)
+    {
+        $this->init_master();
+        return $this->handler->$func($key, $val);
+    }
     public function incrBy($key, $val=1)
     {
-        if ($this->get($key, '', false) !== false) {;
-            $result = $this->handler->incrBy($this->_key($key), $val);
+        if ($this->get($key, '', false) !== false) {
+            $this->init_master();
+            $result = $this->_incrDecr('incrBy', $this->_key($key), $val);
         } else {
             $result = $this->set($key, $val, '', 1800, false);
         }
@@ -114,8 +119,9 @@ class CacheRedis extends Cache
     }
     public function decrBy($key, $val=1)
     {
-        if ($this->get($key, '', false) !== false) {;
-            $result = $this->handler->decrBy($this->_key($key), $val);
+        if ($this->get($key, '', false) !== false) {
+            $this->init_master();
+            $result = $this->_incrDecr('decrBy', $this->_key($key), $val);
         } else {
             $result = $this->set($key, $val, '', 1800, false);
         }
