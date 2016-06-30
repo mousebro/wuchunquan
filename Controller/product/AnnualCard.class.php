@@ -483,7 +483,7 @@ class AnnualCard extends Controller {
             }
 
             $pid_arr[] = $item['pid'];
-        }   
+        }
 
         $members = $result ? $this->_getMemberInfoByMulti($memberid_arr) : [];
         $members = $this->_replaceKey($members, 'id');
@@ -851,6 +851,8 @@ class AnnualCard extends Controller {
             'storage'   => $storage
         ];
 
+        $data['need_ID'] = $this->_CardModel->isNeedID($aid, $product['id']);
+
         //年卡囊括的特权信息
         $data['privileges'] = $this->_CardModel->getPrivileges($pid);
 
@@ -893,7 +895,7 @@ class AnnualCard extends Controller {
 
         $limit = $soap->PFT_Member_Fund($memberid, 2, $aid);
         $limit = simplexml_load_string($limit);
-        $distri_info['credit'] = sprintf("%.2f", ($s_remain + (int)$limit->Rec->UUbasecredit / 100) / 10000);
+        $distri_info['credit'] = sprintf("%.2f", $s_remain + (int)$limit->Rec->UUbasecredit / 100);
 
         return $distri_info;
     }
@@ -993,7 +995,7 @@ class AnnualCard extends Controller {
 
     public function test() {
 
-        var_dump((new \Api\AnnualCard())->sendVcode());die;
+        // var_dump((new \Api\AnnualCard())->sendVcode());die;
 
         // $this->_CardModel->getPeriodOfValidity(3385, 29155);die;
         // var_dump((new \Api\AnnualCard())->activate());die;

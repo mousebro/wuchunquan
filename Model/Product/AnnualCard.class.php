@@ -329,6 +329,7 @@ class AnnualCard extends Model
             'pri.parent_tid' => $ticket['id'],
             'pri.status'     => 1,
         ];
+
         $result = $this->table(self::CARD_PRIVILEGE_TABLE)
             ->join('pri left join uu_jq_ticket t on pri.tid=t.id left join uu_land l on t.landid=l.id')
             ->where($where)
