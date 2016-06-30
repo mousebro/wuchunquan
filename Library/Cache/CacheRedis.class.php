@@ -17,7 +17,6 @@ class CacheRedis extends Cache
     private $connected;
     private $type;
     private $prefix;
-    private $_instance = array();
     public function __construct() {
         $this->config = C('redis');
         if (empty($this->config['slave'])) $this->config['slave'] = $this->config['master'];
@@ -36,7 +35,7 @@ class CacheRedis extends Cache
         }else{
             $func = $this->config['pconnect'] ? 'pconnect' : 'connect';
             $this->handler  = new Redis;
-            $this->enable = $this->handler->$func($this->config['master']['db_host'], $this->config['master']['db_port']);
+            $this->enable = $this->handler->$func($this->config['master']['db_host'], $this->config['master']['db_port'], 5);
             if (isset($this->config['master']['db_pwd'])) {
                 $this->handler->auth($this->config['master']['db_pwd']);
             }
@@ -53,7 +52,7 @@ class CacheRedis extends Cache
         } else{
             $func = $this->config['pconnect'] ? 'pconnect' : 'connect';
             $this->handler = new Redis;
-            $this->enable = $this->handler->$func($this->config['slave']['db_host'], $this->config['slave']['db_port']);
+            $this->enable = $this->handler->$func($this->config['slave']['db_host'], $this->config['slave']['db_port'], 5);
             if (isset($this->config['slave']['db_pwd'])) {
                 $this->handler->auth($this->config['slave']['db_pwd']);
             }
