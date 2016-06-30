@@ -109,7 +109,7 @@ trait TradeRecordMemberRecomposer
     private function getMemberAccountType($acc_type, $is_fid)
     {
         if (in_array($acc_type, [2, 3])) {
-            return $is_fid ? '分销商授信账户' : '供应商授信账户';
+            return $is_fid ? '授信账户(分销商)' : '授信账户(供应商)';
         }
 
         return $this->account_types[ $acc_type ];
