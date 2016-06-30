@@ -33,7 +33,7 @@ class OrderNotify {
 
     const SMS_CONTENT_TPL = '入住凭证:{code}，您成功购买{pname}:{tnum}间，入住日期:{begintime}，离店日期:{endtime}。此为凭证，请妥善保管。详情及二维码:{link}';
     const SMS_CONTENT_TPL_GLY = '您已成功预订{pname}{tnum}间，凭证码：{code}.您可凭购票身份证、短信凭证码、二维码至厦门鼓浪屿漳州路3号皓月休闲度假俱乐部（皓月园内）办理入住，入住日期：{begintime}，离店日期：{endtime}。为方便您的游玩，建议您至少提前3天购买前往三丘田码头的船票,限取票当日使用，取后不退。祝您旅途愉快。详情及二维码：{link}';
-    const SMS_CONTENT_TPL_H = '凭证号:{code},您已成功购买{begintime}{pname}:{tnum}张,{perinfo}{getaddr}。详情及二维码:{link}。';
+    const SMS_CONTENT_TPL_H = '凭证号:{code},您已成功购买{begintime}{pname},{perinfo}{getaddr}。详情及二维码:{link}。';
     //【票付通】入住凭证：123456。您成功购买郁金香高级客房：3间，入住日期3月18日，离店日期3月22日。
 //此为凭证，请妥善保管。详情及二维码:http://12301.cc/3u5235
 //发给供应商的短信：
@@ -51,6 +51,7 @@ class OrderNotify {
         $this->pid              = $pid;
         $this->title            = $title;
         $this->not_to_buyer     = $not_to_buyer;
+        pft_log('queue/vcom', 'OrderNotify:' . json_encode(func_get_args()));
     }
 
     public function Send( $code=0, $manualQr=false )
@@ -311,6 +312,7 @@ class OrderNotify {
             'DEFAULT' => '凭证号：{code}，您已成功购买了{pname}{tnum},消费日期：{begintime},{getaddr}，此为入园凭证,请妥善保管。详情及二维码:{link}',
             'C'       => self::SMS_CONTENT_TPL,
             'GLY'     => self::SMS_CONTENT_TPL_GLY,
+            'H'       => self::SMS_CONTENT_TPL_H,
         );
         return isset($list[$ptype]) ? $list[$ptype] : $list['DEFAULT'];
     }
@@ -347,7 +349,7 @@ class OrderNotify {
             $orderObj   = new OrderQuery();
             $orderInfo  = $orderObj->GetOrderInfo(OrderQuery::__ORDER_DETAIL_TABLE__,
                 $this->order_num, 'series');
-
+            pft_log('queue/vcom', 'OrderInfo:' . json_encode($orderInfo) . $orderObj->_sql());
             if ($orderInfo[0]['series']){
                 $PerInfo=unserialize($orderInfo[0]['series'])[6];
             }
@@ -360,6 +362,7 @@ class OrderNotify {
         }
 
         $sms_tpl = empty($cformat) ? $this->get_default_tpl($this->p_type) : $cformat;
+        pft_log('queue/vcom', 'SMSTPL:ptype=' .$this->p_type .';sms_tpl=' . $sms_tpl . ';cformat='.$cformat);
 //        write_logs($this->p_type . ':sms_tpl=' . $sms_tpl);
         if (strpos($cformat, '{link}')!==false || strpos($sms_tpl, '{link}')!==false) {
             if ($manualQr) {
