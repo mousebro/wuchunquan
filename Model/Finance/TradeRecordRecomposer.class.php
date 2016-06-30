@@ -106,7 +106,9 @@ class TradeRecordRecomposer
     {
         $options = ['dmoney', 'lmoney'];
         foreach ($options as $money) {
-            $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
+            if ($this->record[ $money ] !== '') {
+                $this->record[ $money ] = strval(sprintf($this->record[ $money ] / 100, 2));
+            }
         }
         if ($this->is_acc_reverse && !in_array($this->ptype, [2, 3])) {
             $this->record['dmoney'] = $this->record['daction'] == 0 ? ("-" . $this->record['dmoney']) : ("+" . $this->record['dmoney']);
