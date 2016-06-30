@@ -177,6 +177,9 @@ trait TradeRecordMemberRecomposer
             $this->member['is_payee'], $this->member['id']);
         $this->partner['acc_type'] = $this->getDefaultAccountType($this->record['partner_acc_type'],
             $this->partner['is_payee'], $this->partner['id']);
+        if (!in_array($this->member['acc_type'], [0, 2, 3]) && $this->record['lmoney'] == 0) {
+            $this->record['lmoney'] = '';
+        }
         $this->getMemberInfo($this->member, true);
         $this->getMemberInfo($this->partner, false);
     }
