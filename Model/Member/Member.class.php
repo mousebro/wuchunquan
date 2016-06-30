@@ -266,6 +266,7 @@ class Member extends Model
      * @param string $tradeNo 外部流水号
      * @return int|string
      */
+
     public function PFT_Member_Fund_Modify($id, $opID, $Mmoney, $action=0, $dmode=0, $aid=NULL,
                                            $dtype=NULL, $ptype=NULL, $orderid='', $memo='', $accountType = false, $tradeNo = false)
     {

@@ -35,7 +35,7 @@ trait TradeRecordMemberRecomposer
      */
     private function getDefaultAccountType($acc_type, $is_payee, $memberid)
     {
-        if ($acc_type && $acc_type != -1) {
+        if ($acc_type === '0' || ($acc_type && $acc_type != -1)) {
             return $acc_type;
         }
 
@@ -109,6 +109,7 @@ trait TradeRecordMemberRecomposer
     private function getMemberAccountType($acc_type, $is_fid)
     {
         if (in_array($acc_type, [2, 3])) {
+            $this->record['taccount'] = '信用账户';
             return $is_fid ? '信用账户(分销商)' : '信用账户(供应商)';
         }
 
@@ -177,6 +178,9 @@ trait TradeRecordMemberRecomposer
             $this->member['is_payee'], $this->member['id']);
         $this->partner['acc_type'] = $this->getDefaultAccountType($this->record['partner_acc_type'],
             $this->partner['is_payee'], $this->partner['id']);
+        if (!in_array($this->member['acc_type'], [0, 2, 3]) && $this->record['lmoney'] == 0) {
+            $this->record['lmoney'] = '';
+        }
         $this->getMemberInfo($this->member, true);
         $this->getMemberInfo($this->partner, false);
     }
