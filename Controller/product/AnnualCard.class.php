@@ -2,6 +2,7 @@
 
 namespace Controller\Product;
 
+use Library\Cache\Cache;
 use Library\Controller;
 use Model\Product\AnnualCard as CardModel;
 use Model\Product\Ticket;
@@ -213,19 +214,41 @@ class AnnualCard extends Controller {
         $type       = I('type');
         $mobile     = I('mobile');
         $name       = I('name');
+        $id_card    = I('id_card');
+        $vcode      = I('vcode');
 
-        $card = $this->_activateCheck($identify, $type, $sid ?: $_SESSION['sid']);
+        // $identify = 'sadasdasd';
+        // $type = 'physics';
+        // $mobile = 13123196340;
+        // $name = '翁彬';
+        // $id_card = 350181199106012339;
 
-        $replace = I('replace') || false;
+        if (!$identify || !$type || !$mobile || !$name || !$id_card) {
+            $this->apiReturn(204, [], '参数错误');
+        }
+
+        $this->_checkVcode($mobile, $vcode);
+
+        $sid = $sid ?: $_SESSION['sid'];
+
+        $card = $this->_activateCheck($identify, $type, $sid);
+
+        if ($card['status'] != 0) {
+            $this->apiReturn(204, [], '年卡状态有误,请检查是否出售或禁用');
+        }
+
+        $replace = I('replace', '', 'intval') || false;
 
         //会员只能某个供应商的一张年卡
-        $memberid = $this->_isNeedToReplace($mobile, $_SESSION['sid'], $replace);
+        $memberid = $this->_isNeedToReplace($mobile, $sid, $replace, $name, $id_card);
 
         if (!$this->activeAction($card['virtual_no'], $memberid)) {
 
             $this->apiReturn(204, [], '激活失败');
 
         }
+
+        $this->_CardModel->createRelationShip($sid, $memberid);
 
         $this->apiReturn(200, [], '激活成功');
 
@@ -271,6 +294,7 @@ class AnnualCard extends Controller {
      * @return boolean          [description]
      */
     private function _isNeedToReplace($mobile, $sid, $replace, $name, $id_card) {
+
         $memberid = $this->_getMemberid($mobile, $name, $id_card);
 
         $card = $this->_hasBindAnnualCard($memberid, $sid);
@@ -325,7 +349,7 @@ class AnnualCard extends Controller {
         $card_info = $this->_CardModel->getAnnualCard(1, 1, $options);
 
         if (!$card_info) {
-            $this->apiReturn(204, [], '未找到相应的卡片信息');
+            $this->apiReturn(204, [], '未找到相应的年卡信息');
         }
 
         if ($card_info['memberid']) {
@@ -377,9 +401,14 @@ class AnnualCard extends Controller {
      * @return boolean           [description]
      */
     private function _hasBindAnnualCard($memberid, $sid) {
-        $identify = "sid={$sid} and memberid={$memberid}";
 
-        return $this->_CardModel->getAnnualCard($identify, '_string');
+        $options['where'] = [
+            'sid'       => $sid,
+            'memberid'  => $memberid,
+            'status'    => ['in', '0,1']
+        ];
+
+        return $this->_CardModel->getAnnualCard(1, 1, $options);
     }
 
     /**
@@ -393,13 +422,6 @@ class AnnualCard extends Controller {
         if (!$this->_CardModel->activateAnnualCard($virtual_no, $memberid)) {
             return false;
         }
-
-        //卡片激活后，清算订单资金
-        // if (0) {
-        //     // $this->_CardModel->rollback();
-        //     return false;
-        // }
-
 
         return true;
     }
@@ -887,10 +909,85 @@ class AnnualCard extends Controller {
         $this->apiReturn(200, ['exist' => 0]);
     }
 
+    /**
+     * 发送验证码
+     * @return [type] [description]
+     */
+    public function sendVcode() {
+        $mobile = I('mobile');
+
+        if (!ismobile($mobile)) {
+            $this->apiReturn(204, [], '请输入正确的手机号');
+        }
+
+        $code_info = $this->_getCodeInfo($mobile);
+
+        if ($code_info && (time() - $code_info['time'] < 60)) {
+            $this->apiReturn(204, [], '操作太频繁');
+        }
+
+        $code = substr(str_shuffle('123456789'), 0, 6);
+
+        $content = str_replace('{vcode}', $code, $this->_getVcodeTpl());
+
+        $soap = $this->getSoap();
+
+        $result = $soap->Send_SMS_V($mobile, $content);
+
+        if ($result == 100) {
+
+            $data = [
+                'code'  => $code,
+                'time'  => time()
+            ];
+
+            Cache::getInstance('redis')->set(md5($mobile . 'annual_active'), json_encode($data), '', 1800);
+
+            $this->apiReturn(200, [], '验证码发送成功');
+
+        } else {
+            $this->apiReturn(204, [], '验证码发送失败');
+        }
+    }
+
+    /**
+     * 验证码检测
+     * @param  [type] $mobile [description]
+     * @param  [type] $code   [description]
+     * @return [type]         [description]
+     */
+    private function _checkVcode($mobile, $code) {
+        $cache_info = $this->_getCodeInfo($mobile);
+
+        if (!$cache_info) {
+            $this->apiReturn(204, [], '验证码已过期');
+        }
+
+        if ($cache_info['code'] != $code) {
+            $this->apiReturn(204, [], '验证码错误');
+        }
+    }
+
+    private function _getCodeInfo($mobile) {
+
+        $cache = Cache::getInstance('redis')->get(md5($mobile . 'annual_active'));
+
+        return json_decode($cache, true);
+
+    }
+
+    private function _getVcodeTpl() {
+
+        return '您正在使用年卡激活服务，验证码：{vcode}';
+
+    }
 
 
     public function test() {
-        $this->_CardModel->getPeriodOfValidity(3385, 29155);die;
+
+        var_dump((new \Api\AnnualCard())->sendVcode());die;
+
+        // $this->_CardModel->getPeriodOfValidity(3385, 29155);die;
         // var_dump((new \Api\AnnualCard())->activate());die;
         // echo json_encode(($this->_CardModel->getCrdConf(5938)), JSON_UNESCAPED_UNICODE);die;
         var_dump((new \Api\AnnualCard())->annualConsume());

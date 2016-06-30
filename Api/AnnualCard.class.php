@@ -4,6 +4,7 @@
 
 namespace Api;
 
+use Library\Cache\Cache;
 use Library\Controller;
 use Model\Product\AnnualCard as CardModel;
 use Model\Member\Member;
@@ -38,7 +39,8 @@ use Controller\product\AnnualCard as CardCtrl;
         $products   = I('tickets');     //门票 [['pid' => num]]
         $identify   = I('identify');
         $type       = I('type');
-// 9595,1,22323,2
+        
+       // 9595,1,22323,2
         $products   = ['3026' => 1, '24696' => 2];
 
         if (!$aid || !$products || !$identify || !$type) {
@@ -46,6 +48,12 @@ use Controller\product\AnnualCard as CardCtrl;
         }
 
         $card = $this->_parseAnnualCard($aid, $identify, $type);
+
+        if ($type != 'physics') {
+            $mobile     = (new Member)->getMemberInfo($card['memberid'])['mobile'];
+            $vcode      = I('vcode');
+            $this->_checkVcode($mobile, $vcode);
+        }
 
         //未激活
         if ($card['status'] == 3) {
@@ -76,16 +84,20 @@ use Controller\product\AnnualCard as CardCtrl;
                     'left'  => $item
                 ];
             }
-            $this->apiReturn(203, $left, ['特权次数不足']);
+            $this->apiReturn(203, $left, '特权次数不足');
         }
 
         try {
-            $this->_orderAction($products, $aid, $card['memberid'], I(null));
+            $order_info = $this->_orderAction($products, $aid, $card['memberid'], I(null));
+
         } catch (DisOrderException $e) {
+
             $this->api(204, [], $e->getMessage());
         } 
 
         $data = $this->_getExtraData($card);
+
+        $data['ordernum'] = $order_info['ordernum'];
 
         $this->apiReturn(200, $data, '下单成功');
 
@@ -143,6 +155,85 @@ use Controller\product\AnnualCard as CardCtrl;
     }
 
     /**
+     * 发送验证码
+     * @return [type] [description]
+     */
+    public function sendVcode() {
+        $mobile = I('mobile');
+
+        $aid    = I('aid');
+
+        $card = $this->_parseAnnualCard($aid, $mobile, 'other');
+
+        if (!$card || $card['status'] != 1) {
+            $this->apiReturn(204, [], '年卡不存在或者非激活状态');
+        }
+
+        $mobile = (new Member)->getMemberInfo($card['memberid'])['mobile'];
+
+        $code_info = $this->_getCodeInfo($mobile);
+
+        if ($code_info && (time() - $code_info['time'] < 60)) {
+            $this->apiReturn(204, [], '操作太频繁');
+        }
+
+        $code = substr(str_shuffle('123456789'), 0, 6);
+
+        $content = str_replace('{vcode}', $code, $this->_getVcodeTpl());
+
+        $soap = $this->getSoap();
+
+        $result = $soap->Send_SMS_V($mobile, $content);
+
+        if ($result == 100) {
+
+            $data = [
+                'code'  => $code,
+                'time'  => time()
+            ];
+
+            Cache::getInstance('redis')->set(md5($mobile . 'annual'), json_encode($data), '', 1800);
+
+            $this->apiReturn(200, [], '验证码发送成功');
+
+        } else {
+            $this->apiReturn(204, [], '验证码发送失败');
+        }
+    }
+
+    /**
+     * 验证码检测
+     * @param  [type] $mobile [description]
+     * @param  [type] $code   [description]
+     * @return [type]         [description]
+     */
+    private function _checkVcode($mobile, $code) {
+        $cache_info = $this->_getCodeInfo($mobile);
+
+        if (!$cache_info) {
+            $this->apiReturn(204, [], '验证码已过期');
+        }
+
+        if ($cache_info['code'] != $code) {
+            $this->apiReturn(204, [], '验证码错误');
+        }
+    }
+
+    private function _getCodeInfo($mobile) {
+
+        $cache = Cache::getInstance('redis')->get(md5($mobile . 'annual'));
+
+        return json_decode($cache, true);
+
+    }
+
+    private function _getVcodeTpl() {
+
+        return '您正在使用年卡消费，验证码：{vcode}';
+
+    }
+
+    /**
      * 获取年卡的包含的特权产品
      * @param  int    $aid      供应商id
      * @param  string $identify 标识
@@ -162,7 +253,7 @@ use Controller\product\AnnualCard as CardCtrl;
             case 'virtual_no':
                 $options['where'] = [
                     'sid' => $aid,
-                    $type => $identify
+                    $type => $identify,
                 ];
 
                 break;
@@ -176,7 +267,8 @@ use Controller\product\AnnualCard as CardCtrl;
 
                 $options['where'] = [
                     'sid'       => $aid,
-                    'memberid'  => $member['id']
+                    'memberid'  => $member['id'],
+                    'status'    => 1
                 ];
 
                 break;

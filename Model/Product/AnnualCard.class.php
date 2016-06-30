@@ -270,6 +270,10 @@ class AnnualCard extends Model
      */
     public function parseIdentifyType($identify, $type = 'physics') {
 
+        if ($type == 'physics') {
+            return 'physics_no';
+        }
+
         if (ismobile($identify)) {
             return 'mobile';
         }
@@ -378,6 +382,28 @@ class AnnualCard extends Model
         ];
 
         return $this->table(self::ANNUAL_CARD_TABLE)->save($data);
+    }
+
+    /**
+     * 成为分销商
+     * @param  [type] $sid      [description]
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
+    public function createRelationShip($sid, $memberid) {
+
+        include '/var/www/html/new/d/class/MemberAccount.class.php';
+
+        if (!isset($GLOBALS['le'])) {
+            include_once("/var/www/html/new/conf/le.je");
+            $le = new \go_sql();
+            $le->connect();
+            $GLOBALS['le'] = $le;
+        }
+
+        $MemberAccount = new \pft\Member\MemberAccount($GLOBALS['le']);
+        $MemberAccount->createRelationship($sid, $memberid);
+
     }
 
     /**
