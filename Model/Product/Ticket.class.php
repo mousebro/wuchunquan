@@ -6,6 +6,7 @@
 namespace Model\Product;
 use Library\MessageNotify\OtaProductNotify;
 use Library\Model;
+
 use Model\Member\Member;
 use Model\Product\SellerStorage;
 use Model\SystemLog\OptLog;
@@ -348,7 +349,7 @@ class Ticket extends Model {
 
         //总库存模式
         if ($pid_arr) {
-            $find_pid = $this->getStorageForAllStoType($pid_arr, $result, $date);
+            $find_pid = $this->getStorageForAllStoType($pid_arr, $result);
         }
         // var_dump($find_pid);die;
         $pid_arr = $copy_pid_arr = array_diff($pid_arr, $find_pid);
@@ -431,8 +432,7 @@ class Ticket extends Model {
      * @param  [type] &$result [description]
      * @return [type]          [description]
      */
-    public function getStorageForAllStoType($pid_arr, &$result, $date = '') {
-        $date = $date ?: date('Y-m-d');
+    public function getStorageForAllStoType($pid_arr, &$result) {
         $where = array(
             'pid'       => array('in', implode(',', $pid_arr)),
             'storage'   => array('neq', -1)
@@ -448,7 +448,7 @@ class Ticket extends Model {
 
         foreach ($opens as $item) {
 
-            if (strtotime($item['storage_open']) > strtotime($date)) {
+            if (strtotime($item['storage_open']) > time()) {
                 continue;
             }
 
