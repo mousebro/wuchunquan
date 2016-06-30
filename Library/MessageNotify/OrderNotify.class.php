@@ -51,7 +51,7 @@ class OrderNotify {
         $this->pid              = $pid;
         $this->title            = $title;
         $this->not_to_buyer     = $not_to_buyer;
-        pft_log('queue/vcom', 'OrderNotify:' . json_encode(func_get_args()));
+        //pft_log('queue/vcom', 'OrderNotify:' . json_encode(func_get_args()));
     }
 
     public function Send( $code=0, $manualQr=false )
@@ -349,7 +349,6 @@ class OrderNotify {
             $orderObj   = new OrderQuery();
             $orderInfo  = $orderObj->GetOrderInfo(OrderQuery::__ORDER_DETAIL_TABLE__,
                 $this->order_num, 'series');
-            pft_log('queue/vcom', 'OrderInfo:' . json_encode($orderInfo) . $orderObj->_sql());
             if ($orderInfo[0]['series']){
                 $PerInfo=unserialize($orderInfo[0]['series'])[6];
             }
@@ -404,15 +403,6 @@ class OrderNotify {
         return $row;
     }
 
-    private function GetSellerTel($pids)
-    {
-        $map    = is_array($pids) ? ['pid'=>['in', $pids]] : ['pid'=>$pids];
-        $model  = new Model('slave');
-        return $model->table('uu_land_f f')->join('uu_land l on l.id=f.lid')
-            ->field('f.sendVoucher,f.pid,f.confirm_sms,f.confirm_wx,l.fax')
-            ->where($map)
-            ->select();
-    }
     /**
      * 检查是否可以通过微信发送通知
      *
