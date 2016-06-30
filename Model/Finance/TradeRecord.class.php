@@ -17,20 +17,35 @@ class TradeRecord extends Model
     private $_trade_record_table = 'pft_member_journal';
     private $_ticket_table = "uu_jq_ticket";
     private $_alipay_table = "pft_alipay_rec";
-    private $parser;
+    private $recomposer;
 
     /**
-     * @param $records
-     * @param $extInfo
-     * @param $prod_name
-     * @param $payAcc
+     * 重组导出报表的数据
+     *
+     * @param   array $records         交易记录
+     * @param   array $extInfo         交易记录表之外的补充信息
+     * @param   array $prod_name       交易内容
+     * @param   array $payAcc          交易账户
+     * @param   int   $fid             被查询商户
+     * @param   int   $partner_id      被查询对方商户
+     * @param   array $account_types   交易账户类型
+     * @param   array $online_pay_info 在线交易信息
      *
      * @return array
+     * @throws \Library\Exception
      */
-    private function _recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $fid, $partner_id)
-    {
+    private function _recomposeExcelData(
+        $records,
+        $extInfo,
+        $prod_name,
+        $payAcc,
+        $fid,
+        $partner_id,
+        $account_types,
+        $online_pay_info
+    ) {
         $data = [];
-        $parser = $this->_getParser();
+        $recomposer = $this->_getRecomposer();
         foreach ($records as $record) {
             $ordernum = $record['orderid'];
 
@@ -46,16 +61,23 @@ class TradeRecord extends Model
             if ($ordernum && count($payAcc) && array_key_exists($ordernum, $payAcc)) {
                 $record = array_merge($record, $payAcc[ $ordernum ]);
             }
-
-            $data[] = $parser->setRecord($record, $fid, $partner_id)
-                ->parseTradeType('|')
-                ->parseMember(false)
-                ->parsePayType()
-                ->parseChannel()
-                //->parsePayee()
-                ->parseTradeContent()
-                ->parseMoney()
-                ->excelWrap(['payer_acc','payee_acc','dmoney','lmoney','trade_no','orderid'])
+            if (isset($online_pay_info) && is_array($online_pay_info) && array_key_exists($ordernum,
+                    $online_pay_info)
+            ) {
+                $record = array_merge($record, $online_pay_info[ $ordernum ]);
+            };
+            if (isset($account_types) && is_array($account_types) && $account_types[ $record['trade_no'] ]['fid'] != $record['fid'] && $account_types[ $record['trade_no'] ]['ptype'] == $record['ptype']) {
+                $record['partner_acc_type'] = $account_types[ $record['trade_no'] ]['partner_acc_type'];
+            }
+            $data[] = $recomposer->setRecord($record, $fid, $partner_id)
+                ->recomposeTradeType('|')
+                ->recomposeMemberExcel()
+                ->recomposePayType()
+                ->recomposeChannel()
+                ->recomposeTradeContent()
+                ->recomposeMoney()
+                ->recompseExcelMoney()
+                ->excelWrap(['payer_acc', 'payee_acc', 'outcome', 'income', 'lmoney', 'trade_no', 'orderid'])
                 ->getRecord();
         }
 
@@ -65,25 +87,28 @@ class TradeRecord extends Model
     /**
      * 获取交易记录转换实例
      *
-     * @return TradeRecordParser
+     * @return TradeRecordRecomposer
      */
-    private function _getParser()
+    private function _getRecomposer()
     {
-        if (is_null($this->parser)) {
-            $this->parser = new TradeRecordParser();
+        if (is_null($this->recomposer)) {
+            $this->recomposer = new TradeRecordRecomposer();
         }
 
-        return $this->parser;
+        return $this->recomposer;
     }
 
     /**
      * 获取交易记录详情
      *
      * @param $trade_id
+     * @param $fid
+     * @param $partner_id
      *
-     * @return array|mixed
+     * @return array|bool
+     * @throws \Library\Exception
      */
-    public function getDetails($trade_id)
+    public function getDetails($trade_id, $fid, $partner_id)
     {
         $table = "{$this->_trade_record_table} AS tr";
 
@@ -91,7 +116,7 @@ class TradeRecord extends Model
             "LEFT JOIN {$this->_order_table} AS o ON o.ordernum = tr.orderid",
             "LEFT JOIN {$this->_ticket_table} AS t ON o.tid = t.id",
             "LEFT JOIN {$this->_product_table} AS p ON p.id = t.pid",
-            "LEFT JOIN {$this->_alipay_table} AS a ON a.out_trade_no=o.ordernum",
+            "LEFT JOIN {$this->_alipay_table} AS a ON a.out_trade_no=tr.orderid",
         ];
 
         $field = [
@@ -105,7 +130,7 @@ class TradeRecord extends Model
             'tr.trade_no',                          //交易流水
             'tr.memo',                              //备注
             'tr.daction',                           //收支
-            'tr.payee_type',                        //收款账户类型
+            'tr.account_type as member_acc_type',   //交易账户类型
             'o.ordermode as order_channel',         //交易渠道
             'p.p_name',                             //产品名称
             'a.buyer_email as payer_acc',           //支付方账号
@@ -121,14 +146,14 @@ class TradeRecord extends Model
             return false;
         }
 
-        $result = $this->_getParser()
-            ->setRecord($record)
-            ->parseTradeType()
-            ->parseTradeContent()
-            ->parseMemberBasic()
-            ->parsePayType()
-            ->parseChannel()
-            ->parseMoney()
+        $result = $this->_getRecomposer()
+            ->setRecord($record, $fid, $partner_id)
+            ->recomposeTradeType()
+            ->recomposeTradeContent()
+            ->recomposeMemberDetail()
+            ->recomposePayType()
+            ->recomposeChannel()
+            ->recomposeMoney()
             ->getRecord();
 
         return $result;
@@ -144,9 +169,32 @@ class TradeRecord extends Model
      */
     public function getExList($map, $fid, $partner_id)
     {
+        $order = 'rectime asc';
+        $records = $this->getTradeRecord($map, $order);
+
+        $extInfo = $prod_name = $payAcc = $account_types = $online_pay_info = [];
+
+        if (!$records || !is_array($records)) {
+            return false;
+        } else {
+            if (is_array($records) && count($records)) {
+                list($account_types, $online_pay_info, $extInfo, $prod_name) = $this->getExpandInfo($records, true);
+            }
+        }
+
+        //整合数据
+        $data = $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $fid, $partner_id, $account_types,
+            $online_pay_info);
+
+        return $data;
+    }
+
+    public function getTradeRecord($map, $order, $limit = null, $page = null)
+    {
         $table = "{$this->_trade_record_table}";
 
         $field = [
+            'id as trade_id',
             'fid',          //交易商户
             'aid',          //对方商户
             //'opid',         //操作人
@@ -157,40 +205,19 @@ class TradeRecord extends Model
             'lmoney',       //账户余额
             'ptype',        //支付方式
             'daction',      //0-收入 1-支出
-            'payee_type',   //收款方账号
+            'account_type as member_acc_type',   //收款方账号
             'trade_no',     //支付流水号
             'memo',         //备注
         ];
-        $order = 'id asc';
-        $extInfo = $prod_name = $payAcc = [];
+        $records = $this->table($table)->field($field)->where($map)->order($order);
 
-        $records = $this->table($table)->field($field)->where($map)->order($order)->select();
-
-        if (!$records || !is_array($records)) {
-            return false;
+        if (isset($limit, $page)) {
+            $records = $records->limit($limit)->page($page)->select();
         } else {
-            //提取交易号
-            $orderid = array_unique(array_filter(array_column($records, 'orderid')));
-
-            if (count($orderid)) {
-
-                //获取订单号/交易号对应信息
-                $extInfo = $this->getExtendInfo($orderid);
-
-                //根据外部订单号获取在线支付信息
-                $payAcc = $this->getPayerAccount($orderid);
-
-                //根据订单中的门票id 查找产品名称
-                if (count($extInfo)) {
-                    $tid = array_unique(array_filter(array_column($extInfo, 'tid')));
-                    $prod_name = $this->getProdNameByTid($tid);
-                }
-            }
+            $records = $records->select();
         }
 
-        //整合数据
-        $data = $this->_recomposeExcelData($records, $extInfo, $prod_name, $payAcc, $fid, $partner_id);
-        return $data;
+        return $records;
     }
 
     /**
@@ -251,66 +278,40 @@ class TradeRecord extends Model
     }
 
     /**
-     * 获取交易记录列表
+     *  获取交易记录列表
      *
-     * @param   array $map   查询条件
-     * @param   int   $page  当前页
-     * @param   int   $limit 单页记录数
+     * @param array $map        查询条件
+     * @param int   $page       当前页
+     * @param int   $limit      单页记录数
+     * @param int   $fid        管理员选择的商户id
+     * @param int   $partner_id 管理员选择的对方商户id
      *
-     * @return  array
+     * @return array
+     * @throws \Library\Exception
      */
     public function getList($map, $page, $limit, $fid, $partner_id)
     {
-        $table = "{$this->_trade_record_table}";
+        // 1 从交易记录表中获取基本交易信息
+        $order = 'rectime desc';
+        $records = $this->getTradeRecord($map, $order, $limit, $page);
 
-        $field = [
-            'orderid',
-            'id as trade_id',
-            'fid',
-            'aid',
-            'rectime',
-            'dtype',
-            'dmoney',
-            'daction',
-            'lmoney',
-            'ptype',
-            'memo',
-            'payee_type',
-        ];
-
-        $field = join(',', $field);
-
-        $order = 'id desc';
-
-        $records = $this->table($table)
-            ->where($map)
-            ->page($page)
-            ->limit($limit)
-            ->order($order)
-            ->field($field)
-            ->select();
-
+        //2 获取其他交易信息
         $data = [];
         if (is_array($records) && count($records)) {
-            $orderIds = array_filter(array_column($records, 'orderid'));
-            $online_pay_info = $this->getPayerAccount($orderIds);
-            $parser = $this->_getParser();
+            list(, $online_pay_acc) = $this->getExpandInfo($records);
+            $recomposer = $this->_getRecomposer();
+
             foreach ($records as $record) {
-                $orderid = $record['orderid'];
-                if (is_array($online_pay_info) && array_key_exists($orderid, $online_pay_info)) {
-                    $record = array_merge($record, $online_pay_info[ $orderid ]);
-                }
-                $data[] = $parser->setRecord($record, $fid, $partner_id)
-                    ->parseMember()
-                    ->parseTradeType()
-                    ->parsePayType()
-                    ->parseMoney()
+                $this->integrateTradeAccount($record, $online_pay_acc);
+                $record['partner_acc_type'] = '';
+                $data[] = $recomposer->setRecord($record, $fid, $partner_id)
+                    ->recomposeMemberInfo()
+                    ->recomposeTradeType()
+                    ->recomposeMoney()
                     ->getRecord();
             }
         }
-
-        $total = $this->table($table)->where($map)->count();
-
+        $total = $this->getTradeRecordCount($map);
         $return = [
             'total'      => $total,
             'page'       => $page + 1,
@@ -321,6 +322,18 @@ class TradeRecord extends Model
 
         return $return;
 
+    }
+
+    /**
+     * @param array $map 计算记录条数
+     *
+     * @return int
+     */
+    public function getTradeRecordCount($map)
+    {
+        $table = $this->_trade_record_table;
+
+        return $this->table($table)->where($map)->count();
     }
 
     /**
@@ -428,4 +441,51 @@ class TradeRecord extends Model
 
         return $return;
     }
+
+    /**
+     * 获取交易记录表外的补充信息
+     *
+     * @param   array $records 交易记录列表
+     *
+     * @return array
+     */
+    private function getExpandInfo($records, $getProdInfo = false)
+    {
+        //默认值
+        $account_types = $online_pay_acc = $extInfo = $prod_name = [];
+        $orderIds = array_unique(array_filter(array_column($records, 'orderid'))); //交易号或订单号
+        if (is_array($orderIds)) {
+            $online_pay_acc = $this->getPayerAccount($orderIds);
+        }
+        if ($getProdInfo) {
+            if (is_array($orderIds)) {
+                $extInfo = $this->getExtendInfo($orderIds);
+                if (count($extInfo)) {
+                    $tid = array_unique(array_filter(array_column($extInfo, 'tid')));
+                    $prod_name = $this->getProdNameByTid($tid);
+                }
+
+            }
+
+            return array($account_types, $online_pay_acc, $extInfo, $prod_name);
+        } else {
+            return array($account_types, $online_pay_acc); //根据交易号查询交易账号
+        }
+
+    }
+
+    /**
+     * 合并在线交易信息
+     *
+     * @param   array $record         单条交易记录
+     * @param   array $online_pay_acc 在线交易记录账户列表
+     */
+    private function integrateTradeAccount(&$record, $online_pay_acc)
+    {
+        if (is_array($online_pay_acc) && array_key_exists($record['orderid'], $online_pay_acc)
+        ) {
+            $record = array_merge($record, $online_pay_acc[ $record['orderid'] ]);
+        }
+    }
 }
+
