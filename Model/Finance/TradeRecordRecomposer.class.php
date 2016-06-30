@@ -254,7 +254,7 @@ class TradeRecordRecomposer
      */
     public function recomposeMemberInfo($separator = '<br/>')
     {
-        $this->record['taccount'] = in_array($this->record['ptype'], [2, 3]) ? '信用账户' : $this->self['acc_type'];
+        $this->record['taccount'] = isset($this->record['taccount']) ? $this->record['taccount'] : $this->self['acc_type'];
         $this->record['member'] = $this->self['dname'];
         $this->record['counter'] = self::combineStr([$this->other['dname'], $this->other['acc_type']], $separator);
 
