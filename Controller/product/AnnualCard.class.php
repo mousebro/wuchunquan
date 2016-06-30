@@ -551,12 +551,13 @@ class AnnualCard extends Controller {
         $supplys = $this->_replaceKey($supplys, 'id');
         
         foreach ($list as $key => $item) {
-            $list[$key]['supply'] = $supplys[$item['sid']][''];
+            $list[$key]['supply'] = $supplys[$item['sid']]['dname'];
         }
 
 
         $return['list'] = $list;
         $return['history'] = [];
+
 
         $this->apiReturn(200, $return, []);
     }

@@ -160,7 +160,9 @@ class AnnualCard extends Model
 
         $insert_data = [];
 
+        $physics_arr = [];
         foreach ($list as $item) {
+            $physics_arr[] = $item['physics_no'];
             $insert_data[] = [
                 'sid'         => $sid,
                 'pid'         => $pid,
@@ -170,6 +172,16 @@ class AnnualCard extends Model
                 'status'      => 3,
                 'create_time' => time(),
             ];
+        }
+
+        $where = [
+            'physics_no' => ['in', implode(',', $physics_arr)]
+        ];
+
+        $count = $this->table(self::ANNUAL_CARD_TABLE)->where($where)->count();
+
+        if ($count > 0) {
+            return false;
         }
 
         if (!$this->table(self::ANNUAL_CARD_TABLE)->addAll($insert_data)) {
@@ -760,6 +772,7 @@ class AnnualCard extends Model
             't.landid'      => $lid,
             'p.p_status'    => 0,
             'p.apply_limit' => 1,
+            't.pay'         => 1
         ];
 
         $tickets = $this->table(self::TICKET_TABLE)
