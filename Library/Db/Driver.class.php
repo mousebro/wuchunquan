@@ -172,6 +172,10 @@ abstract class Driver {
         $this->initConnect(false);
         if ( !$this->_linkID ) return false;
         $this->queryStr     =   $str;
+
+        //开发环境下记录sql语句
+        $this->_logSql($str);
+
         if(!empty($this->bind)){
             $that   =   $this;
             $this->queryStr =   strtr($this->queryStr,array_map(function($val) use($that){ return '\''.$that->escapeString($val).'\''; },$this->bind));
@@ -252,6 +256,10 @@ abstract class Driver {
         $this->initConnect(true);
         if ( !$this->_linkID ) return false;
         $this->queryStr = $str;
+
+        //开发环境下记录sql语句
+        $this->_logSql($str);
+
         if(!empty($this->bind)){
             $that   =   $this;
             $this->queryStr =   strtr($this->queryStr,array_map(function($val) use($that){ return '\''.$that->escapeString($val).'\''; },$this->bind));
@@ -407,6 +415,27 @@ abstract class Driver {
         }
 
         return $this->error;
+    }
+
+    /**
+     * 在开发环境记录执行的sql语句
+     * @author dwer
+     * @date   2016-06-14
+     *
+     * @param  $sql 执行过的sql
+     * @return
+     */
+    private function _logSql($sql) {
+        if(!$sql) {
+            return false;
+        }
+
+        if(defined('ENV') && ENV == 'DEVELOP' && function_exists('pft_log')) {
+            pft_log('sql_run', $sql);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**

@@ -1552,6 +1552,20 @@ class Model {
         return $this;
     }
 
+    /**
+     * 在非生产环境记录所执行的sql语句
+     */
+    protected function logSql()
+    {
+        if (ENV == 'DEVELOP') {
+            $prefix = __CLASS__ ? strtolower(__CLASS__) . '/' : '';
+            $trace  = debug_backtrace();
+            $caller = array_shift($trace);
+            $action = $caller['function'] ?: '';
+            \pft_log($prefix . 'query', $action . "#" . $this->getLastSql());
+        }
+    }
+
 }
 
 

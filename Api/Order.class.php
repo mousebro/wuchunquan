@@ -11,6 +11,7 @@ namespace Api;
 
 use Library\Controller;
 use Model\Order\OrderCommon;
+use Model\Order\OrderQuery;
 use Model\Order\OrderTools;
 
 class Order extends Controller
@@ -62,10 +63,14 @@ class Order extends Controller
         $tid = 0;
         $member             = I('post.member');
         $aid                = I('post.aid');
+        $oname              = '';//取票人姓名
+        $sort               = 1;
+        $offset             = I('post.offset', 0, 'intval');
+        $top                = I('post.top', 100, 'intval');
         $this->soap();
-        $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, 0, $tid, '', '',
-            $ordertime_begin, $ordertime_end,'','','', '',//13订单完成时间
-            $orderNum, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
+        $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, $tid, '', '',
+            $ordertime_begin, $ordertime_end,'','','', '',//12订单完成时间
+            $orderNum, $oname, $ordertel, $orderStatus, $payStatus, '', $sort,/*19排序*/ 1,/*20降序*/ $offset, $top,
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
@@ -96,11 +101,17 @@ class Order extends Controller
         $ordernum       = I('post.ordernum');
         $pay_total_fee  = I('post.total_fee') + 0;
         $pay_channel    = 4;
-        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付
+        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付  11--拉卡拉（商户），12--拉卡拉（平台）
         $pay_to_pft     = false;
         $tradeno        = I('post.tradeno');//流水号
-
-        if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6) {
+        $pay_conf       = include '/var/www/html/Service/Conf/pay.conf.php';
+        $pay_account    = I('post.pay_account');
+        $app_id         = I('post.app_id', 0);
+        if ($pay_account!='' && in_array($pay_account, $pay_conf['pft']['lakala'])) {
+            $pay_to_pft = true;
+            $sourceT    = 7;//平台拉卡拉
+        }
+        if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6 && $sourceT !=7) {
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，支付方式不对');
         }
         if (empty($ordernum)) {
@@ -109,11 +120,10 @@ class Order extends Controller
         if (empty($pay_total_fee) || !$pay_total_fee) {
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单金额格式不对');
         }
-        //if (empty($tradeno)) {
-        //    parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，流水号格式不对');
-        //}
         $this->soap();
-        //$soap = new \ServerInside();
+        if ($app_id=='android_terminal') {
+            $pay_channel = 20;
+        }
         $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
@@ -128,26 +138,23 @@ class Order extends Controller
     public function OrderSaleLog()
     {
         $oc = new OrderCommon();
-
-        $ordernum   = I('post.ordernum');
-        $sale_price = I('post.sale_price');
         $sale_op    = I('post.sale_op');
         $op_id      = I('post.op_id');
         $ad_flag    = I('post.ad_flag');
         $sale_type  = I('post.sale_type');
-
-        if (!is_numeric($ordernum) || !$ordernum) {
-            parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '订单号格式错误');
-        }
-        if (!is_numeric($sale_price) || !$sale_price) {
-            parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '销售价格式错误');
-        }
+        $orders     = (array)$_POST['orders'];
+        //if (!is_numeric($ordernum) || !$ordernum) {
+        //    parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '订单号格式错误');
+        //}
+        //if (!is_numeric($sale_price) || !$sale_price) {
+        //    parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '销售价格式错误');
+        //}
         if (!is_numeric($sale_op) || !$sale_op) {
             parent::apiReturn(parent::CODE_INVALID_REQUEST, [], '销售员ID格式错误');
         }
         $ad_flag    = $ad_flag ? $ad_flag+0 : 0;
         $sale_type  = $sale_type ? $sale_type+0 : 0;
-        $res = $oc->OrderSaleLog($ordernum, $sale_price, $sale_op, $op_id, $ad_flag, $sale_type);
+        $res = $oc->OrderSaleLog($orders, $sale_op, $op_id, $ad_flag, $sale_type);
         if ($res) {
             parent::apiReturn(parent::CODE_SUCCESS,[],'操作成功');
         }
@@ -158,6 +165,17 @@ class Order extends Controller
      */
     public function Summary()
     {
+        $start_date = strtotime(I('post.start_date'));
+        $end_date   = strtotime(I('post.end_date'));
+        $op_id      = I('post.op_id');//操作员ID
+        $lid      = I('post.lid');//景点ID
+
+        $query = new OrderQuery();
+        $data  = $query->CTS_SaleSummary($start_date, $end_date,$op_id, $lid);
+        if (is_array($data)) {
+            parent::apiReturn(parent::CODE_SUCCESS,$data,'success');
+        }
+        parent::apiReturn(parent::CODE_NO_CONTENT, 'fail');
 
     }
     public function PackageOrderCheck($args)
@@ -168,7 +186,6 @@ class Order extends Controller
             $time_begin = date('Y-m-d H:00:00', strtotime('-1 hours'));
         }
         $time_end = date('Y-m-d H:i:00', strtotime("+30 mins", strtotime($time_begin)));
-        echo $time_begin, '---', $time_end;
         $model = new OrderTools();
         $model->syncPackageOrderStatus($time_begin, $time_end);
     }

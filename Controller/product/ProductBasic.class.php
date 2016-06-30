@@ -141,7 +141,8 @@ class ProductBasic extends Controller
         $tkBaseAttr['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
         //套票只允许在线支付
         if ($p_type=='F' && $tkBaseAttr['pay']==0) {
-            return self::_return(self::CODE_INVALID_REQUEST,  '套票产品只允许在线支付',$ticketData['ttitle']);
+            if (!$ticketObj->allowOfflinePackage($memberId))
+                return self::_return(self::CODE_INVALID_REQUEST,  '套票产品只允许在线支付',$ticketData['ttitle']);
         }
 
 
@@ -227,6 +228,9 @@ class ProductBasic extends Controller
                 return self::_return(self::CODE_INVALID_REQUEST,  '有效期时间不能为空',$ticketData['ttitle']);
             $tkBaseAttr['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
             $tkBaseAttr['order_start'] = date('Y-m-d 00:00:00', strtotime($ticketData['order_start']));
+            if ($tkBaseAttr['order_start'] > $tkBaseAttr['order_end']) {
+                return self::_return(self::CODE_INVALID_REQUEST,  '订单有效期开始时间不能大于结束时间',$ticketData['ttitle']);
+            }
         }
 
         // 退票规则 0 有效期内、过期可退 1 有效期内可退 2  不可退
@@ -247,6 +251,16 @@ class ProductBasic extends Controller
         $cancel_sms  = isset($ticketData['cancel_sms']) ? $ticketData['cancel_sms']+0:0;
         $confirm_sms = isset($ticketData['confirm_sms']) ? $ticketData['confirm_sms']+0:0;
         $tkExtAttr['confirm_sms']  = bindec($cancel_sms.$confirm_sms);
+        $tkExtAttr['buy_limit']  = $ticketData['buy_limit']+0;
+        $tkExtAttr['buy_limit_date']  = $ticketData['buy_limit_date']+0;
+        $tkExtAttr['buy_limit_num']  = $ticketData['buy_limit_num']+0;
+
+        if ($tkExtAttr['buy_limit']>2) {
+            return self::_return(self::CODE_INVALID_REQUEST,  '购票限制参数错误，大于0小于2',$ticketData['ttitle']);
+        }
+        if ($tkExtAttr['buy_limit_date']>3) {
+            return self::_return(self::CODE_INVALID_REQUEST,  '购票限制时间类型参数错误，大于0小于3',$ticketData['ttitle']);
+        }
 
         // 取消通知供应商 0 不通知 1 通知
         if(isset($ticketData['cancel_notify_supplier']))

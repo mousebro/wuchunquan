@@ -1,5 +1,7 @@
 env.php
 *.txt
 .idea/
-Test/
+Test/*
 test.php
+*~
+.DS_Store

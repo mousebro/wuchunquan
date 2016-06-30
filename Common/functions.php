@@ -577,8 +577,9 @@ if(!function_exists('pft_log')) {
         //内容写入日志文件
         $file    = $tmpPath . $fileName;
         $content = date('Y-m-d H:i:s') . ' # ' . $content . "\r\n";
+        if (PHP_SAPI =='CLI' && !file_exists($file)) $flag = 1;
         $res     = file_put_contents($file, $content, FILE_APPEND);
-
+        if ( isset($flag)) chmod($file, 0777);
         if($res) {
             return true;
         } else {
@@ -768,8 +769,8 @@ if (!function_exists('curl_post')) {
      */
     function curl_post($url,$postData, $port=80, $timeout=15, $logPath='/api/curl_post.log', $http_headers=[]) {
         $ch = curl_init();
-        $basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
-        $logPath = $basePath . $logPath;
+        //$basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
+        $logPath = BASE_LOG_DIR . str_replace(BASE_LOG_DIR, '',$logPath);
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_PORT, $port);
         curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
@@ -790,6 +791,7 @@ if (!function_exists('curl_post')) {
         if ($errCode > 0) {
             //记录日志
             $logData = json_encode(array(
+                'url'      => $url,
                 'err_code' => $errCode,
                 'err_msg'  => curl_error($ch)
             ));
@@ -803,6 +805,7 @@ if (!function_exists('curl_post')) {
             if($httpCode != 200) {
                 //接口错误
                 $logData = json_encode(array(
+                    'url'      => $url,
                     'err_code' => $httpCode,
                     'err_msg'  => $res
                 ));
@@ -855,4 +858,37 @@ if (!function_exists('get_obj_instance')) {
         }
     }
 }
+if(!function_exists('safe_str')){
+    /**
+     * 纯文本输入
+     * @param $text
+     *
+     * @return mixed|string
+     */
+    function safe_str($text){
+        $text = trim($text);
+        $text = strip_tags ( $text );
+        $text = htmlspecialchars ( $text, ENT_QUOTES,"UTF-8");
+        $text = str_replace ( "'", "", $text );
+
+        return $text;
+    }
+}
+if(!function_exists('chk_date')){
+    /**
+     * 纯文本输入
+     * @param $text
+     *
+     * @return mixed|string
+     */
+    function chk_date($mydate){
+        list($yy,$mm,$dd)=explode("-",$mydate);
+        if (is_numeric($yy) && is_numeric($mm) && is_numeric($dd)){
+            return checkdate($mm,$dd,$yy);
+        }
+        return false;
+    }
+}
+
+
 

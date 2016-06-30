@@ -63,6 +63,7 @@ class OrderTrack extends Model
             17=>'外部接口',
             18=>'undefined',
             19=>'自运行服务',
+            20=>'安卓智能终端机',
         ];
     }
     public static function getActionList()
@@ -141,9 +142,11 @@ class OrderTrack extends Model
                 ->sum('tnum');
     }
 
-    public function getLog($ordernum)
+    public function getLog($ordernum, $source=null, $action=null)
     {
         $where['ordernum'] = ':ordernum';
+        if (!is_null($source) && is_numeric($source)) $where['source'] = $source;
+        if (!is_null($action) && is_numeric($action)) $where['action'] = $action;
         return $this->Table('pft_order_track')
             ->where($where)
             ->bind(':ordernum',$ordernum)

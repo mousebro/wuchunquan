@@ -50,7 +50,7 @@ class ticket extends ProductBasic
                 .'t.id as tid,t.delaydays,t.delaytype,t.pay,t.notes,t.ddays,t.getaddr,'
                 .'t.buy_limit_up,t.buy_limit_low,t.cancel_auto_onMin,t.re_integral,t.cancel_cost,t.max_order_days,'
                 .'t.order_limit,f.sendVoucher,f.confirm_sms,f.confirm_wx,f.dhour,f.startplace,f.endplace,f.v_time_limit,f.tourist_info,'
-                .'f.ass_station,f.series_model,f.rdays,p.id as pid,p.apply_did,t.mpath,f.zone_id,t.order_end,t.order_start,t.uuid,'
+                .'f.ass_station,f.series_model,f.rdays,f.buy_limit,f.buy_limit_date,f.buy_limit_num,p.id as pid,p.apply_did,t.mpath,f.zone_id,t.order_end,t.order_start,t.uuid,'
                 .'t.overdue_auto_check,t.overdue_auto_cancel,t.batch_check,t.batch_day_check,t.batch_diff_identities,p.apply_limit,'
                 .'t.refund_audit,t.refund_rule,t.refund_early_time,t.delaytime,t.cancel_notify_supplier ';
             $join = 'left join uu_products p on t.pid=p.id left join uu_land_f f on t.id=f.tid';
@@ -113,7 +113,7 @@ class ticket extends ProductBasic
         $data['fax']    = $landData['fax'];
         $data['ltitle'] = $landData['title'];
         $data['p_type'] = $landData['p_type'];
-
+        $data['pay_offline'] = true;// 是否允许现场执法
         if($_SESSION['sid']!=1 && $landData['apply_did']!=$_SESSION['sid']) {
             parent::apiReturn(self::CODE_INVALID_REQUEST, [],"非自身供应产品，无权限查看");
         }
@@ -148,6 +148,7 @@ class ticket extends ProductBasic
         // 套票属性
         if($landData['p_type']=='F')
         {
+            $data['pay_offline'] = false;
             $pack = new \Model\Product\PackTicket($tid);
 
             if (!$tid) {
@@ -212,6 +213,7 @@ class ticket extends ProductBasic
         if(isset($data['jiutian']))
             $landData['jiutian'] = $data['jiutian'];
         $landData['needBindGate'] = $data['needBindGate'];
+
         $other_tickets = [];
         // 获取该景区底下其他门票，套票除外
         if ($landData['p_type']!='F') {
@@ -223,13 +225,15 @@ class ticket extends ProductBasic
                 'tid'=>$tid,
             ];
         }
-        parent::apiReturn(200,
-            [
-                //'attribute'     => $data,
-                'attribute'     => $landData,
-                'otherTicket'   => $other_tickets,
-            ],
-            'success');
+        $output =  [
+            //'attribute'     => $data,
+            'attribute'     => $landData,
+            'otherTicket'   => $other_tickets,
+        ];
+        if ($this->ticketObj->allowOfflinePackage($apply_did)) {
+            $output['attribute']['pay_offline'] = 1;
+        }
+        parent::apiReturn(200,$output,'success');
     }
     public function UpdateTicket()
     {

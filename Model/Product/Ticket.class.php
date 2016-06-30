@@ -6,7 +6,7 @@
 namespace Model\Product;
 use Library\MessageNotify\OtaProductNotify;
 use Library\Model;
-
+use Model\Member\Member;
 use Model\Product\SellerStorage;
 use Model\SystemLog\OptLog;
 use pft\Member\MemberAccount;
@@ -42,10 +42,30 @@ class Ticket extends Model {
      * @param  int $id 票类id
      * @return array   
      */
-    public function getTicketInfoById($id) {
-        return $this->table(self::__TICKET_TABLE__)
-            ->field($this->ticket_filed)
-            ->find($id);
+
+    public function getTicketInfoById($id, $filed='', $map=[]) {
+        $filed = empty($filed) ? $this->ticket_filed : $filed;
+        $query = $this->table(self::__TICKET_TABLE__)->field($filed);
+        if (count($map)) $query->where($map);
+        return $query->find($id);
+    }
+
+    /**
+     * 判断供应商是否可以发布现场支付的套票
+     *
+     * @param int $apply_did 供应商ID
+     * @return bool
+     */
+    public function allowOfflinePackage($apply_did)
+    {
+        $allow_list     = [4];
+        $member_list    = [94, 3385];
+        $member = new Member();
+        $group_id = $member->getMemberCacheById($apply_did, 'group_id');
+        if (in_array($group_id, $allow_list) || in_array($apply_did, $member_list)) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -328,7 +348,7 @@ class Ticket extends Model {
 
         //总库存模式
         if ($pid_arr) {
-            $find_pid = $this->getStorageForAllStoType($pid_arr, $result);
+            $find_pid = $this->getStorageForAllStoType($pid_arr, $result, $date);
         }
         // var_dump($find_pid);die;
         $pid_arr = $copy_pid_arr = array_diff($pid_arr, $find_pid);
@@ -411,7 +431,8 @@ class Ticket extends Model {
      * @param  [type] &$result [description]
      * @return [type]          [description]
      */
-    public function getStorageForAllStoType($pid_arr, &$result) {
+    public function getStorageForAllStoType($pid_arr, &$result, $date = '') {
+        $date = $date ?: date('Y-m-d');
         $where = array(
             'pid'       => array('in', implode(',', $pid_arr)),
             'storage'   => array('neq', -1)
@@ -427,7 +448,7 @@ class Ticket extends Model {
 
         foreach ($opens as $item) {
 
-            if (strtotime($item['storage_open']) > time()) {
+            if (strtotime($item['storage_open']) > strtotime($date)) {
                 continue;
             }
 
@@ -779,6 +800,12 @@ class Ticket extends Model {
             return ['code'=>200, 'data'=>['lastid'=>$lastid], 'msg'=>'添加成功'];
         }
         return ['code'=>0, 'data'=>'', 'msg'=>'添加失败,错误信息:' . $this->getDbError()];
+    }
+
+    public function GetProductInfoByPid($pid, $field='*', $map=[])
+    {
+        $map['id'] = $pid;
+        return $this->table(self::__PRODUCT_TABLE__)->where($map)->field($field)->find();
     }
 
     public function OptLog()
