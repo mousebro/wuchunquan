@@ -35,7 +35,7 @@ trait TradeRecordMemberRecomposer
      */
     private function getDefaultAccountType($acc_type, $is_payee, $memberid)
     {
-        if ($acc_type && $acc_type != -1) {
+        if ($acc_type === 0 || ($acc_type && $acc_type != -1)) {
             return $acc_type;
         }
 
