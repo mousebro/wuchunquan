@@ -484,9 +484,9 @@ class OrderQuery extends Model
     public function GetOrderInfo($tbl, $ordernum, $fields="*")
     {
         $map = [];
-        if ($tbl == self::__ORDER_TABLE__) $map['ordernum'] = "'{$ordernum}'";
-        else $map['orderid'] = "'{$ordernum}'";
-        return $this->table(self::__ORDER_TABLE__)->field($fields)
+        if ($tbl == self::__ORDER_TABLE__) $map['ordernum'] = $ordernum;
+        else $map['orderid'] = $ordernum;
+        return $this->table($tbl)->field($fields)
             ->where($map)
             ->select();
     }

@@ -21,6 +21,7 @@ class OrderNotify {
     private $sellerId;
     private $title;
     private $buyerId;
+    private $not_to_buyer;
 
     /**
      * @var Model
@@ -32,12 +33,12 @@ class OrderNotify {
 
     const SMS_CONTENT_TPL = '入住凭证:{code}，您成功购买{pname}:{tnum}间，入住日期:{begintime}，离店日期:{endtime}。此为凭证，请妥善保管。详情及二维码:{link}';
     const SMS_CONTENT_TPL_GLY = '您已成功预订{pname}{tnum}间，凭证码：{code}.您可凭购票身份证、短信凭证码、二维码至厦门鼓浪屿漳州路3号皓月休闲度假俱乐部（皓月园内）办理入住，入住日期：{begintime}，离店日期：{endtime}。为方便您的游玩，建议您至少提前3天购买前往三丘田码头的船票,限取票当日使用，取后不退。祝您旅途愉快。详情及二维码：{link}';
-    const SMS_CONTENT_TPL_H = '凭证号:{code},您已成功购买{begintime}{pname}:{tnum}张,{perinfo}{getaddr}。详情及二维码:{link}。';
+    const SMS_CONTENT_TPL_H = '凭证号:{code},您已成功购买{begintime}{pname},{perinfo}{getaddr}。详情及二维码:{link}。';
     //【票付通】入住凭证：123456。您成功购买郁金香高级客房：3间，入住日期3月18日，离店日期3月22日。
 //此为凭证，请妥善保管。详情及二维码:http://12301.cc/3u5235
 //发给供应商的短信：
 
-    public function __construct($ordernum, $buyerId, $aid, $mobile,$pid=0, $sellerID=0, $ptype=0, $title='')
+    public function __construct($ordernum, $buyerId, $aid, $mobile,$pid=0, $sellerID=0, $ptype=0, $title='', $not_to_buyer=0)
     {
         $this->model            = new Model('slave');
         $this->order_num        = $ordernum;
@@ -49,6 +50,8 @@ class OrderNotify {
         $this->aid              = $aid;
         $this->pid              = $pid;
         $this->title            = $title;
+        $this->not_to_buyer     = $not_to_buyer;
+        //pft_log('queue/vcom', 'OrderNotify:' . json_encode(func_get_args()));
     }
 
     public function Send( $code=0, $manualQr=false )
@@ -64,7 +67,9 @@ class OrderNotify {
             $this->pid    = $infos['master_pid'];
             unset($land);
         }
-        $this->BuyerNotify($infos, $code, $manualQr);
+        if ($this->not_to_buyer!=1) {
+            $this->BuyerNotify($infos, $code, $manualQr);
+        }
         $this->SellerNotify($infos);
         return true;
     }
@@ -118,6 +123,13 @@ class OrderNotify {
             $pname  .= "\n{$tickets[$tid]['title']}{$tnum}{$this->unit},";
             $pid_list[] = $tickets[$tid]['pid'];
         }
+        $map    = count($pid_list)>1 ? ['pid'=>['in', $pid_list]] : ['pid'=>$pid_list[0]];
+        $model  = new Model('slave');
+        $extInfo = $model->table('uu_land_f f')->join('uu_land l on l.id=f.lid')
+            ->field('f.sendVoucher,f.pid,f.confirm_sms,f.confirm_wx,l.fax')
+            ->where($map)
+            ->limit(count($pid_list))
+            ->select();
 
         return [
             'lid'       => $order_info['lid'],
@@ -130,6 +142,7 @@ class OrderNotify {
             'memo'      => $order_info['memo'],//订单备注信息
             'pid_list'  => $pid_list,
             'master_pid'=> $master_pid,
+            'extAttrs'  => $extInfo,
         ];
     }
     /**
@@ -141,6 +154,18 @@ class OrderNotify {
      */
     public function BuyerNotify(Array $infos, $code, $manualQr)
     {
+        $wx_open_id = $this->WxNotifyChk($this->buyerId);
+        if ($wx_open_id!==false) {
+            $this->WxNotifyCustomer($wx_open_id,
+                date('Y-m-d H:i'),
+                $infos['buyer'],
+                $this->title,
+                $infos['pname'],
+                $this->order_num
+            );
+        }
+        //是否发送凭证码（短信）到取票人手机  0 发送 1 不发送
+        if ($infos['extAttrs'][0]['sendVoucher']==1) return true;
         $this->p_type = $p_type = strtoupper($this->p_type);
         $sms_tpl = $this->SmsTemplate();
         $cformat = $sms_sign = '';
@@ -159,14 +184,7 @@ class OrderNotify {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
         $res = $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account);
-        $wx_open_id = $this->WxNotifyChk($this->buyerId);
-        $this->WxNotifyCustomer($wx_open_id,
-            date('Y-m-d H:i'),
-            $infos['buyer'],
-            $this->title,
-            $infos['pname'],
-            $this->order_num
-        );
+
         return $res;
     }
     /**
@@ -183,10 +201,9 @@ class OrderNotify {
     public function SellerNotify(Array $infos)
     {
         //查看哪些产品需要发送短信给供应商
-        $data = self::GetSellerTel($infos['pid_list']);
         $sms_notify_num = null;
         $confirm_wx     = 0;//接收微信通知标记
-        foreach ($data as $row) {
+        foreach ($infos['extAttrs'] as $row) {
             if ($row['confirm_wx']) {
                 $confirm_wx = 1;
             }
@@ -295,6 +312,7 @@ class OrderNotify {
             'DEFAULT' => '凭证号：{code}，您已成功购买了{pname}{tnum},消费日期：{begintime},{getaddr}，此为入园凭证,请妥善保管。详情及二维码:{link}',
             'C'       => self::SMS_CONTENT_TPL,
             'GLY'     => self::SMS_CONTENT_TPL_GLY,
+            'H'       => self::SMS_CONTENT_TPL_H,
         );
         return isset($list[$ptype]) ? $list[$ptype] : $list['DEFAULT'];
     }
@@ -331,7 +349,6 @@ class OrderNotify {
             $orderObj   = new OrderQuery();
             $orderInfo  = $orderObj->GetOrderInfo(OrderQuery::__ORDER_DETAIL_TABLE__,
                 $this->order_num, 'series');
-
             if ($orderInfo[0]['series']){
                 $PerInfo=unserialize($orderInfo[0]['series'])[6];
             }
@@ -344,6 +361,7 @@ class OrderNotify {
         }
 
         $sms_tpl = empty($cformat) ? $this->get_default_tpl($this->p_type) : $cformat;
+        pft_log('queue/vcom', 'SMSTPL:ptype=' .$this->p_type .';sms_tpl=' . $sms_tpl . ';cformat='.$cformat);
 //        write_logs($this->p_type . ':sms_tpl=' . $sms_tpl);
         if (strpos($cformat, '{link}')!==false || strpos($sms_tpl, '{link}')!==false) {
             if ($manualQr) {
@@ -385,15 +403,6 @@ class OrderNotify {
         return $row;
     }
 
-    private function GetSellerTel($pids)
-    {
-        $map    = is_array($pids) ? ['pid'=>['in', $pids]] : ['pid'=>$pids];
-        $model  = new Model('slave');
-        return $model->table('uu_land_f f')->join('uu_land l on l.id=f.lid')
-            ->field('f.pid,f.confirm_sms,f.confirm_wx,l.fax')
-            ->where($map)
-            ->select();
-    }
     /**
      * 检查是否可以通过微信发送通知
      *
