@@ -206,6 +206,33 @@ class AnnualCard extends Controller {
     }
 
     /**
+     * pc端激活前的检测
+     * @return [type] [description]
+     */
+    public function activeCheck() {
+        $identify   = I('identify');
+        $type       = I('type');
+
+        if (!$identify || !$type) {
+            $this->apiReturn(204, [], '参数错误');
+        }
+
+        $card = $this->_activateCheck($identify, $type, $_SESSION['sid']);
+
+        $ticket = (new Ticket)->getTicketInfoByPid($card['pid']);
+
+        $need_ID = $this->_CardModel->isNeedID($_SESSION['sid'], $ticket['id']);
+
+        $data = [
+            'need_ID'       => $need_ID,
+            'virtual_no'    => $card['virtual_no'],
+            'physics_no'    => $card['physics_no']
+        ];
+
+        $this->apiReturn(200, ['need_ID' => $need_ID]);
+    }
+
+    /**
      * PC端供应商手动激活年卡
      */
     public function activateForPc($sid = 0) {
