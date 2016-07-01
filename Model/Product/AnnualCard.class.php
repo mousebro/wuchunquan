@@ -290,9 +290,9 @@ class AnnualCard extends Model
      * @param  [type] $identify [description]
      * @return [type]           [description]
      */
-    public function parseIdentifyType($identify, $type = 'physics') {
+    public function parseIdentifyType($identify, $type = 'physics_no') {
 
-        if ($type == 'physics') {
+        if ($type == 'physics_no' || $type == 'physics') {
             return 'physics_no';
         }
 
@@ -515,6 +515,42 @@ class AnnualCard extends Model
         $field = 'id,sid,pid,memberid,card_no,virtual_no,physics_no,status,active_time,sale_time';
 
         return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->field($field)->select();
+    }
+
+    public function getHistoryOrder($sid, $memberid, $options, $action = 'select') {
+
+        if ($sid != 1) {
+            $where['sid'] = $sid;
+        }
+
+        $where['memberid'] = $memberid;
+
+        $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
+
+
+        if ($action == 'select') {
+            $ordernums = $this->table(self::CARD_ORDER_TABLE)->where($where)->limit($limit)->order('create_time desc')->getField('ordernum', true);
+
+            if ($ordernums) {
+                $ordernums = implode(',', array_values($ordernums));
+
+                $field = 's.tnum,s.tprice,s.totalmoney,s.ordernum,t.title,l.title as ltitle';
+
+                $join = 'left join uu_land l on s.lid=l.id left join uu_jq_ticket t on s.tid=t.id';
+
+                $orders = $this->table('uu_ss_order s')
+                    ->join($join)
+                    ->where(['ordernum' => ['in', $ordernums]])
+                    ->field($field)
+                    ->select();
+
+                return $orders;                
+
+            }
+
+        } else {
+            return $this->table(self::CARD_ORDER_TABLE)->where($where)->count();
+        }
     }
 
     /**

@@ -254,7 +254,7 @@ class AnnualCard extends Controller {
             $this->apiReturn(204, [], '参数错误');
         }
 
-        $this->_checkVcode($mobile, $vcode);
+        $sid || $this->_checkVcode($mobile, $vcode);
 
         $sid = $sid ?: $_SESSION['sid'];
 
@@ -283,7 +283,7 @@ class AnnualCard extends Controller {
 
         }
 
-        $this->_CardModel->createRelationShip($sid, $memberid);
+        // $this->_CardModel->createRelationShip($sid, $memberid);
 
         $this->apiReturn(200, [], '激活成功');
 
@@ -346,7 +346,9 @@ class AnnualCard extends Controller {
             $data = [
                 'exist' => 1,
                 'name' => $product['p_name'],
-                'left' => '1/20'
+                'left' => '1/20',
+                'mobile' => $mobile,
+                'id_card'   => $id_card
             ];
 
             $this->apiReturn(200, $data);
@@ -408,8 +410,8 @@ class AnnualCard extends Controller {
             include '/var/www/html/new/d/class/MemberAccount.class.php';
 
             $data = [
-                'dtype' => 1,
-                'dname' => $name,
+                'dtype' => 5,
+                'dname' => $name ?: $mobile,
                 'mobile' => $mobile,
             ];
 
@@ -617,6 +619,38 @@ class AnnualCard extends Controller {
 
 
         $this->apiReturn(200, $return, []);
+    }
+
+    public function getHistoryOrder() {
+
+        if (!$memberid = I('memberid', '', 'intval')) {
+            $this->apiReturn(204, [], '参数错误');
+        }
+
+        $options = [
+            'page_size' => I('page_size', '10', 'intval'),
+            'page'      => I('page', '1', 'intval')
+        ];
+
+        $sid = $_SESSION['sid'];
+
+        $orders = $this->_CardModel->getHistoryOrder($sid, $memberid, $options);
+
+        $total = $total_page = 0;
+        if ($orders) {
+            $total = $this->_CardModel->getHistoryOrder($sid, $memberid, $options, 'count');
+
+            $total_page = ceil($total / $options['page_size']);
+        }
+
+        $return = [
+            'list'  => $orders ?: [],
+            'total' => $total,
+            'total_page' => $total_page,
+            'page'  => $options['page']
+        ];
+
+        $this->apiReturn(200, $return);
     }
 
     /**

@@ -40,8 +40,16 @@ use Controller\product\AnnualCard as CardCtrl;
         $identify   = I('identify');
         $type       = I('type');
         
-       // 9595,1,22323,2
-        $products   = ['3026' => 1, '24696' => 2];
+        // $products = '14624,1';
+
+        $tmp_pros = array_chunk(explode(',', $products), 2);
+
+        $products = [];
+        foreach ($tmp_pros as $item) {
+            $products[$item[0]] = $item[1];
+        }
+
+        // $products   = ['3026' => 1];
 
         if (!$aid || !$products || !$identify || !$type) {
             $this->apiReturn(204, [], '参数错误');
@@ -49,11 +57,11 @@ use Controller\product\AnnualCard as CardCtrl;
 
         $card = $this->_parseAnnualCard($aid, $identify, $type);
 
-        if ($type != 'physics') {
-            $mobile     = (new Member)->getMemberInfo($card['memberid'])['mobile'];
-            $vcode      = I('vcode');
-            $this->_checkVcode($mobile, $vcode);
-        }
+        // if ($type != 'physics') {
+        //     $mobile     = (new Member)->getMemberInfo($card['memberid'])['mobile'];
+        //     $vcode      = I('vcode');
+        //     $this->_checkVcode($mobile, $vcode);
+        // }
 
         //未激活
         if ($card['status'] == 3) {
@@ -67,9 +75,9 @@ use Controller\product\AnnualCard as CardCtrl;
         }
  
         // 年卡有效期检测
-        if (!$this->_periodOfValidityCheck($card)) {
-            $this->apiReturn(204, [], '年卡已过期');
-        }
+        // if (!$this->_periodOfValidityCheck($card)) {
+        //     $this->apiReturn(204, [], '年卡已过期');
+        // }
 
         $error = $this->_privilegesCheck($card['sid'], $card['memberid'], $products, $card['pid']);
 
@@ -79,6 +87,7 @@ use Controller\product\AnnualCard as CardCtrl;
             $left = [];
             foreach ($error as $pid=> $item) {
                 $tmp = $this->_privileges[$pid];
+
                 $left['remain'][] = [
                     'title' => $tmp['ltitle'] . $tmp['title'],
                     'left'  => $item
@@ -97,7 +106,7 @@ use Controller\product\AnnualCard as CardCtrl;
 
         $data = $this->_getExtraData($card);
 
-        $data['ordernum'] = $order_info['ordernum'];
+        $data['ordernum'] = $order_info['orderNum'];
 
         $this->apiReturn(200, $data, '下单成功');
 
@@ -111,13 +120,14 @@ use Controller\product\AnnualCard as CardCtrl;
         $supply = $Member->getMemberInfo($card['sid']);
 
         $product = (new Ticket)->getProductInfo($card['pid']);
+        $ticket =  (new Ticket)->getTicketInfoByPid($card['pid']);
 
         $data = [
             'mobile'        => $member['mobile'],
             'card_title'    => $product['p_name'],
             'card_no'       => $card['card_no'],
             'virtual_no'    => $card['virtual_no'],
-            'valid_time'    => '2016-01-01~2016-08-01',
+            'valid_time'    => $this->_CardModel->getPeriodOfValidity($card['sid'], $ticket['id'], $card['sale_time'], $card['active_time']),
             'supply'        => $supply['dname'],
         ];
 
@@ -127,9 +137,11 @@ use Controller\product\AnnualCard as CardCtrl;
                 continue;
             }
 
+            $left = $this->_pri_left[$item['tid']] == -1 ? -1 : implode(',', $this->_pri_left[$item['tid']]);
+
             $data['pri'][] = [
                 'title' => $item['ltitle'] . $item['title'],
-                'left' => implode(',', $this->_pri_left[$item['tid']])
+                'left' => $left
             ];
         }
 
@@ -150,6 +162,8 @@ use Controller\product\AnnualCard as CardCtrl;
         // var_dump(file_exists('/var/www/html/Service/Controller/product/AnnualCard.class.php'));die;
 
         $Ctrl = new CardCtrl();
+
+        $_POST['type'] = 'physics_no';
 
         $Ctrl->activateForPc(I('aid', '', 'intval'));
     }
@@ -351,7 +365,8 @@ use Controller\product\AnnualCard as CardCtrl;
                 }
 
             } else {
-                $error[$pid] = 0;
+                $tmp = (new Ticket)->getProductInfo($pid);
+                $this->apiReturn(204, [], $tmp['p_name']. '无法使用特权支付');
             }
         }
 
@@ -426,6 +441,7 @@ use Controller\product\AnnualCard as CardCtrl;
         $Pro        = new \ProductInfo($soap, $pid, $aid);
         $Member     = new \Member($soap, $memberid);
         $DisOrder   = new \DisOrder($soap, $Pro, $Member);
+        $DisOrder->setSaleMode();
 
         $options = [
             'pid'       => $pid,
@@ -437,7 +453,7 @@ use Controller\product\AnnualCard as CardCtrl;
             'paymode'   => 12
         ];
 
-        $order_info = $DisOrder->order($options, $aid);
+        return $DisOrder->order($options, $aid);
 
     }
 
