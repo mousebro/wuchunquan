@@ -50,4 +50,13 @@ class annual extends Controller {
     public function ordersuccess() {
         $this->display('annual/ordersuccess');
     }
+
+    public function mclist() {
+        $this->display('annual/mclist');
+    }
+
+    public function active() {
+        $this->display('annual/active');
+    }
+
 }
