@@ -814,7 +814,7 @@ class AnnualCard extends Model
             'status' => 0,
         ];
 
-        $evolute = $this->table(self::SALE_LIST_TABLE)->where($where)->field('pids')->select();
+        $evolute = $this->table(self::SALE_LIST_TABLE)->where($where)->field('*')->select();
         $evolute = $evolute ?: [];
 
         $pid_arr = [];
@@ -822,6 +822,12 @@ class AnnualCard extends Model
             if ($item['pids'] && $item['pids'] != 'A') {
                 $pid_arr = array_merge($pid_arr, explode(',', $item['pids']));
             }
+        }
+
+        $self = $this->table(self::PRODUCT_TABLE)->where(['apply_did' => $sid])->getField('id', true);
+
+        if ($self) {
+            $pid_arr = array_merge($pid_arr, $self);
         }
 
         $where = [

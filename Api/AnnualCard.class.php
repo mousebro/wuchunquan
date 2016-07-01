@@ -39,6 +39,10 @@ use Controller\product\AnnualCard as CardCtrl;
         $products   = I('tickets');     //门票 [['pid' => num]]
         $identify   = I('identify');
         $type       = I('type');
+
+        if (!$aid || !$products || !$identify || !$type) {
+            $this->apiReturn(204, [], '参数错误');
+        }
         
         // $products = '14624,1';
 
@@ -49,25 +53,21 @@ use Controller\product\AnnualCard as CardCtrl;
             $products[$item[0]] = $item[1];
         }
 
-        // $products   = ['3026' => 1];
-
-        if (!$aid || !$products || !$identify || !$type) {
-            $this->apiReturn(204, [], '参数错误');
-        }
-
         $card = $this->_parseAnnualCard($aid, $identify, $type);
 
-        // if ($type != 'physics') {
-        //     $mobile     = (new Member)->getMemberInfo($card['memberid'])['mobile'];
-        //     $vcode      = I('vcode');
-        //     $this->_checkVcode($mobile, $vcode);
-        // }
+        if ($type != 'physics_no') {
+            $mobile     = (new Member)->getMemberInfo($card['memberid'])['mobile'];
+            $vcode      = I('vcode');
+            $this->_checkVcode($mobile, $vcode);
+        }
 
         //未激活
         if ($card['status'] == 3) {
             $this->apiReturn(204, [], '年卡处于未出售状态');
         } elseif ($card['status'] == 0) {
             $this->apiReturn(202, [], '请先激活');
+        } elseif ($card['status'] == 2) {
+            $this->apiReturn(204, [], '年卡已被禁用');
         }
 
         if ($card['sid'] != $aid) {
@@ -96,17 +96,21 @@ use Controller\product\AnnualCard as CardCtrl;
             $this->apiReturn(203, $left, '特权次数不足');
         }
 
-        try {
+        // try {
             $order_info = $this->_orderAction($products, $aid, $card['memberid'], I(null));
 
-        } catch (DisOrderException $e) {
+        // } catch (DisOrderException $e) {
 
-            $this->api(204, [], $e->getMessage());
-        } 
+        //     $this->api(204, [], $e->getMessage());
+        // } 
 
         $data = $this->_getExtraData($card);
 
         $data['ordernum'] = $order_info['orderNum'];
+
+        if ($type != 'physics') {
+            $this->_removeCodeInfo($mobile);
+        }
 
         $this->apiReturn(200, $data, '下单成功');
 
@@ -239,6 +243,10 @@ use Controller\product\AnnualCard as CardCtrl;
 
         return json_decode($cache, true);
 
+    }
+
+    private function _removeCodeInfo($mobile) {
+        Cache::getInstance('redis')->rm(md5($mobile . 'annual'));
     }
 
     private function _getVcodeTpl() {
@@ -453,7 +461,13 @@ use Controller\product\AnnualCard as CardCtrl;
             'paymode'   => 12
         ];
 
-        return $DisOrder->order($options, $aid);
+        try {
+            return $DisOrder->order($options, $aid);
+
+        } catch (DisOrderException $e) {
+
+            $this->api(204, [], $e->getMessage());
+        } 
 
     }
 
