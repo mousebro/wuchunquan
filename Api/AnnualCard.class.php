@@ -44,8 +44,6 @@ use Controller\product\AnnualCard as CardCtrl;
             $this->apiReturn(204, [], '参数错误');
         }
         
-        // $products = '14624,1';
-
         $tmp_pros = array_chunk(explode(',', $products), 2);
 
         $products = [];
@@ -63,11 +61,17 @@ use Controller\product\AnnualCard as CardCtrl;
 
         //未激活
         if ($card['status'] == 3) {
+
             $this->apiReturn(204, [], '年卡处于未出售状态');
+
         } elseif ($card['status'] == 0) {
-            $this->apiReturn(202, [], '请先激活');
+
+            $this->_toActivate($card['sid'], $card['pid']);
+
         } elseif ($card['status'] == 2) {
+
             $this->apiReturn(204, [], '年卡已被禁用');
+
         }
 
         if ($card['sid'] != $aid) {
@@ -75,9 +79,9 @@ use Controller\product\AnnualCard as CardCtrl;
         }
  
         // 年卡有效期检测
-        // if (!$this->_periodOfValidityCheck($card)) {
-        //     $this->apiReturn(204, [], '年卡已过期');
-        // }
+        if (!$this->_periodOfValidityCheck($card)) {
+            $this->apiReturn(204, [], '年卡已过期');
+        }
 
         $error = $this->_privilegesCheck($card['sid'], $card['memberid'], $products, $card['pid']);
 
@@ -96,13 +100,7 @@ use Controller\product\AnnualCard as CardCtrl;
             $this->apiReturn(203, $left, '特权次数不足');
         }
 
-        // try {
-            $order_info = $this->_orderAction($products, $aid, $card['memberid'], I(null));
-
-        // } catch (DisOrderException $e) {
-
-        //     $this->api(204, [], $e->getMessage());
-        // } 
+        $order_info = $this->_orderAction($products, $aid, $card['memberid'], I(null));
 
         $data = $this->_getExtraData($card);
 
@@ -114,6 +112,16 @@ use Controller\product\AnnualCard as CardCtrl;
 
         $this->apiReturn(200, $data, '下单成功');
 
+    }
+
+
+    private function _toActivate($sid, $pid) {
+
+        $ticket = (new ticket)->getTicketInfoByPid($pid);
+
+        $need = $this->_CardModel->isNeedID($sid, $ticket['id']);
+
+        $this->apiReturn(202, ['need_ID' => $need], '请先激活');
     }
 
     private function _getExtraData($card) {

@@ -950,6 +950,41 @@ class AnnualCard extends Model
 
     }
 
+    /**
+     * 获取指定年卡的剩余的特权支付次数
+     * @param  [type] $memberid [description]
+     * @param  [type] $sid      [description]
+     * @param  [type] $pid      [description]
+     * @return [type]           [description]
+     */
+    public function getPrivilegessLeft($memberid, $sid, $pid) {
+
+        $privs = $this->getPrivileges($pid);
+
+        if (!$privs) return [];
+
+        $return = [];
+        foreach ($privs as $priv) {
+
+            $count = $this->getRemainTimes($sid, $priv['tid'], $memberid, true);
+
+            $return[$priv['pid']] = [
+                'title' => $priv['title'],
+                'ltitle' => $priv['ltitle']
+            ];
+
+            if ($priv['use_limit'] == -1) {
+                $return[$priv['pid']]['left'] = $count . '/' . '不限';
+            } else {
+                $total = explode(',', $priv['use_limit'])[2];
+                $return[$priv['pid']]['left'] = $count . '/' . $total;
+            }
+        }
+
+        return array_values($return);
+    
+    }
+
     public function orderSuccess($ordernum) {
 
         $virtual_no=  $this->table(self::CARD_MAPPING_TABLE)->where(['ordernum' => $ordernum])->getField('virtual_no');
@@ -1109,7 +1144,10 @@ class AnnualCard extends Model
     {
 
         //已记录在库的特权门票
-        $exists_tids = $this->getPrivilegeInfo(['parent_tid' => $parentId], 'tid,id');
+        $exists_tids = $this->getPrivilegeInfo(
+            ['parent_tid' => $parentId, 'status' => 1],
+            'tid,id'
+        );
         $exists_tids = $exists_tids ?: [];
         $exists_tids = array_keys($exists_tids);
 
@@ -1122,18 +1160,32 @@ class AnnualCard extends Model
 
         $to_delete = array_diff($exists_tids, $submit_tids);
 
+        $this->startTrans();
+
         //TODO:事务
         if ($to_delete) {
-            $this->deleteCardPrivilege($parentId, $to_delete);
+            if (!$this->deleteCardPrivilege($parentId, $to_delete)) {
+                echo $this->getDbError();
+                $this->rollback();
+                return false;
+            }
         }
 
         if ($to_update) {
-            $this->updateCardPrivilege($parentId, $data, $to_update);
+            if (!$this->updateCardPrivilege($parentId, $data, $to_update)) {
+                $this->rollback();
+                return false;
+            }
         }
 
         if ($to_insert) {
-            $this->addCardPrivilege($parentId, $data, $to_insert);
+            if (!$this->addCardPrivilege($parentId, $data, $to_insert)) {
+                $this->rollback();
+                return false;
+            }
         }
+
+        $this->commit();
 
         return true;
     }
@@ -1169,7 +1221,7 @@ class AnnualCard extends Model
                 'use_limit'     => $data[$tid]['use_limit'],
                 'status'        => 1
             ];
-        }   
+        }
 
         return $this->table(self::CARD_PRIVILEGE_TABLE)->addAll($insert);
     }
@@ -1183,7 +1235,7 @@ class AnnualCard extends Model
      * @return bool
      */
     public function deleteCardPrivilege($parent_tid, $tid_arr)
-    {
+    {   
         $where = [
             'parent_tid'    => $parent_tid,
             'tid'            => ['in', implode(',', $tid_arr)],
@@ -1215,8 +1267,14 @@ class AnnualCard extends Model
                 'status'        => 1
             ];
 
-            $this->table(self::CARD_PRIVILEGE_TABLE)->where($where)->save($update);
+            $tmp_res = $this->table(self::CARD_PRIVILEGE_TABLE)->where($where)->save($update);
+
+            if ($tmp_res === false) {
+                return false;
+            }
         }
+
+        return true;
     }
 
     public function createDefaultParams() {

@@ -240,8 +240,8 @@ class AnnualCard extends Controller {
         $identify   = I('identify');
         $type       = I('type');
         $mobile     = I('mobile');
-        $name       = I('name');
-        $id_card    = I('id_card');
+        $name       = I('name', '');
+        $id_card    = I('id_card', '');
         $vcode      = I('vcode');
 
         // $identify = 'asdasdasd';
@@ -250,7 +250,7 @@ class AnnualCard extends Controller {
         // $name = '翁彬';
         // $id_card = 350181199106012339;
 
-        if (!$identify || !$type || !$mobile || !$name) {
+        if (!$identify || !$type || !$mobile) {
             $this->apiReturn(204, [], '参数错误');
         }
 
@@ -339,14 +339,10 @@ class AnnualCard extends Controller {
 
             $product = (new Ticket)->getProductInfo($card['pid'], ['field' => 'p_name']);
 
-            // $ticket = (new Ticket)->getTicketInfoByPid($card['pid']);
-
-            // $use = $this->_CardModel->getRemainTimes($card['sid'], $ticket['id'], $memberid, true);
-
             $data = [
                 'exist' => 1,
                 'name' => $product['p_name'],
-                'left' => '1/20',
+                'left' => $this->getPrivilegessLeft($memberid, $sid, $card['pid']),
                 'mobile' => $mobile,
                 'id_card'   => $id_card
             ];
@@ -362,6 +358,19 @@ class AnnualCard extends Controller {
         }
 
         return $memberid;
+    }
+
+    /**
+     * 获取指定年卡的剩余的特权支付次数
+     * @param  [type] $memberid [description]
+     * @param  [type] $sid      [description]
+     * @param  [type] $pid      [description]
+     * @return [type]           [description]
+     */
+    public function getPrivilegessLeft($memberid, $sid, $pid) {
+
+        return $this->_CardModel->getPrivilegessLeft($memberid, $sid, $pid);
+    
     }
 
     /**
@@ -410,13 +419,13 @@ class AnnualCard extends Controller {
             include '/var/www/html/new/d/class/MemberAccount.class.php';
 
             $data = [
-                'dtype' => 5,
-                'dname' => $name ?: $mobile,
-                'mobile' => $mobile,
+                'dtype'     => 5,
+                'dname'     => $name ?: $mobile,
+                'mobile'    => $mobile,
             ];
 
             $mem = new MemberAccount($le);
-            $result = $mem->registerMember($data, ['id_card_no' => $id_card]);
+            $result = $mem->register($data, ['id_card_no' => $id_card]);
 
             if ($result['status'] == 'fail') {
                 $this->apiReturn(204, [], '会员注册出现异常');
@@ -424,7 +433,6 @@ class AnnualCard extends Controller {
                 $body = explode('|', $result['body']);
                 return $body[0];
             }
-            //注册新会员
         }
 
         return $member['id'];
