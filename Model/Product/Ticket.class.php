@@ -733,10 +733,13 @@ class Ticket extends Model {
         return $res;
     }
 
-    public function SetTicketStatus($tid, $status, $memberId)
+    public function SetTicketStatus($tid, $status, $memberId, $pid=0)
     {
+        $map = [];
+        if ($pid>0) $map['p.id']=$pid;
+        else $map['t.id'] = $tid;
         $info = $this->QueryTicketInfo(
-            ['t.id'=>$tid],
+            $map,
             'p.apply_limit,p.apply_did,p.id as pid,p.p_name',
             'inner join uu_products p on t.pid=p.id'
             );

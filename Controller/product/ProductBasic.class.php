@@ -469,7 +469,6 @@ class ProductBasic extends Controller
         }
         $priceWrite = new PriceWrite();
         foreach($price_section as $row) {
-            $row = (array)$row;
             if(($tableId = ($row['id']+0))>0) {
                 $intersect = isset($this->original_price[$tableId]) ?
                     array_diff_assoc($row, $this->original_price[$tableId]) : $row;
