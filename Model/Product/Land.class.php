@@ -111,7 +111,8 @@ class Land extends Model
             }
         }
         $res = $this->table('uu_land')->data($params)->add();
-        if (is_numeric($res) && $res>0) return ['code'=>200, 'data'=>['lastid'=>$res]];
+        if (is_numeric($res) && $res>0) return ['code'=>200, 'data'=>['lastid'=>$res], 'msg'=>'产品信息添加成功'];
+        pft_log(__CLASS__ . '/error', "sql:" . $this->_sql().";error:". $this->getDbError());
         return ['code'=>0, 'msg'=>'添加失败，服务器发生错误'];
     }
 

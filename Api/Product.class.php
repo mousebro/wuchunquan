@@ -20,14 +20,15 @@ class Product extends ProductBasic
     public function __construct()
     {
         parent::__construct();
-        $this->config = C(include  __DIR__ .'/Conf/sdk.conf.php');
+        $this->config = array_merge($this->config, include  '/var/www/html/Service/Conf/sdk.conf.php');
         $this->memberId = $this->config[I('post.app_id')];
     }
 
 
     public function BaseInfo()
     {
-        $res = parent::SaveBasicInfo($this->memberId, $_POST);
+        $modelLand = new Land();
+        $res = parent::SaveBasicInfo($this->memberId, $modelLand);
         var_dump($res);
     }
 

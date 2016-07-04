@@ -99,7 +99,7 @@ class ApiDispatch{
         if(!$res) {
             return false;
         } else {
-            return array('paramsArr' =>$paramsArr, 'method' => $method, 'appid'=>$appId);
+            return array('paramsArr' =>$paramsArr, 'method' => $method, 'app_id'=>$appId);
         }
     }
 

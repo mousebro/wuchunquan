@@ -20,9 +20,10 @@ use Model\Product\Ticket;
 class ProductBasic extends Controller
 {
     private $packObj=null;
+    protected $config = [];
     public function __construct()
     {
-        $this->config = C(include  __DIR__ .'/../../Conf/product.conf.php');
+        $this->config = array_merge($this->config, include  '/var/www/html/Service/Conf/product.conf.php');
     }
     private function _return($code, $msg, $title)
     {
@@ -51,6 +52,7 @@ class ProductBasic extends Controller
      */
     protected function SaveBasicInfo( $apply_did, Land $landObj )
     {
+        $params = [];
         if (!$apply_did || !is_numeric($apply_did)) {
             self::apiReturn(self::CODE_INVALID_REQUEST,'', '供应商不能为空');
         }
@@ -61,14 +63,18 @@ class ProductBasic extends Controller
         if(mb_strlen($params['title'],'utf8')>30){
             self::apiReturn(self::CODE_INVALID_REQUEST, [], '景区名称不能超过 30 个字符');
         }
-        $params['ptype']    = I('post.product_type');
-        if (!in_array($params['ptype'], $this->config['LIMIT_TYPES']) ) {
+        $params['p_type']    = I('post.product_type');
+        if (!in_array($params['p_type'], $this->config['LIMIT_TYPES']) ) {
             self::apiReturn(self::CODE_INVALID_REQUEST, [], '产品类型不对');
         }
 
-        $params = [];
         //供应商ID
         $params['apply_did']    = $apply_did;
+        $params['sync_id']      = I('post.product_id');
+        $params['jtype']        = I('post.product_level');
+        if (!$params['sync_id'] || !is_numeric($params['sync_id'])) {
+            self::apiReturn(self::CODE_INVALID_REQUEST, [], '对接产品ID错误');
+        }
         //详细地址
         $params['address']  = I('post.address', '', 'strip_tags,addslashes');
         //所在地区，省|市|区,获取票付通地区数据：open.12301.cc/areas.json
