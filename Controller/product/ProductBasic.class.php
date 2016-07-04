@@ -123,6 +123,7 @@ class ProductBasic extends Controller
     {
         $isSectionTicket = false;// 是否是期票
         if($ticketData['order_start'] && $ticketData['order_end']) $isSectionTicket = true;
+
         //价格校验
         if (!empty($ticketData['price_section'])) {
             $ret = $this->VerifyPrice($ticketData['pid'], $ticketData['price_section'], $ticketObj, $isSectionTicket);
@@ -145,7 +146,8 @@ class ProductBasic extends Controller
         $tkBaseAttr['landid']  = $ticketData['lid']+0;
         $tkBaseAttr['tprice']  = $ticketData['tprice']+0;    // 门市价
         $tkBaseAttr['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
-        //套票只允许在线支付
+        if (isset($ticketData['ticket_id'])) $tkBaseAttr['sync_id'] = $ticketData['ticket_id'];
+            //套票只允许在线支付
         if ($p_type=='F' && $tkBaseAttr['pay']==0) {
             if (!$ticketObj->allowOfflinePackage($memberId))
                 return self::_return(self::CODE_INVALID_REQUEST,  '套票产品只允许在线支付',$ticketData['ttitle']);
@@ -189,8 +191,6 @@ class ProductBasic extends Controller
             $GLOBALS['le']->query($sql);
             if($GLOBALS['le']->fetch_assoc()) if($GLOBALS['le']->f('sourceT')==2) $jData['sourceT'] = 2;
         }*/
-
-
 
         if($tkBaseAttr['buy_limit_low']<=0)
             return self::_return(self::CODE_INVALID_REQUEST,  '购买下限不能小于0',$ticketData['ttitle']);
@@ -272,7 +272,6 @@ class ProductBasic extends Controller
         if(isset($ticketData['cancel_notify_supplier']))
             $tkBaseAttr['cancel_notify_supplier'] = $ticketData['cancel_notify_supplier']+0;
 
-
         // 分批验证设置
         $tkBaseAttr['batch_check']       = $ticketData['batch_check']+0;
         $tkBaseAttr['batch_day_check']   = $ticketData['batch_day_check']+0;
@@ -293,7 +292,7 @@ class ProductBasic extends Controller
         if(isset($ticketData['re_integral'])) $tkBaseAttr['re_integral'] = $ticketData['re_integral'] + 0;
 
         $tkBaseAttr['apply_did'] = $memberId;// 产品供应商
-
+        echo $tkBaseAttr['apply_did'];
 
 
         // 扩展属性 uu_land_f
@@ -470,6 +469,7 @@ class ProductBasic extends Controller
         }
         $priceWrite = new PriceWrite();
         foreach($price_section as $row) {
+            $row = (array)$row;
             if(($tableId = ($row['id']+0))>0) {
                 $intersect = isset($this->original_price[$tableId]) ?
                     array_diff_assoc($row, $this->original_price[$tableId]) : $row;

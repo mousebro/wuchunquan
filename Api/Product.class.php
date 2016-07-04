@@ -57,12 +57,23 @@ SQL;
         parent::apiReturn(self::CODE_NO_CONTENT, [], '查不到相应省份的数据');
     }
 
-    public function ticketCreate()
+    public function AddTicket()
     {
         $ticketData = $_POST;
         $landModel   = new Land();
         $ticketObj   = new Ticket();
-        $ret =  $this->SaveTicket($this->memberID, $ticketData, $ticketObj, $landModel);
+        $ticketData['ttitle']      = $ticketData['ticket_name'];
+        $ticketData['apply_limit'] = 1;
+        $price_list = (array)$ticketData['price_list'];
+        unset($ticketData['price_list']);
+        $ret =  $this->SaveTicket($this->memberId, $ticketData, $ticketObj, $landModel);
+
+        if ($price_list) {
+            $price_ret = $this->SavePrice($ret['data']['pid'], $price_list);
+        }
+        print_r($ret);
+
+        print_r($price_ret);
     }
 
 }
