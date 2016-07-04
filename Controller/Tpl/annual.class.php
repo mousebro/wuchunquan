@@ -59,4 +59,8 @@ class annual extends Controller {
         $this->display('annual/active');
     }
 
+    public function memdetail() {
+        $this->display('annual/memdetail');
+    }
+
 }
