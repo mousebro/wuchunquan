@@ -5,4 +5,5 @@
  */
 return array(
     'cloud_ticket_system' =>  94,
+    'test'                =>  2,
 );
