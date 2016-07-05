@@ -238,7 +238,7 @@ class AnnualCard extends Controller {
      */
     public function activateForPc($sid = 0) {
 
-        $identify   = I('identify');
+        $identify   = I('identify', '', 'dechex');
         $type       = I('type');
         $mobile     = I('mobile');
         $name       = I('name', '');
@@ -356,10 +356,6 @@ class AnnualCard extends Controller {
             if (!$this->_CardModel->forbiddenAnnualCard($card['id'])) {
                 $this->apiReturn(204, [], '替换失败');
             }
-
-            if ($this->_CardModel->changeMultiOrder($card['pid'], $memberid, $sid)) {
-                $this->apiReturn(204, [], '替换失败');
-            }
         }
 
         return $memberid;
@@ -393,7 +389,7 @@ class AnnualCard extends Controller {
         $options = [
             'where' => [
                 'sid' => $sid,
-                $type => $identify
+                $type => dechex($identify)
             ]
         ];
 
@@ -858,7 +854,7 @@ class AnnualCard extends Controller {
             $this->apiReturn(204, [], '参数错误');
         }
 
-        $physics = I('physics', '');
+        $physics = I('physics', '', 'dechex');
 
         //购买虚拟卡
         if ($physics == '') {

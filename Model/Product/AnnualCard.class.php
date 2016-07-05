@@ -187,7 +187,7 @@ class AnnualCard extends Model
                 'sid'         => $sid,
                 'pid'         => $pid,
                 'virtual_no'  => $item['virtual_no'],
-                'physics_no'  => $item['physics_no'],
+                'physics_no'  => dechex($item['physics_no']),
                 'card_no'     => $item['card_no'],
                 'status'      => 3,
                 'create_time' => time(),
