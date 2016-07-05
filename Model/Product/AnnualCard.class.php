@@ -307,7 +307,7 @@ class AnnualCard extends Model
         }
 
         if (ctype_digit($identify)) {
-            return $type == 'physics' ? 'card_no' : 'physics_no';
+            return !in_array($type, ['physics', 'physics_no']) ? 'card_no' : 'physics_no';
         }
     }
 
@@ -541,7 +541,7 @@ class AnnualCard extends Model
             if ($ordernums) {
                 $ordernums = implode(',', array_values($ordernums));
 
-                $field = 's.tnum,s.tprice,s.totalmoney,s.ordernum,t.title,l.title as ltitle';
+                $field = 's.tnum,s.tprice,s.ordertime,s.totalmoney,s.ordernum,t.title,l.title as ltitle';
 
                 $join = 'left join uu_land l on s.lid=l.id left join uu_jq_ticket t on s.tid=t.id';
 
