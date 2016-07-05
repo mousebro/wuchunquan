@@ -93,6 +93,15 @@ SQL;
     }
 
     /**
+     * 更新门票
+     */
+    public function UpdateTicket()
+    {
+        $_POST['tid'] = $_POST['ticket_id'];
+        unset($_POST['ticket_id']);
+        $this->AddTicket();
+    }
+    /**
      * 保存价格
      */
     public function AddPrice()
@@ -104,6 +113,14 @@ SQL;
         });
         $price_ret = $this->SavePrice($pid, $price_list);
         parent::apiReturn($price_ret['code'], '', $price_ret['msg']);
+    }
+
+    /**
+     * 修改价格
+     */
+    public function UpdatePrice()
+    {
+        $this->AddPrice();
     }
 
     /**
@@ -119,6 +136,7 @@ SQL;
         $output = [];
         foreach ($price_list as $item) {
             $output[] = [
+                'price_id'  => $item['id'],
                 'product_id'=> $item['pid'],
                 'sdate'     => $item['start_date'],
                 'edate'     => $item['end_date'],

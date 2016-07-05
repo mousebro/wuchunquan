@@ -146,7 +146,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['landid']  = $ticketData['lid']+0;
         $tkBaseAttr['tprice']  = $ticketData['tprice']+0;    // 门市价
         $tkBaseAttr['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
-        if (isset($ticketData['ticket_id'])) $tkBaseAttr['sync_id'] = $ticketData['ticket_id'];
+        if (isset($ticketData['remote_ticket_id'])) $tkBaseAttr['sync_id'] = $ticketData['remote_ticket_id'];
             //套票只允许在线支付
         if ($p_type=='F' && $tkBaseAttr['pay']==0) {
             if (!$ticketObj->allowOfflinePackage($memberId))
