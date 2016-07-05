@@ -27,6 +27,7 @@ class ProductBasic extends Controller
     {
         C(include  __DIR__ .'/../../Conf/product.conf.php');
         $this->config = C('');
+
     }
     private function _return($code, $msg, $title)
     {
@@ -55,6 +56,7 @@ class ProductBasic extends Controller
      */
     protected function SaveBasicInfo( $apply_did, Land $landObj )
     {
+        $params = [];
         if (!$apply_did || !is_numeric($apply_did)) {
             self::apiReturn(self::CODE_INVALID_REQUEST,'', '供应商不能为空');
         }
@@ -75,6 +77,11 @@ class ProductBasic extends Controller
 
         //供应商ID
         $params['apply_did']    = $apply_did;
+        $params['sync_id']      = I('post.product_id');
+        $params['jtype']        = I('post.product_level');
+        if (!$params['sync_id'] || !is_numeric($params['sync_id'])) {
+            self::apiReturn(self::CODE_INVALID_REQUEST, [], '对接产品ID错误');
+        }
         //详细地址
         $params['address']  = I('post.address', '', 'strip_tags,addslashes');
         //所在地区，省|市|区,获取票付通地区数据：open.12301.cc/areas.json
@@ -133,6 +140,7 @@ class ProductBasic extends Controller
     {   
         $isSectionTicket = false;// 是否是期票
         if($ticketData['order_start'] && $ticketData['order_end']) $isSectionTicket = true;
+
         //价格校验
         if (!empty($ticketData['price_section'])) {
             $ret = $this->VerifyPrice($ticketData['pid'], $ticketData['price_section'], $ticketObj, $isSectionTicket);
@@ -163,8 +171,11 @@ class ProductBasic extends Controller
         $tkBaseAttr['title']   = $ticketData['ttitle'];
         $tkBaseAttr['landid']  = $ticketData['lid']+0;
         $tkBaseAttr['tprice']  = $ticketData['tprice']+0;    // 门市价
-        $tkBaseAttr['pay']     = isset($ticketData['pay']) ? ($ticketData['pay']+0) : 1;       // 支付方式 0 现场 1 在线
-        //套票只允许在线支付
+
+        $tkBaseAttr['pay']     = $ticketData['pay']+0;       // 支付方式 0 现场 1 在线
+        if (isset($ticketData['remote_ticket_id'])) $tkBaseAttr['sync_id'] = $ticketData['remote_ticket_id'];
+            //套票只允许在线支付
+
         if ($p_type=='F' && $tkBaseAttr['pay']==0) {
             if (!$ticketObj->allowOfflinePackage($memberId))
                 return self::_return(self::CODE_INVALID_REQUEST,  '套票产品只允许在线支付',$ticketData['ttitle']);
@@ -208,8 +219,6 @@ class ProductBasic extends Controller
             if($GLOBALS['le']->fetch_assoc()) if($GLOBALS['le']->f('sourceT')==2) $jData['sourceT'] = 2;
         }*/
 
-
-
         if($tkBaseAttr['buy_limit_low']<=0)
             return self::_return(self::CODE_INVALID_REQUEST,  '购买下限不能小于0',$ticketData['ttitle']);
 
@@ -252,6 +261,9 @@ class ProductBasic extends Controller
                 return self::_return(self::CODE_INVALID_REQUEST,  '有效期时间不能为空',$ticketData['ttitle']);
             $tkBaseAttr['order_end']   = date('Y-m-d 23:59:59', strtotime($ticketData['order_end']));// 订单截止有效日期
             $tkBaseAttr['order_start'] = date('Y-m-d 00:00:00', strtotime($ticketData['order_start']));
+            if ($tkBaseAttr['order_start'] > $tkBaseAttr['order_end']) {
+                return self::_return(self::CODE_INVALID_REQUEST,  '订单有效期开始时间不能大于结束时间',$ticketData['ttitle']);
+            }
         }
 
         // 退票规则 0 有效期内、过期可退 1 有效期内可退 2  不可退
@@ -272,11 +284,20 @@ class ProductBasic extends Controller
         $cancel_sms  = isset($ticketData['cancel_sms']) ? $ticketData['cancel_sms']+0:0;
         $confirm_sms = isset($ticketData['confirm_sms']) ? $ticketData['confirm_sms']+0:0;
         $tkExtAttr['confirm_sms']  = bindec($cancel_sms.$confirm_sms);
+        $tkExtAttr['buy_limit']  = $ticketData['buy_limit']+0;
+        $tkExtAttr['buy_limit_date']  = $ticketData['buy_limit_date']+0;
+        $tkExtAttr['buy_limit_num']  = $ticketData['buy_limit_num']+0;
+
+        if ($tkExtAttr['buy_limit']>2) {
+            return self::_return(self::CODE_INVALID_REQUEST,  '购票限制参数错误，大于0小于2',$ticketData['ttitle']);
+        }
+        if ($tkExtAttr['buy_limit_date']>3) {
+            return self::_return(self::CODE_INVALID_REQUEST,  '购票限制时间类型参数错误，大于0小于3',$ticketData['ttitle']);
+        }
 
         // 取消通知供应商 0 不通知 1 通知
         if(isset($ticketData['cancel_notify_supplier']))
             $tkBaseAttr['cancel_notify_supplier'] = $ticketData['cancel_notify_supplier']+0;
-
 
         // 分批验证设置
         $tkBaseAttr['batch_check']       = isset($ticketData['batch_check']) ? ($ticketData['batch_check']+0) : 1;
@@ -298,7 +319,7 @@ class ProductBasic extends Controller
         if(isset($ticketData['re_integral'])) $tkBaseAttr['re_integral'] = $ticketData['re_integral'] + 0;
 
         $tkBaseAttr['apply_did'] = $memberId;// 产品供应商
-
+        echo $tkBaseAttr['apply_did'];
 
         // 扩展属性 uu_land_f
         $tkExtAttr['confirm_wx']   = isset($ticketData['confirm_wx']) ? ($ticketData['confirm_wx']+0) : 0;

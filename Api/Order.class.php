@@ -64,10 +64,13 @@ class Order extends Controller
         $member             = I('post.member');
         $aid                = I('post.aid');
         $oname              = '';//取票人姓名
+        $sort               = 1;
+        $offset             = I('post.offset', 0, 'intval');
+        $top                = I('post.top', 100, 'intval');
         $this->soap();
         $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, $tid, '', '',
             $ordertime_begin, $ordertime_end,'','','', '',//12订单完成时间
-            $orderNum, $oname, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
+            $orderNum, $oname, $ordertel, $orderStatus, $payStatus, '', $sort,/*19排序*/ 1,/*20降序*/ $offset, $top,
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
@@ -103,6 +106,7 @@ class Order extends Controller
         $tradeno        = I('post.tradeno');//流水号
         $pay_conf       = include '/var/www/html/Service/Conf/pay.conf.php';
         $pay_account    = I('post.pay_account');
+        $app_id         = I('post.app_id', 0);
         if ($pay_account!='' && in_array($pay_account, $pay_conf['pft']['lakala'])) {
             $pay_to_pft = true;
             $sourceT    = 7;//平台拉卡拉
@@ -117,6 +121,9 @@ class Order extends Controller
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单金额格式不对');
         }
         $this->soap();
+        if ($app_id=='android_terminal') {
+            $pay_channel = 20;
+        }
         $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
@@ -179,7 +186,6 @@ class Order extends Controller
             $time_begin = date('Y-m-d H:00:00', strtotime('-1 hours'));
         }
         $time_end = date('Y-m-d H:i:00', strtotime("+30 mins", strtotime($time_begin)));
-        echo $time_begin, '---', $time_end;
         $model = new OrderTools();
         $model->syncPackageOrderStatus($time_begin, $time_end);
     }

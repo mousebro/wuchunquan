@@ -24,6 +24,7 @@ class Member extends Model
     const ACCOUNT_MONEY             = 0;//账户余额
     const ACCOUNT_APPLYER_MONEY     = 1;//可用供应商余额
     const ACCOUNT_APPLYER_CREDIT    = 2;//信用额度
+    const ACCOUNT_APPLYER_BOTH      = 3;//可用供应商余额 & 信用额度
 
     const D_TYPE_BUY                = 0;//下单
     const D_TYPE_CANCEL_ORDER       = 1;//取消
@@ -53,6 +54,11 @@ class Member extends Model
     const P_TYPE_ONLINE_HXPAY       = 6;//环迅
 
     protected $connection = '';
+
+    public function __construct($defaultDb='localhost', $tablePrefix='pft')
+    {
+        parent::__construct($defaultDb, $tablePrefix);
+    }
 
     private function getLimitReferer()
     {
@@ -214,22 +220,31 @@ class Member extends Model
      * 查询账户余额或授信额度
      *
      * @param int $mid 会员ID
-     * @param int $dmode 查询模式0账户余额1授信额度2授信余额
+     * @param int $dmode 查询模式0账户余额1授信额度2授信余额3授信额度和授信余额
      * @param int $aid 供应商ID dmode>0必须
+     * @param bool $order 是否按数组键值方式返回
      * @return mixed
      */
-    private function getMoney($mid, $dmode, $aid=0)
+    public function getMoney($mid, $dmode, $aid=0, $ret_arr=false)
     {
         if ($dmode==0) {
             return $this->table('pft_member_money')
-                ->where(['fid'=>$mid])
+                ->where(['fid'=>$mid])->limit(1)
                 ->getField('amoney');
         }
         $field  = 'kmoney';
         if ($dmode==2) $field='basecredit';
-        return $this->table('pft_member_credit')
-            ->where(['fid'=>$mid, 'aid'=>$aid])
-            ->getField($field);
+        elseif ($dmode==3) $field .= ',basecredit';
+        $query = $this->table('pft_member_credit')->where(['fid'=>$mid, 'aid'=>$aid])->limit(1);
+        if ($ret_arr===true) {
+            return $query->field($field)->find();
+        }
+
+        return $query->getField($field);
+        //echo $this->_sql();
+        //echo $this->getDbError();
+        //print_r($ret);
+
     }
 
     /**
@@ -264,12 +279,19 @@ class Member extends Model
      * @param null $ptype int P_TYPE
      * @param string $orderid string 订单号
      * @param null $memo string 备注说明
+     * @param null $memo string 备注说明
+     * @param false $accountType 收款账号类型(支出流水和ptype一致，收入流水就要看具体去向)：0帐号资金 1支付宝 2供应商处可用资金 3供应商信用额度设置 4财付通 5银联 6环迅 9现金 11商户拉卡拉 12平台拉卡拉
+     *      收入流水需要主动传入该参数（主要是有在线支付的情况下）
+     * @param string $tradeNo 外部流水号
      * @return int|string
      */
+
     public function PFT_Member_Fund_Modify($id, $opID, $Mmoney, $action=0, $dmode=0, $aid=NULL,
-                                           $dtype=NULL, $ptype=NULL, $orderid='', $memo='')
+                                           $dtype=NULL, $ptype=NULL, $orderid='', $memo='', $accountType = false, $tradeNo = false)
     {
         if ($dmode>0 && (!$aid || $aid<0)) return false;
+        $id  = (int)$id;
+        $aid = (int)$aid;
         $act    = $action ? "-" : "+";
         $act_res= $action ? "+" : "-";
         if ($dmode>0 && $dtype==6) {
@@ -295,7 +317,7 @@ class Member extends Model
             $result1 = $this->Table('pft_member_money')
                 ->where(['fid'=>$id])
                 ->data(['amoney'=>['exp', "amoney{$act}{$Mmoney}"]])
-                ->save();
+                ->limit(1)->save();
             if ($dtype==6){
                 $result3 = $this->Table('pft_member_money')
                     ->where(['fid'=>$id])
@@ -303,7 +325,7 @@ class Member extends Model
                             'frozentime'=> time(),
                             'fmoney'    => ['exp', "fmoney{$act_res}{$Mmoney}"],
                         ])
-                    ->save();
+                    ->limit(1)->save();
                 ;
             }
             $journalData['dtype']  = (!is_numeric($dtype)) ? 3 : $dtype;
@@ -315,7 +337,7 @@ class Member extends Model
             $result1 = $this->Table('pft_member_credit')
                 ->where(['fid'=>$id,'aid'=>$aid])
                 ->data(['kmoney'=>['exp', "kmoney{$act}{$Mmoney}"]])
-                ->save();
+                ->limit(1)->save();
             $journalData['dtype']  = (!is_numeric($dtype))?4:$dtype;
             $journalData['ptype']  = (!is_numeric($ptype))?1:$ptype;
         }
@@ -328,10 +350,25 @@ class Member extends Model
                     'baseauthority' => $opID,
                     'basecredit'    => ['exp', "basecredit{$act}{$Mmoney}"]
                     ] )
-                ->save();
+                ->limit(1)->save();
             $journalData['dtype'] =(!is_numeric($dtype)) ? 11 : $dtype;
             $journalData['ptype'] =(!is_numeric($ptype)) ? 3  : $ptype;
         }
+
+        //添加收款人标识
+        if($accountType !== false) {
+            $accountType = intval($accountType);
+            $journalData['account_type'] = $accountType;
+        } else {
+            $journalData['account_type'] = $journalData['ptype'];
+        }
+
+        //添加外部流水号
+        if($tradeNo !== false) {
+            $tradeNo = strval($tradeNo);
+            $journalData['trade_no'] = $tradeNo;
+        }
+
         $journalData['lmoney'] = $this->getMoney($id, $dmode, $aid);
         $result2 = $this->table('pft_member_journal')
             ->data($journalData)
@@ -343,7 +380,39 @@ class Member extends Model
         $this->rollback();
         return ['code'=>401, 'msg'=>'sql:'.$this->getLastSql() .',errmsg:'.  $this->getDbError()];
     }
+    public function addMemberJournal($id, $opID, $Mmoney, $action=0, $aid=NULL,
+                                     $dtype=NULL, $ptype=NULL, $orderid='', $memo='', $tradeNo = false, $accountType = false)
+    {
+        $journalData = [
+            'fid'       => $id,
+            'opid'      => $opID,
+            'aid'       => $aid ? $aid : 0,
+            'dmoney'    => $Mmoney,
+            'orderid'   => $orderid,
+            'daction'   => $action,
+            'dtype'     => $dtype,
+            'ptype'     => $ptype,
+            'memo'      => $memo,
+            'rectime'   => date('Y-m-d H:i:s'),
+        ];
 
+        //添加外部流水号
+        if($tradeNo !== false) {
+            $tradeNo = strval($tradeNo);
+            $journalData['trade_no'] = $tradeNo;
+        }
+
+        //添加交易账号类型
+        if($accountType !== false) {
+            $accountType = intval($accountType);
+            $journalData['account_type'] = $accountType;
+        }
+
+        $result2 = $this->table('pft_member_journal')
+            ->data($journalData)
+            ->add();
+        return $result2;
+    }
     /**
      * 收取短信费
      * @author Guangpeng Chen

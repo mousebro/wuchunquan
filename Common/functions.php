@@ -555,6 +555,7 @@ if(!function_exists('pft_log')) {
         }
 
         $pathMode = in_array($pathMode, array('day', 'month', 'year')) ? $pathMode : 'day';
+        if (PHP_SAPI =='CLI')  $path = 'cli/' . $path;
 
         $tmpPath = BASE_LOG_DIR . '/' . $path . '/';
         $fileName = date('Y') . '.log';
@@ -578,7 +579,6 @@ if(!function_exists('pft_log')) {
         $file    = $tmpPath . $fileName;
         $content = date('Y-m-d H:i:s') . ' # ' . $content . "\r\n";
         $res     = file_put_contents($file, $content, FILE_APPEND);
-
         if($res) {
             return true;
         } else {
