@@ -12,7 +12,7 @@ defined('PFT_INIT') OR exit('No direct script access allowed');
 class VComSms
 {
     const ACCOUNT  = 'fzpft';
-    const PASSWORD = 'ab8888';
+    const PASSWORD = 'VTjL9vsp';
 
     private static $errCode = [
         '00'    => '成功',

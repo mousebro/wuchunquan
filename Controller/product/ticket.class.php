@@ -14,6 +14,7 @@ use Model\Product\Land;
 use Model\Product\PackTicket;
 use Model\Product\PriceWrite;
 use Model\Product\Round;
+use Model\Product\AnnualCard;
 
 class ticket extends ProductBasic
 {
@@ -188,6 +189,12 @@ class ticket extends ProductBasic
             }
             $data['ddays'] = $advance;
         }
+
+        //年卡产品
+        if ($landData['p_type'] == 'I') {
+            $data = array_merge($data, (new AnnualCard())->getCrdConf($tid));
+        }
+
         $landData = $data;
         // 闸机绑定
         $apply_did = $_SESSION['sid'];
@@ -243,7 +250,7 @@ class ticket extends ProductBasic
         //print_r($_POST);exit();
         $res = array();
         $landModel   = new Land();
-        if (count($_POST)>1) {
+        if (count($_POST)>=1) {
             foreach ($_POST as $tid=>$ticketData) {
                 $ret =  $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
                 $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
@@ -252,15 +259,6 @@ class ticket extends ProductBasic
                 }
                 $res[] = $ret;
             }
-        }
-        else {
-            $ticketData = array_shift($_POST);
-            $ret = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
-            $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
-            if (count($ticketData['price_section'])) {
-                $ret['data']['price'] = $this->SavePrice($ret['data']['pid'], $ticketData['price_section']);
-            }
-            $res[] = $ret;
         }
         self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
     }
