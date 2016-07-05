@@ -109,8 +109,27 @@ class Member extends Model
         $where[$field] = $identify;
 
         $member = $this->table(self::__MEMBER_TABLE__)->where($where)->find();
+
         return $member ?: false;
     }
+
+    /**
+     * 一次性获取多用户信息
+     * @param  [type] $identify_arr [description]
+     * @param  string $column       [description]
+     * @param  string $field        [description]
+     * @return [type]               [description]
+     */
+    public function getMemberInfoByMulti($identify_arr, $column = 'id', $field = '*') {
+
+        $where[$column] = array('in', implode(',', $identify_arr));
+
+        $members = $this->table(self::__MEMBER_TABLE__)->where($where)->field($field)->select();
+
+        return $members ?: false;
+    }
+
+
     /**
      * 根据账号获取用户扩展表信息
      * @param  mixed $identify 字段值

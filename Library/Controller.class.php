@@ -8,6 +8,7 @@
  */
 
 namespace Library;
+use Library\Tools\Helpers;
 
 class Controller {
 
@@ -18,6 +19,13 @@ class Controller {
     const  CODE_INVALID_REQUEST  = 400;//Bad Request
     const  CODE_AUTH_ERROR       = 401;//认证失败
     const  CODE_METHOD_NOT_ALLOW = 405;
+
+    /**
+     * 模板参数信息
+     *
+     * @var array
+     */
+    protected $setOptions   = array();
 
     /**
      *  
@@ -228,6 +236,208 @@ class Controller {
             "location" => "http://localhost/open/openService/pft_insideMX.php",
             "uri" => "www.16u.com?ac_16u={$ac}|pw_16u={$pw}|auth_16u=true"));
         return $soap;
+    }
+
+    /**
+     * 设置视图变量
+     *
+     * @access public
+     * @param mixed $key    视图变量名
+     * @param string $value 视图变量数值
+     * @return mixed
+     */
+    protected function assign($key, $value = null){
+        if(!$key) {
+           return false;
+        }
+        if(is_array($key)) {
+           foreach ($key as $k=>$v){
+             $this->setOptions[$k] = $v;
+           }
+        }else{
+           $this->setOptions[$key] = $value;
+        }
+
+        return true;
+    }
+
+    /**
+     * 缓存重写分析
+     *
+     * 判断缓存文件是否需要重新生成. 返回true时,为需要;返回false时,则为不需要
+     * @access protected
+     * @param string $view_file     视图文件名
+     * @param string $compile_file  视图编译文件名
+     * @return boolean
+     */
+    protected function isCompile($view_file, $compile_file) {
+        if(is_file($compile_file) && (filemtime($compile_file) >= filemtime($view_file))){
+           return false;;
+        }else{
+           return true;
+        }
+    }
+
+    /**
+     * 生成视图编译文件
+     *
+     * @access protected
+     * @param string $compile_file 编译文件名
+     * @param string $content   编译文件内容
+     * @return void
+     */
+    protected function createCompileFile($compileFile, $content) {
+        //分析编译文件目录
+        $compileDir = dirname($compileFile);
+
+        if(!is_dir($compileDir)) {
+            mkdir($compileDir, 0777, true);
+        }else if(!is_writable($compileDir)) {
+           chmod($compileDir, 0777);
+        }
+
+        return file_put_contents($compileFile, $content, LOCK_EX);
+    }
+
+    /**
+     * 显示视图文件
+     *
+     * @access public
+     * @param string $fileName 视图名 - card/index
+     * @return void
+     */
+    public function display($fileName = null) {
+        //视图变量
+        if(!empty($this->setOptions)) {
+           extract($this->setOptions, EXTR_PREFIX_SAME, 'data');
+           $this->setOptions = array();
+        }
+
+        if(is_null($fileName)) {
+           exit("文件名不能为空");
+        }
+
+        $viewPath       = defined('HTML') ? HTML . '/Views/' : '/var/www/html/Views/';
+        $compilePath    = defined('HTML') ? HTML . '/Compile/' : '/var/www/html/Compile/';
+
+        //如果视图文件命名包含'/'下划线，加载子目录视图，一层目录已满足大部分应用，因此框架这里只支持一层目录
+        if(strpos($fileName, '/')) {
+           $_tmpAr      = explode('/', $fileName);
+           $path        = $_tmpAr[0];
+           $fileName    = $_tmpAr[1];
+           $viewFile    = $viewPath . $path . '/' . $fileName . '.html';
+           $compileFile = $compilePath . $path . '/' . $fileName . '.cache.php';
+        }else {
+           $viewFile    = $viewPath . $fileName . '.html';
+           $compileFile = $compilePath . $fileName . '.cache.php';
+        }
+
+        if($this->isCompile($viewFile, $compileFile)) {
+           $viewContent = file_get_contents($viewFile);
+           $this->createCompileFile($compileFile, $viewContent);
+        }
+
+        //加载编译缓存文件
+        include $compileFile;
+    }
+
+    /**
+     * 加载头部和尾部的定制信息
+     * @author dwer
+     * @date   2016-06-19
+     *
+     * @return 
+     */
+    protected function loadHConfig() {
+        $httphost   = $_SERVER['HTTP_HOST'];
+        $host       = str_replace('www.', '', $httphost);
+
+        //加载配置
+        $h_config = load_config('h_config', 'hconfig');
+
+        if (!isset($h_config[$httphost])) {
+            $cnt_dot = substr_count($httphost, '.');
+            $isSubDomain = false;
+            if ($cnt_dot==2) {
+                if ( strpos($_SERVER['HTTP_HOST'], 'www') ===false
+                        && strpos($_SERVER['HTTP_HOST'], '12301.cc')!==false ) {
+                    $isSubDomain = true;
+                }
+            } elseif ($cnt_dot==3) {
+                $isSubDomain = true;
+            }
+
+            if ($isSubDomain) {
+                if (!isset($redis)) {
+                    $redis = \Library\Cache\RedisCache::Connect();
+                }
+
+                //二级域名处理
+                //step1:获取供应商账号，再获取id
+                $applyAccount   = substr($host, 0, strpos($host, '12301')-1);
+                $redis_key      = "shop_{$applyAccount}";
+                $shop           = $redis->get($redis_key);
+
+                if (!$shop) {
+                    //从数据库获取二级店铺信息
+                    $subModel = $this->model('Subdomain/SubdomainInfo');
+                    $shop = $subModel->getBindedSubdomainInfo($applyAccount, 'account');
+                    unset($subModel);
+
+                    if ($shop) {
+                        $redis->setex($redis_key, 1800, serialize($shop));
+                    } else {
+                        exit('404');
+                    }
+                } else {
+                    $shop = unserialize($shop);
+                }
+
+                $_SESSION['is_sub_domain'] = $shop['fid'];
+
+                $h_config[$httphost]['name'] = $shop['M_name'];
+                $h_config[$httphost]['logo'] = $shop['M_logo1'];
+                $h_config[$httphost]['navi'] = 0;
+                $h_config[$httphost]['tel']  = $shop['M_tel'] .'&nbsp;&nbsp;&nbsp;'. $shop['M_qq'];
+                $h_config[$httphost]['host'] = ($shop['M_host'])? $shop['M_host']:$shop['M_domain'].'.12301.cc';
+                $h_config[$httphost]['addr'] = $shop['M_addr'];
+            }
+        }
+
+        $showQQ = load_config('showQQ', 'hconfig');
+        $unshowAccountQQ = load_config('unshowAccountQQ', 'hconfig');
+
+        //将配置信息设置到模板中
+        $this->assign('h_config', $h_config);
+        $this->assign('httphost', $httphost);
+        $this->assign('host', $host);
+
+        $this->assign('showQQ', $showQQ);
+        $this->assign('unshowAccountQQ', $unshowAccountQQ);
+    }
+
+    /**
+     * 初始化页面信息
+     * @author dwer
+     * @date   2016-06-20
+     *
+     * @return 
+     */
+    protected function initPage() {
+        //登陆判断
+        $this->isLogin('html');
+
+        //加载头部和尾部的定制信息
+        $this->loadHConfig();
+
+        //加载面包屑
+        $breadCrumb = Helpers::getBreadcrumb();
+
+        //加载侧边栏
+        $leftBar = Helpers::getLeftBar();
+        
+        $this->assign('breadcrumb', $breadCrumb);
+        $this->assign('leftbar', $leftBar);
     }
 }
 ?>

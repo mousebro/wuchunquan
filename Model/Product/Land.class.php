@@ -85,6 +85,7 @@ class Land extends Model
     {
         $params['terminal']      = self::getTerminalId();
         $params['terminal_type'] = 1;
+        $params['status'] = 1;
         $memParams = array(
             'dname'     => $params['title'],
             'dtype'     => 2,//直接供应方
@@ -114,6 +115,29 @@ class Land extends Model
         if (is_numeric($res) && $res>0) return ['code'=>200, 'data'=>['lastid'=>$res], 'msg'=>'产品信息添加成功'];
         pft_log(__CLASS__ . '/error', "sql:" . $this->_sql().";error:". $this->getDbError());
         return ['code'=>0, 'msg'=>'添加失败，服务器发生错误'];
+    }
+
+    /**
+     * 更新景区信息
+     * @param  int   $apply_did 供应商id
+     * @param  int   $lid       景区id
+     * @param  array $params  更新数据
+     * @return [type]         [description]
+     */
+    public function updateProduct($apply_did, $lid, $params) {
+        $where = [
+            'id'        => $lid,
+            'apply_did' => $apply_did
+        ];
+
+        $result = $this->table('uu_land')->where($where)->save($params);
+
+        if ($result !== false) {
+            return ['code' => 200, 'data'=>['lastid'=>$lid]];
+        } else {
+            return ['code' => 0, 'msg'=>'添加失败，服务器发生错误'];
+        }
+
     }
 
     public function UpdateAttrbites(Array $where, Array $attrs)
