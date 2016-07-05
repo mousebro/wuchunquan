@@ -469,13 +469,20 @@ class AnnualCard extends Model
     {
         $where = [
             'sid'      => $sid,
-            'memberid' => ['gt', 0],
+            // 'memberid' => ['gt', 0],
             'status'   => (int)$options['status'],
         ];
 
         if ($options['identify']) {
             $identify = $options['identify'];
-            $where['_string'] = "card_no='{$identify}' or virtual_no='{$identify}'";
+
+            if (ismobile($identify)) {
+                $memberinfo = (new Member)->getMemberInfo($identify, 'mobile');
+                $tmp_mid = $memberinfo['id'];
+                $where['memberid'] = $tmp_mid;
+            } else {
+                $where['_string'] = "card_no='{$identify}' or virtual_no='{$identify}'";
+            }
         }
 
         $limit = ($options['page'] - 1) * $options['page_size'] . ',' . $options['page_size'];
@@ -568,36 +575,6 @@ class AnnualCard extends Model
 
         return $left >= $num ? true : $left;
     }
-
-    /**
-     * 年卡消费合法性检测
-     *
-     * @return [type] [description]
-     */
-    // public function consumeCheck($card_info) {
-    //     $card_info = $this->getAnnualCard('555555', 'physics_no');  //调试代码
-
-    //     extract($card_info);
-
-    //     //这里逻辑有错
-    //     $ticket = (new Ticket())->getTicketInfoByPid($pid);
-
-    //     $ticket['id'] = 28460;  //调试代码
-    //     $config = $this->getAnnualCardConfig($ticket['id']);
-
-    //     //年卡有效期检测
-    //     if (!$this->_periodOfValidityCheck($card_info, $config)) {
-    //         return false; 
-    //     }
-
-    //     //次数限制检测
-    //     if (!$this->_consumeTimesCheck($ticket['id'], $memberid, $sid, $config)) {
-    //         return false;
-    //     }
-
-    //     return true;
-
-    // }
 
     /**
      * 年卡有效期检测

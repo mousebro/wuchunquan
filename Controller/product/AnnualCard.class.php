@@ -226,7 +226,8 @@ class AnnualCard extends Controller {
         $data = [
             'need_ID'       => $need_ID,
             'virtual_no'    => $card['virtual_no'],
-            'physics_no'    => $card['physics_no']
+            'physics_no'    => $card['physics_no'],
+            'card_no'       => $card['card_no']
         ];
 
         $this->apiReturn(200, $data);
@@ -283,7 +284,7 @@ class AnnualCard extends Controller {
 
         }
 
-        // $this->_CardModel->createRelationShip($sid, $memberid);
+        $this->_CardModel->createRelationShip($sid, $memberid);
 
         $this->apiReturn(200, [], '激活成功');
 
@@ -419,7 +420,7 @@ class AnnualCard extends Controller {
             include '/var/www/html/new/d/class/MemberAccount.class.php';
 
             $data = [
-                'dtype'     => 5,
+                'dtype'     => 1,
                 'dname'     => $name ?: $mobile,
                 'mobile'    => $mobile,
             ];
@@ -516,19 +517,27 @@ class AnnualCard extends Controller {
         foreach ($result as $item) {
             if ($item['memberid']) {
                 $memberid_arr[] = $item['memberid'];
-                $memberid_arr[] = $item['sid'];
             }
+
+            $memberid_arr[] = $item['sid'];
 
             $pid_arr[] = $item['pid'];
         }
 
         $members = $result ? $this->_getMemberInfoByMulti($memberid_arr) : [];
-        $members = $this->_replaceKey($members, 'id');
+
+        if ($members) {
+            $members = $this->_replaceKey($members, 'id');
+        }
+        
 
         foreach ($result as $key => $item) {
             if (isset($members[$item['memberid']])) {
                 $result[$key]['account'] = $members[$item['memberid']]['account'];
                 $result[$key]['mobile'] = $members[$item['memberid']]['mobile'];
+                            }
+
+            if (isset($members[$item['sid']])) {
                 $result[$key]['supply'] = $members[$item['sid']]['dname'];
             }
         }
@@ -603,7 +612,7 @@ class AnnualCard extends Controller {
 
                 $use = $this->_CardModel->getRemainTimes($sid, $priv['tid'], $memberid, true);
 
-                $all = $priv['use_limit'] == -1 ?: explode(',', $priv['use_limit'])[2];
+                $all = $priv['use_limit'] == -1 ? '不限' : explode(',', $priv['use_limit'])[2];
 
                 $list[$key]['priv'][] = [
                     'title' => $priv['ltitle'] . '-' . $priv['title'],

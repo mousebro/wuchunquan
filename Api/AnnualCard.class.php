@@ -469,13 +469,11 @@ use Controller\product\AnnualCard as CardCtrl;
             'paymode'   => 12
         ];
 
-        try {
-            return $DisOrder->order($options, $aid);
+        set_exception_handler(function($e) {
+             (new Controller)->apiReturn(204, [], $e->getMessage());
+        });
 
-        } catch (DisOrderException $e) {
-
-            $this->api(204, [], $e->getMessage());
-        } 
+        return $DisOrder->order($options, $aid);
 
     }
 
