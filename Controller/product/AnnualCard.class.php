@@ -17,9 +17,9 @@ class AnnualCard extends Controller {
 
     public function __construct() {
 
-        // if (!isset($_SESSION['memberID'])) {
-        //     $this->apiReturn(401, [], '请先登录');
-        // }
+        if (!isset($_SESSION['memberID']) && !defined('PFT_API')) {
+            $this->apiReturn(401, [], '请先登录');
+        }
 
         // if (!$this->isAjax()) {
         //     $this->apiReturn(403, [], '我要报警了!!!');
@@ -284,7 +284,7 @@ class AnnualCard extends Controller {
 
         }
 
-        $this->_CardModel->createRelationShip($sid, $memberid);
+        // $this->_CardModel->createRelationShip($sid, $memberid);
 
         $this->apiReturn(200, [], '激活成功');
 
@@ -356,6 +356,10 @@ class AnnualCard extends Controller {
             if (!$this->_CardModel->forbiddenAnnualCard($card['id'])) {
                 $this->apiReturn(204, [], '替换失败');
             }
+
+            if ($this->_CardModel->changeMultiOrder($card['pid'], $memberid, $sid)) {
+                $this->apiReturn(204, [], '替换失败');
+            }
         }
 
         return $memberid;
@@ -420,7 +424,7 @@ class AnnualCard extends Controller {
             include '/var/www/html/new/d/class/MemberAccount.class.php';
 
             $data = [
-                'dtype'     => 1,
+                'dtype'     => 5,
                 'dname'     => $name ?: $mobile,
                 'mobile'    => $mobile,
             ];
@@ -540,6 +544,8 @@ class AnnualCard extends Controller {
             if (isset($members[$item['sid']])) {
                 $result[$key]['supply'] = $members[$item['sid']]['dname'];
             }
+
+            $result[$key]['sale_time'] = date('Y-m-d : H:i:s', $item['sale_time']);
         }
 
         $pname_map = $this->_CardModel->getCardName($pid_arr);
@@ -547,6 +553,7 @@ class AnnualCard extends Controller {
         foreach ($result as $key => $item) {
             $result[$key]['title'] = $pname_map[$item['pid']];
         }
+
 
         $return = [
             'list'      => $result,
@@ -632,12 +639,17 @@ class AnnualCard extends Controller {
 
 
         $return['list'] = $list;
-        $return['history'] = [];
+        // $return['history'] = $this->getHistoryOrder($memberid);
 
 
         $this->apiReturn(200, $return, []);
     }
 
+    /**
+     * 获取用户的年卡消费订单
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
     public function getHistoryOrder() {
 
         if (!$memberid = I('memberid', '', 'intval')) {

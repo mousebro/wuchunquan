@@ -43,7 +43,7 @@ use Controller\product\AnnualCard as CardCtrl;
         if (!$aid || !$products || !$identify || !$type) {
             $this->apiReturn(204, [], '参数错误');
         }
-        
+
         $tmp_pros = array_chunk(explode(',', $products), 2);
 
         $products = [];

@@ -711,8 +711,9 @@ class AnnualCard extends Model
             []  //总次数
         ];
 
+        $all = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2]);
+
         if ($only_all) {
-            $all = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2]);
             return (int)$all;
         }
 
@@ -863,6 +864,7 @@ class AnnualCard extends Model
      */
     public function annualOrderRecord($ordernum, $tid, $memberid, $aid, $num)
     {
+        
         $data = [
             'ordernum'    => $ordernum,
             'tid'         => $tid,
@@ -923,8 +925,6 @@ class AnnualCard extends Model
 
             return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->save($data);
         }
-
-
     }
 
     /**
@@ -994,6 +994,15 @@ class AnnualCard extends Model
         }
 
         return $return;
+    }
+
+    /**
+     * 判断是否是年卡订单
+     * @param  [type]  $ordernum [description]
+     * @return boolean           [description]
+     */
+    public function isAnnualOrder($ordernum) {
+        return $this->table(self::CARD_MAPPING_TABLE)->where(['ordernum' => $ordernum])->count();
     }
 
 
@@ -1269,6 +1278,7 @@ class AnnualCard extends Model
             'reb_type'              => 1,
             'buy_limit_low'         => 1,
             'buy_limit_up'          => 0,
+            'pay'                   => 1
         ];
 
         return $default;

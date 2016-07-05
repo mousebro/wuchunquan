@@ -79,9 +79,9 @@ class ProductBasic extends Controller
         $params['apply_did']    = $apply_did;
         $params['sync_id']      = I('post.product_id');
         $params['jtype']        = I('post.product_level');
-        if (!$params['sync_id'] || !is_numeric($params['sync_id'])) {
-            self::apiReturn(self::CODE_INVALID_REQUEST, [], '对接产品ID错误');
-        }
+        // if (!$params['sync_id'] || !is_numeric($params['sync_id'])) {
+        //     self::apiReturn(self::CODE_INVALID_REQUEST, [], '对接产品ID错误');
+        // }
         //详细地址
         $params['address']  = I('post.address', '', 'strip_tags,addslashes');
         //所在地区，省|市|区,获取票付通地区数据：open.12301.cc/areas.json
@@ -319,7 +319,7 @@ class ProductBasic extends Controller
         if(isset($ticketData['re_integral'])) $tkBaseAttr['re_integral'] = $ticketData['re_integral'] + 0;
 
         $tkBaseAttr['apply_did'] = $memberId;// 产品供应商
-        echo $tkBaseAttr['apply_did'];
+        // echo $tkBaseAttr['apply_did'];
 
         // 扩展属性 uu_land_f
         $tkExtAttr['confirm_wx']   = isset($ticketData['confirm_wx']) ? ($ticketData['confirm_wx']+0) : 0;
