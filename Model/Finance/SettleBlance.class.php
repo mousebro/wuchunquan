@@ -19,6 +19,8 @@ class SettleBlance extends Model{
     private $_settingTable = 'pft_auto_withdraw_setting';
     //清分记录表
     private $_recordTable = 'pft_auto_withdraw_record';
+    //未未完成订单冻结表
+    private $_frozeTable = 'pft_auto_withdraw_froze';
 
     //订单表
     private $_orderTable = 'uu_ss_order';
@@ -479,7 +481,7 @@ class SettleBlance extends Model{
             'settle_time' => ['ELT', time()]
         ];
 
-        $field = 'id, fid, cycle_mark';
+        $field = 'id, fid, cycle_mark, mode';
         $order = 'update_time asc';
 
          $res = $this->table($this->_recordTable)->where($where)->field($field)->order($order)->page($page . ',' . $size)->select();
@@ -553,8 +555,8 @@ class SettleBlance extends Model{
      * @param  $fid
      * @return
      */
-    public function settleAmount($fid) {
-        if(!$fid) {
+    public function settleAmount($fid, $mode, $mark) {
+        if(!$fid || !$mode || !$mark) {
             return ['status' => -1];
         }
 
@@ -581,14 +583,14 @@ class SettleBlance extends Model{
 
         if($freezeType == 1) {
             //冻结未使用的总额 - 在线支付的未使用的订单的总额
-            $res = $this->_getUnusedOrderInfo($fid);
+            $res = $this->getUnusedOrderSummary($fid, $mode, $mark);
             if($res === false) {
                 //获取未使用订单金额时报错
                 return ['status' => -4];
             }
 
-            $orderNum    = $res['order_num'];
-            $ticketNum   = $res['ticket_num'];
+            $orderNum    = $res['orders'];
+            $ticketNum   = $res['tickets'];
             $freezeMoney = $res['money'];
 
             if($freezeMoney >= $amoney) {
@@ -715,6 +717,148 @@ class SettleBlance extends Model{
     }
 
     /**
+     * 获取未使用订单信息
+     * @author dwer
+     * @date   2016-07-05
+     *
+     * @param  $fid 会员ID
+     * @param  $mode 模式
+     * @param  $mark 标识
+     * @return
+     */
+    public function getUnusedOrderSummary($fid, $mode, $mark) {
+        //首先获取总条目数
+        $size = 2000;
+
+        $count = $this->_getUnusedOrderInfo($fid, null, null, true);
+
+        //如果报错，直接返回
+        if($count === false) {
+            return false;
+        }
+
+        //返回数据
+        $totalData = [
+            'orders'  => 0,
+            'tickets' => 0,
+            'money'   => 0
+        ];
+
+        if($count == 0) {
+            return $totalData;
+        }
+
+        $totalPage = ceil($count / $size);
+        for($i = 1; $i <= $totalPage; $i++) {
+            $info = $this->_getUnusedOrderInfo($fid, $i, $size);
+
+            //如果报错，直接返回
+            if($info === false) {
+                return false;
+            }
+
+            $pageData = [
+                'orders'  => count($info),
+                'tickets' => 0,
+                'money'   => 0
+            ];
+
+            $pageDetailArr = [];
+
+            //数据处理
+            foreach($info as $item) {
+                if($item['level'] == 1 || $item['level'] == 0) {
+                    //顶级供应商的话，冻结卖出的钱
+                    $perMoney = $item['sale_money'];
+                } else {
+                    //中间级别冻结利润
+                    $tmp = $item['sale_money'] - $item['cost_money'];
+                    $perMoney = $tmp > 0 ? $tmp : 0;
+                }
+
+                $tmpTicket = intval($item['tnum']);
+                $tmpMoney = $tmpTicket * $perMoney;
+
+                $pageData['tickets'] +=  $tmpTicket;
+                $pageData['money']   +=  $tmpMoney;
+
+                $pageDetailArr[] = ['id' => $item['ordernum'], 't' => $tmpTicket, 'm' => $tmpMoney];
+            }
+
+            //保存冻结数据
+            $this->_saveFrozeOrders($fid, $mode, $mark, $i, $pageData['orders'], $pageData['tickets'], $pageData['money'], $pageDetailArr);
+
+            //总计总的数据
+            $totalData['orders']  += $pageData['orders'];
+            $totalData['tickets'] += $pageData['tickets'];
+            $totalData['money']   +=  $pageData['money'];
+        }
+
+        //返回汇总数据
+        return $totalData;
+    }
+
+    /**
+     * 获取被冻结的未使用订单数据
+     * @author dwer
+     * @date   2016-07-05
+     *
+     * @param  $fid 会员ID
+     * @param  $mode 模式
+     * @param  $mark 标识
+     * @param  $getTotal 是否获取统计数据
+     * @return
+     */
+    public function getFrozeOrders($fid, $mode, $mark, $getTotal = false) {
+        if(!$fid || !$mode || !$mark) {
+            return false;
+        }
+
+        $where = [
+            'fid'        => $fid,
+            'mode'       => $mode,
+            'cycle_mark' => $mark
+        ];
+        $order = 'page asc';
+
+        if($getTotal) {
+            $field = 'total_orders, total_tickets, total_money';
+        } else {
+            $field = 'detail';
+        }
+
+        //返回数据
+        $totalData = [
+            'orders'  => 0,
+            'tickets' => 0,
+            'money'   => 0
+        ];
+
+        $detailArr = [];
+
+        $res = $this->table($this->_frozeTable)->field($field)->where($where)->order($order)->select();
+        foreach($res as $item) {
+            if($getTotal) {
+                $totalData['orders']  += $item['total_orders'];
+                $totalData['tickets'] += $item['total_tickets'];
+                $totalData['money']   += $item['total_money'];
+            } else {
+                $tmp = json_decode($item['detail'], true);
+                $detailArr = array_merge($detailArr, $tmp);
+            }
+        }
+
+        if($getTotal) {
+            //返回总订单数orders，总票数tickets，总金额money
+            return $totalData;
+        } else {
+            //返回所有被冻结的订单数据 - 按订单ID升序排序的
+            //[['id':'订单ID', 't' : '票数', 'm' : '金额'],['id':'订单ID', 't' : '票数', 'm' : '金额']]
+            return $detailArr;
+        }
+    }
+
+    /**
      * 格式化参数
      * @author dwer
      * @date   2016-06-09
@@ -836,14 +980,17 @@ class SettleBlance extends Model{
     }
 
     /**
-     * 通过接口获取在线支付的未使用的订单的总额
+     * 通过接口获取在线支付的未使用的订单数据
      * @author dwer
-     * @date   2016-06-16
+     * @date   2016-07-05
      *
-     * @param  $fid
-     * @return [type]
+     * @param  $fid 会员ID
+     * @param  $page 第几页
+     * @param  $size 条数
+     * @param  $getTotal 是否获取总是
+     * @return
      */
-    private function _getUnusedOrderInfo($fid) {
+    private function _getUnusedOrderInfo($fid, $page = 1, $size = 2000, $getTotal = false) {
         if(!$fid) {
             return false;
         }
@@ -859,35 +1006,61 @@ class SettleBlance extends Model{
             'fd.pay_status' => 1 //已经支付
         ];
 
-        $field = 's.tnum, s.tprice';
-        $page = "1,100000";
+        $field = 's.ordernum, s.tnum, s.totalmoney, os.cost_money, os.sale_money, os.level';
+        $page  = "{$page},{$size}";
+        $order = "s.id asc";
 
-        $res = $this->table($table)
-                    ->join($joinSplit)
-                    ->join($joinDetail)
-                    ->field($field)
-                    ->page($page)
-                    ->where($where)
-                    ->select();
+        $tmp = $this->table($table)->join($joinSplit)->join($joinDetail)->where($where);
+
+        //返回总数
+        if($getTotal) {
+            return $tmp->count();
+        }
+
+        //获取具体数据
+        $res = $tmp->field($field)->page($page)->select();
 
         //如果查询出错，就返回错误
         if($res === false) {
             return false;
         }
 
-        //获取统计信息
-        $orderNum  = count($res);
-        $ticketNum = 0;
-        $money     = 0;
-
-        foreach($res as $item) {
-            $ticketNum += $item['tnum'];
-            $money     += $item['tnum'] * $item['tprice'];
-        }
-
-        //返回数据
-        return ['order_num' => $orderNum, 'ticket_num' => $ticketNum, 'money' => $money];
+        return $res;
     }
 
+    /**
+     *  
+     * @author dwer
+     * @date   2016-07-05
+     *
+     * @param  $fid
+     * @param  $mode
+     * @param  $mark
+     * @param  $page
+     * @param  $orders
+     * @param  $tickets
+     * @param  $money
+     * @param  $pageDetailArr
+     * @return
+     */
+    private function _saveFrozeOrders($fid, $mode, $mark, $page, $orders, $tickets, $money, $detailArr = array()) {
+        $detailStr = json_encode($detailArr);
+
+        $data = array(
+            'fid'           => $fid,
+            'mode'          => $mode,
+            'cycle_mark'    => $mark,
+            'page'          => $page,
+            'total_orders'  => $orders,
+            'total_tickets' => $tickets,
+            'total_money'   => $money,
+            'detail'        => $detailStr,
+            'update_time'   => time()
+        );
+
+        $res = $this->table($this->_frozeTable)->add($data);
+
+        return $res === false ? false : true;
+    }
 
 }

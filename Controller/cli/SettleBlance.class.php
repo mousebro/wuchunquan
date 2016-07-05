@@ -182,9 +182,11 @@ class SettleBlance extends Controller {
         $settleList = $settleBlanceModel->getSettleList(1, 100);
         foreach($settleList as $item) {
             //清算金额
-            $fid        = $item['fid'];
-            $id         = $item['id'];
-            $settleInfo = $settleBlanceModel->settleAmount($fid);
+            $fid  = $item['fid'];
+            $id   = $item['id'];
+            $mark = $item['cycle_mark'];
+            $mode = $item['mode'];
+            $settleInfo = $settleBlanceModel->settleAmount($fid, $mode, $mark);
 
             //状态
             $status = $settleInfo['status'];
