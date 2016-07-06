@@ -472,8 +472,70 @@ class SettleBlance extends Controller {
                 'trans_remark'   => $item['trans_remark'],
                 'update_time'    => $item['update_time'],
                 'mode'           => $item['mode'],
+                'cycle_mark'     => $item['cycle_mark']
             ];
         }
+
+        $this->apiReturn(200, $res);
+    }
+
+    /**
+     * 获取冻结订单汇总信息
+     * @author dwer
+     * @date   2016-06-21
+     *
+     * @return  
+     */
+    public function getFrozeSummary() {
+        $fid  = intval(I('post.fid'));
+        $mode = intval(I('post.mode'));
+        $mark = intval(I('post.cycle_mark'));
+
+        if(!$fid || !$mode || !$mark) {
+            $this->apiReturn(400, [], '参数错误');
+        }
+
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+        $tmp = $settleBlanceModel->getFrozeOrders($fid, $mode, $mark, true);
+
+        if($tmp === false) {
+            $this->apiReturn(500, [], '系统错误');
+        } else {
+            //['orders' : 100, 'tickets' : 200, 'money' : 14000]
+            $this->apiReturn(200, $tmp);
+        }
+    }
+
+    /**
+     * 获取冻结订单汇总信息
+     * @author dwer
+     * @date   2016-06-21
+     *
+     * @return
+     * {
+     *      'count' : 27,
+     *      'list'  : [{
+     *          ltitle : '【测试】没那么简单',
+     *          ttitle : '成人测试测试票',
+     *          ordernum : '3316099',
+     *          money : '200',
+     *          tickets : '2',
+     *      }]
+     * }
+     */
+    public function getFrozeOrders() {
+        $fid  = intval(I('post.fid'));
+        $mode = intval(I('post.mode'));
+        $mark = intval(I('post.cycle_mark'));
+        $page = intval(I('post.page', 1));
+        $size = intval(I('post.size', 20));
+
+        if(!$fid || !$mode || !$mark) {
+            $this->apiReturn(400, [], '参数错误');
+        }
+
+        $settleBlanceModel = $this->model('Finance/SettleBlance');
+        $res = $settleBlanceModel->getFrozeOrdersInfo($fid, $mode, $mark, $page, $size);
 
         $this->apiReturn(200, $res);
     }

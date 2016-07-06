@@ -749,6 +749,7 @@ class SettleBlance extends Model{
         }
 
         $totalPage = ceil($count / $size);
+
         for($i = 1; $i <= $totalPage; $i++) {
             $info = $this->_getUnusedOrderInfo($fid, $i, $size);
 
@@ -856,6 +857,75 @@ class SettleBlance extends Model{
             //[['id':'订单ID', 't' : '票数', 'm' : '金额'],['id':'订单ID', 't' : '票数', 'm' : '金额']]
             return $detailArr;
         }
+    }
+
+    /**
+     *  
+     * @author dwer
+     * @date   2016-07-07
+     *
+     * @param  $fid 会员ID
+     * @param  $mode 模式
+     * @param  $mark 标识
+     * @param  $page
+     * @param  $size
+     * @param  $order 排序，asc升序，desc降序
+     * @return
+     */
+    public function getFrozeOrdersInfo($fid, $mode, $mark, $page = 1, $size = 20, $order = 'asc') {
+        //获取订单数组
+        $tmp = $this->getFrozeOrders($fid, $mode, $mark);
+
+        if($order == 'desc') {
+            $tmp = array_reverse($tmp);
+        }
+
+        $count = count($tmp);
+        $start = ($page - 1) * $size;
+        
+        $targetOrders = array_slice($tmp, $start, $size);
+
+        $orderIdArr = [];
+        $dataArr    = [];
+        foreach ($targetOrders as $key => $value) {
+            $orderIdArr[]          = $value['id'];
+            $dataArr[$value['id']] = $value;
+        }
+
+        //查询景区名称和票类
+        $table      = "$this->_orderTable s";
+        $joinTicket = "left join uu_jq_ticket t on s.tid=t.id";
+        $joinLand   = "left join uu_land l on s.lid=l.id";
+
+        $where = [
+            's.ordernum'   => array('in', $orderIdArr),
+        ];
+
+        if($order == 'desc') {
+            $orderParam = 's.id desc';
+        } else {
+            $orderParam = 's.id asc';
+        }
+        $field = 'l.title as ltitle, t.title as ttitle, s.ordernum';
+
+        $tmp = $this->table($table)->field($field)->join($joinTicket)->join($joinLand)->where($where)->order($orderParam)->select();
+          
+        $list = [];
+        foreach($tmp as $item) {
+            if(isset($dataArr[$item['ordernum']])) {
+                $info = $dataArr[$item['ordernum']];
+
+                $lastArr = $item;
+                $lastArr['money']    = $info['m'];
+                $lastArr['ordernum'] = $item['ordernum'];
+                $lastArr['tickets']  = $info['t'];
+
+                $list[] = $lastArr;
+            }
+        }
+
+        //返回数据
+        return ['count' => $count, 'list' => $list];
     }
 
     /**
