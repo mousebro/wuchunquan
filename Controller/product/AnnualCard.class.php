@@ -238,7 +238,7 @@ class AnnualCard extends Controller {
      */
     public function activateForPc($sid = 0) {
 
-        $identify   = I('identify', '', 'dechex');
+        $identify   = I('identify');
         $type       = I('type');
         $mobile     = I('mobile');
         $name       = I('name', '');

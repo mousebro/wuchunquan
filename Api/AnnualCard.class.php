@@ -44,6 +44,10 @@ use Controller\product\AnnualCard as CardCtrl;
             $this->apiReturn(204, [], '参数错误');
         }
 
+        if (in_array($type, ['physics_no', 'physics'])) {
+            $identify = $this->_transIdentify($identify);
+        }
+
         $tmp_pros = array_chunk(explode(',', $products), 2);
 
         $products = [];
@@ -114,6 +118,22 @@ use Controller\product\AnnualCard as CardCtrl;
 
     }
 
+    /**
+     * 高低位两两颠倒
+     * @param  [type] $string [description]
+     * @return [type]         [description]
+     */
+    private function _transIdentify($string) {
+        $new = '';
+        for ($i = strlen($string) - 1; $i >= 0; ) {
+            $new .= $string[$i - 1];
+            $new .= $string[$i];
+            $i -=2;
+        }
+
+        return $new;
+    }
+
 
     private function _toActivate($sid, $pid) {
 
@@ -167,15 +187,11 @@ use Controller\product\AnnualCard as CardCtrl;
      */
     public function activate() {
 
-        // $string = '{"aid":3385,"mobile":"13123196340","identify":"13123196340","id_card":"777777777777777777"}';
-
-        // $_POST = $_GET = json_decode($string, true);
-        // 
-        // var_dump(file_exists('/var/www/html/Service/Controller/product/AnnualCard.class.php'));die;
-
         $Ctrl = new CardCtrl();
 
         $_POST['type'] = 'physics_no';
+
+        $_POST['identify'] = hexdec($this->_transIdentify(I('identify')));
 
         $Ctrl->activateForPc(I('aid', '', 'intval'));
     }
