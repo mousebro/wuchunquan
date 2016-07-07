@@ -407,7 +407,7 @@ class AnnualCard extends Controller {
 
         $card_info = $this->_CardModel->getAnnualCard(1, 1, $options);
 
-        if ($card_info['sid'] != $_SESSION['sid']) {
+        if (!defined('PFT_API') && $card_info['sid'] != $_SESSION['sid']) {
             $this->apiReturn(204, [], '您没有激活的权限');
         }
 
@@ -622,7 +622,7 @@ class AnnualCard extends Controller {
         $member_info = (new Member())->getMemberInfo($memberid);
 
         $return['member'] = [
-            'account'   => $member_info['account'],
+            'account'   => $member_info['dname'] ?: $member_info['account'],
             'mobile'    => $member_info['mobile']
         ];
 
