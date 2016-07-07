@@ -22,6 +22,7 @@ class AnnualCard extends Model
     const TICKET_TABLE          = 'uu_jq_ticket';               //门票信息表
     const LAND_TABLE            = 'uu_land';                    //景区表
     const SALE_LIST_TABLE       = 'pft_product_sale_list';      //一级转分销表
+    const EVOLUTE_TABLE         = 'pft_p_apply_evolute';        //多级转分销表
 
     const VIRTUAL_LEN           = 8;    //虚拟卡号长度 
 
@@ -341,6 +342,23 @@ class AnnualCard extends Model
     }
 
     /**
+     * 获取指定会员处于激活状态的年卡
+     * @param  [type] $sid      供应商id
+     * @param  [type] $memberid 会员id
+     * @return string virtual_no 虚拟卡号           
+     */
+    public function getActivedCard($sid, $memberid) {
+
+        $where = [
+            'sid'       => $sid,
+            'memberid'  => $memberid,
+            'status'    => 1
+        ];
+
+        return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->getField('virtual_no');
+    }
+
+    /**
      * 获取年卡库存
      *
      * @param  [type] $sid  供应商id
@@ -628,50 +646,6 @@ class AnnualCard extends Model
         return true;
     }
 
-    /**
-     * 消费次数限制
-     *
-     * @param  [type] $tid      [description]
-     * @param  [type] $memberid [description]
-     * @param  [type] $sid      [description]
-     *
-     * @return [type]           [description]
-     */
-    private function _consumeTimesCheck($tid, $memberid, $sid, $config)
-    {
-
-        //限制消费次数
-        if ($config['use_limit'] == 0) {
-            return true;
-        }
-
-        $limit_count = explode(',', $config['limit_count']);
-
-        $loop = [
-            [
-                //每日次数
-                date('Y-m-d') . ' 00:00:00',
-                date('Y-m-d') . ' 23:59:59',
-            ],
-            [
-                //每月次数
-                date('Y-m-01') . ' 00:00:00',
-                date('Y-m-t') . ' 23:59:59',
-            ],
-            []  //总次数
-        ];
-
-        foreach ($loop as $key => $time) {
-            $count = $this->_countTimeRangeOrder($tid, $memberid, $time);
-
-            if ($count >= $limit_count[ $key ]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     public function checkStatusForSale(array $virtual_arr) {
         if (count($virtual_arr) < 1) {
             return false;
@@ -695,7 +669,7 @@ class AnnualCard extends Model
      * @return [type]           [description]
      */
 
-    public function getRemainTimes($sid, $tid, $memberid, $only_all = false) {
+    public function getRemainTimes($sid, $tid, $memberid, $only_all = false, $virtual_no = '') {
 
         $loop = [
             [
@@ -711,15 +685,15 @@ class AnnualCard extends Model
             []  //总次数
         ];
 
-        $all = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2]);
+        $all = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2], $virtual_no);
 
         if ($only_all) {
             return (int)$all;
         }
 
-        $today = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[0]);
+        $today = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[0], $virtual_no);
 
-        $month = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[1]);
+        $month = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[1], $virtual_no);
 
         return [(int)$today, (int)$month, (int)$all];
 
@@ -729,7 +703,7 @@ class AnnualCard extends Model
 
         $config = $this->getAnnualCardConfig($tid);
 
-        $format = 'Y-m-d H:i:s';
+        $format = 'Y-m-d';
         $day = 3600 * 24;
 
 
@@ -744,7 +718,7 @@ class AnnualCard extends Model
                 break;
 
             case 2:
-                return $config['order_start'] . '~' . $config['order_end'];
+                return date($format, strtotime($config['order_start'])) . '~' . date('Y-m-d', strtotime($config['order_end']));
                 break;
 
             default:
@@ -763,14 +737,15 @@ class AnnualCard extends Model
      *
      * @return [type]           [description]
      */
-    private function _countTimeRangeOrder($sid, $tid, $memberid, $time)
+    private function _countTimeRangeOrder($sid, $tid, $memberid, $time, $virtual_no)
     {
 
         $where = [
-            'aid'      => $sid,
-            'memberid' => $memberid,
-            'tid'      => $tid,
-            'status'   => 1,
+            'aid'           => $sid,
+            'memberid'      => $memberid,
+            'tid'           => $tid,
+            'virtual_no'    => $virtual_no,
+            'status'        => 1,
         ];
 
         if ($time) {
@@ -778,6 +753,21 @@ class AnnualCard extends Model
         }
 
         return $this->table(self::CARD_ORDER_TABLE)->where($where)->sum('num');
+    }
+
+    public function getNewestConcumeTime($sid, $memberid) {
+
+        $where = [
+            'sid'       => $sid,
+            'memberid'  => $memberid
+        ];
+
+        return $this->table(self::CARD_ORDER_TABLE)
+            ->where($where)
+            ->order('create_time desc')
+            ->field('create_time')
+            ->limit(2)
+            ->select();
     }
 
     /**
@@ -864,12 +854,12 @@ class AnnualCard extends Model
      */
     public function annualOrderRecord($ordernum, $tid, $memberid, $aid, $num)
     {
-        
         $data = [
             'ordernum'    => $ordernum,
             'tid'         => $tid,
             'memberid'    => $memberid,
             'aid'         => $aid,
+            'virtual_no'  => $this->getActivedCard($aid, $memberid),
             'num'         => $num,
             'create_time' => time(),
             'status'      => 1,
@@ -927,6 +917,68 @@ class AnnualCard extends Model
         }
     }
 
+
+    /**
+     * 特权消费，建立分销关系
+     * @param  [type] $apply_did 最初供应商
+     * @param  [type] $aid       上级供应商
+     * @param  [type] $memberid  分销商id
+     * @param  [type] $pid       产品id
+     * @return [type]            [description]
+     */
+    public function createEvolute($apply_did, $aid, $memberid, $pid) {
+
+        $where = [
+            'sid'       => $aid,
+            'sourceid'  => $apply_did,
+            'fid'       => $memberid,
+            'pid'       => $pid,
+        ];
+
+        $origin = $this->table(self::EVOLUTE_TABLE)->where($where)->find();
+
+        if ($origin) {
+            if ($origin['status'] == 1) {
+                //断开过
+                $where = [
+                    'fid'       => $aid,
+                    'aid'       => $apply_did,
+                    'status'    => 0
+                ];
+                $pids = $this->table(self::SALE_LIST_TABLE)->where($where)->getField('pids');
+
+                if (!$pids) {
+                    return false;
+                }
+
+                if ($pids == 'A' || in_array($pid, explode(',', $pids))) {
+                    return $this->table(self::EVOLUTE_TABLE)
+                        ->where(['id' => $origin['id']])
+                        ->save(['status' => 0]);
+                }
+
+                return true;
+            }
+
+            return true;
+        }
+
+        $data = [
+            'fid'       => $memberid,
+            'sid'       => $aid,
+            'sourceid'  => $apply_did,
+            'aids'      => $apply_did . ',' . $aid,
+            'pid'       => $pid,
+            'lid'       => 0,
+            'rectime'   => date('Y-m-d H:i:s'),
+            'lvl'       => 2,
+            'status'    => 0,
+            'active'    => 0
+        ];
+
+        return $this->table(self::EVOLUTE_TABLE)->add($data);
+    }
+
     /**
      * 获取指定年卡的剩余的特权支付次数
      * @param  [type] $memberid [description]
@@ -934,7 +986,7 @@ class AnnualCard extends Model
      * @param  [type] $pid      [description]
      * @return [type]           [description]
      */
-    public function getPrivilegessLeft($memberid, $sid, $pid) {
+    public function getPrivilegessLeft($memberid, $sid, $pid, $virtual_no) {
 
         $privs = $this->getPrivileges($pid);
 
@@ -943,7 +995,7 @@ class AnnualCard extends Model
         $return = [];
         foreach ($privs as $priv) {
 
-            $count = $this->getRemainTimes($sid, $priv['tid'], $memberid, true);
+            $count = $this->getRemainTimes($sid, $priv['tid'], $memberid, true, $virtual_no);
 
             $return[$priv['pid']] = [
                 'title' => $priv['title'],
@@ -962,6 +1014,11 @@ class AnnualCard extends Model
     
     }
 
+    /**
+     * 售卡成功页面接口
+     * @param  [type] $ordernum 订单号
+     * @return [type]           [description]
+     */
     public function orderSuccess($ordernum) {
 
         $virtual_no=  $this->table(self::CARD_MAPPING_TABLE)->where(['ordernum' => $ordernum])->getField('virtual_no');
@@ -980,6 +1037,11 @@ class AnnualCard extends Model
 
     }
 
+    /**
+     * 获取多个年卡产品名称
+     * @param  [type] $pid_arr [3026,3027]
+     * @return [type]          [description]
+     */
     public function getCardName($pid_arr) {
 
         $where = [
@@ -1003,6 +1065,48 @@ class AnnualCard extends Model
      */
     public function isAnnualOrder($ordernum) {
         return $this->table(self::CARD_MAPPING_TABLE)->where(['ordernum' => $ordernum])->count();
+    }
+
+    /**
+     * 年卡产品验证
+     * @param  [type] $ordernum 订单号
+     * @return [type]           [description]
+     */
+    public function verifyAnnualOrder($ordernum, $type = 'ordernum') {
+
+        if ($type != 'ordernum') {
+            $where = [
+                '_string' => "find_in_set('{$ordernum}', virtual_no)"
+            ];
+            //虚拟卡号
+            $ordernum = $this->table(self::CARD_MAPPING_TABLE)->where($where)->getField('ordernum');
+        }
+
+        $order_info = (new OrderTools)->getOrderInfo($ordernum);
+
+        if (!$order_info) {
+            return false;
+        }
+
+        $terminal = $this->table(self::LAND_TABLE)->where(['salerid' => $order_info['salerid']])->getField('terminal');
+
+        if (!$terminal) {
+            return false;
+        }
+
+        include('/var/www/html/new/d/class/Terminal_Check_Socket.class.php');
+
+        $cfg = ['vCmd' => 601];
+
+        $tSock = \Terminal_Check_Socket::connect(IP_TERMINAL);
+
+        $result = $tSock->Terminal_Check_In_Order($terminal, $order_info['salerid'], $ordernum, $cfg);
+
+        if ($result['state'] =='success') {
+            return true;
+        } else {
+            return false;
+        }
     }
 
 

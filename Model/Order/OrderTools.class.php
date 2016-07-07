@@ -19,7 +19,7 @@ class OrderTools extends Model {
      * @author  wengbin
      */
     public function getOrderInfo($orderid) {
-        return $this->table('uu_ss_order')->where(array('ordernum' => $orderid))->find();
+        return $this->table('uu_ss_order')->where(array('ordernum' => (string)$orderid))->find();
     }
 
     /**
