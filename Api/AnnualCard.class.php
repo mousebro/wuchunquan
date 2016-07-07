@@ -24,6 +24,8 @@ use Controller\product\AnnualCard as CardCtrl;
 
     private $_pri_left = [];    //特权剩余次数
 
+    private $_pri_use = [];     //特权已使用次数
+
     public function __construct() {
 
         $this->_CardModel =  new CardModel();
@@ -48,10 +50,11 @@ use Controller\product\AnnualCard as CardCtrl;
             $identify = $this->_transIdentify($identify);
         }
 
-        $tmp_pros = array_chunk(explode(',', $products), 2);
+        $tmp_pros = explode('|', $products);
 
         $products = [];
         foreach ($tmp_pros as $item) {
+            $item = explode(',', $item);
             $products[$item[0]] = $item[1];
         }
 
@@ -106,7 +109,7 @@ use Controller\product\AnnualCard as CardCtrl;
 
         $order_info = $this->_orderAction($products, $aid, $card['memberid'], I(null));
 
-        $data = $this->_getExtraData($card);
+        $data = $this->_getExtraData($card, $products);
 
         $data['ordernum'] = $order_info['orderNum'];
 
@@ -144,7 +147,7 @@ use Controller\product\AnnualCard as CardCtrl;
         $this->apiReturn(202, ['need_ID' => $need], '请先激活');
     }
 
-    private function _getExtraData($card) {
+    private function _getExtraData($card, $products) {
         $Member = new Member();
 
         $member = $Member->getMemberInfo($card['memberid']);
@@ -154,30 +157,73 @@ use Controller\product\AnnualCard as CardCtrl;
         $product = (new Ticket)->getProductInfo($card['pid']);
         $ticket =  (new Ticket)->getTicketInfoByPid($card['pid']);
 
+        $valid_time = $this->_CardModel->getPeriodOfValidity(
+            $card['sid'], 
+            $ticket['id'], 
+            $card['sale_time'], 
+            $card['active_time']
+        );
+
+        $time_arr = $this->_getNewestConsumeTime($card['sid'], $card['memberid']);
+
         $data = [
+            'name'          => $member['dname'],
+            'cur_time'      => $time_arr[0],
+            'last_time'     => isset($time_arr[1]) ? $time_arr[1] : '无',
             'mobile'        => $member['mobile'],
             'card_title'    => $product['p_name'],
             'card_no'       => $card['card_no'],
             'virtual_no'    => $card['virtual_no'],
-            'valid_time'    => $this->_CardModel->getPeriodOfValidity($card['sid'], $ticket['id'], $card['sale_time'], $card['active_time']),
+            'valid_time'    => $valid_time,
             'supply'        => $supply['dname'],
         ];
 
+        //获取特权已使用次数
         foreach ($this->_privileges as $item) {
 
-            if (!isset($this->_pri_left[$item['tid']])) {
+            if (!isset($this->_pri_use[$item['tid']])) {
                 continue;
             }
 
-            $left = $this->_pri_left[$item['tid']] == -1 ? -1 : implode(',', $this->_pri_left[$item['tid']]);
-
             $data['pri'][] = [
-                'title' => $item['ltitle'] . $item['title'],
-                'left' => $left
+                'title' => $item['title'],
+                'num'   => $products[$item['pid']],
+                'use'   => implode(',', $this->_pri_use[$item['tid']])
             ];
         }
 
+        //获取特权剩余次数，按要求暂时屏蔽
+        // foreach ($this->_privileges as $item) {
+
+        //     if (!isset($this->_pri_left[$item['tid']])) {
+        //         continue;
+        //     }
+
+        //     $left = $this->_pri_left[$item['tid']] == -1 ? -1 : implode(',', $this->_pri_left[$item['tid']]);
+
+        //     $data['pri'][] = [
+        //         'title' => $item['ltitle'] . $item['title'],
+        //         'left' => $left
+        //     ];
+        // }
+         
+        
+
         return $data;
+
+    }
+
+    private function _getNewestConsumeTime($sid, $memberid) {
+
+        $result = $this->_CardModel->getNewestConcumeTime($sid, $memberid);
+
+        $format = 'Y-m-d H:i:s';
+
+        if (count($result) == 2) {
+            return [date($format, $result[0]['create_time']), date($format, $result[1]['create_time'])];
+        } else {
+            return [date($format, $result[0]['create_time'])];
+        }
 
     }
 
@@ -416,8 +462,9 @@ use Controller\product\AnnualCard as CardCtrl;
 
         //不限制
         if ($config['use_limit'] == -1) {
-            $this->_pri_left[$tid] = -1;
-            return ['status' => 1];
+            // $this->_pri_left[$tid] = -1;
+            // return ['status' => 1];
+            $config['use_limit'] = '-1,-1,-1';
         }
 
         $times = $this->_CardModel->getRemainTimes($sid, $tid, $memberid);
@@ -427,11 +474,13 @@ use Controller\product\AnnualCard as CardCtrl;
         $left_arr = [];
 
         foreach ($limit_count as $i => $val) {
-            if ($val[$i] != -1 && $times[$i] + $num > $val) {
+            if ($val != -1 && $times[$i] + $num > $val) {
                 $left_arr[] = ($val - $times[$i]);
             }
 
-            $this->_pri_left[$tid][] = $val[$i] == -1 ? -1 : $val - ($times[$i] + $num);
+            $this->_pri_use[$tid][] = $times[$i] + $num;
+
+            $this->_pri_left[$tid][] = $val == -1 ? -1 : $val - ($times[$i] + $num);
         }
 
         if (count($left_arr) > 0) {
