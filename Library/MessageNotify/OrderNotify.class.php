@@ -301,7 +301,7 @@ class OrderNotify {
             //扣费
             $m      = ceil($msglen/67);
             $memOjb = new \Model\Member\Member();
-            $res    = $memOjb->ChargeSms($this->sellerId, $m, $this->order_num, $this->buyerId);
+            $res    = $memOjb->ChargeSms($this->sellerId, $m, $this->order_num);
             return $res['code']==200;
         }
         return false;
