@@ -17,6 +17,7 @@ use Model\Member\Member;
 
 class SettleBlance extends Controller {
     private $_memberId = null;
+    private $_sid      = null;
     private $_logPath  = 'auto_withdraw/setting';
 
     private $_modeArr = [
@@ -42,13 +43,19 @@ class SettleBlance extends Controller {
 
     public function __construct() {
         //只有管理员才能进行操作
-        $sid      = $this->isLogin('ajax');
-        $memberID = $_SESSION['memberID'];
-        $qx       = $_SESSION['qx'];
+        $this->_sid = $this->isLogin('ajax');
+        $memberID   = $_SESSION['memberID'];
+        $qx         = $_SESSION['qx'];
 
-        //角色判斷
-        if(!($memberID == 1 || ($sid == 1 && strpos($qx,'fees')))){
-            $this->apiReturn(403, [], '没有权限');
+        //只有几个方法可以给非管理员调用
+        $method = I('get.a', '');
+        $authMethodArr = ['getRecords', 'getFrozeSummary', 'getFrozeOrders'];
+
+        if(!in_array($method, $authMethodArr)) {
+            //角色判斷
+            if(!($memberID == 1 || ($this->_sid == 1 && strpos($qx,'fees')))){
+                $this->apiReturn(403, [], '没有权限');
+            }
         }
 
         $this->_memberId = $memberID;
@@ -440,9 +447,15 @@ class SettleBlance extends Controller {
      * @return  
      */
     public function getRecords() {
-        $fid  = intval(I('post.fid'));
         $page = intval(I('post.page'));
         $size = intval(I('post.size'));
+
+        //是管理员才能传参数
+        if($this->_sid == 1) {
+            $fid  = intval(I('post.fid', '')) ? intval(I('post.fid', '')) : $this->_sid;
+        } else {
+            $fid = $this->_sid;
+        }
 
         if(!$fid) {
             $this->apiReturn(400, [], '参数错误');
@@ -459,13 +472,28 @@ class SettleBlance extends Controller {
 
         $res = ['count' => $count, 'list' => []];
         foreach($list as $item) {
+            //获取状态
+            if($item['status'] != 0) {
+                //清算或是清分出现问题,具体见备注
+                $status = 4;
+            } else {
+                if($item['is_settle'] == 0) {
+                    //待清算
+                    $status = 2;
+                } else if($item['is_transfer'] == 0) {
+                    //清算,待转账
+                    $status = 3;
+                } else {
+                    //清分成功
+                    $status = 1;
+                }
+            }
+
             $res['list'][] = [
                 'fid'            => $item['fid'],
                 'settle_time'    => $item['settle_time'],
                 'transfer_time'  => $item['transfer_time'],
-                'is_settle'      => $item['is_settle'],
-                'is_transfer'    => $item['is_transfer'],
-                'status'         => $item['status'],
+                'status'         => $status,
                 'freeze_money'   => $item['freeze_money'],
                 'transfer_money' => $item['transfer_money'],
                 'settle_remark'  => $item['remark'],
@@ -487,12 +515,18 @@ class SettleBlance extends Controller {
      * @return  
      */
     public function getFrozeSummary() {
-        $fid  = intval(I('post.fid'));
         $mode = intval(I('post.mode'));
         $mark = intval(I('post.cycle_mark'));
 
-        if(!$fid || !$mode || !$mark) {
+        if(!$mode || !$mark) {
             $this->apiReturn(400, [], '参数错误');
+        }
+
+        //是管理员才能传参数
+        if($this->_sid == 1) {
+            $fid  = intval(I('post.fid', '')) ? intval(I('post.fid', '')) : $this->_sid;
+        } else {
+            $fid = $this->_sid;
         }
 
         $settleBlanceModel = $this->model('Finance/SettleBlance');
@@ -524,15 +558,24 @@ class SettleBlance extends Controller {
      * }
      */
     public function getFrozeOrders() {
-        $fid  = intval(I('post.fid'));
         $mode = intval(I('post.mode'));
         $mark = intval(I('post.cycle_mark'));
         $page = intval(I('post.page', 1));
         $size = intval(I('post.size', 20));
 
-        if(!$fid || !$mode || !$mark) {
+        if(!$mode || !$mark) {
             $this->apiReturn(400, [], '参数错误');
         }
+
+        //是管理员才能传参数
+        if($this->_sid == 1) {
+            $fid  = intval(I('post.fid', '')) ? intval(I('post.fid', '')) : $this->_sid;
+        } else {
+            $fid = $this->_sid;
+        }
+
+        $page = max($page, 1);
+        $size = $size < 0 ? 20 : ($size > 100 ? $size : $size);
 
         $settleBlanceModel = $this->model('Finance/SettleBlance');
         $res = $settleBlanceModel->getFrozeOrdersInfo($fid, $mode, $mark, $page, $size);

@@ -56,7 +56,7 @@ class SettleBlance extends Controller {
         $settleBlanceModel = $this->model('Finance/SettleBlance');
 
         //获取日结的记录
-        $dayMark = date('Ymd');
+        $dayMark = date('Ymd'); 
         $dayList = $settleBlanceModel->getSettingList(1, 200, false, 1, $dayMark);
 
         //日志数据
