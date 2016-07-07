@@ -69,7 +69,11 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $dayMark, 1);
+            $freezeData = json_decode($item['freeze_data'], true);
+            $freezeData['freeze_type'] = $item['freeze_type'];
+            $freezeData['service_fee'] = $item['service_fee'];
+
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $dayMark, 1, $freezeData);
 
             //清分数据
             $logData[] = [
@@ -109,7 +113,11 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $weekMark, 2);
+            $freezeData = json_decode($item['freeze_data'], true);
+            $freezeData['freeze_type'] = $item['freeze_type'];
+            $freezeData['service_fee'] = $item['service_fee'];
+
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $weekMark, 2, $freezeData);
 
             //清分数据
             $logData[] = [
@@ -149,7 +157,11 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $montyMark, 3);
+            $freezeData = json_decode($item['freeze_data'], true);
+            $freezeData['freeze_type'] = $item['freeze_type'];
+            $freezeData['service_fee'] = $item['service_fee'];
+
+            $res = $settleBlanceModel->createAutoRecord($fid, $settleTime, $transferTime, $montyMark, 3, $freezeData);
 
             //清分数据
             $logData[] = [
@@ -182,11 +194,13 @@ class SettleBlance extends Controller {
         $settleList = $settleBlanceModel->getSettleList(1, 100);
         foreach($settleList as $item) {
             //清算金额
-            $fid  = $item['fid'];
-            $id   = $item['id'];
-            $mark = $item['cycle_mark'];
-            $mode = $item['mode'];
-            $settleInfo = $settleBlanceModel->settleAmount($fid, $mode, $mark);
+            $fid       = $item['fid'];
+            $id        = $item['id'];
+            $mark      = $item['cycle_mark'];
+            $mode      = $item['mode'];
+            $frozeData = json_decode($item['froze_data'], true);
+
+            $settleInfo = $settleBlanceModel->settleAmount($fid, $mode, $mark, $frozeData);
 
             //状态
             $status = $settleInfo['status'];
@@ -210,7 +224,12 @@ class SettleBlance extends Controller {
                 $freezeMoney = round($settleInfo['freeze_money']/100, 2);
 
                 $res = $settleBlanceModel->stopSettle($id, "账号余额不足，账户余额：{$amoney}元，清分冻结余额：{$freezeMoney}元");
-            } else {
+            } else if($status === -6) {
+                $transMoney = round($settleInfo['trans_money']/100, 2);
+                $limitMoney = round($settleInfo['limit_money']/100, 2);
+
+                $res = $settleBlanceModel->stopSettle($id, "提现金额{$transMoney}元不足最低提现最低额度{$limitMoney}");
+            }  else {
                 //正常清算
                  $freezeMoney   = $settleInfo['freeze_money']; 
                  $transferMoney = $settleInfo['transfer_money'];

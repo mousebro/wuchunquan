@@ -153,7 +153,7 @@ class SettleBlance extends Model{
         if($circleMark) {
             $where['cycle_mark'] = ['LT', intval($circleMark)];
         }
-        $field = 'id, fid, mode, close_time, close_date, transfer_time, transfer_date';
+        $field = 'id, fid, mode, close_time, close_date, transfer_time, transfer_date, freeze_type, freeze_data, service_fee';
         $order = 'update_time desc';
 
         $res = $this->table($this->_settingTable)->field($field)->order($order)->where($where)->page($page . ',' . $size)->select();
@@ -318,10 +318,12 @@ class SettleBlance extends Model{
      * @param  $settleTime 具体的结算时间戳
      * @param  $transferTime '具体的打款时间戳
      * @param  $cycleMark 提现周期标识，可明显看出提什么时候的钱，日（20160612）-月（20160104）-周（20160238）
+     * @param  $mode 自动清分模式
+     * @param  $frozeDataArr 当时的冻结数据
      * @return
      */
-    public function createAutoRecord($fid, $settleTime, $transferTime, $cycleMark, $mode) {
-        if(!$fid || !$settleTime || !$transferTime || !$cycleMark) {
+    public function createAutoRecord($fid, $settleTime, $transferTime, $cycleMark, $mode, $frozeDataArr = array()) {
+        if(!$fid || !$settleTime || !$transferTime || !$cycleMark || !is_array($frozeDataArr)) {
             return falsel;
         }
         
@@ -335,6 +337,7 @@ class SettleBlance extends Model{
             'transfer_time' => $transferTime,
             'cycle_mark'    => $cycleMark,
             'mode'          => $mode,
+            'froze_data'    => json_encode($frozeDataArr),
             'update_time'   => time()
         ];
 
@@ -481,7 +484,7 @@ class SettleBlance extends Model{
             'settle_time' => ['ELT', time()]
         ];
 
-        $field = 'id, fid, cycle_mark, mode';
+        $field = 'id, fid, cycle_mark, mode, froze_data';
         $order = 'update_time asc';
 
          $res = $this->table($this->_recordTable)->where($where)->field($field)->order($order)->page($page . ',' . $size)->select();
@@ -550,17 +553,20 @@ class SettleBlance extends Model{
     /**
      * 清算账号信息
      * @author dwer
-     * @date   2016-06-15
+     * @date   2016-07-07
      *
-     * @param  $fid
+     * @param  $fid 
+     * @param  $mode
+     * @param  $mark
+     * @param  $frozeData 冻结数据 {"type":2,"value":20,"freeze_type":1}
      * @return
      */
-    public function settleAmount($fid, $mode, $mark) {
+    public function settleAmount($fid, $mode, $mark, $frozeData) {
         if(!$fid || !$mode || !$mark) {
             return ['status' => -1];
         }
 
-        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('freeze_type, freeze_data, service_fee, status')->find();
+        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('status')->find();
         if(!$settingInfo) {
             return ['status' => -1];
         }
@@ -570,9 +576,10 @@ class SettleBlance extends Model{
             return ['status' => -2];
         }
 
-        $freezeType = $settingInfo['freeze_type'];
-        $freezeData = $settingInfo['freeze_data'];
-        $serviceFee = $settingInfo['service_fee'];
+        $freezeType = $frozeData['freeze_type'];
+        $serviceFee = $frozeData['service_fee'];
+        unset($frozeData['freeze_type'], $frozeData['service_fee']);
+        $freezeData = $frozeData;
 
         //获取账号余额
         $memberModel = new Member();
@@ -580,6 +587,14 @@ class SettleBlance extends Model{
         if($amoney <= 0) {
             return ['status' => -3, 'amoney' => $amoney];
         }
+
+        //获取最低提现金额
+        $defaultConf = load_config('withdraw_default');
+        $modeArr     = [1 => 'day', 2 => 'week', 3 => 'month'];
+        $key         = $modeArr[$mode];
+        $limitMoney  = isset($defaultConf[$key]) ? $defaultConf[$key]['limit_money'] : 200;
+        $limitMoney  = $limitMoney * 100; //转化为分
+        unset($defaultConf);
 
         if($freezeType == 1) {
             //冻结未使用的总额 - 在线支付的未使用的订单的总额
@@ -599,13 +614,18 @@ class SettleBlance extends Model{
             }
 
             $transferMoney = $amoney - $freezeMoney;
+
+            //最低提现金额
+            if($transferMoney < $limitMoney) {
+                return ['status' => -6, 'trans_money' => $transferMoney, 'limit_money' => $limitMoney];
+            }
+
             $remarkData = [
                 'order_num'  => $orderNum,
                 'ticket_num' => $ticketNum,
             ];
         } else {
             //按比例或是固定金额冻结
-            $freezeData = @json_decode($freezeData, true);
             if(!$freezeData || !is_array($freezeData)) {
                 return ['status' => -1];
             }
@@ -625,6 +645,11 @@ class SettleBlance extends Model{
                 }
 
                 $transferMoney = $amoney - $freezeMoney;
+            }
+
+            //最低提现金额
+            if($transferMoney < $limitMoney) {
+                return ['status' => -6, 'trans_money' => $transferMoney, 'limit_money' => $limitMoney];
             }
 
             $remarkData = [

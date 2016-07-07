@@ -448,7 +448,7 @@ class SettleBlance extends Controller {
      */
     public function getRecords() {
         $page = intval(I('post.page'));
-        $size = intval(I('post.size'));
+        $size = intval(I('post.size', 20));
 
         //是管理员才能传参数
         if($this->_sid == 1) {
@@ -470,7 +470,10 @@ class SettleBlance extends Controller {
         $count = $tmp['count'];
         $list  = $tmp['list'];
 
-        $res = ['count' => $count, 'list' => []];
+        //获取总页数
+        $totalPage = ceil($count / $size);
+
+        $res = ['count' => $count, 'page' => $page, 'total_page' => $totalPage, 'list' => []];
         foreach($list as $item) {
             //获取状态
             if($item['status'] != 0) {
@@ -489,6 +492,13 @@ class SettleBlance extends Controller {
                 }
             }
 
+            $frozeData  = @json_decode($item['froze_data'], true);
+            if(is_array($frozeData)) {
+                $freezeType = $frozeData['freeze_type'] == 1 ? 0 : $frozeData['type'];
+            } else {
+                $freezeType = 0;
+            }
+
             $res['list'][] = [
                 'fid'            => $item['fid'],
                 'settle_time'    => $item['settle_time'],
@@ -500,7 +510,8 @@ class SettleBlance extends Controller {
                 'trans_remark'   => $item['trans_remark'],
                 'update_time'    => $item['update_time'],
                 'mode'           => $item['mode'],
-                'cycle_mark'     => $item['cycle_mark']
+                'cycle_mark'     => $item['cycle_mark'],
+                'freeze_type'    => $freezeType
             ];
         }
 
@@ -579,6 +590,13 @@ class SettleBlance extends Controller {
 
         $settleBlanceModel = $this->model('Finance/SettleBlance');
         $res = $settleBlanceModel->getFrozeOrdersInfo($fid, $mode, $mark, $page, $size);
+
+        //获取总页数
+        $totalPage = ceil($res['count'] / $size);
+
+        //添加页数等信息
+        $res['total_page'] = $totalPage;
+        $res['page']       = $page;
 
         $this->apiReturn(200, $res);
     }
