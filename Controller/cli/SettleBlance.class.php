@@ -69,7 +69,8 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $freezeData = json_decode($item['freeze_data'], true);
+            $freezeData = @json_decode($item['freeze_data'], true);
+            $freezeData = $freezeData ? $freezeData : [];
             $freezeData['freeze_type'] = $item['freeze_type'];
             $freezeData['service_fee'] = $item['service_fee'];
 
@@ -113,7 +114,8 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $freezeData = json_decode($item['freeze_data'], true);
+            $freezeData = @json_decode($item['freeze_data'], true);
+            $freezeData = $freezeData ? $freezeData : [];
             $freezeData['freeze_type'] = $item['freeze_type'];
             $freezeData['service_fee'] = $item['service_fee'];
 
@@ -157,7 +159,8 @@ class SettleBlance extends Controller {
             $transferTime = strtotime($timeArr['transfer_time']);
             $fid          = $item['fid'];
 
-            $freezeData = json_decode($item['freeze_data'], true);
+            $freezeData = @json_decode($item['freeze_data'], true);
+            $freezeData = $freezeData ? $freezeData : [];
             $freezeData['freeze_type'] = $item['freeze_type'];
             $freezeData['service_fee'] = $item['service_fee'];
 
