@@ -293,6 +293,8 @@ class AnnualCard extends Controller {
 
         }
 
+        $this->_CardModel->verifyAnnualOrder($card['virtual_no'], 'virtual_no');
+
         // $this->_CardModel->createRelationShip($sid, $memberid);
 
         $this->apiReturn(200, [], '激活成功');
@@ -404,6 +406,10 @@ class AnnualCard extends Controller {
         ];
 
         $card_info = $this->_CardModel->getAnnualCard(1, 1, $options);
+
+        if ($card_info['sid'] != $_SESSION['sid']) {
+            $this->apiReturn(204, [], '您没有激活的权限');
+        }
 
         if (!$card_info) {
             $this->apiReturn(204, [], '未找到相应的年卡信息');
@@ -821,9 +827,7 @@ class AnnualCard extends Controller {
             $this->apiReturn(204, [], '参数错误');
         }
 
-        //订单直接验证
-        $this->_CardModel->verifyAnnualOrder($ordernum);
-
+        
         $order_info = $this->_CardModel->orderSuccess($ordernum);
 
         $order_detail = (new OrderTools)->getOrderInfo($ordernum);
@@ -835,6 +839,11 @@ class AnnualCard extends Controller {
             'price'     => $order_detail['totalmoney'] / 100,
             'date'      => date('Y-m-d H:i:s', time()) 
         ];
+
+        if ($return['type'] == 'virtual') {
+            //订单直接验证
+            $this->_CardModel->verifyAnnualOrder($ordernum);
+        }
 
         $this->apiReturn(200, $return);
 
