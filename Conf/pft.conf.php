@@ -55,7 +55,7 @@ elseif (ENV=='DEVELOP') {
         define('MOBILE_DOMAIN', 'http://wx.12301.local/');
         define('MAIN_DOMAIN', 'http://www.12301.local/');
         define('IMAGE_URL', 'http://images.12301.local/');
-        define('STATIC_URL', 'http://static.12301.test/');
+        define('STATIC_URL', 'http://static.12301.local/');
         define('LOCAL_DIR', 'local/');
         define('MOBILE_URL', 'http://12301.local/');
         define('OPEN_URL', 'http://open.12301.local/');
@@ -66,3 +66,6 @@ elseif (ENV=='DEVELOP') {
 
 //定义html目录的路径，方便后面的文件查找
 define('HTML_DIR', '/var/www/html');
+
+//定义新的模板路径
+define('VIEWS', HTML_DIR . '/Views');

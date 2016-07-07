@@ -91,7 +91,7 @@ class PriceWrite extends Model
         else {
             $ret = $this->table($this->price_table)->data($price_data)->add();
         }
-        if ($ret===true || $ret>0) return 100;
+        if ($ret !== false) return 100;
         //write_log
         $msg = [
             'log_type'  => 'create_price_error',
