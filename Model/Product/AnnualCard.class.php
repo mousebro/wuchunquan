@@ -342,6 +342,23 @@ class AnnualCard extends Model
     }
 
     /**
+     * 获取指定会员处于激活状态的年卡
+     * @param  [type] $sid      供应商id
+     * @param  [type] $memberid 会员id
+     * @return string virtual_no 虚拟卡号           
+     */
+    public function getActivedCard($sid, $memberid) {
+
+        $where = [
+            'sid'       => $sid,
+            'memberid'  => $memberid,
+            'status'    => 1
+        ];
+
+        return $this->table(self::ANNUAL_CARD_TABLE)->where($where)->getField('virtual_no');
+    }
+
+    /**
      * 获取年卡库存
      *
      * @param  [type] $sid  供应商id
@@ -629,50 +646,6 @@ class AnnualCard extends Model
         return true;
     }
 
-    /**
-     * 消费次数限制
-     *
-     * @param  [type] $tid      [description]
-     * @param  [type] $memberid [description]
-     * @param  [type] $sid      [description]
-     *
-     * @return [type]           [description]
-     */
-    private function _consumeTimesCheck($tid, $memberid, $sid, $config)
-    {
-
-        //限制消费次数
-        if ($config['use_limit'] == 0) {
-            return true;
-        }
-
-        $limit_count = explode(',', $config['limit_count']);
-
-        $loop = [
-            [
-                //每日次数
-                date('Y-m-d') . ' 00:00:00',
-                date('Y-m-d') . ' 23:59:59',
-            ],
-            [
-                //每月次数
-                date('Y-m-01') . ' 00:00:00',
-                date('Y-m-t') . ' 23:59:59',
-            ],
-            []  //总次数
-        ];
-
-        foreach ($loop as $key => $time) {
-            $count = $this->_countTimeRangeOrder($tid, $memberid, $time);
-
-            if ($count >= $limit_count[ $key ]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     public function checkStatusForSale(array $virtual_arr) {
         if (count($virtual_arr) < 1) {
             return false;
@@ -696,7 +669,7 @@ class AnnualCard extends Model
      * @return [type]           [description]
      */
 
-    public function getRemainTimes($sid, $tid, $memberid, $only_all = false) {
+    public function getRemainTimes($sid, $tid, $memberid, $only_all = false, $virtual_no = '') {
 
         $loop = [
             [
@@ -712,15 +685,15 @@ class AnnualCard extends Model
             []  //总次数
         ];
 
-        $all = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2]);
+        $all = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[2], $virtual_no);
 
         if ($only_all) {
             return (int)$all;
         }
 
-        $today = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[0]);
+        $today = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[0], $virtual_no);
 
-        $month = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[1]);
+        $month = $this->_countTimeRangeOrder($sid, $tid, $memberid, $loop[1], $virtual_no);
 
         return [(int)$today, (int)$month, (int)$all];
 
@@ -764,14 +737,15 @@ class AnnualCard extends Model
      *
      * @return [type]           [description]
      */
-    private function _countTimeRangeOrder($sid, $tid, $memberid, $time)
+    private function _countTimeRangeOrder($sid, $tid, $memberid, $time, $virtual_no)
     {
 
         $where = [
-            'aid'      => $sid,
-            'memberid' => $memberid,
-            'tid'      => $tid,
-            'status'   => 1,
+            'aid'           => $sid,
+            'memberid'      => $memberid,
+            'tid'           => $tid,
+            'virtual_no'    => $virtual_no,
+            'status'        => 1,
         ];
 
         if ($time) {
@@ -880,12 +854,12 @@ class AnnualCard extends Model
      */
     public function annualOrderRecord($ordernum, $tid, $memberid, $aid, $num)
     {
-        
         $data = [
             'ordernum'    => $ordernum,
             'tid'         => $tid,
             'memberid'    => $memberid,
             'aid'         => $aid,
+            'virtual_no'  => $this->getActivedCard($aid, $memberid),
             'num'         => $num,
             'create_time' => time(),
             'status'      => 1,
@@ -1012,7 +986,7 @@ class AnnualCard extends Model
      * @param  [type] $pid      [description]
      * @return [type]           [description]
      */
-    public function getPrivilegessLeft($memberid, $sid, $pid) {
+    public function getPrivilegessLeft($memberid, $sid, $pid, $virtual_no) {
 
         $privs = $this->getPrivileges($pid);
 
@@ -1021,7 +995,7 @@ class AnnualCard extends Model
         $return = [];
         foreach ($privs as $priv) {
 
-            $count = $this->getRemainTimes($sid, $priv['tid'], $memberid, true);
+            $count = $this->getRemainTimes($sid, $priv['tid'], $memberid, true, $virtual_no);
 
             $return[$priv['pid']] = [
                 'title' => $priv['title'],

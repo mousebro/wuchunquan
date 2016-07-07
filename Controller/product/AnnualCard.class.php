@@ -353,7 +353,7 @@ class AnnualCard extends Controller {
             $data = [
                 'exist'     => 1,
                 'name'      => $product['p_name'],
-                'left'      => $this->getPrivilegessLeft($memberid, $sid, $card['pid']),
+                'left'      => $this->getPrivilegessLeft($memberid, $sid, $card['pid'], $card['virtual_no']),
                 'mobile'    => $mobile,
                 'id_card'   => $id_card
             ];
@@ -378,9 +378,9 @@ class AnnualCard extends Controller {
      * @param  [type] $pid      [description]
      * @return [type]           [description]
      */
-    public function getPrivilegessLeft($memberid, $sid, $pid) {
+    public function getPrivilegessLeft($memberid, $sid, $pid, $virtual_no) {
 
-        return $this->_CardModel->getPrivilegessLeft($memberid, $sid, $pid);
+        return $this->_CardModel->getPrivilegessLeft($memberid, $sid, $pid, $virtual_no);
     
     }
 
@@ -642,7 +642,7 @@ class AnnualCard extends Controller {
 
             foreach ($privs as $priv) {
 
-                $use = $this->_CardModel->getRemainTimes($sid, $priv['tid'], $memberid, true);
+                $use = $this->_CardModel->getRemainTimes($sid, $priv['tid'], $memberid, true, $item['virtual_no']);
 
                 $all = $priv['use_limit'] == -1 ? '不限' : explode(',', $priv['use_limit'])[2];
 
@@ -1113,7 +1113,7 @@ class AnnualCard extends Controller {
 
 
     public function test() {
-        var_dump($this->_CardModel->verifyAnnualOrder(3316562));die;
+        // var_dump($this->_CardModel->verifyAnnualOrder(3316562));die;
 
         // var_dump((new \Api\AnnualCard())->sendVcode());die;
 

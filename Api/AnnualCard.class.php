@@ -90,7 +90,7 @@ use Controller\product\AnnualCard as CardCtrl;
             $this->apiReturn(204, [], '年卡已过期');
         }
 
-        $error = $this->_privilegesCheck($card['sid'], $card['memberid'], $products, $card['pid']);
+        $error = $this->_privilegesCheck($card['sid'], $card['memberid'], $products, $card['pid'], $card['virtual_no']);
 
         if (count($error) > 0) {
             //账户余额是否足够支付,一期都是0
@@ -206,13 +206,17 @@ use Controller\product\AnnualCard as CardCtrl;
         //         'left' => $left
         //     ];
         // }
-         
-        
 
         return $data;
 
     }
 
+    /**
+     * 获取最近两次消费的时间
+     * @param  [type] $sid      [description]
+     * @param  [type] $memberid [description]
+     * @return [type]           [description]
+     */
     private function _getNewestConsumeTime($sid, $memberid) {
 
         $result = $this->_CardModel->getNewestConcumeTime($sid, $memberid);
@@ -410,7 +414,7 @@ use Controller\product\AnnualCard as CardCtrl;
      * @param  [type] $pid      [description]
      * @return [type]           [description]
      */
-    private function _privilegesCheck($sid, $memberid, $products, $pid) {
+    private function _privilegesCheck($sid, $memberid, $products, $pid, $virtual_no) {
 
         $privileges = $this->_CardModel->getPrivileges($pid);
 
@@ -435,7 +439,8 @@ use Controller\product\AnnualCard as CardCtrl;
                     $privileges[$pid]['tid'], 
                     $memberid, 
                     $num, 
-                    $privileges[$pid]
+                    $privileges[$pid],
+                    $virtual_no
                 );
 
                 if ($res['status'] == 0) {
@@ -458,7 +463,7 @@ use Controller\product\AnnualCard as CardCtrl;
      * @param  [type]  $num    购买张数
      * @return array         [description]
      */
-    private function _isAnnualPayAllowed($sid, $tid, $memberid, $num, $config) {
+    private function _isAnnualPayAllowed($sid, $tid, $memberid, $num, $config, $virtual_no) {
 
         //不限制
         if ($config['use_limit'] == -1) {
@@ -467,7 +472,7 @@ use Controller\product\AnnualCard as CardCtrl;
             $config['use_limit'] = '-1,-1,-1';
         }
 
-        $times = $this->_CardModel->getRemainTimes($sid, $tid, $memberid);
+        $times = $this->_CardModel->getRemainTimes($sid, $tid, $memberid, false, $virtual_no);
 
         $limit_count = explode(',', $config['use_limit']);
 
