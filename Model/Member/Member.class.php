@@ -423,12 +423,15 @@ class Member extends Model
      * @param int $fromMemberId
      * @return int|string
      */
-    public function ChargeSms($memberId, $count, $ordernum='', $fromMemberId=0)
+    public function ChargeSms($memberId, $count, $ordernum='', $fromMemberId=1)
     {
         $fee_sms = $this->getMemberCacheById($memberId, 'fee_sms');
         $dmoney  = $fee_sms * $count;
-        return $this->PFT_Member_Fund_Modify($memberId, 0, $dmoney, self::MONEY_CUT, 0, $fromMemberId,
+        $this->PFT_Member_Fund_Modify($fromMemberId, 0, $dmoney, self::MONEY_ADD, 0, $memberId,
             self::D_TYPE_SMS, self::P_TYPE_ACCOUNT_MONEY, $ordernum);
+        $this->PFT_Member_Fund_Modify($memberId, 0, $dmoney, self::MONEY_CUT, 0, $fromMemberId,
+            self::D_TYPE_SMS, self::P_TYPE_ACCOUNT_MONEY, $ordernum);
+        return true;
     }
 
 }
