@@ -1040,6 +1040,11 @@ class AnnualCard extends Model
     
     }
 
+    /**
+     * 售卡成功页面接口
+     * @param  [type] $ordernum 订单号
+     * @return [type]           [description]
+     */
     public function orderSuccess($ordernum) {
 
         $virtual_no=  $this->table(self::CARD_MAPPING_TABLE)->where(['ordernum' => $ordernum])->getField('virtual_no');
@@ -1058,6 +1063,11 @@ class AnnualCard extends Model
 
     }
 
+    /**
+     * 获取多个年卡产品名称
+     * @param  [type] $pid_arr [3026,3027]
+     * @return [type]          [description]
+     */
     public function getCardName($pid_arr) {
 
         $where = [
@@ -1081,6 +1091,48 @@ class AnnualCard extends Model
      */
     public function isAnnualOrder($ordernum) {
         return $this->table(self::CARD_MAPPING_TABLE)->where(['ordernum' => $ordernum])->count();
+    }
+
+    /**
+     * 年卡产品验证
+     * @param  [type] $ordernum 订单号
+     * @return [type]           [description]
+     */
+    public function verifyAnnualOrder($ordernum, $type = 'ordernum') {
+
+        if ($type != 'ordernum') {
+            $where = [
+                '_string' => "find_in_set('{$ordernum}', virtual_no)"
+            ];
+            //虚拟卡号
+            $ordernum = $this->table(self::CARD_MAPPING_TABLE)->where($where)->getField('ordernum');
+        }
+
+        $order_info = (new OrderTools)->getOrderInfo($ordernum);
+
+        if (!$order_info) {
+            return false;
+        }
+
+        $terminal = $this->table(self::LAND_TABLE)->where(['salerid' => $order_info['salerid']])->getField('terminal');
+
+        if (!$terminal) {
+            return false;
+        }
+
+        include('/var/www/html/new/d/class/Terminal_Check_Socket.class.php');
+
+        $cfg = ['vCmd' => 601];
+
+        $tSock = \Terminal_Check_Socket::connect(IP_TERMINAL);
+
+        $result = $tSock->Terminal_Check_In_Order($terminal, $order_info['salerid'], $ordernum, $cfg);
+
+        if ($result['state'] =='success') {
+            return true;
+        } else {
+            return false;
+        }
     }
 
 

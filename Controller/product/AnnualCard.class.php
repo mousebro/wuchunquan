@@ -338,7 +338,8 @@ class AnnualCard extends Controller {
      * @param  [type]  $replace [description]
      * @return boolean          [description]
      */
-    private function _isNeedToReplace($mobile, $sid, $replace, $name, $id_card, $address, $province, $city, $head_img) {
+    private function _isNeedToReplace($mobile, $sid, $replace, $name, $id_card,
+         $address = '', $province = 0, $city = 0, $head_img = '') {
 
         $memberid = $this->_getMemberid($mobile, $name, $id_card, $address, $province, $city, $head_img);
 
@@ -556,7 +557,6 @@ class AnnualCard extends Controller {
             $members = $this->_replaceKey($members, 'id');
         }
         
-
         foreach ($result as $key => $item) {
             if (isset($members[$item['memberid']])) {
                 $result[$key]['account'] = $members[$item['memberid']]['account'];
@@ -622,7 +622,10 @@ class AnnualCard extends Controller {
 
         $Ticket = new Ticket();
 
+        $pid_arr = [];
         foreach ($list as $key => $item) {
+
+            $pid_arr[] = $item['pid'];
 
             $ticket = $Ticket->getTicketInfoByPid($item['pid']);
 
@@ -652,17 +655,17 @@ class AnnualCard extends Controller {
             $sid_arr[] = $item['sid'];
         }
 
+        $pname_map = $this->_CardModel->getCardName($pid_arr);
+
         $supplys = $list ? $this->_getMemberInfoByMulti($sid_arr) : [];
         $supplys = $this->_replaceKey($supplys, 'id');
         
         foreach ($list as $key => $item) {
             $list[$key]['supply'] = $supplys[$item['sid']]['dname'];
+            $list[$key]['title']  = $pname_map[$item['pid']];
         }
 
-
         $return['list'] = $list;
-        // $return['history'] = $this->getHistoryOrder($memberid);
-
 
         $this->apiReturn(200, $return, []);
     }
@@ -811,11 +814,15 @@ class AnnualCard extends Controller {
     }
 
     public function orderSuccess() {
+
         $ordernum = I('ordernum', '', 'intval');
 
         if (!$ordernum) {
             $this->apiReturn(204, [], '参数错误');
         }
+
+        //订单直接验证
+        $this->_CardModel->verifyAnnualOrder($ordernum);
 
         $order_info = $this->_CardModel->orderSuccess($ordernum);
 
@@ -1106,6 +1113,7 @@ class AnnualCard extends Controller {
 
 
     public function test() {
+        var_dump($this->_CardModel->verifyAnnualOrder(3316562));die;
 
         // var_dump((new \Api\AnnualCard())->sendVcode());die;
 
