@@ -1382,7 +1382,8 @@ class AnnualCard extends Model
             'reb_type'              => 1,
             'buy_limit_low'         => 1,
             'buy_limit_up'          => 0,
-            'pay'                   => 1
+            'pay'                   => 1,
+            'sendVoucher'           => 1,
         ];
 
         return $default;
