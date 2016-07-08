@@ -31,7 +31,6 @@ class Banks extends Model{
      */
     public function getBanks($page = 1, $size = 200) {
         $res = $this->table($this->_banksTable)->page("$page,$size")->field('code, name')->select();
-        var_dump($this->getLastSql());
 
         return $res;
     }
