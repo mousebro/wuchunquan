@@ -15,6 +15,11 @@ class Banks extends Model{
     private $_bankAreaTable  = 'pft_bank_area';
     private $_subbranchTable = 'pft_bank_subbranch';
 
+    public function __construct() {
+        //默认从从库读取数据
+        parent::__construct('slave');
+    }
+
     /**
      * 获取所有的银行及其代码
      * @author dwer

@@ -14,7 +14,7 @@ class Banks extends Controller{
     private $memberId = null;
 
     public function __construct() {
-        $this->memberId = $this->isLogin('ajax');
+        //$this->memberId = $this->isLogin('ajax');
     }
 
     /**
@@ -68,7 +68,13 @@ class Banks extends Controller{
         }
     }
 
-
+    /**
+     * 获取支行信息
+     * @author dwer
+     * @date   2016-07-08
+     *
+     * @return  
+     */
     public function subbranchList() {
         $page = I('post.page', 1);
         $size = I('post.size', 50);
