@@ -226,7 +226,7 @@ class Withdraws extends Model{
         //通过接口调用交易流水扣除
         $soapInside = Helpers::GetSoapInside();
         $frozenMoney = $feeCutWay == 1 ? $wdMoney + $serviceCharge : $wdMoney;
-        $res = $soapInside->PFT_Member_Fund_Modify($fid, $fid, $frozenMoney, 1, 0, null, 6, null, '', $memo);
+        $res = $soapInside->PFT_Member_Fund_Modify($fid, $fid, $frozenMoney, 1, 0, $fid, 6, null, '', $memo);
         if($res == 100) {
             $this->commit();
             return true;
