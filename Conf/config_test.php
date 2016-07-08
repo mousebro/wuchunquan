@@ -49,6 +49,14 @@ return array(
             'db_port' => 3308,
             'db_name' => 'myuu',
         ),
+        'pft001'=>array(
+            'db_type'=>'mysql',
+            'db_host' => '127.0.0.1',
+            'db_user' => 'admin',
+            'db_pwd' => 'adm*753951',
+            'db_port' => 3307,
+            'db_name' => 'pft001',
+        ),
         'summary'   => array(//统计数据库
             'db_type'   => 'mysql',
             'db_host'   => '127.0.0.1',
@@ -99,9 +107,8 @@ return array(
         ),
         //定义需要加载的Job
         'jobs' => array(
-            'Dog_Job', //小狗队列
-            'Mail_Job', //邮件队列
-            'SmsNotify_Job',//短信通知队列
+            'OrderNotify_Job',//订单消息通知队列
+            'WxNotify_Job', //微信通知队列
         )
     ),
 
