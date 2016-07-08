@@ -49,6 +49,14 @@ return array(
             'db_port' => 3306,
             'db_name' => 'myuu',
         ),
+        'pft001'=>array(
+            'db_type'=>'mysql',
+            'db_host'=>'10.51.26.214',//内网ip：10.51.26.214
+            'db_user' => 'LiLei@HanMM',
+            'db_pwd' => 'll@HmmPft(12301$',
+            'db_port' => 3316,
+            'db_name' => 'pft001',
+        ),
         'summary'   => array(//统计数据库
             'db_type'   => 'mysql',
             'db_host'   => '10.160.4.140',
