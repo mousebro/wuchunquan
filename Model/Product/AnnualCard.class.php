@@ -1377,7 +1377,6 @@ class AnnualCard extends Model
             'cancel_notify_supplier'=> 0,
             'p_type'                => 'I',
             'confirm_sms'           => 0,
-            'sendVoucher'           => 0,
             'pid'                   => 0,
             'reb_type'              => 1,
             'buy_limit_low'         => 1,

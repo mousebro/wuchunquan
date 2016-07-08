@@ -11,7 +11,7 @@ use Model\Member\Member;
 use Model\Product\Ticket;
 use Controller\product\AnnualCard as CardCtrl;
 
-// if ( !defined('PFT_API') ) { exit('Access Deny'); }
+if ( !defined('PFT_API') ) { exit('Access Deny'); }
 
 
  class AnnualCard extends Controller {
