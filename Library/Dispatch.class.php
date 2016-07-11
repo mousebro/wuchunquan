@@ -46,6 +46,8 @@ class Dispatch
      * @return void
      */
     public static function error($message='') {
-        exit($message);
+        pft_log('pft_frame', $message);
+        //跳转到错误页去
+        header("Location: http://{$_SERVER['HTTP_HOST']}/404.html");
     }
 }

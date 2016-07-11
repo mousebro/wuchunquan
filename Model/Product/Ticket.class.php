@@ -4,8 +4,13 @@
  */
 
 namespace Model\Product;
+use Library\MessageNotify\OtaProductNotify;
 use Library\Model;
+
+use Model\Member\Member;
 use Model\Product\SellerStorage;
+use Model\SystemLog\OptLog;
+use pft\Member\MemberAccount;
 
 class Ticket extends Model {
 
@@ -38,10 +43,30 @@ class Ticket extends Model {
      * @param  int $id 票类id
      * @return array   
      */
-    public function getTicketInfoById($id) {
-        return $this->table(self::__TICKET_TABLE__)
-            ->field($this->ticket_filed)
-            ->find($id);
+
+    public function getTicketInfoById($id, $filed='', $map=[]) {
+        $filed = empty($filed) ? $this->ticket_filed : $filed;
+        $query = $this->table(self::__TICKET_TABLE__)->field($filed);
+        if (count($map)) $query->where($map);
+        return $query->find($id);
+    }
+
+    /**
+     * 判断供应商是否可以发布现场支付的套票
+     *
+     * @param int $apply_did 供应商ID
+     * @return bool
+     */
+    public function allowOfflinePackage($apply_did)
+    {
+        $allow_list     = [4];
+        $member_list    = [94, 3385];
+        $member = new Member();
+        $group_id = $member->getMemberCacheById($apply_did, 'group_id');
+        if (in_array($group_id, $allow_list) || in_array($apply_did, $member_list)) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -324,7 +349,7 @@ class Ticket extends Model {
 
         //总库存模式
         if ($pid_arr) {
-            $find_pid = $this->_getStorageForAllStoType($pid_arr, $result);
+            $find_pid = $this->getStorageForAllStoType($pid_arr, $result);
         }
         // var_dump($find_pid);die;
         $pid_arr = $copy_pid_arr = array_diff($pid_arr, $find_pid);
@@ -407,7 +432,7 @@ class Ticket extends Model {
      * @param  [type] &$result [description]
      * @return [type]          [description]
      */
-    private function _getStorageForAllStoType($pid_arr, &$result) {
+    public function getStorageForAllStoType($pid_arr, &$result) {
         $where = array(
             'pid'       => array('in', implode(',', $pid_arr)),
             'storage'   => array('neq', -1)
@@ -629,5 +654,163 @@ class Ticket extends Model {
         $data = $query->select();
         //echo $this->getLastSql();
         return $data;
+    }
+
+    /**
+     * 获取该景区底下其他门票
+     *
+     * @author Guangpeng Chen
+     * @param int $lid 景点ID
+     * @param int $status 票状态
+     * @return array
+     */
+    public function GetLandTickets($lid, $status)
+    {
+        $where = [
+            't.landid'=>$lid,
+            'p.apply_limit'=>['eq',$status],
+        ];
+        $data = $this->table(self::__TICKET_TABLE__ . ' t')->join(self::__PRODUCT_TABLE__ . " p on t.pid=p.id")
+            ->where($where)
+            ->field('t.title,t.id as tid')
+            ->select();
+        if ($data!==false) return ['code'=>200,'data'=>$data];
+        return ['code'=>0, 'data'=>'', 'msg'=>$this->getDbError()];
+    }
+
+    /**
+     * 获取时间段价格
+     *
+     * @param int $pid 产品ID
+     * @return array
+     */
+    public function getPriceSection($pid)
+    {
+        $today  = date('Y-m-d');
+        $priceModel = new PriceRead();
+        $price = $priceModel->get_Dynamic_Price_Merge($pid, '', 0, '', '', 0, 1);
+        $price_section = array();
+        foreach($price as $val){
+            if($val['ptype']==0 && $val['end_date']>=$today){
+                $price_section[$val['id']] = array(
+                    'js'    => $val['n_price'],
+                    'ls'    => $val['l_price'],
+                    'id'    => $val['id'],
+                    'sdate' => $val['start_date'],
+                    'edate' => $val['end_date'],
+                    'storage'  => $val['storage'],
+                    'weekdays' => $val['weekdays'],
+                );
+            }
+        }
+        return $price_section;
+    }
+    public function UpdateProducts($where, $params)
+    {
+        //uu_products
+        return $this->table(self::__PRODUCT_TABLE__)->where($where)->save($params);
+    }
+
+    /**
+     * 修改票类属性
+     *
+     * @param array $where
+     * @param array $params
+     * @param string $table
+     * @return bool
+     */
+    public function UpdateTicketAttributes(Array $where, Array $params, $table='uu_jq_ticket')
+    {
+        $res = true;
+        if (count($params)) {
+            $res = $this->table($table)->where($where)->save($params);
+            //var_dump($params);
+            //var_dump($res);
+            //echo $this->getLastSql();
+            //echo $this->getDbError();
+        }
+        if ($res===false) echo $this->getDbError();
+        return $res;
+    }
+
+    public function SetTicketStatus($tid, $status, $memberId)
+    {
+        $info = $this->QueryTicketInfo(
+            ['t.id'=>$tid],
+            'p.apply_limit,p.apply_did,p.id as pid,p.p_name',
+            'inner join uu_products p on t.pid=p.id'
+            );
+        if(!$info) return ['code'=>0, "msg"=>"门票不存在"];
+        $info = array_shift($info);
+        if($memberId!=$info['apply_did']) return ['code'=>0, "msg"=>"非自身供应产品"];
+
+        if($status==1 && $info['apply_limit']!=2) return ['code'=>0, "msg"=>"门票状态出错"];
+        if($status==2 && $info['apply_limit']!=1) return ['code'=>0, "msg"=>"门票状态出错"];
+        if($status==6 && $info['apply_limit']==6) return ['code'=>0, "msg"=>"门票状态出错"];
+
+        $save['verify_time'] = date('Y-m-d H:i:s');
+        $save['apply_limit'] = $status;
+        if ($status==6) {
+            $save['p_status']   = 6;
+            $save['trash_time'] = $save['verify_time'];
+        }
+        $res = $this->table(self::__PRODUCT_TABLE__)->where(['id'=>$info['pid']])->save($save);
+        if($res===false) {
+            $msg = [
+                'log_type'  => 'set_ticket_status_error',
+                'msg'       => '设置票类状态出错,原因:' . $this->getDbError(),
+                'data'      => $save,
+                'args'      => func_get_args(),
+            ];
+            write_to_logstash('platform_app_log', $msg);
+            return ['code'=>0,'msg'=>'设置票类状态出错'];
+        }
+
+        $msText  = array(1=>'上架', 2=>'下架', 6=>'删除');
+        $daction = $msText[$status].' '.$info['p_name'];
+        if(isset($_SESSION['dtype']) && $_SESSION['dtype']==6) {
+            $optLog = new OptLog();
+            $optLog->StuffOptLog($_SESSION['memberID'], $_SESSION['sid'], $daction);
+        }
+        // 套票产品连带关系检测
+        if($status==2 || $status==6) {
+            $pack = new PackTicket();
+            $pack->PackageCheckByPid($info['pid']);
+        }
+        //TODO::通知OTA
+        OtaProductNotify::notify($tid, $status);
+        return ['code'=>200,'msg'=>'操作成功'];
+        //$_REQUEST['ids'] = $pid;
+        //fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $_REQUEST);
+    }
+
+    public function CreateTicket($ticketData)
+    {
+        $lastid = $this->table(self::__TICKET_TABLE__)->data($ticketData)->add();
+        if ($lastid!==false) {
+            return ['code'=>200, 'data'=>['lastid'=>$lastid], 'msg'=>'添加成功'];
+        }
+        return ['code'=>0, 'data'=>'', 'msg'=>'添加失败,错误信息:' . $this->getDbError()];
+    }
+
+    public function CreateTicketExtendInfo($extData)
+    {
+        $lastid = $this->table(self::__TICKET_TABLE_EXT__)->data($extData)->add();
+        if ($lastid!==false) {
+            return ['code'=>200, 'data'=>['lastid'=>$lastid], 'msg'=>'添加成功'];
+        }
+        return ['code'=>0, 'data'=>'', 'msg'=>'添加失败,错误信息:' . $this->getDbError()];
+    }
+
+    public function GetProductInfoByPid($pid, $field='*', $map=[])
+    {
+        $map['id'] = $pid;
+        return $this->table(self::__PRODUCT_TABLE__)->where($map)->field($field)->find();
+    }
+
+    public function OptLog()
+    {
+        include_once BASE_WWW_DIR.'/class/MemberAccount.class.php';
+        if($_SESSION['dtype']==6) MemberAccount::StuffOptLog($_SESSION['memberID'], $_SESSION['sid'], $daction);
     }
 }

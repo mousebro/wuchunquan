@@ -11,11 +11,10 @@ defined('PFT_INIT') OR exit('No direct script access allowed');
 
 class VComSms
 {
-    private $infoConf = [
-        'account'   => 'fzpft',
-        'password'  => 'ab8888',
-    ];
-    private $errCode = [
+    const ACCOUNT  = 'fzpft';
+    const PASSWORD = 'VTjL9vsp';
+
+    private static $errCode = [
         '00'    => '成功',
         '01'    => '账号或密码错误',
         '02'    => '账号欠费',
@@ -23,14 +22,14 @@ class VComSms
         '10'    => '网络或系统内部错误',
     ];
 
-    public function Send($tel, $msg, $search_id=null, $account=null, $pwd=null)
+    public static function doSendSMS($tel, $msg, $search_id=null, $account=null, $pwd=null)
     {
         if (ENV!='PRODUCTION') {
             pft_log('queue/vcom', "发送短信|$tel:$msg");
             return ['code'=>200];
         }
-        $account    = is_null($account) ? $this->infoConf['account'] :  $account;
-        $pwd        = is_null($pwd) ? $this->infoConf['password'] : $pwd ;
+        $account    = is_null($account) ? self::ACCOUNT :  $account;
+        $pwd        = is_null($pwd) ? self::PASSWORD : $pwd ;
         $pwd        = strtoupper(md5($pwd));
         $search_id  = is_null($search_id) ?  -1 : $search_id;
 
@@ -58,7 +57,7 @@ XML;
         }
         return [
             'code'=>$code,
-            'msg'=>"$res:{$this->errCode[$res]}",
+            'msg'=>"$res:" . self::$errCode[$res],
         ];
     }
 }

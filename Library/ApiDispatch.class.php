@@ -19,6 +19,7 @@ class ApiDispatch{
 
         //设置传过来的参数
         $_POST  = $res['paramsArr'];
+        $_POST['app_id'] = $res['app_id'];
         $method = $res['method'];
 
         //处理路由
@@ -98,7 +99,7 @@ class ApiDispatch{
         if(!$res) {
             return false;
         } else {
-            return array('paramsArr' =>$paramsArr, 'method' => $method);
+            return array('paramsArr' =>$paramsArr, 'method' => $method, 'app_id'=>$appId);
         }
     }
 

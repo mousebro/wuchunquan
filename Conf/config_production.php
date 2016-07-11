@@ -49,6 +49,14 @@ return array(
             'db_port' => 3306,
             'db_name' => 'myuu',
         ),
+        'pft001'=>array(
+            'db_type'=>'mysql',
+            'db_host'=>'10.51.26.214',//内网ip：10.51.26.214
+            'db_user' => 'LiLei@HanMM',
+            'db_pwd' => 'll@HmmPft(12301$',
+            'db_port' => 3316,
+            'db_name' => 'pft001',
+        ),
         'summary'   => array(//统计数据库
             'db_type'   => 'mysql',
             'db_host'   => '10.160.4.140',
@@ -94,14 +102,14 @@ return array(
             'REDIS_BACKEND' => [
                 [
                     'host' => '10.51.26.214',
-                    'port' => 6379,
+                    'port' => 6679,
                     'password'=>'pft666',
                     'alias'=>'master',
                     'master'=>true
                 ],
                 [
                     'host' => '10.160.4.140',
-                    'port' => 6380,
+                    'port' => 6680,
                     'password'=>'pft666',
                     'alias'=>'slave'
                 ],
@@ -112,6 +120,8 @@ return array(
         'jobs' => array(
             'Dog_Job', //小狗队列
             'Mail_Job', //邮件队列
+            'WxNotify_Job', //微信通知队列
+            'OrderNotify_Job',//订单消息通知队列
         )
     ),
 );

@@ -47,11 +47,12 @@ class OnlineRefund extends Controller
         $this->data  = (object)$data;
 
         $pay_mode = I("post.pay_mode");
-        if (ENV!='PRODUCTION') $res = ['code'=>200];
-        else {
+        //if (ENV!='PRODUCTION') $res = ['code'=>200];
+        //else {
             if ($pay_mode==5) $res = $this->wx();
             elseif($pay_mode==7) $res = $this->union();
-        }
+            elseif ($pay_mode==1) $res = $this->alipay();
+        //}
         if ($res['code']==200) {
             $this->model->UpdateRefundLogOk($this->log_id);
             //print_r( $this->data);
@@ -87,7 +88,7 @@ class OnlineRefund extends Controller
         $app_secret = $WePayConf[$appid]['app_secret'];
         $out_trade_no = $this->data->ordernum;
         $refund_fee   = $this->data->refund_money;
-        $out_refund_no = "$out_trade_no".time();//商户退款单号，商户自定义，此处仅作举例
+        $out_refund_no = I('post.ordernum').'_'.time();//商户退款单号，商户自定义，此处仅作举例
         //总金额需与订单号out_trade_no对应，demo中的所有订单的总金额为1分
         //获取总金额
         $trade_info = $this->model->GetTradeLog($out_trade_no);
@@ -95,12 +96,13 @@ class OnlineRefund extends Controller
 
         $trade_no   = $this->data->trade_no;
         $refund = new Refund_pub($uappid, $mchid, $key, $app_secret);
+
         //设置必填参数
         if (!empty($trade_no)) {
             $refund->setParameter("transaction_id",$trade_no);//微信订单号
         }
         else {
-            $refund->setParameter("out_trade_no","$out_trade_no");//商户订单号
+            $refund->setParameter("out_trade_no",$out_trade_no);//商户订单号
         }
         $refund->setParameter("out_refund_no","$out_refund_no");//商户退款单号
         $refund->setParameter("total_fee", "$total_fee");//总金额
@@ -174,4 +176,37 @@ class OnlineRefund extends Controller
            return ['code'=>400, 'msg'=>'退款失败,原因:'.$refundResult['respMsg']];
        }
     }
+
+    /**
+     * 支付宝刷卡支付退款
+     */
+    public function alipay()
+    {
+        sleep(1);
+        include '/var/www/html/alipay/Library/alipay_fuwuchuang/f2fpay/F2fpay.php';
+        $f2fpay = new \F2fpay();
+        $refund_fee   = number_format($this->data->refund_money / 100, 2);//元为单位
+        $out_request_no = date('YmdHis') . $this->data->ordernum . mt_rand(1000,9999); // 标识一次退款请求，同一笔交易多次退款需要保证唯一，如需部分退款，则此参数必传。
+        Api::Log("before:appid={$this->data->appid},trade_no={$this->data->trade_no}, refund_fee=$refund_fee, ordernum={$this->data->ordernum},out_request_no={$out_request_no}", $this->req_log);
+        //多次退款需要提交原支付订单的商户订单号和设置不同的退款单号
+        $refundResult = $f2fpay->refund($this->data->trade_no, $refund_fee, $out_request_no, $this->data->appid);
+        Api::Log("result:".json_encode($refundResult), $this->req_log);
+        if ($refundResult->alipay_trade_refund_response->code==10000) {
+            return ['code'=>200, 'msg'=>'退款成功'];
+        }
+        Api::Log(json_encode($refundResult), $this->err_log);
+        return ['code'=>400, 'msg'=>"退款失败,原因:{$refundResult['err_code_des']}"];
+
+    }
 }
+/*错误码	              错误描述	     解决方案
+ACQ.SYSTEM_ERROR	系统错误	       请使用相同的参数再次调用
+ACQ.INVALID_PARAMETER	参数无效	   请求参数有错，重新检查请求后，再调用退款
+ACQ.SELLER_BALANCE_NOT_ENOUGH	    卖家余额不足	商户支付宝账户充值后重新发起退款即可
+ACQ.REFUND_AMT_NOT_EQUAL_TOTAL	    退款金额超限	检查退款金额是否正确，重新修改请求后，重新发起退款
+ACQ.REASON_TRADE_BEEN_FREEZEN	    请求退款的交易被冻结	联系支付宝小二，确认该笔交易的具体情况
+ACQ.TRADE_NOT_EXIST	交易不存在	   检查请求中的交易号和商户订单号是否正确，确认后重新发起
+ACQ.TRADE_HAS_FINISHED	交易已完结	该交易已完结，不允许进行退款，确认请求的退款的交易信息是否正确
+ACQ.TRADE_STATUS_ERROR	交易状态非法	查询交易，确认交易是否已经付款
+ACQ.DISCORDANT_REPEAT_REQUEST	    不一致的请求	检查该退款号是否已退过款或更换退款号重新发起请求
+ACQ.REASON_TRADE_REFUND_FEE_ERR	    退款金额无效	检查退款请求的金额是否正确*/
