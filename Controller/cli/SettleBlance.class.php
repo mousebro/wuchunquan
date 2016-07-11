@@ -231,7 +231,7 @@ class SettleBlance extends Controller {
                 $transMoney = round($settleInfo['trans_money']/100, 2);
                 $limitMoney = round($settleInfo['limit_money']/100, 2);
 
-                $res = $settleBlanceModel->stopSettle($id, "提现金额{$transMoney}元不足最低提现最低额度{$limitMoney}");
+                $res = $settleBlanceModel->stopSettle($id, "提现金额{$transMoney}元不足最低提现最低额度{$limitMoney}元");
             }  else {
                 //正常清算
                  $freezeMoney   = $settleInfo['freeze_money']; 
