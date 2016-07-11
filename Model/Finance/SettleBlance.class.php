@@ -84,7 +84,7 @@ class SettleBlance extends Model{
      *
      * @return bool
      */
-    public function updateSetting($id, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData = false) {
+    public function updateSetting($id, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData = false, $isUpdateMark = false) {
         if(!$id) {
             return false;
         }
@@ -93,6 +93,11 @@ class SettleBlance extends Model{
         $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData);
         if(!$data) {
             return false;
+        }
+
+        //更新提现标识
+        if($isUpdateMark) {
+            $data['cycle_mark'] = 0;
         }
 
         $res = $this->table($this->_settingTable)->where(['id' => $id])->save($data);

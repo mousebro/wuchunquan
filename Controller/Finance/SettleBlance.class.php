@@ -100,6 +100,8 @@ class SettleBlance extends Controller {
         }
 
         $settleBlanceModel = $this->model('Finance/SettleBlance');
+
+        $needUpdateMark = false;
         if($updateId) {
             //如果是更新数据的话
             $info = $settleBlanceModel->getSettingInfo($updateId);
@@ -107,6 +109,13 @@ class SettleBlance extends Controller {
                 $this->apiReturn(400, [], '参数错误');
             }
             $fid = $info['fid'];
+            $oldMode = $info['mode'];
+
+            if($oldMode != $mode) {
+                //需要更新标识
+                $needUpdateMark = true;
+            }
+
         } else {
             //新增数据
             if(!$fid) {
@@ -198,7 +207,7 @@ class SettleBlance extends Controller {
         }
 
         if($updateId) {
-            $res = $settleBlanceModel->updateSetting($updateId, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $this->_memberId, $accountInfo, $serviceFee, $freezeData);
+            $res = $settleBlanceModel->updateSetting($updateId, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $this->_memberId, $accountInfo, $serviceFee, $freezeData, $needUpdateMark);
         } else {
             $res = $settleBlanceModel->addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $this->_memberId, $accountInfo, $serviceFee, $freezeData);
         }
