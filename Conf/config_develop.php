@@ -42,20 +42,28 @@ return array(
             'db_name' => 'myuu',
         ),
         'slave'   => array(//slave db
-                           'db_type'   => 'mysql',
-                           'db_host'   => '192.168.20.138',
-                           'db_user'   => 'develop',
-                           'db_pwd'    => 'develop%',
-                           'db_port'   => 3307,
-                           'db_name'   => 'myuu',
+           'db_type'   => 'mysql',
+           'db_host'   => '192.168.20.138',
+           'db_user'   => 'develop',
+           'db_pwd'    => 'develop%',
+           'db_port'   => 3307,
+           'db_name'   => 'myuu',
+        ),
+        'pft001'=>array(
+            'db_type'   => 'mysql',
+            'db_host'   => '192.168.20.138',
+            'db_user'   => 'develop',
+            'db_pwd'    => 'develop%',
+            'db_port'   => 3307,
+            'db_name' => 'pft001',
         ),
         'summary'   => array(//统计数据库
-                             'db_type'   => 'mysql',
-                             'db_host'   => '192.168.20.138',
-                             'db_user'   => 'develop',
-                             'db_pwd'    => 'develop%',
-                             'db_port'   => 3307,
-                             'db_name'   => 'summary',
+             'db_type'   => 'mysql',
+             'db_host'   => '192.168.20.138',
+             'db_user'   => 'develop',
+             'db_pwd'    => 'develop%',
+             'db_port'   => 3307,
+             'db_name'   => 'summary',
         ),
         'terminal'  => array(
             'db_type'   => 'mysql',
@@ -74,9 +82,9 @@ return array(
             'db_queue' => 10, //队列使用的数据库
         ),
         'master'=> array(
-            'db_host'=>'192.168.20.138',
+            'db_host'=>'192.168.20.139',
             'db_port'=> 6379,
-            'db_pwd' => '123666',
+            //'db_pwd' => '123666',
         ),
     ),
     'queue' => array(
@@ -108,7 +116,8 @@ return array(
         'jobs' => array(
             'Dog_Job', //小狗队列
             'Mail_Job', //邮件队列
-            'SmsNotify_Job',//短信通知队列
+            'OrderNotify_Job',//订单消息通知队列
+            'WxNotify_Job', //微信通知队列
         )
     ),
 );

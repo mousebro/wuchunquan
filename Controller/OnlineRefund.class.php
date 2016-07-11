@@ -88,7 +88,7 @@ class OnlineRefund extends Controller
         $app_secret = $WePayConf[$appid]['app_secret'];
         $out_trade_no = $this->data->ordernum;
         $refund_fee   = $this->data->refund_money;
-        $out_refund_no = "$out_trade_no".time();//商户退款单号，商户自定义，此处仅作举例
+        $out_refund_no = I('post.ordernum').'_'.time();//商户退款单号，商户自定义，此处仅作举例
         //总金额需与订单号out_trade_no对应，demo中的所有订单的总金额为1分
         //获取总金额
         $trade_info = $this->model->GetTradeLog($out_trade_no);
@@ -96,12 +96,13 @@ class OnlineRefund extends Controller
 
         $trade_no   = $this->data->trade_no;
         $refund = new Refund_pub($uappid, $mchid, $key, $app_secret);
+
         //设置必填参数
         if (!empty($trade_no)) {
             $refund->setParameter("transaction_id",$trade_no);//微信订单号
         }
         else {
-            $refund->setParameter("out_trade_no","$out_trade_no");//商户订单号
+            $refund->setParameter("out_trade_no",$out_trade_no);//商户订单号
         }
         $refund->setParameter("out_refund_no","$out_refund_no");//商户退款单号
         $refund->setParameter("total_fee", "$total_fee");//总金额
@@ -181,11 +182,15 @@ class OnlineRefund extends Controller
      */
     public function alipay()
     {
+        sleep(1);
         include '/var/www/html/alipay/Library/alipay_fuwuchuang/f2fpay/F2fpay.php';
         $f2fpay = new \F2fpay();
         $refund_fee   = number_format($this->data->refund_money / 100, 2);//元为单位
-        $refundResult = $f2fpay->refund($this->data->trade_no, $refund_fee, $this->data->ordernum);
-        Api::Log(json_encode($refundResult), $this->req_log);
+        $out_request_no = date('YmdHis') . $this->data->ordernum . mt_rand(1000,9999); // 标识一次退款请求，同一笔交易多次退款需要保证唯一，如需部分退款，则此参数必传。
+        Api::Log("before:appid={$this->data->appid},trade_no={$this->data->trade_no}, refund_fee=$refund_fee, ordernum={$this->data->ordernum},out_request_no={$out_request_no}", $this->req_log);
+        //多次退款需要提交原支付订单的商户订单号和设置不同的退款单号
+        $refundResult = $f2fpay->refund($this->data->trade_no, $refund_fee, $out_request_no, $this->data->appid);
+        Api::Log("result:".json_encode($refundResult), $this->req_log);
         if ($refundResult->alipay_trade_refund_response->code==10000) {
             return ['code'=>200, 'msg'=>'退款成功'];
         }

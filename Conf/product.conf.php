@@ -6,5 +6,5 @@
  * Time: 09:31
  */
 return [
-    'LIMIT_TYPES' => ['A','B','C','F','G','H'],
+    'LIMIT_TYPES' => ['A','B','C','F','G','H','I'],
 ];

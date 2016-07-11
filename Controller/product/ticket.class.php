@@ -14,6 +14,7 @@ use Model\Product\Land;
 use Model\Product\PackTicket;
 use Model\Product\PriceWrite;
 use Model\Product\Round;
+use Model\Product\AnnualCard;
 
 class ticket extends ProductBasic
 {
@@ -50,7 +51,7 @@ class ticket extends ProductBasic
                 .'t.id as tid,t.delaydays,t.delaytype,t.pay,t.notes,t.ddays,t.getaddr,'
                 .'t.buy_limit_up,t.buy_limit_low,t.cancel_auto_onMin,t.re_integral,t.cancel_cost,t.max_order_days,'
                 .'t.order_limit,f.sendVoucher,f.confirm_sms,f.confirm_wx,f.dhour,f.startplace,f.endplace,f.v_time_limit,f.tourist_info,'
-                .'f.ass_station,f.series_model,f.rdays,p.id as pid,p.apply_did,t.mpath,f.zone_id,t.order_end,t.order_start,t.uuid,'
+                .'f.ass_station,f.series_model,f.rdays,f.buy_limit,f.buy_limit_date,f.buy_limit_num,p.id as pid,p.apply_did,t.mpath,f.zone_id,t.order_end,t.order_start,t.uuid,'
                 .'t.overdue_auto_check,t.overdue_auto_cancel,t.batch_check,t.batch_day_check,t.batch_diff_identities,p.apply_limit,'
                 .'t.refund_audit,t.refund_rule,t.refund_early_time,t.delaytime,t.cancel_notify_supplier ';
             $join = 'left join uu_products p on t.pid=p.id left join uu_land_f f on t.id=f.tid';
@@ -188,6 +189,12 @@ class ticket extends ProductBasic
             }
             $data['ddays'] = $advance;
         }
+
+        //年卡产品
+        if ($landData['p_type'] == 'I') {
+            $data = array_merge($data, (new AnnualCard())->getCrdConf($tid));
+        }
+
         $landData = $data;
         // 闸机绑定
         $apply_did = $_SESSION['sid'];
@@ -243,7 +250,7 @@ class ticket extends ProductBasic
         //print_r($_POST);exit();
         $res = array();
         $landModel   = new Land();
-        if (count($_POST)>1) {
+        if (count($_POST)>=1) {
             foreach ($_POST as $tid=>$ticketData) {
                 $ret =  $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
                 $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
@@ -252,15 +259,6 @@ class ticket extends ProductBasic
                 }
                 $res[] = $ret;
             }
-        }
-        else {
-            $ticketData = array_shift($_POST);
-            $ret = $this->SaveTicket($this->memberID, $ticketData, $this->ticketObj, $landModel);
-            $ret['data']['price'] = ['code'=>200, 'msg'=>'success'];
-            if (count($ticketData['price_section'])) {
-                $ret['data']['price'] = $this->SavePrice($ret['data']['pid'], $ticketData['price_section']);
-            }
-            $res[] = $ret;
         }
         self::apiReturn(self::CODE_SUCCESS, $res, 'ok');
     }

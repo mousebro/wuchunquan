@@ -63,10 +63,14 @@ class Order extends Controller
         $tid = 0;
         $member             = I('post.member');
         $aid                = I('post.aid');
+        $oname              = '';//取票人姓名
+        $sort               = 1;
+        $offset             = I('post.offset', 0, 'intval');
+        $top                = I('post.top', 100, 'intval');
         $this->soap();
-        $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, 0, $tid, '', '',
-            $ordertime_begin, $ordertime_end,'','','', '',//13订单完成时间
-            $orderNum, $ordertel, $orderStatus, $payStatus, '', '',/*19排序*/ 1,/*20降序*/ 0, 100,
+        $xml = $this->soap->Order_Globle_Search($salerId, $member, 0, $tid, '', '',
+            $ordertime_begin, $ordertime_end,'','','', '',//12订单完成时间
+            $orderNum, $oname, $ordertel, $orderStatus, $payStatus, '', $sort,/*19排序*/ 1,/*20降序*/ $offset, $top,
              0,/*23详细*/ '', '',0,'',0,'','',/*30确认订单状态*/$aid,0,'',0,0,'', $personId, $vcode
             );
         echo $xml;
@@ -97,15 +101,17 @@ class Order extends Controller
         $ordernum       = I('post.ordernum');
         $pay_total_fee  = I('post.total_fee') + 0;
         $pay_channel    = 4;
-        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付
+        $sourceT        = I('post.sorceT');//4=>现金 5 =>会员卡 6=>拉卡拉支付  11--拉卡拉（商户），12--拉卡拉（平台）
         $pay_to_pft     = false;
         $tradeno        = I('post.tradeno');//流水号
         $pay_conf       = include '/var/www/html/Service/Conf/pay.conf.php';
         $pay_account    = I('post.pay_account');
+        $app_id         = I('post.app_id', 0);
         if ($pay_account!='' && in_array($pay_account, $pay_conf['pft']['lakala'])) {
             $pay_to_pft = true;
+            $sourceT    = 7;//平台拉卡拉
         }
-        if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6) {
+        if ($sourceT!=4 && $sourceT!=5 && $sourceT !=6 && $sourceT !=7) {
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，支付方式不对');
         }
         if (empty($ordernum)) {
@@ -115,6 +121,9 @@ class Order extends Controller
             parent::apiReturn(parent::CODE_INVALID_REQUEST,[], '支付失败，订单金额格式不对');
         }
         $this->soap();
+        if ($app_id=='android_terminal') {
+            $pay_channel = 20;
+        }
         $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
@@ -177,7 +186,6 @@ class Order extends Controller
             $time_begin = date('Y-m-d H:00:00', strtotime('-1 hours'));
         }
         $time_end = date('Y-m-d H:i:00', strtotime("+30 mins", strtotime($time_begin)));
-        echo $time_begin, '---', $time_end;
         $model = new OrderTools();
         $model->syncPackageOrderStatus($time_begin, $time_end);
     }

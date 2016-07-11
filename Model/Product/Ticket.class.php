@@ -43,10 +43,12 @@ class Ticket extends Model {
      * @param  int $id 票类id
      * @return array   
      */
-    public function getTicketInfoById($id) {
-        return $this->table(self::__TICKET_TABLE__)
-            ->field($this->ticket_filed)
-            ->find($id);
+
+    public function getTicketInfoById($id, $filed='', $map=[]) {
+        $filed = empty($filed) ? $this->ticket_filed : $filed;
+        $query = $this->table(self::__TICKET_TABLE__)->field($filed);
+        if (count($map)) $query->where($map);
+        return $query->find($id);
     }
 
     /**
@@ -798,6 +800,12 @@ class Ticket extends Model {
             return ['code'=>200, 'data'=>['lastid'=>$lastid], 'msg'=>'添加成功'];
         }
         return ['code'=>0, 'data'=>'', 'msg'=>'添加失败,错误信息:' . $this->getDbError()];
+    }
+
+    public function GetProductInfoByPid($pid, $field='*', $map=[])
+    {
+        $map['id'] = $pid;
+        return $this->table(self::__PRODUCT_TABLE__)->where($map)->field($field)->find();
     }
 
     public function OptLog()

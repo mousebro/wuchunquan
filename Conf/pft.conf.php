@@ -41,6 +41,7 @@ elseif (ENV=='DEVELOP') {
     define('BASE_WX_DIR', '/var/www/html/wx');
     define('BASE_LOG_DIR', '/var/www/log/site');
     define('IMAGE_UPLOAD_DIR', '/var/www/images/');
+    define('PAY_DOMAIN', 'http://pay.12301.test/');
     if (strpos($_SERVER['HTTP_HOST'], 'test')) {
         define('MAIN_DOMAIN', 'http://www.12301.test/');
         define('MOBILE_DOMAIN', 'http://wx.12301.test/');
@@ -65,3 +66,6 @@ elseif (ENV=='DEVELOP') {
 
 //定义html目录的路径，方便后面的文件查找
 define('HTML_DIR', '/var/www/html');
+
+//定义新的模板路径
+define('VIEWS', HTML_DIR . '/Views');
