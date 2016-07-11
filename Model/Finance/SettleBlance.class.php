@@ -917,6 +917,10 @@ class SettleBlance extends Model{
             $dataArr[$value['id']] = $value;
         }
 
+        if(!$orderIdArr) {
+            return ['count' => 0, 'list' => []];
+        }
+
         //查询景区名称和票类
         $table      = "$this->_orderTable s";
         $joinTicket = "left join uu_jq_ticket t on s.tid=t.id";
