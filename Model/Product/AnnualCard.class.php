@@ -710,11 +710,11 @@ class AnnualCard extends Model
         switch ($config['delaytype']) {
 
             case 0 :
-                return date($format, $active_time) . '~' . date($format, $active_time + $config['delaydays'] * $day);
+                return date($format, $active_time) . '~' . date($format, $active_time + ($config['delaydays'] - 1) * $day);
                 break;
 
             case 1 :
-                return date($format, $sale_time) . '~' . date($format, $sale_time + $config['delaydays'] * $day);
+                return date($format, $sale_time) . '~' . date($format, $sale_time + ($config['delaydays'] - 1) * $day);
                 break;
 
             case 2:
