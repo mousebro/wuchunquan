@@ -1106,7 +1106,7 @@ class SettleBlance extends Model{
         $where = [
             'os.sellerid'   => $fid, //供应商
             's.status'      => 0, //未使用
-            's.paymode'     => ['not in', [2, 3, 4, 9]], //在线支付的
+            's.paymode'     => ['not in', [2, 3, 4, 9, 12]], //在线支付的
             'fd.pay_status' => 1 //已经支付
         ];
 
