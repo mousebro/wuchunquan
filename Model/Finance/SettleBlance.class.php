@@ -58,7 +58,7 @@ class SettleBlance extends Model{
         $data['fid'] = $fid;
 
         if(!$data) {
-            return false;
+            return false; 
         }
         
         $res = $this->table($this->_settingTable)->add($data);
@@ -1106,7 +1106,7 @@ class SettleBlance extends Model{
         $where = [
             'os.sellerid'   => $fid, //供应商
             's.status'      => 0, //未使用
-            's.paymode'     => ['in', [1, 2, 5, 6, 7, 8, 9, 10, 11]], //在线支付的
+            's.paymode'     => ['not in', [2, 3, 4, 9]], //在线支付的
             'fd.pay_status' => 1 //已经支付
         ];
 
