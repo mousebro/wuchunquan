@@ -14,6 +14,7 @@ class MemberRelationship extends Model
     private $memberTable = 'pft_member';
     private $memberRealtionTable = 'pft_member_relationship';
     private $memberExtInfoTable = 'pft_member_extinfo';
+    private $memberCreditTable = 'pft_member_credit';
     public $memberID;
 
     public function __construct($memberID)
@@ -195,5 +196,91 @@ class MemberRelationship extends Model
             ->select();
         return $result;
     }
+
+    /**
+     * 获取要导出合作分销商的数据
+     * @param  [type] $condition 查询分销商条件
+     * @param  string $sql       是否是拼装好的sql语句
+     * @return [type]            [description]
+     */
+    public function getReportDisData($condition, $sql = 'false') {
+        if ($sql) {
+            $distributors = $this->query($condition);
+        }
+
+        if (!$distributors) return [];
+
+        $members = [];
+        foreach ($distributors as $key => $dis) {
+            $dis['group'] = '未分组';
+            $members[$dis['id']] = $dis;
+        }
+
+        if (!class_exists('\PFT\PriceGroup')) {
+            include BASE_WWW_DIR . '/class/PriceGroup.class.php';
+        }
+
+        //分组信息
+        $groups = \PFT\PriceGroup::getGroupsBySid($this->memberID);
+
+        //分销商的授信信息
+        $credits = $this->getCreditForMulti($this->memberID, array_keys($members));
+
+        $return = [];
+        foreach ($groups as $group) {
+
+            if (!$group['dids']) continue;
+
+            $did_arr = explode(',', $group['dids']);
+            foreach ($did_arr as $did) {
+                if (isset($members[$did])) {
+                    $return[] = array_merge($members[$did], ['group' => $group['name']]);
+                    unset($members[$did]);
+                }
+            }
+        }
+
+        $return = array_merge($return, $members);
+
+        foreach ($return as $key => $item) {
+
+            if (isset($credits[$item['id']])) {
+                $return[$key]['credit'] = $credits[$item['id']]['credit'];
+            } else {
+                $return[$key]['credit'] = 0;
+            }
+        }
+
+       return $return;
+    }
+
+    /**
+     * 批量获取多个分销商的供应商授信余额
+     * @param  int $sid          
+     * @param  array $memberid_arr 分销商id
+     * @return [type]               [description]
+     */
+    public function getCreditForMulti($sid, $memberid_arr) {
+
+        $where = [
+            'aid'   => $sid,
+            'fid'   => ['in', implode(',', $memberid_arr)]
+        ];
+
+        $field = 'fid,(kmoney + basecredit) as credit,basetime,baseauthority';
+
+        $credits = $this->table($this->memberCreditTable)->where($where)->field($field)->select();
+
+        if (!$credits) return [];
+
+        $return = [];
+        foreach ($credits as $item) {
+            $item['credit'] = sprintf("%.2f", $item['credit'] / 100);
+            $return[$item['fid']] = $item;
+        }
+
+        return $return;
+    }
+
 
 }
