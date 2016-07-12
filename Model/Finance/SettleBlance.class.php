@@ -517,7 +517,7 @@ class SettleBlance extends Model{
             'transfer_time' => ['ELT', time()]
         ];
 
-        $field = 'id, fid, freeze_money, transfer_money';
+        $field = 'id, fid, freeze_money, transfer_money, mode';
         $order = 'update_time asc';
 
          $res = $this->table($this->_recordTable)->field($field)->order($order)->where($where)->page($page . ',' . $size)->select();
@@ -687,9 +687,10 @@ class SettleBlance extends Model{
      * @param  $fid 用户ID
      * @param  $freezeMoney 冻结金额 - 分
      * @param  $transferMoney 提现金额 - 分
+     * @param  $mode 提现模式
      * @return
      */
-    public function transMoney($id, $fid, $freezeMoney, $transferMoney) {
+    public function transMoney($id, $fid, $freezeMoney, $transferMoney, $mode = 1) {
         $freezeMoney   = intval($freezeMoney);
         $transferMoney = intval($transferMoney);
 
@@ -740,7 +741,20 @@ class SettleBlance extends Model{
         $feeCutWay     = 1;
         $accountType   = 1;
 
-        $res = $withdrawModel->addRecord($fid, $transferMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, true);
+        //获取需要审核的提现金额配置
+        $defaultConf = load_config('withdraw_default');
+        $modeArr     = [1 => 'day', 2 => 'week', 3 => 'month'];
+        $key         = $modeArr[$mode];
+        $authMoney  = isset($defaultConf[$key]) ? $defaultConf[$key]['auth_money'] : 50000; 
+        $authMoney  = $authMoney * 100; //转化为分
+        unset($defaultConf);
+        if($transferMoney >= $authMoney) {
+            $isHumanAuth = true;
+        } else {
+            $isHumanAuth = false;
+        }
+
+        $res = $withdrawModel->addRecord($fid, $transferMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, true, $isHumanAuth);
 
         if($res) {
             return ['status' => 1];

@@ -289,9 +289,10 @@ class SettleBlance extends Controller {
             $fid           = $item['fid'];
             $freezeMoney   = $item['freeze_money'];
             $transferMoney = $item['transfer_money'];
+            $mode          = $item['mode'];
 
             //调用自动提现的接口
-            $transInfo = $settleBlanceModel->transMoney($id, $fid, $freezeMoney, $transferMoney);
+            $transInfo = $settleBlanceModel->transMoney($id, $fid, $freezeMoney, $transferMoney, $mode);
 
             //错误处理
             $status = $transInfo['status'];

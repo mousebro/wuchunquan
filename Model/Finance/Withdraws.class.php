@@ -157,9 +157,10 @@ class Withdraws extends Model{
      * @param $accountType 账号类型：1=银行，2=支付宝
      * @param $accountInfo 账号信息数组  {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":"","account_name":""}
      * @param $isAuto 是否直接自动清分
+     * @param $isHumanAuth 是否需要财务审核 - $isAuto为true的时候才起作用
      * 
      */
-    public function addRecord($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false) {
+    public function addRecord($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false, $isHumanAuth = false) {
         $wdMoney    = intval($wdMoney);
         $serviceFee = intval($serviceFee);
         $cutwayArr  = ['0' => '提现金额扣除', '1' => '账户余额扣除'];
@@ -201,17 +202,25 @@ class Withdraws extends Model{
 
         if($isAuto) {
             $data['wd_operator']   = '后台系统|ID:1';
-            if(defined('ENV') && ENV == 'PRODUCTION') {
-                //生产环境需要实际打款
-                $data['wd_status']   = 5;
-                $data['push_status'] = 1;
+
+            //是不是需要人工审核
+            if($isHumanAuth) {
+                //财务审核
+                $data['wd_status']   = 1;
+                $data['push_status'] = 0;
             } else {
-                $batchno             = 'cmbc_' . time();
-                $data['batchno']     = $batchno;
-                $data['memo']        = "民生银行代付成功，流水号【{$batchno}】" . ' - ' . $memo;
-                $data['wd_time']     = date('Y-m-d H:i:s');
-                $data['wd_status']   = 2;
-                $data['push_status'] = 3;
+                if(defined('ENV') && ENV == 'PRODUCTION') {
+                    //生产环境需要实际打款
+                    $data['wd_status']   = 5;
+                    $data['push_status'] = 1;
+                } else {
+                    $batchno             = 'cmbc_' . time();
+                    $data['batchno']     = $batchno;
+                    $data['memo']        = "民生银行代付成功，流水号【{$batchno}】" . ' - ' . $memo;
+                    $data['wd_time']     = date('Y-m-d H:i:s');
+                    $data['wd_status']   = 2;
+                    $data['push_status'] = 3;
+                }
             }
         }
 
