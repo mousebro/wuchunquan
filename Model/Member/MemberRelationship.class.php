@@ -267,7 +267,7 @@ class MemberRelationship extends Model
             'fid'   => ['in', implode(',', $memberid_arr)]
         ];
 
-        $field = 'fid,(kmoney + basecredit) as credit,basetime,baseauthority';
+        $field = 'fid,kmoney,basecredit,(kmoney + basecredit) as credit,basetime,baseauthority';
 
         $credits = $this->table($this->memberCreditTable)->where($where)->field($field)->select();
 
@@ -276,6 +276,8 @@ class MemberRelationship extends Model
         $return = [];
         foreach ($credits as $item) {
             $item['credit'] = sprintf("%.2f", $item['credit'] / 100);
+            $item['kmoney'] = sprintf("%.2f", $item['kmoney'] / 100);
+            $item['basecredit'] = sprintf("%.2f", $item['basecredit'] / 100);
             $return[$item['fid']] = $item;
         }
 
