@@ -639,12 +639,15 @@ class SettleBlance extends Model{
             $value = floatval($freezeData['value']);
             if($type == 1) {
                 //比例
-                $freezeMoney   = round($amoney * ($value / 100), 2);
+                $freezeMoney = round($amoney * ($value / 100), 2);
+                //数据按分进行取整
+                $freezeMoney = ceil($freezeMoney);
+
                 $transferMoney = $amoney - $freezeMoney;
             } else {
                 //固定金额
                 $freezeMoney = $value * 100;//转化为分
-                if($freezeMoney >= $amoney) { 
+                if($freezeMoney >= $amoney) {
                     //账号余额不足冻结金额
                     return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
                 }
