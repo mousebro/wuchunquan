@@ -13,6 +13,10 @@ if ($argc==1) {
     echo str_pad("*", 50, "*"), PHP_EOL;
     exit;
 }
+
+//定义cli处理入口
+define('PFT_CLI', true);
+
 include '/var/www/html/Service/init.php';
 $controller = $argv[1];
 if (strpos($controller, '_')!==false) {
