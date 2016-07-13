@@ -309,14 +309,14 @@ class SettleBlance extends Controller {
                 $freezeMoney   = round($transInfo['freeze_money']/100, 2);
                 $transferMoney = round($transInfo['transfer_money']/100, 2);
 
-                $res = $settleBlanceModel->updateTransferInfo($id, 1, "账号余额不足，账户余额：{$amoney}元，提现余额：{$transferMoney}元，不可提现余额：{$freezeMoney}元");
+                $res = $settleBlanceModel->updateTransferInfo($id, 1, "账号余额不足，账户余额：{$amoney}元，提现金额：{$transferMoney}元，不可提现金额：{$freezeMoney}元");
             } else if($status == -4) {
                 //剩余金额不足以支付提现手续费
                 $amoney        = round($transInfo['amoney']/100, 2);
                 $feeMoney      = round($transInfo['fee_money']/100, 2);
                 $transferMoney = round($transInfo['transfer_money']/100, 2);
 
-                $res = $settleBlanceModel->updateTransferInfo($id, 1, "剩余金额不足以支付提现手续费，账户余额：{$amoney}元，提现余额：{$transferMoney}元，提现手续费：{$feeMoney}元");
+                $res = $settleBlanceModel->updateTransferInfo($id, 1, "剩余金额不足以支付提现手续费，账户余额：{$amoney}元，提现金额：{$transferMoney}元，提现手续费：{$feeMoney}元");
             } else if($status == -5) {
                 //系统错误了，提现出现问题
                 $res = $settleBlanceModel->updateTransferInfo($id, 3, "系统错误了，提现出现问题");
