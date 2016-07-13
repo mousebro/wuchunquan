@@ -9,6 +9,8 @@
 
 namespace Library\Tools;
 
+use \SoapClient;
+
 class Helpers {
     static private $_prevPath = '/var/www/html/new/';
 
@@ -66,7 +68,11 @@ class Helpers {
             "location"  => "http://localhost/open/openService/pft_insideMX.php",
             "uri"       => "www.16u.com?ac_16u={$ac}|pw_16u={$pw}|auth_16u=true");
 
+<<<<<<< HEAD
         return new \SoapClient(null, $param);
+=======
+        return (new SoapClient(null, $param));
+>>>>>>> 004e2e2d997f3f37659ba5b032a010dd2a7b8357
     }
 
     /**
