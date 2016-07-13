@@ -56,7 +56,7 @@ elseif (ENV=='DEVELOP') {
         define('MAIN_DOMAIN', 'http://www.12301.local/');
         define('IMAGE_URL', 'http://images.12301.local/');
         define('STATIC_URL', 'http://static.12301.local/');
-        define('LOCAL_DIR', '');
+        define('LOCAL_DIR', 'local/');
         define('MOBILE_URL', 'http://12301.local/');
         define('OPEN_URL', 'http://open.12301.local/');
     }
