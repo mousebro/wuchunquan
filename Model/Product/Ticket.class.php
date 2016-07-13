@@ -6,6 +6,7 @@
 namespace Model\Product;
 use Library\MessageNotify\OtaProductNotify;
 use Library\Model;
+
 use Model\Member\Member;
 use Model\Product\SellerStorage;
 use Model\SystemLog\OptLog;
@@ -95,18 +96,6 @@ class Ticket extends Model {
             ->field( $this->ticket_filed )
             ->where(array('pid' => $pid))->find();
     }
-
-    /**
-     * 获取产品表的信息
-     * @param  array $options 
-     * @return [type]      [description]
-     */
-    public function getProductInfo($options = []) {
-
-        return $this->table(self::__PRODUCT_TABLE__)->find($options);
-
-    }
-
     /**
      * 获取产品类型
      * @param  int $pid productID
@@ -114,9 +103,9 @@ class Ticket extends Model {
      */
     public function getProductType($pid) {
         return $this->table(self::__PRODUCT_TABLE__)
-            ->join('p left join uu_land l on p.contact_id=l.id')
-            ->where(array('p.id' => $pid))
-            ->getField('l.p_type');
+                    ->join('p left join uu_land l on p.contact_id=l.id')
+                    ->where(array('p.id' => $pid))
+                    ->getField('l.p_type');
     }
 
     public function getPackageInfoByTid($tid){
@@ -141,6 +130,20 @@ class Ticket extends Model {
      * @return array
      */
     public function getSaleProducts($memberid, $options = array()) {
+        // $sale_list = $this->table(self::__SALE_LIST_TABLE__)->where(['fid' => $memberid, 'status' => 0])->select();
+
+        // if (!$sale_list) return array();
+
+        // $sale_pid_arr = $sale_aid_arr = array();
+        // foreach ($sale_list as $item) {
+        //     if ($memberid == $item['aid']) {
+        //         $sale_pid_arr[$item['aid']] = array('A');
+        //     } else {
+        //         $sale_pid_arr[$item['aid']] = explode(',', $item['pids']);
+        //     }
+        //     $sale_aid_arr[] = $item['aid'];
+        // }
+        // var_dump($sale_pid_arr);die;
         $where = array(
             'p.p_status' => 0,
             'p.apply_limit' => 1,
@@ -155,13 +158,16 @@ class Ticket extends Model {
 
         $data = $this->getProductsDetailInfo($where, $options);
 
-        if (!$data) return array();
-
         $result = array();
-        foreach ($data as $item) {
-            $item['apply_sid'] = $memberid;
-            $item['sapply_sid'] = $item['apply_did'];
-            $result[] = $item;
+        if ($data) {
+            foreach ($data as $item) {
+            // $pid_arr = $sale_pid_arr[$item['apply_did']];
+            // if (is_array($pid_arr) && ($pid_arr[0] == 'A' || in_array($item['pid'], $pid_arr))) {
+                $item['apply_sid'] = $memberid;
+                $item['sapply_sid'] = $item['apply_did'];
+                $result[] = $item;
+            // }
+            }
         }
         
         return $result;
@@ -343,7 +349,7 @@ class Ticket extends Model {
 
         //总库存模式
         if ($pid_arr) {
-            $find_pid = $this->getStorageForAllStoType($pid_arr, $result, $date);
+            $find_pid = $this->getStorageForAllStoType($pid_arr, $result);
         }
         // var_dump($find_pid);die;
         $pid_arr = $copy_pid_arr = array_diff($pid_arr, $find_pid);
@@ -426,8 +432,7 @@ class Ticket extends Model {
      * @param  [type] &$result [description]
      * @return [type]          [description]
      */
-    public function getStorageForAllStoType($pid_arr, &$result, $date = '') {
-        $date = $date ?: date('Y-m-d');
+    public function getStorageForAllStoType($pid_arr, &$result) {
         $where = array(
             'pid'       => array('in', implode(',', $pid_arr)),
             'storage'   => array('neq', -1)
@@ -443,7 +448,7 @@ class Ticket extends Model {
 
         foreach ($opens as $item) {
 
-            if (strtotime($item['storage_open']) > strtotime($date)) {
+            if (strtotime($item['storage_open']) > time()) {
                 continue;
             }
 
@@ -684,11 +689,8 @@ class Ticket extends Model {
         $today  = date('Y-m-d');
         $priceModel = new PriceRead();
         $price = $priceModel->get_Dynamic_Price_Merge($pid, '', 0, '', '', 0, 1);
-        if (!is_array($price)) {
-            return false;
-        }
         $price_section = array();
-         foreach($price as $val){
+        foreach($price as $val){
             if($val['ptype']==0 && $val['end_date']>=$today){
                 $price_section[$val['id']] = array(
                     'js'    => $val['n_price'],
@@ -731,13 +733,10 @@ class Ticket extends Model {
         return $res;
     }
 
-    public function SetTicketStatus($tid, $status, $memberId, $pid=0)
+    public function SetTicketStatus($tid, $status, $memberId)
     {
-        $map = [];
-        if ($pid>0) $map['p.id']=$pid;
-        else $map['t.id'] = $tid;
         $info = $this->QueryTicketInfo(
-            $map,
+            ['t.id'=>$tid],
             'p.apply_limit,p.apply_did,p.id as pid,p.p_name',
             'inner join uu_products p on t.pid=p.id'
             );
