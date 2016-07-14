@@ -7,7 +7,7 @@
  * @date   2016-07-14
  *
  */
-namespace \Process\Finance;
+namespace Process\Finance;
 
 class TradeRecord {
 
@@ -40,5 +40,5 @@ class TradeRecord {
         return $data;
     }
 
-    
+
 }
