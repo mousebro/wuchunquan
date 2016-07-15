@@ -301,6 +301,7 @@ class ProductBasic extends Controller
 
         // 分批验证设置
         $tkBaseAttr['batch_check']       = isset($ticketData['batch_check']) ? ($ticketData['batch_check']+0) : 1;
+        $tkBaseAttr['batch_check']      = 0;
         $tkBaseAttr['batch_day_check']   = isset($ticketData['batch_day_check']) ? ($ticketData['batch_day_check']+0) : 0;
         $tkBaseAttr['batch_diff_identities'] = isset($ticketData['batch_diff_identities']) ? ($ticketData['batch_diff_identities']+0) : 0;
 
