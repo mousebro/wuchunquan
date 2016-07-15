@@ -188,7 +188,8 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
             $data['pri'][] = [
                 'title' => $item['title'],
                 'num'   => $products[$item['pid']],
-                'use'   => implode(',', $this->_pri_use[$item['tid']])
+                'use'   => implode(',', $this->_pri_use[$item['tid']]),
+                'left'  => $this->_pri_left[$item['tid']] == -1 ? -1 : implode(',', $this->_pri_left[$item['tid']])
             ];
         }
 
