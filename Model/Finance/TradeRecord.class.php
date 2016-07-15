@@ -10,13 +10,12 @@ namespace Model\Finance;
 use Library\Model;
 
 
-class TradeRecord extends Model
-{
-    private $_order_table = 'uu_ss_order';
-    private $_product_table = 'uu_products';
+class TradeRecord extends Model {
+    private $_order_table        = 'uu_ss_order';
+    private $_product_table      = 'uu_products';
     private $_trade_record_table = 'pft_member_journal';
-    private $_ticket_table = "uu_jq_ticket";
-    private $_alipay_table = "pft_alipay_rec";
+    private $_ticket_table       = "uu_jq_ticket";
+    private $_alipay_table       = "pft_alipay_rec";
     private $recomposer;
 
     /**
@@ -108,8 +107,7 @@ class TradeRecord extends Model
      * @return array|bool
      * @throws \Library\Exception
      */
-    public function getDetails($trade_id, $fid, $partner_id)
-    {
+    public function getDetails($trade_id, $fid, $partner_id) {
         $table = "{$this->_trade_record_table} AS tr";
 
         $join = [
