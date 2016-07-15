@@ -179,6 +179,10 @@ class Withdraws extends Model{
         $cutwayV        = $cutwayArr[$feeCutWay];
 
         $memo = "申请提现金额:{$wdMoneyV}元,手续费:{$serviceChargeV}元,{$cutwayV},实际提现金额:{$transMoneyV}元";
+        
+        //备注添加账号信息
+        $memo .= "【{$accountInfo['bank_account']}({$accountInfo['bank_name']})】";
+
         if($isAuto) {
             //直接自动提现
             $memo = '自动清分 - ' . $memo;
@@ -199,6 +203,10 @@ class Withdraws extends Model{
             'memo'           => $memo,
             'apply_time'     => date('Y-m-d H:i:s')
         ];
+
+        //添加统一虚拟的订单ID
+        $orderId         = 'withdraw_' . time();
+        $data['batchno'] = $orderId;
 
         if($isAuto) {
             $data['wd_operator']   = '后台系统|ID:1';
@@ -235,7 +243,7 @@ class Withdraws extends Model{
         //通过接口调用交易流水扣除
         $soapInside = Helpers::GetSoapInside();
         $frozenMoney = $feeCutWay == 1 ? $wdMoney + $serviceCharge : $wdMoney;
-        $res = $soapInside->PFT_Member_Fund_Modify($fid, $fid, $frozenMoney, 1, 0, $fid, 6, null, '', $memo);
+        $res = $soapInside->PFT_Member_Fund_Modify($fid, $fid, $frozenMoney, 1, 0, $fid, 6, null, $orderId, $memo);
         if($res == 100) {
             $this->commit();
             return true;
