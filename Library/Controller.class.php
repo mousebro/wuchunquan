@@ -109,6 +109,23 @@ class Controller {
     }
 
     /**
+     * 判断登陆用户是不是管理员
+     * @author dwer
+     * @date   2016-07-16
+     *
+     * @return
+     */
+    protected function isSuper() {
+        $sid = isset($_SESSION['sid']) && $_SESSION['sid'] ? $_SESSION['sid'] : false;
+
+        if($sid && $sid == 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * 判断是不是已经登陆
      * @author dwer
      * @DateTime 2016-02-16T13:55:07+0800

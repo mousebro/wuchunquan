@@ -101,4 +101,7 @@ return array(
         'trade_no'       => '支付流水号',
         'memo'           => '备注',
     ],
+
+    //管理员显示名称
+    'admin_title' => '票付通信息科技',
 );

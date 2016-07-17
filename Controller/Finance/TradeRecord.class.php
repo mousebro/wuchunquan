@@ -43,6 +43,9 @@ class TradeRecord extends Controller{
 
         $record = $this->_getTradeModel()->getDetails($trade_id, $fid, $partner_id);
 
+        //数据处理
+        TradeProcess::handleDetailData($record);
+
         //无权查看时返回数据为空
         if (isset($record['fid'], $record['aid']) && in_array($this->memberId, [1, $record['fid'], $record['aid']])) {
             unset($record['fid'], $record['aid']);
@@ -76,16 +79,25 @@ class TradeRecord extends Controller{
     public function getList() {
         try {
             $map = [];
-            $fid = ($this->memberId == 1 && isset($_REQUEST['fid'])) ? intval(I('fid')) : $this->memberId;
+
+            //是不是超级用户
+            $isSuper = $this->isSuper();
+
+            $fid = ($isSuper && isset($_REQUEST['fid'])) ? intval(I('fid')) : $this->memberId;
 
             $partner_id = intval(I('partner_id')) ?: 0;
 
-            if ($this->memberId == 1 && !$fid && $partner_id) {
+            if ($isSuper && !$fid && $partner_id) {
                 $this->apiReturn(220, [], '请先选择交易商户');
             }
 
+            //权限判断
+            if(!$isSuper && isset($_REQUEST['fid'])) {
+                throw new Exception('无权限查看', 201);
+            }
+
             //时段
-            $interval = TradeProcess::parseTime();
+            $interval       = TradeProcess::parseTime();
             $map['rectime'] = array('between', $interval);
 
             //交易大类
@@ -114,7 +126,7 @@ class TradeRecord extends Controller{
             }
 
             //支付方式
-            $tmpMap = TradeProcess::parseAccountType($this->memberId, $fid, $partner_id);
+            $tmpMap = TradeProcess::parseAccountType($fid, $partner_id);
             if($tmpMap) {
                 $map = array_merge($map, $tmpMap);
             }
@@ -228,21 +240,40 @@ class TradeRecord extends Controller{
         switch ($form) {
             case 0:
                 $data = $recordModel->getList($map, $page, $limit, $fid, $partner_id);
-                if (is_array($data)) {
-                    $data['btime'] = $interval[0];
-                    $data['etime'] = $interval[1];
-                    $this->apiReturn(200, $data);
-                } else {
-                    throw new Exception('查询结果为空', 208); 
+                if(!$data['list']) {
+                    throw new Exception('查询结果为空', 208);
                 }
+
+                //列表数据处理
+                $list = $data['list'];
+                foreach($list as &$item) {
+                    TradeProcess::handleData($item);
+                }
+
+                $res = [
+                    'total'      => $data['total'],
+                    'page'       => $page + 1,
+                    'total_page' => ceil($data['total'] / $limit),
+                    'limit'      => $limit,
+                    'list'       => $list,
+                    'btime'      => $interval[0],
+                    'etime'      => $interval[1],
+                ];
+                $this->apiReturn(200, $res);
                 break;
             case 1:
                 $data = $recordModel->getExList($map, $fid, $partner_id);
+
                 if (!is_array($data)) {
                     $data = [];
+                } else {
+                    //数据处理
+                    foreach($data as &$item) {
+                        TradeProcess::handleExcelData($item);
+                    }
                 }
-                $filename = date('YmdHis') . '交易记录';
 
+                $filename = date('YmdHis') . '交易记录';
                 $this->_exportExcel($data, $filename);
                 break;
             case 2:
