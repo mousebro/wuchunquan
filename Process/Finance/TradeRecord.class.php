@@ -28,7 +28,8 @@ class TradeRecord {
         $pay_types       = array_combine(array_keys(C('pay_type')), array_column(C('pay_type'), 2));
         $online_pay_type = array_keys($pay_types, 0);
 
-        if (!is_numeric($account_type)) {
+        //如果没有传fid参数    
+        if (!is_numeric($account_type) || !$fid) {
             return [];
         }
 
