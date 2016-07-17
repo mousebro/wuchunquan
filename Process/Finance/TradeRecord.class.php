@@ -134,6 +134,13 @@ class TradeRecord {
         $record['dmoney']  = $tmp['dmoney'];
         $record['lmoney']  = $tmp['lmoney'];
 
+        //处理订单的状态
+        if(isset($record['status'])) {
+            $record['status'] = self::getStatusName($record['status']);
+        } else {
+            $record['status'] = '';
+        }
+
         //删除没用数据
         unset($record['is_acc_reverse'], $record['partner_acc_type'], $record['self_name'], $record['self_account'], $record['partner_name'], $record['partner_account'], $record['payee_acc'], $record['payer_acc']);
     }
@@ -434,6 +441,28 @@ class TradeRecord {
         }
 
         return ['dtype_name' => $dtypeName, 'item_name' => $itemName];
+    }
+
+    /**
+     * 获取订单状态名称
+     * @author dwer
+     * @date   2016-07-17
+     *
+     * @param  $dtype 类型
+     * @param  $separator 连接符
+     * @return
+     */
+    private static function getStatusName($status = '') {
+        if($status === '') {
+            return '';
+        }
+
+        $statusArr = C('order_status');
+        if(isset($statusArr[ $status ])) {
+            return $statusArr[ $status ];
+        } else {
+            return '';
+        }
     }
 
     /**

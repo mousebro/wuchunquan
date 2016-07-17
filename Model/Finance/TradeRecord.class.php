@@ -171,6 +171,7 @@ class TradeRecord extends Model {
             'tr.memo',                              //备注
             'tr.daction',                           //收支
             'tr.account_type as member_acc_type',   //交易账户类型
+            'tr.opid',
             'o.ordermode as order_channel',         //交易渠道
             'p.p_name',                             //产品名称
             'a.buyer_email as payer_acc',           //支付方账号
@@ -211,6 +212,16 @@ class TradeRecord extends Model {
 
             $record['partner_name']    = $tmpAccount['name'];
             $record['partner_account'] = $tmpAccount['account'];
+        }
+
+        //获取操作人信息
+        if($record['opid']) {
+            $tmpAccount = $this->_getAccountInfo($record['opid']);
+            $record['operate_name']    = $tmpAccount['name'];
+            $record['operate_account'] = $tmpAccount['account'];
+        } else {
+            $record['operate_name']    = '';
+            $record['operate_account'] = '';
         }
 
         // $result = $this->_getRecomposer()
@@ -362,13 +373,22 @@ class TradeRecord extends Model {
         //2 获取其他交易信息
         $data = [];
         if (is_array($records) && count($records)) {
-            $exInfo    = $this->getExpandInfo($records);
+            $exInfo    = $this->getExpandInfo($records, true);
             $onlineAcc = $exInfo[1];
+            $orderArr  = $exInfo[2];
 
             //记录已经获取过信息的账号
             $tmpAccountArr = [];
 
             foreach ($records as $record) {
+                //订单的状态
+                if($record['orderid'] && array_key_exists($record['orderid'], $orderArr)) {
+                    $record['status']         = $orderArr[$record['orderid']]['status'];
+                    $record['show_order_url'] = 1;
+                } else {
+                    $record['status'] = '';
+                    $record['show_order_url'] = 0;
+                }
                 
                 //获取在线支付信息
                 if (is_array($onlineAcc) && array_key_exists($record['orderid'], $onlineAcc) ) {
@@ -610,7 +630,6 @@ class TradeRecord extends Model {
                     $tid = array_unique(array_filter(array_column($extInfo, 'tid')));
                     $prod_name = $this->getProdNameByTid($tid);
                 }
-
             }
 
             return array($account_types, $online_pay_acc, $extInfo, $prod_name);
