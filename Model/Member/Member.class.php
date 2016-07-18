@@ -434,4 +434,18 @@ class Member extends Model
         return true;
     }
 
+    /**
+     * 获取账号权限
+     * @return [type] [description]
+     */
+    public function getMemberAuth($memberid) {
+        $auth = $this->table(self::__MEMBER_TABLE__)->where(['id' => $memberid])->getField('member_auth');
+
+        if (!$auth) {
+            return [];
+        } else {
+            return explode(',', $auth);
+        }
+    }
+
 }

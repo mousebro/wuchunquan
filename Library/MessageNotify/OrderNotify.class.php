@@ -177,16 +177,34 @@ class OrderNotify {
             $sms_channel    = $sms_tpl['dtype'];
             $sms_account    = $sms_tpl['sms_account'];
         }
-        $code  = $code==0 ? $infos['code'] : $code;
+        $code        = $code==0 ? $infos['code'] : $code;
         $sms_content = $this->SmsContent($this->title . $infos['pname'],  $infos['getaddr'],
             $infos['begintime'], $infos['endtime'], $cformat, $code, 1, $manualQr);
         if (!empty($sms_sign)) {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
+        $this->SaveSmsLog($this->order_tel,$sms_content, $this->order_num, $this->buyerId, $this->sellerId,$sms_account);
         $res = $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account);
-
         return $res;
     }
+
+    public function SaveSmsLog($ordertel, $smstxt, $ordern, $fid, $aid, $taccount, $send_now=0)
+    {
+        //insert sms_order set times=0,ordertel='$ordertel',smstxt='$sendmsg',ordernum='$ordern',fid=$member,aid=$aid,taccount='$Taccount',send_now=$smsSendNow
+        $params = [
+            'ordertel'  => $ordertel,
+            'smstxt'    => $smstxt,
+            'ordernum'  => $ordern,
+            'fid'       => $fid,
+            'aid'       => $aid,
+            'taccount'  => $taccount,
+            'send_now'  => $send_now,
+        ];
+        $model = new Model('localhost');
+        $model->table('sms_order')->data($params)->add();
+        unset($model);
+    }
+
     /**
      * 向供应商发送通知信息
      *
