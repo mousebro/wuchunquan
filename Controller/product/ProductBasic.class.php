@@ -190,7 +190,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['buy_limit_up']  = $ticketData['buy_limit_up']+0; // 购买上限
         $tkBaseAttr['buy_limit_low'] = $ticketData['buy_limit_low']+0;
         //$tkBaseAttr['order_limit'] = $ticketData['order_limit'];// 验证限制
-        $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));// 验证限制
+        $tkBaseAttr['order_limit'] = $p_type=='C' ? '':implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));// 验证限制
 
         if(($tkBaseAttr['buy_limit_up']>0) && $tkBaseAttr['buy_limit_low']>$tkBaseAttr['buy_limit_up'])
             return self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数', $ticketData['ttitle']);
