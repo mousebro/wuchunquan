@@ -108,6 +108,15 @@ class Ticket extends Model {
                     ->getField('l.p_type');
     }
 
+    /**
+     * 获取产品表的信息
+     * @param  array $options 
+     * @return [type]      [description]
+     */
+    public function getProductInfo($options = []) {
+        return $this->table(self::__PRODUCT_TABLE__)->find($options);
+    }
+
     public function getPackageInfoByTid($tid){
         $table = 'uu_jq_ticket AS t';
         $join = 'join uu_land AS l ON l.id=t.landid';
