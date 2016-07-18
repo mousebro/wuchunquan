@@ -5,6 +5,10 @@
  *
  * Class OrderCancel_Job
  */
+if (!class_exists('ServerInside')) {
+    define('IN_PFT', true);
+    include '/var/www/html/open/openService/ServerInside.class.php';
+}
 class OrderCancel_Job {
     public function perform(){
         $main_order = $this->args['ordernum'];
