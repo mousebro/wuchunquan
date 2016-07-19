@@ -399,7 +399,7 @@ class Register extends Controller{
             $tmpData = array('account' => $account, 'time' => time(), 'dtype' => $dtype);
             $_SESSION['reg_data'] = $tmpData;
 
-            $this->apiReturn(200, '注册成功', array('account' => $account));
+            $this->apiReturn(200, array('account' => $account), '注册成功');
         }
     }
 
@@ -484,7 +484,7 @@ class Register extends Controller{
         if($res['status'] == 'ok') {
             unset($_SESSION['reg_data']);
 
-            $this->apiReturn(200, '更新成功', array('account' => $account));
+            $this->apiReturn(200, array('account' => $account), '更新成功');
         } else {
             $msg = $res['msg'];
             $this->apiReturn(500, $msg);
