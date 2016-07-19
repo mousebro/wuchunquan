@@ -22,11 +22,10 @@ class ProductBasic extends Controller
 {
     private $packObj=null;
     private $cardObj=null;
-    private $config;
+    protected $config = array();
     public function __construct()
     {
-        C(include  __DIR__ .'/../../Conf/product.conf.php');
-        $this->config = C('');
+        $this->config = include '/var/www/html/Service/Conf/product.conf.php';
 
     }
     private function _return($code, $msg, $title)
