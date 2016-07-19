@@ -6,6 +6,7 @@
  * Time: 12:17
  * Description: 票付通凭证码POOL，保证相同景点不重码
  *              每次下单从POOL中获取一个code（lpop），如果POOL为空，生成2000个code
+ *              连接Redis超时时间为0.2S，超时后使用MySQL。
  * Usage:      $code = Library\OrderCodePool::GetCode($lid);
  */
 namespace Library;
