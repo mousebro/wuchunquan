@@ -76,6 +76,21 @@ class Order extends Controller
         echo $xml;
     }
 
+    /**
+     * 获取订单追踪记录
+     */
+    public function TrackLog()
+    {
+        $model = new \Model\Order\OrderTrack();
+        $ordernum = I('post.ordernum');
+        if (I('post.filter_expire')) {
+            $log  = $model->QueryLog($ordernum);
+        }
+        else {
+            $log = $model->getLog($ordernum);
+        }
+        parent::apiReturn(200, $log, 'success');
+    }
     public function QuickVerify()
     {
         include '/var/www/html/new/d/class/Terminal_Check_Socket.class.php';
