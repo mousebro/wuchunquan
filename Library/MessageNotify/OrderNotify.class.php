@@ -27,6 +27,9 @@ class OrderNotify {
      * @var Model
      */
     private $model;
+
+    private $modelMaster = null;
+
     const SMS_FORMAT_STR  = 1;
     const SMS_FORMAT_ARR  = 2;
 
@@ -183,6 +186,14 @@ class OrderNotify {
         if (!empty($sms_sign)) {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
+        if (is_null($this->modelMaster)) {
+            $this->modelMaster = new Model('localhost');
+        }
+        $this->modelMaster->table('uu_ss_order')
+            ->where(['ordernum'=>$this->order_num, 'remsg'=>0])
+            ->data(['remsg'=>1])
+            ->limit(1)
+            ->save();
         $this->SaveSmsLog($this->order_tel,$sms_content, $this->order_num, $this->buyerId, $this->sellerId,$sms_account);
         $res = $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account);
         return $res;
@@ -200,9 +211,10 @@ class OrderNotify {
             'taccount'  => $taccount,
             'send_now'  => $send_now,
         ];
-        $model = new Model('localhost');
-        $model->table('sms_order')->data($params)->add();
-        unset($model);
+        if (is_null($this->modelMaster)) {
+            $this->modelMaster = new Model('localhost');
+        }
+        $this->modelMaster->table('sms_order')->data($params)->add();
     }
 
     /**

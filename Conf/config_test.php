@@ -52,7 +52,7 @@ return array(
         'pft001'=>array(
             'db_type'=>'mysql',
             'db_host' => '127.0.0.1',
-            'db_user' => 'admin',
+            'db_user' => 'admin001',
             'db_pwd' => 'adm*753951',
             'db_port' => 3307,
             'db_name' => 'pft001',
