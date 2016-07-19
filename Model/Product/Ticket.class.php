@@ -46,9 +46,11 @@ class Ticket extends Model {
 
     public function getTicketInfoById($id, $filed='', $map=[]) {
         $filed = empty($filed) ? $this->ticket_filed : $filed;
+        $map = array_merge(['id'=>$id], $map);
         $query = $this->table(self::__TICKET_TABLE__)->field($filed);
         if (count($map)) $query->where($map);
-        return $query->find($id);
+        $data = $query->find();
+        return $data;
     }
 
     /**

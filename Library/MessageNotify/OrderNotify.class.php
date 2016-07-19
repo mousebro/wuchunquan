@@ -187,7 +187,7 @@ class OrderNotify {
             $sms_content = "【{$sms_sign}】$sms_content";
         }
         if (is_null($this->modelMaster)) {
-            $this->modelMaster = new Model('localhost');
+            $this->modelMaster = new Model('localhost_wsdl');
         }
         $this->modelMaster->table('uu_ss_order')
             ->where(['ordernum'=>$this->order_num, 'remsg'=>0])
@@ -212,7 +212,7 @@ class OrderNotify {
             'send_now'  => $send_now,
         ];
         if (is_null($this->modelMaster)) {
-            $this->modelMaster = new Model('localhost');
+            $this->modelMaster = new Model('localhost_wsdl');
         }
         $this->modelMaster->table('sms_order')->data($params)->add();
     }
@@ -497,7 +497,7 @@ class OrderNotify {
             'WxNotify_Job', array(
                 'openid'    => $wx_open_id,
                 'data'      => $data,
-                'tplId'     => 'HOTEL_ORDER_MSG',
+                'tplid'     => 'HOTEL_ORDER_MSG',
                 'color'     => '#FF0000',
                 'url'       => "http://wx.12301.cc/html/order_detail.html?fromt=f542e9fac6e76f4b3b66422d49e5585c&ordernum=$ordernum"
             )
