@@ -123,7 +123,7 @@ class CodePoolMysql extends BasePool
 {
     public static function GetCode($lid, $ptype='', $forceGenerate=false)
     {
-        $m = new Model('localhost');
+        $m = new Model('pft001');
         $w = ['lid'=>$lid];
         $code = $m->table(self::__TBL_POOL__)->where($w)->getField('code');
         if (!$code || $forceGenerate===true) {
@@ -138,7 +138,7 @@ class CodePoolMysql extends BasePool
     protected  static function Generate($lid, $ptype='')
     {
         $data = parent::Generate($lid, $ptype);
-        $m = new Model('localhost');
+        $m = new Model('pft001');
         $m->table(self::__TBL_POOL__)->addAll($data);
         return $data;
     }
