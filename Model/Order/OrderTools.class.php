@@ -50,8 +50,8 @@ class OrderTools extends Model {
      * @author  wengbin
      */
     public function getOutOfDateOrders($limit = 10, $order = 'uu_ss_order.id asc') {
-        //只获取最近十天的订单
-        $begin_time = date('Y-m-d H:i:s', time() - 10 * 3600 * 24);
+        //只获取最近1天的订单
+        $begin_time = date('Y-m-d H:i:s', time() - 1 * 3600 * 24);
 
         $result = $this->table('uu_ss_order')->join("
                 left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid
