@@ -374,8 +374,8 @@ class TradeRecord extends Model {
         $data = [];
         if (is_array($records) && count($records)) {
             $exInfo    = $this->getExpandInfo($records, true);
-            $onlineAcc = $exInfo[1];
-            $orderArr  = $exInfo[2];
+            $onlineAcc = $exInfo[1] ? $exInfo[1] : [];
+            $orderArr  = $exInfo[2] ? $exInfo[2] : [];
 
             //记录已经获取过信息的账号
             $tmpAccountArr = [];
