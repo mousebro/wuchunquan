@@ -351,11 +351,13 @@ class TradeRecord {
      * @return
      */
     private static function getPayName($ptype) {
-        if(!$ptype) {
+        $ptype      = intval($ptype);
+        $ptype_list = C('pay_type');
+
+        if($ptype < 0 || !isset($ptype_list[ $ptype ])) {
             return '';
         }
 
-        $ptype_list = C('pay_type');
         return $ptype_list[ $ptype ][1];
     }
 
