@@ -181,7 +181,7 @@ class AnnualCard extends Model
         $physics_arr = [];
         foreach ($list as $item) {
             if ($item['physics_no']) {
-                $physics_arr[] = $item['physics_no'];
+                $physics_arr[] = dechex($item['physics_no']);
             }
             
             $insert_data[] = [
