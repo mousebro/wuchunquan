@@ -109,10 +109,11 @@ class TradeRecord {
     public static function handleData(&$record) {
         //判断fid是不是收款方
         $isPayee = $record['daction'] == 0;
+        $ptype = $record['ptype'];
+        
+        $selfAccType = self::getDefaultAccountType($record['member_acc_type'], $isPayee, $record['fid'], $ptype, $record['dtype']);
 
-        $selfAccType = self::getDefaultAccountType($record['member_acc_type'], $isPayee, $record['fid'], $record['ptype'], $record['dtype']);
-
-        $partnerAcctype = self::getDefaultAccountType('', !$isPayee, $record['aid'], $record['ptype'], $record['dtype']);
+        $partnerAcctype = self::getDefaultAccountType('', !$isPayee, $record['aid'], $ptype, $record['dtype']);
 
         //不显示金额
         if (!in_array($selfAccType, [0, 2, 3]) && $record['lmoney'] == 0) {
@@ -129,7 +130,7 @@ class TradeRecord {
         $record['item']  = $tmp['item_name'];
 
         //转化金额
-        $tmp = self::transMoney($record['dmoney'], $record['lmoney'], $record['daction'], $record['ptype'], $record['is_acc_reverse']);
+        $tmp = self::transMoney($record['dmoney'], $record['lmoney'], $record['daction'], $ptype, $record['is_acc_reverse']);
 
         $record['dmoney']  = $tmp['dmoney'];
         $record['lmoney']  = $tmp['lmoney'];
@@ -156,10 +157,11 @@ class TradeRecord {
     public static function handleDetailData(&$record) {
         //判断fid是不是收款方
         $isPayee = $record['daction'] == 0;
+        $ptype = $record['ptype'];
 
-        $selfAccType = self::getDefaultAccountType($record['member_acc_type'], $isPayee, $record['fid'], $record['ptype'], $record['dtype']);
+        $selfAccType = self::getDefaultAccountType($record['member_acc_type'], $isPayee, $record['fid'], $ptype, $record['dtype']);
 
-        $partnerAcctype = self::getDefaultAccountType('', !$isPayee, $record['aid'], $record['ptype'], $record['dtype']);
+        $partnerAcctype = self::getDefaultAccountType('', !$isPayee, $record['aid'], $ptype, $record['dtype']);
 
         //不显示金额
         if (!in_array($selfAccType, [0, 2, 3]) && $record['lmoney'] == 0) {
@@ -189,14 +191,14 @@ class TradeRecord {
         $record['member']  = self:: getMemberDetail($selfAccountName, $selfAccount, $record['self_name']);
         $record['counter'] = self:: getMemberDetail($partnerAccountName, $partnerAccount, $record['partner_name']);
 
-        //转换支付类型和购买渠道
-        $record['ptype'] = self::getPayName($record['ptype']);
-        $record['order_channel'] = self::getChannelName($record['order_channel']);
-
         //转化金额
-        $tmp = self::transMoney($record['dmoney'], $record['lmoney'], $record['daction'], $record['ptype'], $record['is_acc_reverse']);
+        $tmp = self::transMoney($record['dmoney'], $record['lmoney'], $record['daction'], $ptype, $record['is_acc_reverse']);
         $record['dmoney']  = $tmp['dmoney'];
         $record['lmoney']  = $tmp['lmoney'];
+
+        //转换支付类型和购买渠道
+        $record['ptype'] = self::getPayName($ptype);
+        $record['order_channel'] = self::getChannelName($record['order_channel']);
 
         //删除没用数据
         unset($record['is_acc_reverse'], $record['self_name'], $record['self_account'], $record['partner_name'], $record['partner_account']);
@@ -214,9 +216,11 @@ class TradeRecord {
         //判断fid是不是收款方
         $isPayee = $record['daction'] == 0;
 
-        $selfAccType = self::getDefaultAccountType($record['member_acc_type'], $isPayee, $record['fid'], $record['ptype'], $record['dtype']);
+        $ptype = $record['ptype'];
 
-        $partnerAcctype = self::getDefaultAccountType($record['partner_acc_type'], !$isPayee, $record['aid'], $record['ptype'], $record['dtype']);
+        $selfAccType = self::getDefaultAccountType($record['member_acc_type'], $isPayee, $record['fid'], $ptype, $record['dtype']);
+
+        $partnerAcctype = self::getDefaultAccountType($record['partner_acc_type'], !$isPayee, $record['aid'], $ptype, $record['dtype']);
 
         //不显示金额
         if (!in_array($selfAccType, [0, 2, 3]) && $record['lmoney'] == 0) {
@@ -261,7 +265,7 @@ class TradeRecord {
         }
 
         //转化金额
-        $tmp = self::transMoney($record['dmoney'], $record['lmoney'], $record['daction'], $record['ptype'], $record['is_acc_reverse']);
+        $tmp = self::transMoney($record['dmoney'], $record['lmoney'], $record['daction'], $ptype, $record['is_acc_reverse']);
         $record['dmoney']  = $tmp['dmoney'];
         $record['lmoney']  = $tmp['lmoney'];
 
@@ -275,7 +279,7 @@ class TradeRecord {
         }
 
         //转换支付类型和购买渠道
-        $record['ptype'] = self::getPayName($record['ptype']);
+        $record['ptype'] = self::getPayName($ptype);
         $record['order_channel'] = self::getChannelName($record['order_channel']);
 
         //将excel字段设置为字符串类型
@@ -484,6 +488,8 @@ class TradeRecord {
             $lmoney = '';
             $dmoney = $daction == 0 ? ("-" . $dmoney) : ("+" . $dmoney);
         } else {
+
+
             $dmoney = $daction == 0 ? ("+" . $dmoney) : ("-" . $dmoney);
         }
 
