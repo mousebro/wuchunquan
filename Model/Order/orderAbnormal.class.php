@@ -16,7 +16,7 @@ class orderAbnormal extends Model {
     //对接系统标识码 0去哪儿 20美团直连 13百度直达 21美团 22糯米 23美团V2
     const GROUPON_IDENT = array(0,20,13,21,22,23);
     //异常订单状态码
-    const errorStatus = array(1, 2);
+    const ERRORSTATUS = array(1, 2);
     /**
      * 通过fid从uu_qunar_use表获取tid，coop_id
      * @param int $fid 登录账号的id
@@ -52,7 +52,7 @@ class orderAbnormal extends Model {
                 array('gt', $bTime),
                 array('lt', $eTime),
             ),
-            'A.handleStatus' => array('in', self::errorStatus),
+            'A.handleStatus' => array('in', self::ERRORSTATUS),
             'A.coopB' => array('not in', self::GROUPON_IDENT),
         );
         $table = self::ALL_API_ORDER;
@@ -114,7 +114,7 @@ class orderAbnormal extends Model {
                 array('gt', $bTime),
                 array('lt', $eTime),
             ),
-            'A.handleStatus' => array('in', self::errorStatus),
+            'A.handleStatus' => array('in', self::ERRORSTATUS),
             'A.coopB' => array('not in', self::GROUPON_IDENT),
         );
         $table = self::ALL_API_ORDER;
@@ -207,7 +207,7 @@ class orderAbnormal extends Model {
             return false;
         }
         $params = array(
-            'handleStatus' => array('in', self::errorStatus),
+            'handleStatus' => array('in', self::ERRORSTATUS),
             'coopB' => array('in', self::GROUPON_IDENT),
             'cTime' => array(
                 array('egt', $bTime),
