@@ -158,9 +158,10 @@ class Withdraws extends Model{
      * @param $accountInfo 账号信息数组  {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":"","account_name":""}
      * @param $isAuto 是否直接自动清分
      * @param $isHumanAuth 是否需要财务审核 - $isAuto为true的时候才起作用
+     * @param $operateId 操作人ID
      * 
      */
-    public function addRecord($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false, $isHumanAuth = false) {
+    public function addRecord($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false, $isHumanAuth = false, $operateId = false) {
         $wdMoney    = intval($wdMoney);
         $serviceFee = intval($serviceFee);
         $cutwayArr  = ['0' => '提现金额扣除', '1' => '账户余额扣除'];
@@ -180,7 +181,7 @@ class Withdraws extends Model{
 
         $memo = "申请提现金额:{$wdMoneyV}元,手续费:{$serviceChargeV}元,{$cutwayV},实际提现金额:{$transMoneyV}元";
         
-        //备注添加账号信息
+        //备注添加账号信息 
         $memo .= "【{$accountInfo['bank_account']}({$accountInfo['bank_name']})】";
 
         if($isAuto) {
@@ -240,10 +241,13 @@ class Withdraws extends Model{
             return false;
         }
 
+        //操作人ID
+        $operateId = $operateId !== false ? intval($operateId) : $fid;
+
         //通过接口调用交易流水扣除
         $soapInside = Helpers::GetSoapInside();
         $frozenMoney = $feeCutWay == 1 ? $wdMoney + $serviceCharge : $wdMoney;
-        $res = $soapInside->PFT_Member_Fund_Modify($fid, $fid, $frozenMoney, 1, 0, $fid, 6, null, $orderId, $memo);
+        $res = $soapInside->PFT_Member_Fund_Modify($fid, $operateId, $frozenMoney, 1, 0, $fid, 6, null, $orderId, $memo);
         if($res == 100) {
             $this->commit();
             return true;
