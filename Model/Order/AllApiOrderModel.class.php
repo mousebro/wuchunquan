@@ -7,7 +7,7 @@
 namespace Model\Order;
 use Library\Model;
 
-class allApiOrderModel extends Model {
+class AllApiOrderModel extends Model {
 
     const ALL_API_ORDER = 'all_api_order';
     //对接系统标识码 0去哪儿 20美团直连 13百度直达 21美团 22糯米 23美团V2
@@ -156,5 +156,25 @@ class allApiOrderModel extends Model {
             'count' => $count,
             'data' => $data,
         );
+    }
+
+    /**
+     * 根据获取信息
+     * @param string    $field  需要获取的字段名
+     * @param array     $filter 限制条件
+     * @param int       $start   从第几条开始
+     * @param int       $size    一次获取的条数
+     * @return array
+     * @author liubb
+     */
+    public function getListInfo($field = '*', $filter, $start = 0, $size = 15) {
+        if (!is_array($filter) || !is_numeric($start) || !is_numeric($size)) {
+            return false;
+        }
+        $data = $this->table(self::ALL_API_ORDER)->field($field)->where($filter)->limit($start, $size)->select();
+        if (!$data) {
+            return false;
+        }
+        return $data;
     }
 }
