@@ -69,25 +69,28 @@ return array(
     //自动提现默认配置
     'withdraw_default' => array(
         'day' => array(
-            'service_fee'   => 5, //默认千分之五
-            'reserve_money' => 200, //默认冻结多少钱
-            'reserve_scale' => 20,  //默认冻结的比例
-            'limit_money'   => 200,  //最低需要达到多少才能体现 - 单位元
-            'auth_money'    => 100  //金额达到多少需要财务审核 - 单位元
+            'service_fee'       => 5, //默认千分之五
+            'reserve_money'     => 200, //默认冻结多少钱
+            'reserve_scale'     => 20,  //默认冻结的比例
+            'limit_money'       => 200,  //最低需要达到多少才能体现 - 单位元
+            'auth_money'        => 50000,  //金额达到多少需要财务审核 - 单位元
+            'low_service_money' => 1,  //金额达到多少需要财务审核 - 单位元
         ),
         'week' => array(
-            'service_fee'   => 5, //默认千分之五
-            'reserve_money' => 200, //默认冻结多少钱
-            'reserve_scale' => 20,  //默认冻结的比例
-            'limit_money'   => 200,  //最低需要达到多少才能体现 - 单位元
-            'auth_money'    => 200  //金额达到多少需要财务审核 - 单位元
+            'service_fee'       => 5, //默认千分之五
+            'reserve_money'     => 200, //默认冻结多少钱
+            'reserve_scale'     => 20,  //默认冻结的比例
+            'limit_money'       => 200,  //最低需要达到多少才能体现 - 单位元
+            'auth_money'        => 50000,  //金额达到多少需要财务审核 - 单位元
+            'low_service_money' => 1,  //金额达到多少需要财务审核 - 单位元
         ),
         'month' => array(
-            'service_fee'   => 5, //默认千分之五
-            'reserve_money' => 200, //默认冻结多少钱
-            'reserve_scale' => 20,  //默认冻结的比例
-            'limit_money'   => 200,  //最低需要达到多少才能体现 - 单位元
-            'auth_money'    => 500  //金额达到多少需要财务审核 - 单位元
+            'service_fee'       => 5, //默认千分之五
+            'reserve_money'     => 200, //默认冻结多少钱
+            'reserve_scale'     => 20,  //默认冻结的比例
+            'limit_money'       => 200,  //最低需要达到多少才能体现 - 单位元
+            'auth_money'        => 50000,  //金额达到多少需要财务审核 - 单位元
+            'low_service_money' => 1,  //金额达到多少需要财务审核 - 单位元
         )
     )
 );

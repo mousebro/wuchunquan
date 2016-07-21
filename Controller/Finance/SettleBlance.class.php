@@ -350,8 +350,11 @@ class SettleBlance extends Controller {
             $this->apiReturn(200);
         }
 
+        //模式
+        $mode = $info['mode'];
+
         $settleBlanceModel = $this->model('Finance/SettleBlance');
-        $res = $settleBlanceModel->settingStatus($updateId, $this->_memberId, $status);
+        $res = $settleBlanceModel->settingStatus($updateId, $this->_memberId, $status, $mode);
 
         if($res) {
             //写日志

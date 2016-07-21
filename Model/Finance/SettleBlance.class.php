@@ -120,7 +120,7 @@ class SettleBlance extends Model{
      * @param  $status 状态 off=无效，on=有效
      * @return
      */
-    public function settingStatus($id, $updateUid, $status = 'off') {
+    public function settingStatus($id, $updateUid, $status = 'off', $mode) {
         if(!$id || !$updateUid || !in_array($status, ['on', 'off'])) {
             return false;
         }
@@ -131,6 +131,13 @@ class SettleBlance extends Model{
             'update_uid'  => $updateUid,
             'update_time' => time()
         ];
+
+        //将当前周期写入，只有到达下一个周期的时候才会开始清分
+        $mode = intval($mode);
+        if($status == 'on' && in_array($mode, [1, 2, 3])) {
+            $circleMark = $this->_getCurrnetCircleMark($mode);
+            $data['cycle_mark'] = $circleMark;
+        }
 
         $res = $this->table($this->_settingTable)->where($where)->save($data);
         return $res === false ? false : true;
@@ -705,12 +712,14 @@ class SettleBlance extends Model{
         }
 
         //获取配置信息
-        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('account_info, service_fee, status')->find();
+        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('account_info, service_fee, status, cut_way')->find();
         if(!$settingInfo) {
             return ['status' => -1];
         }
 
+        //cut_way - 手续费扣除方式：0=提现金额中扣除，1=账户余额扣除
         $serviceFee  = floatval($settingInfo['service_fee']);
+        $feeCutWay   = intval($settingInfo['cut_way']);
         $accountInfo = @json_decode($settingInfo['account_info'], true);
 
         //参数判断
@@ -733,13 +742,26 @@ class SettleBlance extends Model{
         //剩余的账号金额
         $leftMoney = $amoney - $transferMoney;
 
-        //计算手续费，不足一元按一元计算 - 分为单位
-        $feeMoney = intval($transferMoney * ($serviceFee / 1000));
-        $feeMoney = $feeMoney < 100 ? 100 : $feeMoney;
+        $defaultConf = load_config('withdraw_default');
+        $modeArr     = [1 => 'day', 2 => 'week', 3 => 'month'];
+        $key         = $modeArr[$mode];
+        $needConf    = $defaultConf[$key];
 
-        if($feeMoney > $leftMoney ) {
-            //剩余金额不足以支付提现手续费
-            return ['status' => -4, 'amoney' => $amoney, 'fee_money' => $feeMoney, 'transfer_money' => $transferMoney];
+        //计算手续费，不足一元按一元计算 - 分为单位
+        if($serviceFee == 0) {
+            $feeMoney = 0;
+        } else {
+            $feeMoney   = intval($transferMoney * ($serviceFee / 1000));
+            $lowService = isset($needConf['low_service_money']) ? $needConf['low_service_money'] * 100 : 100;
+            $feeMoney   = $feeMoney < $lowService ? $lowService : $feeMoney;
+        }
+
+        //账户余额扣除，需要判斷余额是不是足够
+        if($feeCutWay == 1) {
+            if($feeMoney > $leftMoney ) {
+                //剩余金额不足以支付提现手续费
+                return ['status' => -4, 'amoney' => $amoney, 'fee_money' => $feeMoney, 'transfer_money' => $transferMoney];
+            }
         }
 
         //提现
@@ -748,10 +770,7 @@ class SettleBlance extends Model{
         $accountType   = 1;
 
         //获取需要审核的提现金额配置
-        $defaultConf = load_config('withdraw_default');
-        $modeArr     = [1 => 'day', 2 => 'week', 3 => 'month'];
-        $key         = $modeArr[$mode];
-        $authMoney  = isset($defaultConf[$key]) ? $defaultConf[$key]['auth_money'] : 50000; 
+        $authMoney  = isset($needConf['auth_money']) ? $needConf['auth_money'] : 50000; 
         $authMoney  = $authMoney * 100; //转化为分
         unset($defaultConf);
         if($transferMoney >= $authMoney) {
