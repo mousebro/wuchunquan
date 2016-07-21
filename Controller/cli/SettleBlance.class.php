@@ -106,8 +106,8 @@ class SettleBlance extends Controller {
 
         //获取周结的记录
         $weekMark = date('Y02W');
-        $dayList = $settleBlanceModel->getSettingList(1, 200, false, 2, $weekMark);
-        foreach($dayList as $item) {
+        $weekList = $settleBlanceModel->getSettingList(1, 200, false, 2, $weekMark);
+        foreach($weekList as $item) {
             $timeArr = $settleBlanceModel->createSettleTime($item['mode'], $weekMark, $item['close_time'], $item['close_date']);
 
             $settleTime   = strtotime($timeArr['settle_time']);
@@ -151,8 +151,8 @@ class SettleBlance extends Controller {
 
         //获取月结的记录
         $montyMark = date('Y01m');
-        $dayList = $settleBlanceModel->getSettingList(1, 200, false, 3, $montyMark);
-        foreach($dayList as $item) {
+        $montyList = $settleBlanceModel->getSettingList(1, 200, false, 3, $montyMark);
+        foreach($montyList as $item) {
             $timeArr = $settleBlanceModel->createSettleTime($item['mode'], $montyMark, $item['close_time'], $item['close_date'], $item['transfer_time'], $item['transfer_date']);
 
             $settleTime   = strtotime($timeArr['settle_time']);

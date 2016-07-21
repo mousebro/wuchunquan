@@ -57,6 +57,10 @@ class SettleBlance extends Model{
 
         $data['fid'] = $fid;
 
+        //将当前周期写入，只有到达下一个周期的时候才会开始清分
+        $circleMark = $this->_getCurrnetCircleMark($mode);
+        $data['cycle_mark'] = $circleMark;
+
         if(!$data) {
             return false; 
         }
@@ -97,7 +101,9 @@ class SettleBlance extends Model{
 
         //更新提现标识
         if($isUpdateMark) {
-            $data['cycle_mark'] = 0;
+            //将当前周期写入，只有到达下一个周期的时候才会开始清分
+            $circleMark = $this->_getCurrnetCircleMark($mode);
+            $data['cycle_mark'] = $circleMark;
         }
 
         $res = $this->table($this->_settingTable)->where(['id' => $id])->save($data);
@@ -1151,7 +1157,7 @@ class SettleBlance extends Model{
     }
 
     /**
-     *  
+     * 保存被冻结的订单数据
      * @author dwer
      * @date   2016-07-05
      *
@@ -1183,6 +1189,33 @@ class SettleBlance extends Model{
         $res = $this->table($this->_frozeTable)->add($data);
 
         return $res === false ? false : true;
+    }
+
+    /**
+     * 获取周期标识
+     * @author dwer
+     * @date   2016-07-21
+     *
+     * @param  $mode 模式 1=日结，2=周结，3=月结
+     * @param  $currentTimestamp 时间戳 - 默认当前时间
+     * @return
+     */
+    private function _getCurrnetCircleMark($mode, $currentTimestamp = false) {
+        if(!in_array($mode, [1, 2, 3])) {
+            $mode = 1;
+        }
+
+        $currentTimestamp = $currentTimestamp ? intval($currentTimestamp) : time();
+
+        if($mode == 1) {
+            $circleMark = date('Ymd', $currentTimestamp); 
+        } elseif($mode == 2) {
+            $circleMark = date('Y02W', $currentTimestamp);
+        } else {
+            $circleMark = date('Y01m', $currentTimestamp);
+        }
+
+        return $circleMark;
     }
 
 }
