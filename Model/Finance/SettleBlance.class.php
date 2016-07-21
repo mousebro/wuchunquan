@@ -39,12 +39,13 @@ class SettleBlance extends Model{
      * @param $transferTime 转账时间，具体几点
      * @param $updateUid 配置修改用户ID
      * @param $accountInfo 账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","account_name":"","acc_type":"","select_no":}',
-     * @param $serviceFee 提现手续费
+     * @param $serviceFee 提现手续费 - 千分之几
+     * @param $cutWay 提现手续费扣除方式 - 0=提现金额中扣除，1=账户余额扣除
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      *
      * @return bool
      */
-    public function addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee,
+    public function addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay = 1, 
             $freezeData = false) {
 
         if(!$fid) {
@@ -52,7 +53,7 @@ class SettleBlance extends Model{
         }
 
         //参数统一校验，格式化
-        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, 
+        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay,
             $freezeData);
 
         $data['fid'] = $fid;
@@ -84,17 +85,19 @@ class SettleBlance extends Model{
      * @param $transferTime 转账时间，具体几点
      * @param $updateUid 配置修改用户ID
      * @param $accountInfo '账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":""}',
+     * @param $serviceFee 提现手续费 - 千分之几
+     * @param $cutWay 提现手续费扣除方式 - 0=提现金额中扣除，1=账户余额扣除
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      *
      * @return bool
      */
-    public function updateSetting($id, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData = false, $isUpdateMark = false) {
+    public function updateSetting($id, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay = 1, $freezeData = false, $isUpdateMark = false) {
         if(!$id) {
             return false;
         }
 
         //参数统一校验，格式化
-        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData);
+        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay, $freezeData);
         if(!$data) {
             return false;
         }
@@ -720,6 +723,7 @@ class SettleBlance extends Model{
         //cut_way - 手续费扣除方式：0=提现金额中扣除，1=账户余额扣除
         $serviceFee  = floatval($settingInfo['service_fee']);
         $feeCutWay   = intval($settingInfo['cut_way']);
+        $feeCutWay   = in_array($feeCutWay, [0, 1]) ? $feeCutWay : 1;
         $accountInfo = @json_decode($settingInfo['account_info'], true);
 
         //参数判断
@@ -766,7 +770,6 @@ class SettleBlance extends Model{
 
         //提现
         $withdrawModel = new Withdraws();
-        $feeCutWay     = 1;
         $accountType   = 1;
 
         //获取需要审核的提现金额配置
@@ -1017,13 +1020,15 @@ class SettleBlance extends Model{
      * @param $transferTime 转账时间，具体几点
      * @param $updateUid 配置修改用户ID
      * @param $accountInfo '账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":""}',
+     * @param $serviceFee 提现手续费 千分之几
+     * @param $cutWay 提现手续费扣除方式 - 0=提现金额中扣除，1=账户余额扣除
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      * @return array / bool
      */
-    private function _formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, 
+    private function _formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay, 
             $freezeData = false) {
 
-        if(!in_array($mode, [1, 2, 3]) || !$updateUid || !$accountInfo || !is_array($accountInfo)) {
+        if(!in_array($mode, [1, 2, 3]) || !in_array($cutWay, [0, 1]) || !$updateUid || !$accountInfo || !is_array($accountInfo)) {
             return false;
         }
 
@@ -1033,6 +1038,7 @@ class SettleBlance extends Model{
         $transferTime = intval($transferTime);
         $accountInfo  = json_encode($accountInfo);
         $serviceFee   = floatval($serviceFee);
+        $cutWay       = intval($cutWay);
         
         if($freezeType == 2) {
             if(!$freezeData || !is_array($freezeData)) {
@@ -1042,7 +1048,7 @@ class SettleBlance extends Model{
             $freezeData = json_encode($freezeData);
         }
 
-        if($serviceFee < 0 || $serviceFee > 100) {
+        if($serviceFee < 0 || $serviceFee > 1000) {
             return false;
         }
 
@@ -1055,6 +1061,7 @@ class SettleBlance extends Model{
             'transfer_time' => $transferTime,
             'account_info'  => $accountInfo,
             'service_fee'   => $serviceFee,
+            'cut_way'       => $cutWay,
             'update_uid'    => $updateUid,
             'update_time'   => time()
         ];
