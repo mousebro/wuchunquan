@@ -32,8 +32,9 @@ class OrderSubmit extends Model
         return $this->table(self::__TBL_ORDER__)
             ->where($map)
             ->bind([':remotenum'=>$remoteNum, ':member'=>$memberId])
+            ->field('id,ordernum,code,salerid')
             ->limit(1)
-            ->getField('id,ordernum,code,salerid');
+            ->find();
     }
 
     /**
