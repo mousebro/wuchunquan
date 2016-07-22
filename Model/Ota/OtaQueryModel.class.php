@@ -11,7 +11,8 @@ class OtaQueryModel extends Model {
 
     private $_uu_land = 'uu_land';
     private $_pft_member = 'pft_member';
-
+    private $_uu_jq_ticket = 'uu_jq_ticket';
+    private $_pft_csys_landid = 'pft_csys_landid';
 
     /**
      * 根据salerid获取terminal（uu_land表）
@@ -40,6 +41,54 @@ class OtaQueryModel extends Model {
         );
         $res = $this->table($this->_pft_member)->where($params)->limit(1)->getField('mobile');
         if ($res) {
+            return false;
+        }
+        return $res;
+    }
+    /**
+     * 通过id获取最新的单条信息(uu_jq_ticket表)
+     * @param string $field 要获取的字段名
+     * @param string $pftOrder
+     * @param int $start
+     * @param int $limit
+     * @param string $orderby
+     * @return array
+     */
+    public function selectInfoByIdInTicket($field = '*', $id, $start = 0, $limit = 15, $orderby = '') {
+        if (empty($id) || !is_numeric($id)) {
+            return false;
+        }
+        $params = array(
+            'id' => $id,
+        );
+        $res = $this->table($this->_uu_jq_ticket)->field($field)->where($params)->limit($start, $limit);
+        if ($orderby) {
+            $res = $res->order($order);
+        }
+        $res = $res->find();
+        if (empty($res)) {
+            return false;
+        }
+        return $res;
+    }
+
+    /**
+     * 获取
+     * @param int $lid
+     * @return array
+     *
+     */
+    public function getCsysid($lid) {
+        $table = $this->_pft_csys_landid.' C';
+        $params = array(
+            'c.lid' => $lid,
+            'c.status' => 0,
+        );
+        $res = $this->table($table)->join('left join pft_con_sys S on C.csysid = S.id')
+                                   ->where($params)
+                                   ->limit(1)
+                                   ->find();
+        if (!$res) {
             return false;
         }
         return $res;

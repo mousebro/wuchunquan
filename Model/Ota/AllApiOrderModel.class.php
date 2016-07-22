@@ -17,21 +17,18 @@ class AllApiOrderModel extends Model {
     }
 
     /**
-     * 通过pftOrder更新all_api_order表的oStatus，handleStatus
+     * 通过pftOrder更新all_api_order表
      * 只更新一条
-     * @param
+     * @param array $data
+     * @param $pftOrder
      * @return int | boolen
      */
-    public function updateStatusByOrder($oStatus = 1, $handleStatus = 0, $pftOrder) {
-        if (!is_numeric($oStatus) || !is_numeric($handleStatus)) {
+    public function updateStatusByOrder($data, $pftOrder) {
+        if (!is_array($data)) {
             return false;
         }
         $params = array(
             'pftOrder' => $pftOrder,
-        );
-        $data = array(
-            'oStatus' => $oStatus,
-            'handleStatus' => $handleStatus,
         );
         $this->table($this->_all_api_order)->where($params)->limit(1)->save($data);
     }
@@ -49,4 +46,108 @@ class AllApiOrderModel extends Model {
         $res = $this->table($table)->add($params);
         return $res;
     }
+
+    /**
+     * 通过tempOrder更新pftOrder，oStnum
+     * @param array $data
+     * @param $tempOrder
+     * @param $orderby
+     * @param int $limit
+     * @return
+     */
+    public function updateInfoByTempOrder($data, $tempOrder, $orderby = '', $limit = 1) {
+        if (!is_array($data) || !is_string($orderby)) {
+            return false;
+        }
+        $params = array(
+            'tempOrder' => $tempOrder,
+        );
+        $res = $this->table($this->_all_api_order)->where($params);
+        if ($orderby) {
+            $res = $res->order($orderby);
+        }
+        $res = $res->limit($limit)->save($data);
+        if (!$res) {
+            return false;
+        }
+        return $res;
+    }
+
+    /**
+     * 通过pftOrder更新oStnum，apiCode
+     * @param $oStnum
+     * @param $apiCode
+     * @param pftOrder
+     * @return
+     */
+
+    public function updateInfoByPftOrder($oStnum, $apiCode, $pftOrder) {
+        $params = array(
+            'pftOrder' => $pftOrder,
+        );
+        $data = array(
+            'oStnum' => $oStnum,
+            'apiCode' => $apiCode
+        );
+        $res = $this->table($this->_all_api_order)->where($params)->limit(1)->save($data);
+        if ($res) {
+            return false;
+        }
+        return $res;
+    }
+
+    /**
+     * 通过pftOrder获取最新的单条信息
+     * @param string $field 要获取的字段名
+     * @param string $pftOrder
+     * @param int $start
+     * @param int $limit
+     * @param string $orderby
+     * @return array
+     */
+    public function selectInfoByPftOrder($field = '*', $pftOrder, $start = 0, $limit = 1, $orderby = '') {
+        if (!is_string($field) || !is_string($pftOrder) || !is_numeric($start) || !is_numeric($limit) || !is_string($orderby)) {
+            return false;
+        }
+        $params = array(
+            'pftOrder' => $pftOrder,
+        );
+        $res = $this->table($this->_all_api_order)->field($field)->where($params)->limit($start, $limit);
+        if ($orderby) {
+            $res = $res->order($order);
+        }
+        $res = $res->find();
+        if (empty($res)) {
+            return false;
+        }
+        return $res;
+    }
+
+    /**
+     * 通过tempOrder获取最新的单条信息
+     * @param string $field 要获取的字段名
+     * @param string $pftOrder
+     * @param int $start
+     * @param int $limit
+     * @param string $orderby
+     * @return array
+     */
+    public function selectInfoByTempOrder($field = '*', $tempOrder, $start = 0, $limit = 1, $orderby = '') {
+        if (!is_string($field) || !is_string($pftOrder) || !is_numeric($start) || !is_numeric($limit) || !is_string($orderby)) {
+            return false;
+        }
+        $params = array(
+            'tempOrder' => $tempOrder,
+        );
+        $res = $this->table($this->_all_api_order)->field($field)->where($params)->limit($start, $limit);
+        if ($orderby) {
+            $res = $res->order($order);
+        }
+        $res = $res->find();
+        if (empty($res)) {
+            return false;
+        }
+        return $res;
+    }
+
 }
