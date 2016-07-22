@@ -28,7 +28,7 @@ class OrderNotify {
      */
     private $model;
 
-    private $modelMaster = null;
+    private static $modelMaster = null;
 
     const SMS_FORMAT_STR  = 1;
     const SMS_FORMAT_ARR  = 2;
@@ -55,6 +55,14 @@ class OrderNotify {
         $this->title            = $title;
         $this->not_to_buyer     = $not_to_buyer;
         //pft_log('queue/vcom', 'OrderNotify:' . json_encode(func_get_args()));
+    }
+
+    private static function getMasterModel()
+    {
+        if (is_null(self::$modelMaster)) {
+            self::$modelMaster = new Model('localhost_wsdl');
+        }
+        return self::$modelMaster;
     }
 
     public function Send( $code=0, $manualQr=false )
@@ -169,37 +177,48 @@ class OrderNotify {
         }
         //是否发送凭证码（短信）到取票人手机  0 发送 1 不发送
         if ($infos['extAttrs'][0]['sendVoucher']==1) return true;
-        $this->p_type = $p_type = strtoupper($this->p_type);
-        $sms_tpl = $this->SmsTemplate();
-        $cformat = $sms_sign = '';
         $sms_channel = 0;
-        $sms_account = '';
-        if ($sms_tpl) {
-            $cformat        = $sms_tpl['cformat'];
-            $sms_sign       = $sms_tpl['sms_sign'];
-            $sms_channel    = $sms_tpl['dtype'];
-            $sms_account    = $sms_tpl['sms_account'];
+        $smsLog = $this->GetSmsLog($this->order_num);
+        if ($smsLog['smstxt']!='') {
+            $sms_content = $smsLog['smstxt'];
+            $sms_account = $smsLog['taccount'];
+            $update_order= 1;
         }
-        $code        = $code==0 ? $infos['code'] : $code;
-        $sms_content = $this->SmsContent($this->title . $infos['pname'],  $infos['getaddr'],
-            $infos['begintime'], $infos['endtime'], $cformat, $code, 1, $manualQr);
-        if (!empty($sms_sign)) {
-            $sms_content = "【{$sms_sign}】$sms_content";
+        else {
+            $this->p_type = $p_type = strtoupper($this->p_type);
+            $sms_tpl = $this->SmsTemplate();
+            $cformat = $sms_sign = '';
+
+            $sms_account = '';
+            if ($sms_tpl) {
+                $cformat        = $sms_tpl['cformat'];
+                $sms_sign       = $sms_tpl['sms_sign'];
+                $sms_channel    = $sms_tpl['dtype'];
+                $sms_account    = $sms_tpl['sms_account'];
+            }
+            $code        = $code==0 ? $infos['code'] : $code;
+            $sms_content = $this->SmsContent($this->title . $infos['pname'],  $infos['getaddr'],
+                $infos['begintime'], $infos['endtime'], $cformat, $code, 1, $manualQr);
+            if (!empty($sms_sign)) {
+                $sms_content = "【{$sms_sign}】$sms_content";
+            }
+            $update_order= 2;
         }
-        if (is_null($this->modelMaster)) {
-            $this->modelMaster = new Model('localhost_wsdl');
-        }
-        $this->modelMaster->table('uu_ss_order')
-            ->where(['ordernum'=>$this->order_num, 'remsg'=>0])
-            ->data(['remsg'=>1])
-            ->limit(1)
-            ->save();
-        $this->SaveSmsLog($this->order_tel,$sms_content, $this->order_num, $this->buyerId, $this->sellerId,$sms_account);
-        $res = $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account);
+        $res = $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account, $update_order);
         return $res;
     }
 
-    public function SaveSmsLog($ordertel, $smstxt, $ordern, $fid, $aid, $taccount, $send_now=0)
+    /**
+     * 获取短信内容
+     *
+     * @param $ordern
+     * @return mixed
+     */
+    public function GetSmsLog($ordern)
+    {
+        return $this->model->table('sms_order')->where(['ordernum'=>$ordern])->find();
+    }
+    public function AddSmsLog($ordertel, $smstxt, $ordern, $fid, $aid, $taccount, $send_now=0)
     {
         //insert sms_order set times=0,ordertel='$ordertel',smstxt='$sendmsg',ordernum='$ordern',fid=$member,aid=$aid,taccount='$Taccount',send_now=$smsSendNow
         $params = [
@@ -211,10 +230,22 @@ class OrderNotify {
             'taccount'  => $taccount,
             'send_now'  => $send_now,
         ];
-        if (is_null($this->modelMaster)) {
-            $this->modelMaster = new Model('localhost_wsdl');
-        }
-        $this->modelMaster->table('sms_order')->data($params)->add();
+        self::getMasterModel()->table('sms_order')->data($params)->add();
+    }
+    public function UpdateSmsLogTimes($ordern)
+    {
+        self::getMasterModel()->table('sms_order')
+            ->where(['ordernum'=>$ordern])
+            ->data(['times'=>['exp','times+1']])
+            ->limit(1)
+            ->save();
+
+        self::getMasterModel()->table('uu_ss_order')
+            ->where(['ordernum'=>$ordern])
+            ->data(['remsg'=>['exp','remsg+1']])
+            ->limit(1)
+            ->save();
+        return 100;
     }
 
     /**
@@ -313,7 +344,7 @@ class OrderNotify {
      * @param string $sms_account 短信账号
      * @return bool
      */
-    public function SendSMS($mobile, $content, $sms_channel=0, $sms_account='')
+    public function SendSMS($mobile, $content, $sms_channel=0, $sms_account='', $update_order=0)
     {
         $content = str_replace(["\n", " ", "　",],'', $content);//过滤换行符，空格
         switch ( $sms_channel ) {
@@ -328,6 +359,19 @@ class OrderNotify {
         }
         $msglen     = utf8Length($content);
         if ($res['code']==200) {
+            //第一次发送订单短信
+            if ($update_order==1) {
+                self::getMasterModel()->table('uu_ss_order')
+                    ->where(['ordernum'=>$this->order_num, 'remsg'=>0])
+                    ->data(['remsg'=>1])
+                    ->limit(1)
+                    ->save();
+                $this->AddSmsLog($this->order_tel,$content, $this->order_num, $this->buyerId, $this->sellerId,$sms_account);
+            }
+            //重发订单短信
+            elseif ($update_order==2) {
+                $this->UpdateSmsLogTimes($this->order_num);
+            }
             //扣费
             $m      = ceil($msglen/67);
             $memOjb = new \Model\Member\Member();
