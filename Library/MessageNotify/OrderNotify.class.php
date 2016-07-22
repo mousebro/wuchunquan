@@ -93,11 +93,16 @@ class OrderNotify {
     {
         $order_info = $this->model->table('uu_ss_order')->where(['ordernum'=>$this->order_num])
             ->limit(1)
-            ->field('lid,tid,tnum,ordername,begintime,endtime,code')
+            ->field('member,lid,tid,aid,tnum,ordername,ordertel,begintime,endtime,code')
             ->find();
         $tid_list = [
             $order_info['tid']=>$order_info['tnum'],
         ];
+        //检测必要的参数是否为null
+        if (!$this->order_tel) $this->order_tel = $order_info['ordertel'];
+        if (!$this->buyerId) $this->buyerId     = $order_info['member'];
+        if (!$this->aid) $this->aid             = $order_info['aid'];
+
         $time_list = [ $order_info['begintime'] ];
         $linksOrder = $this->model->table('uu_ss_order s')
             ->join('left join uu_order_fx_details f ON s.ordernum=f.orderid')
