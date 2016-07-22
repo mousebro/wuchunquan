@@ -95,12 +95,12 @@ class AllApiOrderModel extends Model {
             return false;
         }
         $params = array(
-            'A.cTime' => array(
+            'cTime' => array(
                 array('gt', $bTime),
                 array('lt', $eTime),
             ),
-            'A.handleStatus' => array('in', self::ERRORSTATUS),
-            'A.coopB' => array('not in', self::GROUPON_IDENT),
+            'handleStatus' => array('in', self::ERRORSTATUS),
+            'coopB' => array('not in', self::GROUPON_IDENT),
         );
         $data = $this->table(self::ALL_API_ORDER)->where($params)
                                                  ->order('id desc')
