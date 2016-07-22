@@ -100,7 +100,7 @@ class OrderNotify {
             ->limit(1)
             ->field('member,lid,tid,aid,tnum,ordername,ordertel,begintime,endtime,code,remsg')
             ->find();
-        if ($order_info['remsg']>3) return 116;
+        if ($order_info['remsg']>=3) return 116;
         $tid_list = [
             $order_info['tid']=>$order_info['tnum'],
         ];
