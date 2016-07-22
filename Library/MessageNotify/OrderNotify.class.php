@@ -22,6 +22,7 @@ class OrderNotify {
     private $title;
     private $buyerId;
     private $not_to_buyer;
+    private $not_to_seller;
 
     /**
      * @var Model
@@ -41,7 +42,7 @@ class OrderNotify {
 //此为凭证，请妥善保管。详情及二维码:http://12301.cc/3u5235
 //发给供应商的短信：
 
-    public function __construct($ordernum, $buyerId, $aid, $mobile,$pid=0, $sellerID=0, $ptype=0, $title='', $not_to_buyer=0)
+    public function __construct($ordernum, $buyerId, $aid, $mobile,$pid=0, $sellerID=0, $ptype=0, $title='', $not_to_buyer=0, $not_to_seller=0)
     {
         $this->model            = new Model('slave');
         $this->order_num        = $ordernum;
@@ -54,6 +55,7 @@ class OrderNotify {
         $this->pid              = $pid;
         $this->title            = $title;
         $this->not_to_buyer     = $not_to_buyer;
+        $this->not_to_seller     = $not_to_seller;
         //pft_log('queue/vcom', 'OrderNotify:' . json_encode(func_get_args()));
     }
 
@@ -68,6 +70,7 @@ class OrderNotify {
     public function Send( $code=0, $manualQr=false )
     {
         $infos = $this->getOrderInfo();
+        if (!is_array($infos)) return $infos;
         if (!$this->pid) {
             $land= $this->model->table('uu_land')
                 ->field('id,title,p_type,apply_did')
@@ -81,7 +84,9 @@ class OrderNotify {
         if ($this->not_to_buyer!=1) {
             $this->BuyerNotify($infos, $code, $manualQr);
         }
-        $this->SellerNotify($infos);
+        if ($this->not_to_seller!=1) {
+            $this->SellerNotify($infos);
+        }
         return true;
     }
     /**
@@ -93,8 +98,9 @@ class OrderNotify {
     {
         $order_info = $this->model->table('uu_ss_order')->where(['ordernum'=>$this->order_num])
             ->limit(1)
-            ->field('member,lid,tid,aid,tnum,ordername,ordertel,begintime,endtime,code')
+            ->field('member,lid,tid,aid,tnum,ordername,ordertel,begintime,endtime,code,remsg')
             ->find();
+        if ($order_info['remsg']>3) return 116;
         $tid_list = [
             $order_info['tid']=>$order_info['tnum'],
         ];
@@ -184,10 +190,11 @@ class OrderNotify {
         if ($infos['extAttrs'][0]['sendVoucher']==1) return true;
         $sms_channel = 0;
         $smsLog = $this->GetSmsLog($this->order_num);
+        pft_log('queue/debug', 'smslog:'.json_encode($smsLog));
         if ($smsLog['smstxt']!='') {
             $sms_content = $smsLog['smstxt'];
             $sms_account = $smsLog['taccount'];
-            $update_order= 1;
+            $update_order= 2;
         }
         else {
             $this->p_type = $p_type = strtoupper($this->p_type);
@@ -207,7 +214,8 @@ class OrderNotify {
             if (!empty($sms_sign)) {
                 $sms_content = "【{$sms_sign}】$sms_content";
             }
-            $update_order= 2;
+            $update_order= 1;
+            pft_log('queue/debug', '$sms_content:'.$sms_content);
         }
         $res = $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account, $update_order);
         return $res;
@@ -363,6 +371,7 @@ class OrderNotify {
                 break;
         }
         $msglen     = utf8Length($content);
+
         if ($res['code']==200) {
             //第一次发送订单短信
             if ($update_order==1) {
@@ -491,11 +500,12 @@ class OrderNotify {
     public function WxNotifyChk($fid, $useOtherAppid=false)
     {
         $wx = new WxMember();
-        if (is_bool($useOtherAppid)) {
-            $appid = $useOtherAppid ? WECHAT_APPID : OpenExt::PFT_APP_ID;
-        } else {
-            $appid = $useOtherAppid;
-        }
+        $appid = PFT_WECHAT_APPID;
+        //if (is_bool($useOtherAppid)) {
+        //    $appid = $useOtherAppid ? WECHAT_APPID : PFT_WECHAT_APPID;
+        //} else {
+        //    $appid = $useOtherAppid;
+        //}
         $data = $wx->getWxInfo($fid, $appid);
 
         $tmp    = array();
