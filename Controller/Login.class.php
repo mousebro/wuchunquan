@@ -22,8 +22,14 @@ class Login
         return ($strs);
     }
     //生成验证码方法
-    public function getCode()
-    {
+    public function getCode(){
+        //判断来源地址
+        $referer = I('server.HTTP_REFERER');
+        $host    = I('server.HTTP_HOST');
+        if(strrpos($referer, $host) === false) {
+            exit('非法请求');
+        }
+       
         $str= $this->random(4);    //随机生成的字符串
         $width=60;    //验证码图片的宽度
         $height=25;    //验证码图片的高度
