@@ -9,6 +9,8 @@
 
 namespace Library\Tools;
 
+use \SoapClient;
+
 class Helpers {
     static private $_prevPath = '/var/www/html/new/';
 
