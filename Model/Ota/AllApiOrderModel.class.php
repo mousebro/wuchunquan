@@ -10,8 +10,8 @@ use Library\Model;
 class AllApiOrderModel extends Model {
 
 
-    private $_all_api_order = 'all_api_order';
-    private $_api_order_track = 'api_order_track';
+    private $_all_api_order     = 'all_api_order';
+    private $_api_order_track   = 'api_order_track';
 
     public function __construct() {
         parent::__construct('pft001');
@@ -44,7 +44,7 @@ class AllApiOrderModel extends Model {
         if (!is_string($table) || !is_array($params)) {
             return false;
         }
-        $res = $this->table($table)->add($params);
+        $res = $this->table($table)->data($params)->add();
         return $res;
     }
 
@@ -90,7 +90,9 @@ class AllApiOrderModel extends Model {
             'apiCode' => $apiCode
         );
         $res = $this->table($this->_all_api_order)->where($params)->limit(1)->save($data);
-        if ($res) {
+        if (!$res) {
+            pft_log('sql_error/all_api_order', 
+                'errmsg:' . $this->getDbError() . ';sql:' . $this->_sql());
             return false;
         }
         return $res;
@@ -110,7 +112,9 @@ class AllApiOrderModel extends Model {
             'pftOrder' => $Ordern
         );
         $res = $this->table($this->_api_order_track)->where($params)->limit(1)->save($data);
-        if ($res) {
+        if (!$res) {
+             pft_log('sql_error/all_api_order', 
+                'errmsg:' . $this->getDbError() . ';sql:' . $this->_sql());
             return false;
         }
         return $res;
@@ -164,6 +168,18 @@ class AllApiOrderModel extends Model {
             $res = $res->order($orderby);
         }
         $res = $res->find();
+        if (empty($res)) {
+            return false;
+        }
+        return $res;
+    }
+    
+    public function QueryOtaOrder($field = '*', Array $map)
+    {
+        if (!isset($map['tempOrder']) && !isset($map['pftOrder']) ){
+            return false;
+        }
+        $res = $this->table($this->_all_api_order)->field($field)->where($map)->find();
         if (empty($res)) {
             return false;
         }
