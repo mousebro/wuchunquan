@@ -50,12 +50,16 @@ class OrderTools extends Model {
      * @author  wengbin
      */
     public function getOutOfDateOrders($limit = 10, $order = 'uu_ss_order.id asc') {
+        //只获取最近1天的订单
+        $begin_time = date('Y-m-d H:i:s', time() - 1 * 3600 * 24);
+
         $result = $this->table('uu_ss_order')->join("
-				left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid
-				left join uu_land land on uu_ss_order.lid=land.id")
+                left join uu_order_fx_details detail on uu_ss_order.ordernum=detail.orderid
+                left join uu_land land on uu_ss_order.lid=land.id")
 
             ->where(array(
                 'uu_ss_order.status' => 0,
+                'uu_ss_order.ordertime' => array('gt', $begin_time),
                 'detail.pay_status' => 2,
                 'land.id' => array('neq', 5322),
                 'land.terminal_type' => array('neq', 0),))

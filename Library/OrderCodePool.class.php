@@ -6,6 +6,7 @@
  * Time: 12:17
  * Description: 票付通凭证码POOL，保证相同景点不重码
  *              每次下单从POOL中获取一个code（lpop），如果POOL为空，生成2000个code
+ *              连接Redis超时时间为0.2S，超时后使用MySQL。
  * Usage:      $code = Library\OrderCodePool::GetCode($lid);
  */
 namespace Library;
@@ -123,7 +124,7 @@ class CodePoolMysql extends BasePool
 {
     public static function GetCode($lid, $ptype='', $forceGenerate=false)
     {
-        $m = new Model('localhost');
+        $m = new Model('pft001');
         $w = ['lid'=>$lid];
         $code = $m->table(self::__TBL_POOL__)->where($w)->getField('code');
         if (!$code || $forceGenerate===true) {
@@ -138,7 +139,7 @@ class CodePoolMysql extends BasePool
     protected  static function Generate($lid, $ptype='')
     {
         $data = parent::Generate($lid, $ptype);
-        $m = new Model('localhost');
+        $m = new Model('pft001');
         $m->table(self::__TBL_POOL__)->addAll($data);
         return $data;
     }

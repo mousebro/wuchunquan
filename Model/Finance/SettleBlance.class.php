@@ -1122,8 +1122,8 @@ class SettleBlance extends Model{
 
         $where = [
             'os.sellerid'   => $fid, //供应商
-            's.status'      => 0, //未使用
-            's.paymode'     => ['not in', [2, 3, 4, 9, 12]], //在线支付的
+            's.status'      => ['in', [0, 2]], //未使用和过期
+            'os.pmode'      => ['not in', [2, 3, 4, 9, 12]], //排除授信、自供自销、现场支付、现场支付、年卡
             'fd.pay_status' => 1 //已经支付
         ];
 
@@ -1132,6 +1132,7 @@ class SettleBlance extends Model{
         $order = "s.id asc";
 
         $tmp = $this->table($table)->join($joinSplit)->join($joinDetail)->where($where);
+
 
         //返回总数
         if($getTotal) {

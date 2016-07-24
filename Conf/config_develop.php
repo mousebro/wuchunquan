@@ -52,8 +52,8 @@ return array(
         'pft001'=>array(
             'db_type'   => 'mysql',
             'db_host'   => '192.168.20.138',
-            'db_user'   => 'develop',
-            'db_pwd'    => 'develop%',
+            'db_user'   => 'pft001',
+            'db_pwd'    => 'pft001',
             'db_port'   => 3307,
             'db_name' => 'pft001',
         ),
@@ -118,6 +118,7 @@ return array(
             'Mail_Job', //邮件队列
             'OrderNotify_Job',//订单消息通知队列
             'WxNotify_Job', //微信通知队列
+            'OrderCancel_Job',//订单取消队列
         )
     ),
 );

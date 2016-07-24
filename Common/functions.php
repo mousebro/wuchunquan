@@ -766,10 +766,11 @@ if (!function_exists('curl_post')) {
      * @param string $logPath 错误日志文件
      * @return bool|mixed
      */
-    function curl_post($url,$postData, $port=80, $timeout=15, $logPath='/api/curl_post.log', $http_headers=[]) {
+    function curl_post($url,$postData, $port=80, $timeout=15, $logPath='/api/curl_post', $http_headers=[]) {
         $ch = curl_init();
+
         //$basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
-        $logPath = BASE_LOG_DIR . str_replace(BASE_LOG_DIR, '',$logPath);
+        $logPath = str_replace(BASE_LOG_DIR, '',$logPath);
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_PORT, $port);
         curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);

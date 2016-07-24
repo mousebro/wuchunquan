@@ -83,13 +83,13 @@ SQL;
                 if ($price_ret['code']!=200) $ret['msg'] = '；价格保存失败:' . $price_ret['msg'];
             }
         }
-
+        $msg = isset($ret['data']['msg']) ? $ret['data']['msg'] : $ret['msg'];
         parent::apiReturn($ret['code'],
             [
                 'product_id'=>$ret['data']['pid'],
                 'ticket_id' =>$ret['data']['tid']
             ],
-            $ret['msg']);
+            $msg);
     }
 
     /**

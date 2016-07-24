@@ -28,7 +28,7 @@ class VComSms
             pft_log('queue/vcom', "发送短信|$tel:$msg");
             return ['code'=>200];
         }
-        $account    = is_null($account) ? self::ACCOUNT :  $account;
+        $account    = empty($account) ? self::ACCOUNT :  $account;
         $pwd        = is_null($pwd) ? self::PASSWORD : $pwd ;
         $pwd        = strtoupper(md5($pwd));
         $search_id  = is_null($search_id) ?  -1 : $search_id;
