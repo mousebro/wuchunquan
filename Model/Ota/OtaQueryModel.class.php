@@ -63,14 +63,13 @@ class OtaQueryModel extends Model {
         }
         return $res;
     }
+
+
     /**
-     * 通过id获取最新的单条信息(uu_jq_ticket表)
-     * @param string $field 要获取的字段名
-     * @param string $pftOrder
-     * @param int $start
-     * @param int $limit
-     * @param string $orderby
-     * @return array
+     * @param $field
+     * @param $tid
+     * @param $join
+     * @return bool|mixed
      */
     public function selectInfoByIdInTicket($field,$tid,$join){
 //        print_r(func_get_args());
@@ -90,25 +89,6 @@ class OtaQueryModel extends Model {
         }
         return $res;
     }
-//    public function selectInfoByIdInTicket($field = '*', $id, $start = 0, $limit = 15, $orderby = '') {
-//        if (empty($id) || !is_numeric($id)) {
-//            return false;
-//        }
-//        $params = array(
-//            'id' => $id,
-//        );
-//        $res = $this->table($this->_uu_jq_ticket)->field($field)->where($params)->limit($start, $limit)->find();
-//        if ($orderby) {
-//            $res = $res->order($orderby);
-//        }
-//        echo $this->_sql();
-//        exit;
-//        $res = $res->find();
-//        if (empty($res)) {
-//            return false;
-//        }
-//        return $res;
-//    }
 
     /**
      * 获取

@@ -18,23 +18,6 @@ class AllApiOrderModel extends Model {
     }
 
     /**
-     * 通过pftOrder更新all_api_order表
-     * 只更新一条
-     * @param array $data
-     * @param $pftOrder
-     * @return int | boolen
-     */
-    public function updateStatusByOrder($data, $pftOrder) {
-        if (!is_array($data)) {
-            return false;
-        }
-        $params = array(
-            'pftOrder' => $pftOrder,
-        );
-        $this->table($this->_all_api_order)->where($params)->limit(1)->save($data);
-    }
-
-    /**
      * 插入数据库
      * @param string $table 表名
      * @param array  $params array("key" => "value") 对应的字段名和值
@@ -48,50 +31,14 @@ class AllApiOrderModel extends Model {
         return $res;
     }
 
-    /**
-     * 通过tempOrder更新pftOrder，oStnum
-     * @param array $data
-     * @param $tempOrder
-     * @param $orderby
-     * @param int $limit
-     * @return
-     */
-    public function updateInfoByTempOrder($data, $tempOrder, $orderby = '', $limit = 1) {
-        if (!is_array($data) || !is_string($orderby)) {
+
+    public function updateOtaOrder(Array $map,Array $data){
+        if (!isset($map['tempOrder']) && !isset($map['pftOrder']) && !isset($map['apiOrder']) ){
             return false;
         }
-        $params = array(
-            'tempOrder' => $tempOrder,
-        );
-        $res = $this->table($this->_all_api_order)->where($params);
-        if ($orderby) {
-            $res = $res->order($orderby);
-        }
-        $res = $res->limit($limit)->save($data);
+        $res = $this->table($this->_all_api_order)->where($map)->limit(1)->save($data);
         if (!$res) {
-            return false;
-        }
-        return $res;
-    }
-
-    /**
-     * 通过pftOrder更新oStnum，apiCode
-     * @param $oStnum
-     * @param $apiCode
-     * @param pftOrder
-     * @return
-     */
-
-    public function updateInfoByPftOrder( $apiCode, $pftOrder) {
-        $params = array(
-            'pftOrder' => $pftOrder,
-        );
-        $data = array(
-            'apiCode' => $apiCode
-        );
-        $res = $this->table($this->_all_api_order)->where($params)->limit(1)->save($data);
-        if (!$res) {
-            pft_log('sql_error/all_api_order', 
+            pft_log('sql_error/all_api_order',
                 'errmsg:' . $this->getDbError() . ';sql:' . $this->_sql());
             return false;
         }
@@ -121,65 +68,16 @@ class AllApiOrderModel extends Model {
     }
 
     /**
-     * 通过pftOrder获取最新的单条信息
-     * @param string $field 要获取的字段名
-     * @param string $pftOrder
-     * @param int $start
-     * @param int $limit
-     * @param string $orderby
-     * @return array
+     * 查询all_api_order 订单信息，订单唯一
+     * @param array $map 查询条件订单号3者其一
+     * @return bool|mixed
      */
-    public function selectInfoByPftOrder($field = '*', $pftOrder, $start = 0, $limit = 1, $orderby = '') {
-        if (!is_string($field) || !is_string($pftOrder) || !is_numeric($start) || !is_numeric($limit) || !is_string($orderby)) {
-            return false;
-        }
-        $params = array(
-            'pftOrder' => $pftOrder,
-        );
-        $res = $this->table($this->_all_api_order)->field($field)->where($params)->limit($start, $limit);
-        if ($orderby) {
-            $res = $res->order($orderby);
-        }
-        $res = $res->find();
-        if (empty($res)) {
-            return false;
-        }
-        return $res;
-    }
-
-    /**
-     * 通过tempOrder获取最新的单条信息
-     * @param string $field 要获取的字段名
-     * @param string $pftOrder
-     * @param int $start
-     * @param int $limit
-     * @param string $orderby
-     * @return array
-     */
-    public function selectInfoByTempOrder($field = '*', $tempOrder, $start = 0, $limit = 1, $orderby = '') {
-        if (!is_string($field) || !is_string($tempOrder) || !is_numeric($start) || !is_numeric($limit) || !is_string($orderby)) {
-            return false;
-        }
-        $params = array(
-            'tempOrder' => $tempOrder,
-        );
-        $res = $this->table($this->_all_api_order)->field($field)->where($params)->limit($start, $limit);
-        if ($orderby) {
-            $res = $res->order($orderby);
-        }
-        $res = $res->find();
-        if (empty($res)) {
-            return false;
-        }
-        return $res;
-    }
-    
-    public function QueryOtaOrder($field = '*', Array $map)
+    public function queryOtaOrder( Array $map)
     {
-        if (!isset($map['tempOrder']) && !isset($map['pftOrder']) ){
+        if (!isset($map['tempOrder']) && !isset($map['pftOrder']) && !isset($map['apiOrder']) ){
             return false;
         }
-        $res = $this->table($this->_all_api_order)->field($field)->where($map)->find();
+        $res = $this->table($this->_all_api_order)->field('*')->where($map)->find();
         if (empty($res)) {
             return false;
         }
