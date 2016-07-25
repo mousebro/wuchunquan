@@ -50,7 +50,7 @@ class OrderNotify {
         $this->buyerId          = $buyerId;
         $this->order_tel        = $mobile;
         $this->p_type           = $ptype;
-        $this->unit             = $ptype=='C' ? '间' : '张';
+        $this->unit             = $ptype==='C' ? '间' : '张';
         $this->aid              = $aid;
         $this->pid              = $pid;
         $this->title            = $title;
@@ -76,6 +76,7 @@ class OrderNotify {
                 ->field('id,title,p_type,apply_did')
                 ->find($infos['lid']);
             $this->p_type = $land['p_type'];
+            $this->unit   = $land['p_type']==='C' ? '间' : '张';
             $this->title  = $land['title'];
             $this->sellerId = $land['apply_did'];
             $this->pid    = $infos['master_pid'];
