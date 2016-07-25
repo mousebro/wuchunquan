@@ -77,7 +77,7 @@ return array(
             'low_service_money' => 1,  //金额达到多少需要财务审核 - 单位元
         ),
         'week' => array(
-            'service_fee'       => 5, //默认千分之五
+            'service_fee'       => 4, //默认千分之五
             'reserve_money'     => 200, //默认冻结多少钱
             'reserve_scale'     => 20,  //默认冻结的比例
             'limit_money'       => 200,  //最低需要达到多少才能体现 - 单位元
@@ -85,7 +85,7 @@ return array(
             'low_service_money' => 1,  //金额达到多少需要财务审核 - 单位元
         ),
         'month' => array(
-            'service_fee'       => 5, //默认千分之五
+            'service_fee'       => 0, //默认千分之五
             'reserve_money'     => 200, //默认冻结多少钱
             'reserve_scale'     => 20,  //默认冻结的比例
             'limit_money'       => 200,  //最低需要达到多少才能体现 - 单位元
