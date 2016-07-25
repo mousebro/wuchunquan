@@ -40,6 +40,11 @@ class platform extends Controller
         //$newdomain_info = $platform->getDetails($host_info[0], 'account');
         $oldrecord = self::getShopConfig($domain_info['fid']);
         $record = self::getNewdlogin($newdomain_info['fid']);
+        if(!$record && $oldrecord['site_name']===NULL)
+        {   
+            $this->apiReturn(100,[], '您访问的地址无效');
+            exit;
+        }
         if(!$record){
             $info = $oldrecord;
         }else{
@@ -235,8 +240,8 @@ class platform extends Controller
            }
         } else {
             if($ofid){
-               Response::send(array('status' => 0, 'code' => 1004,'msg' =>'自定义域名重复，请更换！'));
-            }else{
+               // Response::send(array('status' => 0, 'code' => 1004,'msg' =>'自定义域名重复，请更换！'));
+            // }else{
                $result = $newSql->table('pft_member_domain_platform')->add($config);
             }
         }
