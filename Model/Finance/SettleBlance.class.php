@@ -1156,7 +1156,8 @@ class SettleBlance extends Model{
             'os.sellerid'   => $fid, //供应商
             's.status'      => ['in', [0, 2]], //未使用和过期
             'os.pmode'      => ['not in', [2, 3, 4, 9, 12]], //排除授信、自供自销、现场支付、现场支付、年卡
-            'fd.pay_status' => 1 //已经支付
+            'fd.pay_status' => 1, //已经支付
+            's.ordertime'   => ['egt', '2016-03-31 23:59:59'] //在这个之后的数据才处理过
         ];
 
         $field = 's.ordernum, s.tnum, s.totalmoney, os.cost_money, os.sale_money, os.level';
