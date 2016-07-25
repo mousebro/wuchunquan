@@ -23,11 +23,11 @@ class Platform extends Model{
         return $domain_info;
     }
     
-    public function getDetails($memberid, $identify = 'id') { 
+    public function getDetails($newsql,$memberid, $identify = 'id') { 
         if ($identify == 'id') {
-            return $this->table(self::__DUBDOMAIN_TABLE__)->where(['fid' => $memberid])->find();
+            return $newsql->table(self::__DUBDOMAIN_TABLE__)->where(['fid' => $memberid])->find();
         } elseif ($identify == 'account') {
-            $domain_info = $this->table(self::__DUBDOMAIN_TABLE__)
+            $domain_info = $newsql->table(self::__DUBDOMAIN_TABLE__)
                             ->where(['p_account_domain' => $memberid, 'p_domain'=> $memberid, '_logic' => 'OR'])
                             ->find();
             return $domain_info;
@@ -54,8 +54,8 @@ class Platform extends Model{
         return $this->table(self::__OLDDUBDOMAIN_TABLE__)->where(['M_domain' => $domain])->find();
     }
    
-    public function checknewddomainInfo($domain){
-        return $this->table(self::__DUBDOMAIN_TABLE__)->where(['p_domain' => $domain])->find();
+    public function checknewddomainInfo($newsql,$domain){
+        return $newsql->table(self::__DUBDOMAIN_TABLE__)->where(['p_domain' => $domain])->find();
     }
   
 }

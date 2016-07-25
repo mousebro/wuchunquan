@@ -33,11 +33,11 @@ class platform extends Controller
     public function domaininfo(){                                           //登陆获取
         $platform = new \Model\domain\platform();
         $domainInfo = new \Model\Subdomain\SubdomainInfo();
-        //$newSql = new \Library\Model('pft001');                          
+        $newSql = new \Library\Model('pft001');                          
         $host_info = explode('.', $_SERVER['HTTP_HOST']);
         $domain_info = $domainInfo->getBindedSubdomainInfo($host_info[0], 'account');
-        //$newdomain_info = $platform->getDetails($newSql,$host_info[0], 'account');
-        $newdomain_info = $platform->getDetails($host_info[0], 'account');
+        $newdomain_info = $platform->getDetails($newSql,$host_info[0], 'account');
+        //$newdomain_info = $platform->getDetails($host_info[0], 'account');
         $oldrecord = self::getShopConfig($domain_info['fid']);
         $record = self::getNewdlogin($newdomain_info['fid']);
         if(!$record){
@@ -86,10 +86,10 @@ class platform extends Controller
     public static function getNewdlogin($memberid){    //新版登陆页面获取信息
         $platform = new \Model\domain\platform();
         $wxModel = new \Library\Model('remote_1');
-       // $newSql = new \Library\Model('pft001');
+        $newSql = new \Library\Model('pft001');
         $wxInfo = $platform->wxopen($wxModel,$memberid);
-        //$config = $platform->getDetails($newSql,$memberid);
-        $config = $platform->getDetails($memberid);
+        $config = $platform->getDetails($newSql,$memberid);
+        //$config = $platform->getDetails($memberid);
         $fid = $config['fid'];
         if(!$fid){
             return false;
@@ -203,13 +203,13 @@ class platform extends Controller
         );
         $SubdomainInfo = new \Model\domain\platform();
         $newSql = new \Library\Model('pft001'); 
-        //$exist = $SubdomainInfo->getDetails($newSql,$_SESSION['sid']);
-        $exist = $SubdomainInfo->getDetails($_SESSION['sid']);
+        $exist = $SubdomainInfo->getDetails($newSql,$_SESSION['sid']);
+        //$exist = $SubdomainInfo->getDetails($_SESSION['sid']);
         $existold = $SubdomainInfo->getBindedSubdomainInfo($_SESSION['sid']);
         $reDomain = $_REQUEST['Cusdomain'] ? $_REQUEST['Cusdomain'] : $_SESSION['account'];
         $oldinfo = $SubdomainInfo->checkOlddomainInfo($reDomain);
-        //$newinfo = $SubdomainInfo->checknewddomainInfo($newSql,$reDomain);
-        $newinfo = $SubdomainInfo->checknewddomainInfo($reDomain);
+        $newinfo = $SubdomainInfo->checknewddomainInfo($newSql,$reDomain);
+        //$newinfo = $SubdomainInfo->checknewddomainInfo($reDomain);
         $ofid = $oldinfo['fid'];
         if($exist) {
            $config['id'] = $exist['id'];
