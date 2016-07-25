@@ -202,7 +202,7 @@ class platform extends Controller
             'M_domain'   =>    $_REQUEST['Cusdomain'] ? $_REQUEST['Cusdomain'] : $_SESSION['account'],
         );
         $SubdomainInfo = new \Model\domain\platform();
-        //$newSql = new \Library\Model('pft001'); 
+        $newSql = new \Library\Model('pft001'); 
         //$exist = $SubdomainInfo->getDetails($newSql,$_SESSION['sid']);
         $exist = $SubdomainInfo->getDetails($_SESSION['sid']);
         $existold = $SubdomainInfo->getBindedSubdomainInfo($_SESSION['sid']);
@@ -218,7 +218,7 @@ class platform extends Controller
                 if($_SESSION['sid']!=$ofid){
                     Response::send(array('status' => 0, 'code' => 1001,'msg' =>'自定义域名重复，请更换！'));
                 }else{
-                    $result = $SubdomainInfo->table('pft_member_domain_platform')->save($config);
+                    $result = $newSql->table('pft_member_domain_platform')->save($config);
                 }
            }else{
                if($newinfo){
@@ -227,7 +227,7 @@ class platform extends Controller
                     $domainCheck = $SubdomainInfo->table('pft_member_domain_info')->save($upconfig);
                     if($domainCheck!==false){
                         
-                        $result = $SubdomainInfo->table('pft_member_domain_platform')->save($config);
+                        $result = $newSql->table('pft_member_domain_platform')->save($config);
                     }else{
                         Response::send(array('status' => 0, 'code' => 1003,'msg' =>'自定义域名保存失败！'));
                     }
@@ -237,7 +237,7 @@ class platform extends Controller
             if($ofid){
                Response::send(array('status' => 0, 'code' => 1004,'msg' =>'自定义域名重复，请更换！'));
             }else{
-               $result = $SubdomainInfo->table('pft_member_domain_platform')->add($config);
+               $result = $newSql->table('pft_member_domain_platform')->add($config);
             }
         }
         //echo $SubdomainInfo->_sql();
