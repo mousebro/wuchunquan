@@ -35,7 +35,7 @@ class OrderNotify {
     const SMS_FORMAT_ARR  = 2;
 
 
-    const SMS_CONTENT_TPL = '入住凭证:{code}，您成功购买{pname}:{tnum}间，入住日期:{begintime}，离店日期:{endtime}。{getaddr}此为凭证，请妥善保管。详情及二维码:{link}';
+    const SMS_CONTENT_TPL = '入住凭证:{code}，您成功购买{pname}，入住日期:{begintime}，离店日期:{endtime}。{getaddr}此为凭证，请妥善保管。详情及二维码:{link}';
     const SMS_CONTENT_TPL_GLY = '您已成功预订{pname}{tnum}间，凭证码：{code}.您可凭购票身份证、短信凭证码、二维码至厦门鼓浪屿漳州路3号皓月休闲度假俱乐部（皓月园内）办理入住，入住日期：{begintime}，离店日期：{endtime}。为方便您的游玩，建议您至少提前3天购买前往三丘田码头的船票,限取票当日使用，取后不退。祝您旅途愉快。详情及二维码：{link}';
     const SMS_CONTENT_TPL_H = '凭证号:{code},您已成功购买{begintime}{pname},{perinfo}{getaddr}。详情及二维码:{link}。';
     //【票付通】入住凭证：123456。您成功购买郁金香高级客房：3间，入住日期3月18日，离店日期3月22日。
@@ -71,17 +71,7 @@ class OrderNotify {
     {
         $infos = $this->getOrderInfo();
         if (!is_array($infos)) return $infos;
-        if (!$this->pid) {
-            $land= $this->model->table('uu_land')
-                ->field('id,title,p_type,apply_did')
-                ->find($infos['lid']);
-            $this->p_type = $land['p_type'];
-            $this->unit   = $land['p_type']==='C' ? '间' : '张';
-            $this->title  = $land['title'];
-            $this->sellerId = $land['apply_did'];
-            $this->pid    = $infos['master_pid'];
-            unset($land);
-        }
+
         if ($this->not_to_buyer!=1) {
             $this->BuyerNotify($infos, $code, $manualQr);
         }
@@ -102,9 +92,7 @@ class OrderNotify {
             ->field('member,lid,tid,aid,tnum,ordername,ordertel,begintime,endtime,code,remsg')
             ->find();
         if ($order_info['remsg']>=3) return 116;
-        $tid_list = [
-            $order_info['tid']=>$order_info['tnum'],
-        ];
+        $tickets_list = [$order_info['tid']=>$order_info['tnum']];
         //检测必要的参数是否为null
         if (!$this->order_tel) $this->order_tel = $order_info['ordertel'];
         if (!$this->buyerId) $this->buyerId     = $order_info['member'];
@@ -118,7 +106,7 @@ class OrderNotify {
             ->select();
         if ($linksOrder) {
             foreach ($linksOrder as $item) {
-                $tid_list[$item['tid']] = $item['tnum'];
+                $tickets_list[$item['tid']] = $item['tnum'];
                 $time_list[] = $item['begintime'];
             }
         }
@@ -127,6 +115,19 @@ class OrderNotify {
         }
         $begin_time = $order_info['begintime'];
         $end_time   = $order_info['endtime'];
+
+        if (!$this->pid) {
+            $land = $this->model->table('uu_land')
+                ->field('id,title,p_type,apply_did')
+                ->find($order_info['lid']);
+            $this->p_type   = $land['p_type'];
+            $this->unit     = $land['p_type']==='C' ? '间' : '张';
+            $this->title    = $land['title'];
+            $this->sellerId = $land['apply_did'];
+            //pft_log('queue/debug', 'landinfo:' . json_encode($land) . 'ptype:' . $this->p_type);
+            unset($land);
+        }
+
         //酒店类型比较特殊
         if ($this->p_type==='C') {
             sort($time_list);
@@ -134,26 +135,28 @@ class OrderNotify {
             $end_time   = array_pop($time_list);
             $end_time   = date('Y-m-d', strtotime('+1 days', strtotime($end_time)));
         }
+        $tid_list = array_keys($tickets_list);
+
+        $map    = count($tid_list)>1 ? ['tid'=>['in', $tid_list]] : ['tid'=>$tid_list[0]];
+        $extInfo =  $this->model->table('uu_land_f f')->join('uu_land l on l.id=f.lid')
+            ->field('f.sendVoucher,f.pid,f.confirm_sms,f.confirm_wx,l.fax,l.p_type')
+            ->where($map)
+            ->limit(count($tid_list))
+            ->select();
+        //pft_log('queue/debug', 'extInfo:' . json_encode($extInfo) . 'ptype:' . $this->p_type);
         $tickets = $this->model->table('uu_jq_ticket')
-            ->where( ['id'=>['in', array_keys($tid_list) ] ])
+            ->where( ['id'=>['in', $tid_list ] ])
             ->getField('id, pid, title,getaddr', true);
         $pname   = '';
         $getaddr = '';
         $pid_list = [];
-        foreach ($tid_list as $tid=>$tnum) {
+        foreach ($tickets_list as $tid=>$tnum) {
             if ($tid==$order_info['tid']) $master_pid = $tickets[$tid]['pid'];
             $getaddr = $tickets[$tid]['getaddr'];
             $pname  .= "\n{$tickets[$tid]['title']}{$tnum}{$this->unit},";
             $pid_list[] = $tickets[$tid]['pid'];
         }
-        $map    = count($pid_list)>1 ? ['pid'=>['in', $pid_list]] : ['pid'=>$pid_list[0]];
-        $model  = new Model('slave');
-        $extInfo = $model->table('uu_land_f f')->join('uu_land l on l.id=f.lid')
-            ->field('f.sendVoucher,f.pid,f.confirm_sms,f.confirm_wx,l.fax')
-            ->where($map)
-            ->limit(count($pid_list))
-            ->select();
-
+        $this->pid = $master_pid;
         return [
             'lid'       => $order_info['lid'],
             'buyer'     => $order_info['ordername'],
@@ -164,7 +167,6 @@ class OrderNotify {
             'getaddr'   => $getaddr,
             'memo'      => $order_info['memo'],//订单备注信息
             'pid_list'  => $pid_list,
-            'master_pid'=> $master_pid,
             'extAttrs'  => $extInfo,
         ];
     }
@@ -356,6 +358,7 @@ class OrderNotify {
      * @param string $content 短信内容
      * @param int $sms_channel 发送渠道
      * @param string $sms_account 短信账号
+     * @param int $update_order 是否更新发送次数 1:不更新 2:更新
      * @return bool
      */
     public function SendSMS($mobile, $content, $sms_channel=0, $sms_account='', $update_order=0)
