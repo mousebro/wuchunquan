@@ -9,6 +9,8 @@
 
 namespace Library\Tools;
 
+use \SoapClient;
+
 class Helpers {
     static private $_prevPath = '/var/www/html/new/';
 
@@ -171,7 +173,7 @@ class Helpers {
         $ydArr         = [7132, 7133, 7134, 7135, 7136, 7137, 7157, 27583, 27584 ,27585, 35666, 35668];
         $leftNaviArray = [];
 
-        foreach($_auth as $mod => $row){
+        foreach($_auth as $mod => $row){ 
             if(in_array($memberID, $ydArr)) {
                 if($row['url'][0] == 'orderReport.html' || $row['url'][0] == 'buyOrderReport.html' ) {
                     continue;
@@ -190,8 +192,13 @@ class Helpers {
                 continue;
             }
 
-            //地址处理
-            $row['url'][0] = '/' . $row['url'][0];
+            //地址处理 - 为了兼容二级店铺地址
+            if(strpos($_SERVER['REQUEST_URI'], '/new/d/') === false) {
+                $row['url'][0] = '/' . $row['url'][0];
+            } else {
+                //二级店铺比较奇葩都带有/new/d/
+                $row['url'][0] = '/new/d/' . $row['url'][0];
+            }
 
             if(isset($leftNaviArray[$row['group']])) {
                 $leftNaviArray[$row['group']]['row'][] = $row;

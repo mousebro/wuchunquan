@@ -46,9 +46,11 @@ class Ticket extends Model {
 
     public function getTicketInfoById($id, $filed='', $map=[]) {
         $filed = empty($filed) ? $this->ticket_filed : $filed;
+        $map = array_merge(['id'=>$id], $map);
         $query = $this->table(self::__TICKET_TABLE__)->field($filed);
         if (count($map)) $query->where($map);
-        return $query->find($id);
+        $data = $query->find();
+        return $data;
     }
 
     /**
@@ -106,6 +108,15 @@ class Ticket extends Model {
                     ->join('p left join uu_land l on p.contact_id=l.id')
                     ->where(array('p.id' => $pid))
                     ->getField('l.p_type');
+    }
+
+    /**
+     * 获取产品表的信息
+     * @param  array $options 
+     * @return [type]      [description]
+     */
+    public function getProductInfo($options = []) {
+        return $this->table(self::__PRODUCT_TABLE__)->find($options);
     }
 
     public function getPackageInfoByTid($tid){
@@ -733,13 +744,16 @@ class Ticket extends Model {
         return $res;
     }
 
-    public function SetTicketStatus($tid, $status, $memberId)
+    public function SetTicketStatus($tid, $status, $memberId, $pid=0)
     {
+        $map = [];
+        if ($pid>0) $map['p.id']=$pid;
+        else $map['t.id'] = $tid;
         $info = $this->QueryTicketInfo(
-            ['t.id'=>$tid],
-            'p.apply_limit,p.apply_did,p.id as pid,p.p_name',
+            $map,
+            't.id as tid,p.apply_limit,p.apply_did,p.id as pid,p.p_name',
             'inner join uu_products p on t.pid=p.id'
-            );
+        );
         if(!$info) return ['code'=>0, "msg"=>"门票不存在"];
         $info = array_shift($info);
         if($memberId!=$info['apply_did']) return ['code'=>0, "msg"=>"非自身供应产品"];
@@ -778,7 +792,7 @@ class Ticket extends Model {
             $pack->PackageCheckByPid($info['pid']);
         }
         //TODO::通知OTA
-        OtaProductNotify::notify($tid, $status);
+        OtaProductNotify::notify($info['tid'], $status);
         return ['code'=>200,'msg'=>'操作成功'];
         //$_REQUEST['ids'] = $pid;
         //fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $_REQUEST);

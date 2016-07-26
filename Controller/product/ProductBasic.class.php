@@ -22,11 +22,10 @@ class ProductBasic extends Controller
 {
     private $packObj=null;
     private $cardObj=null;
-    private $config;
+    protected $config = array();
     public function __construct()
     {
-        C(include  __DIR__ .'/../../Conf/product.conf.php');
-        $this->config = C('');
+        $this->config = include '/var/www/html/Service/Conf/product.conf.php';
 
     }
     private function _return($code, $msg, $title)
@@ -145,7 +144,7 @@ class ProductBasic extends Controller
         if (!empty($ticketData['price_section'])) {
             $ret = $this->VerifyPrice($ticketData['pid'], $ticketData['price_section'], $ticketObj, $isSectionTicket);
             if ($ret['code']!=200) {
-                return self::_return(self::CODE_INVALID_REQUEST, $ret['data']['msg'], $ticketData['ttitle']);
+                return self::_return(self::CODE_INVALID_REQUEST, '价格数据校验失败:'.$ret['data']['msg'], $ticketData['ttitle']);
             }
         }
         $lid = $ticketData['lid']+0;
@@ -190,7 +189,7 @@ class ProductBasic extends Controller
         $tkBaseAttr['buy_limit_up']  = $ticketData['buy_limit_up']+0; // 购买上限
         $tkBaseAttr['buy_limit_low'] = $ticketData['buy_limit_low']+0;
         //$tkBaseAttr['order_limit'] = $ticketData['order_limit'];// 验证限制
-        $tkBaseAttr['order_limit'] = implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));// 验证限制
+        $tkBaseAttr['order_limit'] = $p_type=='C' ? '':implode(',', array_diff(array(1,2,3,4,5,6,7), explode(',', $ticketData['order_limit'])));// 验证限制
 
         if(($tkBaseAttr['buy_limit_up']>0) && $tkBaseAttr['buy_limit_low']>$tkBaseAttr['buy_limit_up'])
             return self::_return(self::CODE_INVALID_REQUEST, '最少购买张数不能大于最多购买张数', $ticketData['ttitle']);
@@ -301,6 +300,7 @@ class ProductBasic extends Controller
 
         // 分批验证设置
         $tkBaseAttr['batch_check']       = isset($ticketData['batch_check']) ? ($ticketData['batch_check']+0) : 1;
+        $tkBaseAttr['batch_check']      = 0;
         $tkBaseAttr['batch_day_check']   = isset($ticketData['batch_day_check']) ? ($ticketData['batch_day_check']+0) : 0;
         $tkBaseAttr['batch_diff_identities'] = isset($ticketData['batch_diff_identities']) ? ($ticketData['batch_diff_identities']+0) : 0;
 

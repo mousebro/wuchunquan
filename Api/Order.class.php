@@ -76,6 +76,21 @@ class Order extends Controller
         echo $xml;
     }
 
+    /**
+     * 获取订单追踪记录
+     */
+    public function TrackLog()
+    {
+        $model = new \Model\Order\OrderTrack();
+        $ordernum = I('post.ordernum');
+        if (I('post.filter_expire')) {
+            $log  = $model->QueryLog($ordernum);
+        }
+        else {
+            $log = $model->getLog($ordernum);
+        }
+        parent::apiReturn(200, $log, 'success');
+    }
     public function QuickVerify()
     {
         include '/var/www/html/new/d/class/Terminal_Check_Socket.class.php';
@@ -107,6 +122,7 @@ class Order extends Controller
         $pay_conf       = include '/var/www/html/Service/Conf/pay.conf.php';
         $pay_account    = I('post.pay_account');
         $app_id         = I('post.app_id', 0);
+        $buyer_info     = I('post.buy_account', '');//购买人账号——如拉卡拉的银行卡号
         if ($pay_account!='' && in_array($pay_account, $pay_conf['pft']['lakala'])) {
             $pay_to_pft = true;
             $sourceT    = 7;//平台拉卡拉
@@ -124,7 +140,7 @@ class Order extends Controller
         if ($app_id=='android_terminal') {
             $pay_channel = 20;
         }
-        $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'','',1,
+        $res = $this->soap->Change_Order_Pay($ordernum,$tradeno, $sourceT, $pay_total_fee, 1,'',$buyer_info,1,
             $pay_to_pft, $pay_channel);
         if ($res==100) {
             parent::apiReturn(parent::CODE_SUCCESS, [], '支付成功');

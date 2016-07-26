@@ -188,7 +188,8 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
             $data['pri'][] = [
                 'title' => $item['title'],
                 'num'   => $products[$item['pid']],
-                'use'   => implode(',', $this->_pri_use[$item['tid']])
+                'use'   => implode(',', $this->_pri_use[$item['tid']]),
+                'left'  => $this->_pri_left[$item['tid']] == -1 ? -1 : implode(',', $this->_pri_left[$item['tid']])
             ];
         }
 
@@ -536,7 +537,8 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
             'ordertel'  => $Member->m_info['mobile'],
             'tnum'      => $tnum,
             'c_pids'    => $lian,
-            'paymode'   => 12
+            'paymode'   => 12,
+            'ordermode' => 18
         ];
 
         set_exception_handler(function($e) {
