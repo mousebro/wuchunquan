@@ -247,7 +247,7 @@ class SettleBlance extends Controller {
                  } else {
                     //未使用订单
                     $tmpMoney = round($freezeMoney/100, 2);
-                    $remark = "未使用在线支付订单情况：总订单数={$remarkData['order_num']}, 总票数={$remarkData['ticket_num']}, 总金额={$tmpMoney}元";
+                    $remark = "需冻结未使用订单情况：总订单数={$remarkData['order_num']}, 总票数={$remarkData['ticket_num']}, 总金额={$tmpMoney}元";
                  }
 
                  $res = $settleBlanceModel->updateSettleInfo($id, $freezeMoney, $transferMoney, $remark);

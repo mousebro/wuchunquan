@@ -744,13 +744,16 @@ class Ticket extends Model {
         return $res;
     }
 
-    public function SetTicketStatus($tid, $status, $memberId)
+    public function SetTicketStatus($tid, $status, $memberId, $pid=0)
     {
+        $map = [];
+        if ($pid>0) $map['p.id']=$pid;
+        else $map['t.id'] = $tid;
         $info = $this->QueryTicketInfo(
-            ['t.id'=>$tid],
-            'p.apply_limit,p.apply_did,p.id as pid,p.p_name',
+            $map,
+            't.id as tid,p.apply_limit,p.apply_did,p.id as pid,p.p_name',
             'inner join uu_products p on t.pid=p.id'
-            );
+        );
         if(!$info) return ['code'=>0, "msg"=>"门票不存在"];
         $info = array_shift($info);
         if($memberId!=$info['apply_did']) return ['code'=>0, "msg"=>"非自身供应产品"];
@@ -789,7 +792,7 @@ class Ticket extends Model {
             $pack->PackageCheckByPid($info['pid']);
         }
         //TODO::通知OTA
-        OtaProductNotify::notify($tid, $status);
+        OtaProductNotify::notify($info['tid'], $status);
         return ['code'=>200,'msg'=>'操作成功'];
         //$_REQUEST['ids'] = $pid;
         //fsockNoWaitPost("http://".IP_INSIDE."/new/d/call/detect_prod.php", $_REQUEST);
