@@ -35,7 +35,7 @@ class OrderNotify {
     const SMS_FORMAT_ARR  = 2;
 
 
-    const SMS_CONTENT_TPL = '入住凭证:{code}，您成功购买{pname}:{tnum}间，入住日期:{begintime}，离店日期:{endtime}。此为凭证，请妥善保管。详情及二维码:{link}';
+    const SMS_CONTENT_TPL = '入住凭证:{code}，您成功购买{pname}:{tnum}间，入住日期:{begintime}，离店日期:{endtime}。{getaddr}此为凭证，请妥善保管。详情及二维码:{link}';
     const SMS_CONTENT_TPL_GLY = '您已成功预订{pname}{tnum}间，凭证码：{code}.您可凭购票身份证、短信凭证码、二维码至厦门鼓浪屿漳州路3号皓月休闲度假俱乐部（皓月园内）办理入住，入住日期：{begintime}，离店日期：{endtime}。为方便您的游玩，建议您至少提前3天购买前往三丘田码头的船票,限取票当日使用，取后不退。祝您旅途愉快。详情及二维码：{link}';
     const SMS_CONTENT_TPL_H = '凭证号:{code},您已成功购买{begintime}{pname},{perinfo}{getaddr}。详情及二维码:{link}。';
     //【票付通】入住凭证：123456。您成功购买郁金香高级客房：3间，入住日期3月18日，离店日期3月22日。
@@ -128,7 +128,7 @@ class OrderNotify {
         $begin_time = $order_info['begintime'];
         $end_time   = $order_info['endtime'];
         //酒店类型比较特殊
-        if ($this->p_type=='C') {
+        if ($this->p_type==='C') {
             sort($time_list);
             $begin_time = array_shift($time_list);
             $end_time   = array_pop($time_list);
@@ -137,7 +137,7 @@ class OrderNotify {
         $tickets = $this->model->table('uu_jq_ticket')
             ->where( ['id'=>['in', array_keys($tid_list) ] ])
             ->getField('id, pid, title,getaddr', true);
-        $pname   =  '';
+        $pname   = '';
         $getaddr = '';
         $pid_list = [];
         foreach ($tid_list as $tid=>$tnum) {
@@ -398,7 +398,7 @@ class OrderNotify {
     private function get_default_tpl($ptype)
     {
         $list = array(
-            'DEFAULT' => '凭证号：{code}，您已成功购买了{pname}{tnum},消费日期：{begintime},{getaddr}，此为入园凭证,请妥善保管。详情及二维码:{link}',
+            'DEFAULT' => '凭证号：{code}，您已成功购买了{pname}{tnum},{time_note},{getaddr}，此为入园凭证,请妥善保管。详情及二维码:{link}',
             'C'       => self::SMS_CONTENT_TPL,
             'GLY'     => self::SMS_CONTENT_TPL_GLY,
             'H'       => self::SMS_CONTENT_TPL_H,
@@ -429,8 +429,28 @@ class OrderNotify {
         $search_replace['{dname}']      = $dname;
         $search_replace['{pname}']      = $p_name;
         $search_replace['{tnum}']       = '';
+        $playnote = "消费日期:";
+        //if($sms_ptype=='B') $playnote= "游玩时间:";
+        //
+        //if ($startT==$endT || $sms_ptype=='B') $smsDate=$playnote.date('n',$sTi)."月".date('j',$sTi)."日";
+        //else $smsDate="有效期:".date('n',$begin_time)."月".date('j',$begin_time)."日"."至".date('n',$eTi)."月".date('j',$eTi)."日";
+        //
+        //$arr_sms_r[]=$smsDate;
+        //$arr_sms_s[]="{begintimeT}";
+        //$arr_sms_r[]="消费日期:".date('n',$sTi)."月".date('j',$sTi)."日";
+        $_bt = date('m月d日', strtotime($begin_time));
+        $_et = date('m月d日', strtotime($end_time));
         $search_replace['{begintime}']  = date('m月d日', strtotime($begin_time));
         $search_replace['{endtime}']    = date('m月d日', strtotime($end_time));
+        if ($_bt==$_et) {
+            //消费日期
+            $search_replace['{time_note}']  = "消费日期:$_bt";
+        }
+        else {
+            //有效期
+            $search_replace['{time_note}']  = "有效期:{$_bt}至{$_et}";
+        }
+
         $search_replace['{getaddr}']    = $getaddr;
         //演出类产品
         if ($this->p_type=='H') {
