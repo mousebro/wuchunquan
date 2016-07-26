@@ -193,33 +193,32 @@ class OrderNotify {
         if ($infos['extAttrs'][0]['sendVoucher']==1) return true;
         $sms_channel = 0;
         $smsLog = $this->GetSmsLog($this->order_num);
-        pft_log('queue/debug', 'smslog:'.json_encode($smsLog));
+        //pft_log('queue/debug', 'smslog:'.json_encode($smsLog));
         if ($smsLog['smstxt']!='') {
-            $sms_content = $smsLog['smstxt'];
-            $sms_account = $smsLog['taccount'];
+            //$sms_content = $smsLog['smstxt'];
+            //$sms_account = $smsLog['taccount'];
             $update_order= 2;
         }
         else {
-            $this->p_type = $p_type = strtoupper($this->p_type);
-            $sms_tpl = $this->SmsTemplate();
-            $cformat = $sms_sign = '';
-
-            $sms_account = '';
-            if ($sms_tpl) {
-                $cformat        = $sms_tpl['cformat'];
-                $sms_sign       = $sms_tpl['sms_sign'];
-                $sms_channel    = $sms_tpl['dtype'];
-                $sms_account    = $sms_tpl['sms_account'];
-            }
-            $code        = $code==0 ? $infos['code'] : $code;
-            $sms_content = $this->SmsContent($this->title . $infos['pname'],  $infos['getaddr'],
-                $infos['begintime'], $infos['endtime'], $cformat, $code, 1, $manualQr);
-            if (!empty($sms_sign)) {
-                $sms_content = "【{$sms_sign}】$sms_content";
-            }
             $update_order= 1;
-            pft_log('queue/debug', '$sms_content:'.$sms_content);
         }
+        $this->p_type = $p_type = strtoupper($this->p_type);
+        $sms_tpl = $this->SmsTemplate();
+        $cformat = $sms_sign = '';
+        $sms_account = '';
+        if ($sms_tpl) {
+            $cformat        = $sms_tpl['cformat'];
+            $sms_sign       = $sms_tpl['sms_sign'];
+            $sms_channel    = $sms_tpl['dtype'];
+            $sms_account    = $sms_tpl['sms_account'];
+        }
+        $code        = $code==0 ? $infos['code'] : $code;
+        $sms_content = $this->SmsContent($this->title . $infos['pname'],  $infos['getaddr'],
+            $infos['begintime'], $infos['endtime'], $cformat, $code, 1, $manualQr);
+        if (!empty($sms_sign)) {
+            $sms_content = "【{$sms_sign}】$sms_content";
+        }
+        //pft_log('queue/debug', '$sms_content:'.$sms_content);
         $res = $this->SendSMS($this->order_tel, $sms_content, $sms_channel, $sms_account, $update_order);
         return $res;
     }
