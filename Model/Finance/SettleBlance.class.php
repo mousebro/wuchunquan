@@ -39,12 +39,13 @@ class SettleBlance extends Model{
      * @param $transferTime 转账时间，具体几点
      * @param $updateUid 配置修改用户ID
      * @param $accountInfo 账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","account_name":"","acc_type":"","select_no":}',
-     * @param $serviceFee 提现手续费
+     * @param $serviceFee 提现手续费 - 千分之几
+     * @param $cutWay 提现手续费扣除方式 - 0=提现金额中扣除，1=账户余额扣除
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      *
      * @return bool
      */
-    public function addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee,
+    public function addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay = 1, 
             $freezeData = false) {
 
         if(!$fid) {
@@ -52,10 +53,14 @@ class SettleBlance extends Model{
         }
 
         //参数统一校验，格式化
-        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, 
+        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay,
             $freezeData);
 
         $data['fid'] = $fid;
+
+        //将当前周期写入，只有到达下一个周期的时候才会开始清分
+        $circleMark = $this->_getCurrnetCircleMark($mode);
+        $data['cycle_mark'] = $circleMark;
 
         if(!$data) {
             return false; 
@@ -80,24 +85,28 @@ class SettleBlance extends Model{
      * @param $transferTime 转账时间，具体几点
      * @param $updateUid 配置修改用户ID
      * @param $accountInfo '账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":""}',
+     * @param $serviceFee 提现手续费 - 千分之几
+     * @param $cutWay 提现手续费扣除方式 - 0=提现金额中扣除，1=账户余额扣除
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      *
      * @return bool
      */
-    public function updateSetting($id, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData = false, $isUpdateMark = false) {
+    public function updateSetting($id, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay = 1, $freezeData = false, $isUpdateMark = false) {
         if(!$id) {
             return false;
         }
 
         //参数统一校验，格式化
-        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $freezeData);
+        $data = $this->_formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay, $freezeData);
         if(!$data) {
             return false;
         }
 
         //更新提现标识
         if($isUpdateMark) {
-            $data['cycle_mark'] = 0;
+            //将当前周期写入，只有到达下一个周期的时候才会开始清分
+            $circleMark = $this->_getCurrnetCircleMark($mode);
+            $data['cycle_mark'] = $circleMark;
         }
 
         $res = $this->table($this->_settingTable)->where(['id' => $id])->save($data);
@@ -114,7 +123,7 @@ class SettleBlance extends Model{
      * @param  $status 状态 off=无效，on=有效
      * @return
      */
-    public function settingStatus($id, $updateUid, $status = 'off') {
+    public function settingStatus($id, $updateUid, $status = 'off', $mode) {
         if(!$id || !$updateUid || !in_array($status, ['on', 'off'])) {
             return false;
         }
@@ -125,6 +134,13 @@ class SettleBlance extends Model{
             'update_uid'  => $updateUid,
             'update_time' => time()
         ];
+
+        //将当前周期写入，只有到达下一个周期的时候才会开始清分
+        $mode = intval($mode);
+        if($status == 'on' && in_array($mode, [1, 2, 3])) {
+            $circleMark = $this->_getCurrnetCircleMark($mode);
+            $data['cycle_mark'] = $circleMark;
+        }
 
         $res = $this->table($this->_settingTable)->where($where)->save($data);
         return $res === false ? false : true;
@@ -699,12 +715,15 @@ class SettleBlance extends Model{
         }
 
         //获取配置信息
-        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('account_info, service_fee, status')->find();
+        $settingInfo = $this->table($this->_settingTable)->where(['fid' => $fid])->field('account_info, service_fee, status, cut_way')->find();
         if(!$settingInfo) {
             return ['status' => -1];
         }
 
+        //cut_way - 手续费扣除方式：0=提现金额中扣除，1=账户余额扣除
         $serviceFee  = floatval($settingInfo['service_fee']);
+        $feeCutWay   = intval($settingInfo['cut_way']);
+        $feeCutWay   = in_array($feeCutWay, [0, 1]) ? $feeCutWay : 1;
         $accountInfo = @json_decode($settingInfo['account_info'], true);
 
         //参数判断
@@ -727,25 +746,34 @@ class SettleBlance extends Model{
         //剩余的账号金额
         $leftMoney = $amoney - $transferMoney;
 
-        //计算手续费，不足一元按一元计算 - 分为单位
-        $feeMoney = intval($transferMoney * ($serviceFee / 1000));
-        $feeMoney = $feeMoney < 100 ? 100 : $feeMoney;
+        $defaultConf = load_config('withdraw_default');
+        $modeArr     = [1 => 'day', 2 => 'week', 3 => 'month'];
+        $key         = $modeArr[$mode];
+        $needConf    = $defaultConf[$key];
 
-        if($feeMoney > $leftMoney ) {
-            //剩余金额不足以支付提现手续费
-            return ['status' => -4, 'amoney' => $amoney, 'fee_money' => $feeMoney, 'transfer_money' => $transferMoney];
+        //计算手续费，不足一元按一元计算 - 分为单位
+        if($serviceFee == 0) {
+            $feeMoney = 0;
+        } else {
+            $feeMoney   = intval($transferMoney * ($serviceFee / 1000));
+            $lowService = isset($needConf['low_service_money']) ? $needConf['low_service_money'] * 100 : 100;
+            $feeMoney   = $feeMoney < $lowService ? $lowService : $feeMoney;
+        }
+
+        //账户余额扣除，需要判斷余额是不是足够
+        if($feeCutWay == 1) {
+            if($feeMoney > $leftMoney ) {
+                //剩余金额不足以支付提现手续费
+                return ['status' => -4, 'amoney' => $amoney, 'fee_money' => $feeMoney, 'transfer_money' => $transferMoney];
+            }
         }
 
         //提现
         $withdrawModel = new Withdraws();
-        $feeCutWay     = 1;
         $accountType   = 1;
 
         //获取需要审核的提现金额配置
-        $defaultConf = load_config('withdraw_default');
-        $modeArr     = [1 => 'day', 2 => 'week', 3 => 'month'];
-        $key         = $modeArr[$mode];
-        $authMoney  = isset($defaultConf[$key]) ? $defaultConf[$key]['auth_money'] : 50000; 
+        $authMoney  = isset($needConf['auth_money']) ? $needConf['auth_money'] : 50000; 
         $authMoney  = $authMoney * 100; //转化为分
         unset($defaultConf);
         if($transferMoney >= $authMoney) {
@@ -992,13 +1020,15 @@ class SettleBlance extends Model{
      * @param $transferTime 转账时间，具体几点
      * @param $updateUid 配置修改用户ID
      * @param $accountInfo '账号的数组 {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":""}',
+     * @param $serviceFee 提现手续费 千分之几
+     * @param $cutWay 提现手续费扣除方式 - 0=提现金额中扣除，1=账户余额扣除
      * @param $freezeData 资金冻结详情，比例或是具体的金额 - {"type":"1/2","value":"30"}
      * @return array / bool
      */
-    private function _formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, 
+    private function _formatParam($mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $updateUid, $accountInfo, $serviceFee, $cutWay, 
             $freezeData = false) {
 
-        if(!in_array($mode, [1, 2, 3]) || !$updateUid || !$accountInfo || !is_array($accountInfo)) {
+        if(!in_array($mode, [1, 2, 3]) || !in_array($cutWay, [0, 1]) || !$updateUid || !$accountInfo || !is_array($accountInfo)) {
             return false;
         }
 
@@ -1008,6 +1038,7 @@ class SettleBlance extends Model{
         $transferTime = intval($transferTime);
         $accountInfo  = json_encode($accountInfo);
         $serviceFee   = floatval($serviceFee);
+        $cutWay       = intval($cutWay);
         
         if($freezeType == 2) {
             if(!$freezeData || !is_array($freezeData)) {
@@ -1017,7 +1048,7 @@ class SettleBlance extends Model{
             $freezeData = json_encode($freezeData);
         }
 
-        if($serviceFee < 0 || $serviceFee > 100) {
+        if($serviceFee < 0 || $serviceFee > 1000) {
             return false;
         }
 
@@ -1030,6 +1061,7 @@ class SettleBlance extends Model{
             'transfer_time' => $transferTime,
             'account_info'  => $accountInfo,
             'service_fee'   => $serviceFee,
+            'cut_way'       => $cutWay,
             'update_uid'    => $updateUid,
             'update_time'   => time()
         ];
@@ -1124,7 +1156,8 @@ class SettleBlance extends Model{
             'os.sellerid'   => $fid, //供应商
             's.status'      => ['in', [0, 2]], //未使用和过期
             'os.pmode'      => ['not in', [2, 3, 4, 9, 12]], //排除授信、自供自销、现场支付、现场支付、年卡
-            'fd.pay_status' => 1 //已经支付
+            'fd.pay_status' => 1, //已经支付
+            's.ordertime'   => ['egt', '2016-03-31 23:59:59'] //在这个之后的数据才处理过
         ];
 
         $field = 's.ordernum, s.tnum, s.totalmoney, os.cost_money, os.sale_money, os.level';
@@ -1151,7 +1184,7 @@ class SettleBlance extends Model{
     }
 
     /**
-     *  
+     * 保存被冻结的订单数据
      * @author dwer
      * @date   2016-07-05
      *
@@ -1183,6 +1216,33 @@ class SettleBlance extends Model{
         $res = $this->table($this->_frozeTable)->add($data);
 
         return $res === false ? false : true;
+    }
+
+    /**
+     * 获取周期标识
+     * @author dwer
+     * @date   2016-07-21
+     *
+     * @param  $mode 模式 1=日结，2=周结，3=月结
+     * @param  $currentTimestamp 时间戳 - 默认当前时间
+     * @return
+     */
+    private function _getCurrnetCircleMark($mode, $currentTimestamp = false) {
+        if(!in_array($mode, [1, 2, 3])) {
+            $mode = 1;
+        }
+
+        $currentTimestamp = $currentTimestamp ? intval($currentTimestamp) : time();
+
+        if($mode == 1) {
+            $circleMark = date('Ymd', $currentTimestamp); 
+        } elseif($mode == 2) {
+            $circleMark = date('Y02W', $currentTimestamp);
+        } else {
+            $circleMark = date('Y01m', $currentTimestamp);
+        }
+
+        return $circleMark;
     }
 
 }
