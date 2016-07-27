@@ -159,7 +159,7 @@ class OtaQueryModel extends Model {
             return false;
         }
         $res = $this->table($this->_uu_ss_order)->field($field)->where($filter)->find();
-        return $res
+        return $res;
     }
 
     /**
