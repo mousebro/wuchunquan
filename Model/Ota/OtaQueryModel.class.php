@@ -2,7 +2,6 @@
 /**
  * ota用到的model类
  * @since 2016年7月22日
- * @author liubb
  */
 namespace Model\Ota;
 use Library\Model;
@@ -11,9 +10,10 @@ class OtaQueryModel extends Model {
 
     private $_uu_land = 'uu_land';
     private $_pft_member = 'pft_member';
-    private $_uu_jq_ticket = 'uu_jq_ticket t';
+    private $_uu_jq_ticket = 'uu_jq_ticket';
     private $_pft_csys_landid = 'pft_csys_landid';
     private $_uu_qunar_use = 'uu_qunar_use';
+    private $_uu_ss_order = 'uu_ss_order';
 
     /**
      * 根据salerid获取terminal（uu_land表）
@@ -71,15 +71,15 @@ class OtaQueryModel extends Model {
      * @param $join
      * @return bool|mixed
      */
-    public function selectInfoByIdInTicket($field,$tid,$join){
-//        print_r(func_get_args());
+    public function selectInfoByIdInTicket($field, $tid, $join = ''){
         if (empty($tid) || !is_numeric($tid)) {
             return false;
         }
         $params = array(
             't.id' => $tid,
         );
-        $query_obj = $this->table($this->_uu_jq_ticket);
+        $table = $this->_uu_jq_ticket.' t';
+        $query_obj = $this->table($table);
         if ($join) {
             $query_obj->join($join);
         }
@@ -109,6 +109,84 @@ class OtaQueryModel extends Model {
         if (!$res) {
             return false;
         }
+        return $res;
+    }
+
+    /**
+     * 专为方特
+     * 
+     */
+    public function getInfoForFangTe($tid) {
+        $field = 't.uuid,t.pid,t.landid,t.apply_did,m.account';
+        $table = 'uu_jq_ticket as t,pft_member as m';
+        $params = array(
+            't.id' => $tid,
+            't.apply_did' => 'm.id',
+        );
+        $res = $this->table($table)->field($field)->where($params)->limit(1)->find();
+        return $res;
+    }
+
+    /**
+     * 通用的获取信息的方法
+     *
+     */
+    public function getInfo($table, $field = '*', $joinTable = '', $filter = '', $order = '') {
+        if (empty($table)) {
+            return false;
+        }
+        $res = $this->table($table)->field($field);
+        if ($joinTable) {
+            $res = $res->join($joinTable);
+        }
+        if ($filter) {
+            $res = $res->where($filter);
+        }
+        if ($order) {
+            $res = $res->order($order);
+        }
+        $res = $res->limit(1)->find();
+        return $res;
+    }
+
+    /**
+     * 从uu_ss_order表获取单条信息
+     * 
+     *
+     */
+    public function getInfoInUussorder($field = '*', $filter = array()) {
+        if (!is_string($field) || !is_array($filter)) {
+            return false;
+        }
+        $res = $this->table($this->_uu_ss_order)->field($field)->where($filter)->find();
+        return $res
+    }
+
+    /**
+     * 根据DockingMode和supplierIdentity从uu_qunar_use表获取单条数据
+     *
+     */
+    public function getOtaToConfigureByDocSup($field, $sup, $doc) {
+        if (!is_string($field)) {
+            return false;
+        }
+        $params = array(
+            'DockingMode' => $doc,
+            'supplierIdentity' => $sup
+        );
+        $res = $this->table($this->_uu_qunar_use)->field($field)->where($params)->find();
+        return $res;
+    }
+
+    /**
+     * 插入数据
+     * 
+     */
+    public function insertTable($table, $data) {
+        if (!is_string($table) || !is_array($data)) {
+            return false;
+        }
+        $res = $this->table($table)->data($data)->add();
         return $res;
     }
 }

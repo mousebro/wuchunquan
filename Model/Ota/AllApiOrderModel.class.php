@@ -84,4 +84,49 @@ class AllApiOrderModel extends Model {
         return $res;
     }
 
+    /**
+     * 查询all_api_order信息的通用方法
+     * 只获取第一条信息
+     * @param string $field
+     * @param array $filter
+     * @return array
+     * @author liubb
+     */
+    public function getInfo($field = '*', $filter = array(), $order = '') {
+        if (!is_string($field) || !is_array($filter)) {
+            return false;
+        }
+        $res = $this->table($this->_all_api_order)->field($field)->where($filter);
+        if ($order) {
+            $res = $res->order($order)->limit(1)->find();
+        }
+        return $res;
+    }
+
+    /**
+     * 获取全部满足条件的数据
+     * @return array
+     */
+    public function selectInfo($field, $filter) {
+        if (!is_string($field) || !is_array($filter)) {
+            return false;
+        }
+        $res = $this->table($this->_all_api_order)->field($field)->where($filter)->select();
+        return $res;
+    }
+
+    /**
+     * all_api_order表通过的更新方法
+     * @param array $data
+     * @param array $filter
+     * @return int | boolen
+     * @author liubb
+     */
+    public function updateTable($data, $filter) {
+        if (!is_array($data) || !is_array($filter)) {
+            return false;
+        }
+        $res = $this->table($this->_all_api_order)->where($filter)->limit(1)->save($data);
+        return $res;
+    }
 }
