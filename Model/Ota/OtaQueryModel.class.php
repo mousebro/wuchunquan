@@ -37,10 +37,10 @@ class OtaQueryModel extends Model {
             $params['fid'] = $fid;
         }
         if ($Did) {
-            $params['DockingMode'] => $Did;
+            $params['DockingMode'] = $Did;
         }
         if ($sup) {
-            $params['supplierIdentity'] => $sup;
+            $params['supplierIdentity'] = $sup;
         }
         if (!$field) {
             $field = 'supplierIdentity,signkey';
