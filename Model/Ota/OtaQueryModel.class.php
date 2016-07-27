@@ -32,16 +32,24 @@ class OtaQueryModel extends Model {
     }
 
 
-    public function getOtaToConfigureByFidDid($fid,$Did){
-        $params = array(
-            'fid' => $fid,
-            'DockingMode'   => $Did
-        );
+    public function getOtaToConfigureByFidDid($fid = '',$Did, $sup = '', $field = ''){
+        if ($fid) {
+            $params['fid'] = $fid;
+        }
+        if ($Did) {
+            $params['DockingMode'] => $Did;
+        }
+        if ($sup) {
+            $params['supplierIdentity'] => $sup;
+        }
+        if (!$field) {
+            $field = 'supplierIdentity,signkey';
+        }
         $res = $this->Table($this->_uu_qunar_use)
-            ->where($params)
-            ->field('supplierIdentity,signkey')
-            ->limit(1)
-            ->find();
+                    ->where($params)
+                    ->field($field)
+                    ->limit(1)
+                    ->find();
         if (!$res) {
             return false;
         }
@@ -113,21 +121,6 @@ class OtaQueryModel extends Model {
     }
 
     /**
-     * 专为方特
-     * 
-     */
-    public function getInfoForFangTe($tid) {
-        $field = 't.uuid,t.pid,t.landid,t.apply_did,m.account';
-        $table = 'uu_jq_ticket as t,pft_member as m';
-        $params = array(
-            't.id' => $tid,
-            't.apply_did' => 'm.id',
-        );
-        $res = $this->table($table)->field($field)->where($params)->limit(1)->find();
-        return $res;
-    }
-
-    /**
      * 通用的获取信息的方法
      *
      */
@@ -159,22 +152,6 @@ class OtaQueryModel extends Model {
             return false;
         }
         $res = $this->table($this->_uu_ss_order)->field($field)->where($filter)->find();
-        return $res
-    }
-
-    /**
-     * 根据DockingMode和supplierIdentity从uu_qunar_use表获取单条数据
-     *
-     */
-    public function getOtaToConfigureByDocSup($field, $sup, $doc) {
-        if (!is_string($field)) {
-            return false;
-        }
-        $params = array(
-            'DockingMode' => $doc,
-            'supplierIdentity' => $sup
-        );
-        $res = $this->table($this->_uu_qunar_use)->field($field)->where($params)->find();
         return $res;
     }
 
