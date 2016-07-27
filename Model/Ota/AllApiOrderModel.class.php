@@ -68,23 +68,6 @@ class AllApiOrderModel extends Model {
     }
 
     /**
-     * 查询all_api_order 订单信息，订单唯一
-     * @param array $map 查询条件订单号3者其一
-     * @return bool|mixed
-     */
-    public function queryOtaOrder( Array $map)
-    {
-        if (!isset($map['tempOrder']) && !isset($map['pftOrder']) && !isset($map['apiOrder']) ){
-            return false;
-        }
-        $res = $this->table($this->_all_api_order)->field('*')->where($map)->find();
-        if (empty($res)) {
-            return false;
-        }
-        return $res;
-    }
-
-    /**
      * 查询all_api_order信息的通用方法
      * 只获取第一条信息
      * @param string $field
