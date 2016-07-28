@@ -156,6 +156,22 @@ class OtaQueryModel extends Model {
     }
 
     /**
+     * 根据DockingMode和supplierIdentity从uu_qunar_use表获取单条数据
+     *
+     */
+    public function getOtaToConfigureByDocSup($field, $sup, $doc) {
+        if (!is_string($field)) {
+            return false;
+        }
+        $params = array(
+            'DockingMode' => $doc,
+            'supplierIdentity' => $sup
+        );
+        $res = $this->table($this->_uu_qunar_use)->field($field)->where($params)->find();
+        return $res;
+    }
+
+    /**
      * 插入数据
      * 
      */
