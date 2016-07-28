@@ -87,7 +87,7 @@ class OrderNotify {
      */
     private function getOrderInfo()
     {
-        $order_info = $this->model->table('uu_ss_order')->where(['ordernum'=>$this->order_num])
+        $order_info = self::getMasterModel()->table('uu_ss_order')->where(['ordernum'=>$this->order_num])
             ->limit(1)
             ->field('member,lid,tid,aid,tnum,ordername,ordertel,begintime,endtime,code,remsg')
             ->find();
@@ -99,7 +99,7 @@ class OrderNotify {
         if (!$this->aid) $this->aid             = $order_info['aid'];
 
         $time_list = [ $order_info['begintime'] ];
-        $linksOrder = $this->model->table('uu_ss_order s')
+        $linksOrder = self::getMasterModel()->table('uu_ss_order s')
             ->join('left join uu_order_fx_details f ON s.ordernum=f.orderid')
             ->where(['f.concat_id'=>$this->order_num, 's.ordernum'=>['neq',$this->order_num]])
             ->field('s.tid,s.tnum,s.begintime')
@@ -424,6 +424,9 @@ class OrderNotify {
     private function SmsContent($p_name, $getaddr, $begin_time, $end_time,$cformat='', $code=0,
                                 $ret_format=1, $manualQr=false)
     {
+        //凭证号:{code},您已成功购买了{pname}{tnum},{begintime},{getaddr},此为入园凭证,请妥善保管。
+        //凭证号：，您已成功购买了鸿利旅游-圣蓝皇家海洋公园张,消费日期:01月01日,，此为入园凭证,请妥善保管。详情及二维码:http://12301.cc/MaoGAGy
+        //凭证号:026173,您已成功购买了鸿利旅游-圣蓝皇家海洋公园成人票4张,07月28日,持凭证号到公园大门左侧3号电子票窗口验证通过,此为入园凭证,请妥善保管。
         $search_replace = array();
         $search_replace['{code}'] = (string)$code;
         $memberObj  = new Member();
@@ -431,15 +434,6 @@ class OrderNotify {
         $search_replace['{dname}']      = $dname;
         $search_replace['{pname}']      = $p_name;
         $search_replace['{tnum}']       = '';
-        $playnote = "消费日期:";
-        //if($sms_ptype=='B') $playnote= "游玩时间:";
-        //
-        //if ($startT==$endT || $sms_ptype=='B') $smsDate=$playnote.date('n',$sTi)."月".date('j',$sTi)."日";
-        //else $smsDate="有效期:".date('n',$begin_time)."月".date('j',$begin_time)."日"."至".date('n',$eTi)."月".date('j',$eTi)."日";
-        //
-        //$arr_sms_r[]=$smsDate;
-        //$arr_sms_s[]="{begintimeT}";
-        //$arr_sms_r[]="消费日期:".date('n',$sTi)."月".date('j',$sTi)."日";
         $_bt = date('m月d日', strtotime($begin_time));
         $_et = date('m月d日', strtotime($end_time));
         $search_replace['{begintime}']  = date('m月d日', strtotime($begin_time));
