@@ -126,7 +126,7 @@ class Booking extends Controller {
         $rounds = $this->_fillStorage($rounds);
 
         if (count($rounds) < 1) {
-            $this->apiReturn(204, [], '暂无演出场次信息');
+            $this->apiReturn(200, [], '暂无演出场次信息');
         }
 
         $this->apiReturn(200, $rounds);
