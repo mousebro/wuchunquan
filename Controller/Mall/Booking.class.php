@@ -197,7 +197,7 @@ class Booking extends Controller {
                 if (isset($_SESSION['memberID'])) {
                     $memberID = $_SESSION['memberID'];
                 } else {
-                    $memberID = -1;
+                    $memberID = $this->_getSupplyId();
                 }
                 
                 $sellerStorage = $storageModel->getResellerStorage($memberID, $row['id'], $areaId);
