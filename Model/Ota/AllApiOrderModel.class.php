@@ -27,7 +27,19 @@ class AllApiOrderModel extends Model {
         if (!is_string($table) || !is_array($params)) {
             return false;
         }
-        $res = $this->table($table)->data($params)->add();
+        if ($table == 'all_api_order') {
+            if (isset($params['tempOrder'])) {
+                $data = array('tempOrder' => $params['tempOrder']);
+            }
+            $res = $this->table($table)->where($data)->select();
+            if ($res) {
+                $this->table($table)->where($data)->save($params);
+            } else {
+                $this->table($table)->data($params)->add();
+            }
+        } else {
+            $res = $this->table($table)->data($params)->add();
+        }
         return $res;
     }
 
@@ -60,7 +72,7 @@ class AllApiOrderModel extends Model {
         );
         $res = $this->table($this->_api_order_track)->where($params)->limit(1)->save($data);
         if (!$res) {
-             pft_log('sql_error/all_api_order', 
+             pft_log('sql_error/all_api_order',
                 'errmsg:' . $this->getDbError() . ';sql:' . $this->_sql());
             return false;
         }
@@ -83,6 +95,7 @@ class AllApiOrderModel extends Model {
         if ($order) {
             $res = $res->order($order)->limit(1)->find();
         }
+        $res = $res->limit(1)->find();
         return $res;
     }
 
