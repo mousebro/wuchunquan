@@ -170,9 +170,14 @@ class Withdraws extends Model{
             return false;
         }
 
-        //手续费不足一元按一元计算
-        $serviceCharge = intval($wdMoney * ($serviceFee / 1000));
-        $serviceCharge = $serviceCharge < 100 ? 100 : $serviceCharge;
+        //如果手续费率为0而且是自动转账的，就没有最低手续费的限制
+        if($serviceFee == 0 && $isAuto == true) {
+            $serviceCharge = 0;
+        } else {
+            //手续费不足一元按一元计算
+            $serviceCharge = intval($wdMoney * ($serviceFee / 1000));
+            $serviceCharge = $serviceCharge < 100 ? 100 : $serviceCharge;
+        }
 
         $wdMoneyV       = round($wdMoney / 100, 2);
         $serviceChargeV = round($serviceCharge / 100, 2);
