@@ -768,7 +768,8 @@ if (!function_exists('curl_post')) {
      */
     function curl_post($url,$postData, $port=80, $timeout=15, $logPath='/api/curl_post', $http_headers=[]) {
         $ch = curl_init();
-
+        $url_info = parse_url($url);
+        $port = isset($url_info['port']) ? $url_info['port'] : 80;
         //$basePath = strpos($logPath, BASE_LOG_DIR)!==false ?  '' : BASE_LOG_DIR;
         $logPath = str_replace(BASE_LOG_DIR, '',$logPath);
         curl_setopt($ch, CURLOPT_URL, $url);
