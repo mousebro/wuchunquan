@@ -158,9 +158,10 @@ class Withdraws extends Model{
      * @param $accountInfo 账号信息数组  {"bank_name":"","bank_ins_code":"","bank_account":"","acc_type":"","account_name":""}
      * @param $isAuto 是否直接自动清分
      * @param $isHumanAuth 是否需要财务审核 - $isAuto为true的时候才起作用
+     * @param $operateId 操作人ID
      * 
      */
-    public function addRecord($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false, $isHumanAuth = false) {
+    public function addRecord($fid, $wdMoney, $serviceFee, $feeCutWay, $accountType, $accountInfo, $isAuto = false, $isHumanAuth = false, $operateId = false) {
         $wdMoney    = intval($wdMoney);
         $serviceFee = intval($serviceFee);
         $cutwayArr  = ['0' => '提现金额扣除', '1' => '账户余额扣除'];
@@ -169,9 +170,14 @@ class Withdraws extends Model{
             return false;
         }
 
-        //手续费不足一元按一元计算
-        $serviceCharge = intval($wdMoney * ($serviceFee / 1000));
-        $serviceCharge = $serviceCharge < 100 ? 100 : $serviceCharge;
+        //如果手续费率为0而且是自动转账的，就没有最低手续费的限制
+        if($serviceFee == 0 && $isAuto == true) {
+            $serviceCharge = 0;
+        } else {
+            //手续费不足一元按一元计算
+            $serviceCharge = intval($wdMoney * ($serviceFee / 1000));
+            $serviceCharge = $serviceCharge < 100 ? 100 : $serviceCharge;
+        }
 
         $wdMoneyV       = round($wdMoney / 100, 2);
         $serviceChargeV = round($serviceCharge / 100, 2);
@@ -179,6 +185,10 @@ class Withdraws extends Model{
         $cutwayV        = $cutwayArr[$feeCutWay];
 
         $memo = "申请提现金额:{$wdMoneyV}元,手续费:{$serviceChargeV}元,{$cutwayV},实际提现金额:{$transMoneyV}元";
+        
+        //备注添加账号信息 
+        $memo .= "【{$accountInfo['bank_account']}({$accountInfo['bank_name']})】";
+
         if($isAuto) {
             //直接自动提现
             $memo = '自动清分 - ' . $memo;
@@ -199,6 +209,10 @@ class Withdraws extends Model{
             'memo'           => $memo,
             'apply_time'     => date('Y-m-d H:i:s')
         ];
+
+        //添加统一虚拟的订单ID
+        $orderId         = 'withdraw_' . time();
+        $data['batchno'] = $orderId;
 
         if($isAuto) {
             $data['wd_operator']   = '后台系统|ID:1';
@@ -232,10 +246,13 @@ class Withdraws extends Model{
             return false;
         }
 
+        //操作人ID
+        $operateId = $operateId !== false ? intval($operateId) : $fid;
+
         //通过接口调用交易流水扣除
         $soapInside = Helpers::GetSoapInside();
         $frozenMoney = $feeCutWay == 1 ? $wdMoney + $serviceCharge : $wdMoney;
-        $res = $soapInside->PFT_Member_Fund_Modify($fid, $fid, $frozenMoney, 1, 0, $fid, 6, null, '', $memo);
+        $res = $soapInside->PFT_Member_Fund_Modify($fid, $operateId, $frozenMoney, 1, 0, $fid, 6, null, $orderId, $memo);
         if($res == 100) {
             $this->commit();
             return true;

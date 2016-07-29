@@ -66,7 +66,8 @@ elseif (ENV=='DEVELOP') {
 
 //定义html目录的路径，方便后面的文件查找
 define('HTML_DIR', '/var/www/html');
-
+//定义配置文件路径
+define('CONF_DIR', HTML_DIR . '/Service/Conf');
 //定义新的模板路径
 define('VIEWS', HTML_DIR . '/Views');
 

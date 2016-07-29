@@ -39,6 +39,11 @@ class SettleBlance extends Controller {
     private $_moneyArr = [
         1, //按比例冻结
         2, //按具体的金额冻结
+    ];
+
+    private $_cutArr = [
+        0, //提现金额中扣除
+        1, //账户余额扣除
     ]; 
 
     public function __construct() {
@@ -91,11 +96,12 @@ class SettleBlance extends Controller {
         $transferTime = intval(I('post.transfer_time'));
         $accountNo    = intval(I('post.account_no'));
         $serviceFee   = floatval(I('post.service_fee'));
+        $cutWay       = intval(I('post.cut_way', 1));
         $moneyType    = intval(I('post.money_type', 1));
         $moneyValue   = floatval(I('post.money_value'));
 
         //参数合法性
-        if(!in_array($mode, $this->_modeArr) || !in_array($freezeType, $this->_freezeArr) || !in_array($accountNo, $this->_accountArr) || !in_array($moneyType, $this->_moneyArr) || ($serviceFee < 0 || $serviceFee > 100)) {
+        if(!in_array($mode, $this->_modeArr) || !in_array($freezeType, $this->_freezeArr) || !in_array($cutWay, $this->_cutArr) || !in_array($accountNo, $this->_accountArr) || !in_array($moneyType, $this->_moneyArr) || ($serviceFee < 0 || $serviceFee > 1000)) {
             $this->apiReturn(400, [], '参数错误');
         }
 
@@ -207,9 +213,9 @@ class SettleBlance extends Controller {
         }
 
         if($updateId) {
-            $res = $settleBlanceModel->updateSetting($updateId, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $this->_memberId, $accountInfo, $serviceFee, $freezeData, $needUpdateMark);
+            $res = $settleBlanceModel->updateSetting($updateId, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $this->_memberId, $accountInfo, $serviceFee, $cutWay, $freezeData, $needUpdateMark);
         } else {
-            $res = $settleBlanceModel->addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $this->_memberId, $accountInfo, $serviceFee, $freezeData);
+            $res = $settleBlanceModel->addSetting($fid, $mode, $freezeType, $closeDate, $closeTime, $transferDate, $transferTime, $this->_memberId, $accountInfo, $serviceFee, $cutWay, $freezeData);
         }
 
         if($res) {
@@ -350,8 +356,11 @@ class SettleBlance extends Controller {
             $this->apiReturn(200);
         }
 
+        //模式
+        $mode = $info['mode'];
+
         $settleBlanceModel = $this->model('Finance/SettleBlance');
-        $res = $settleBlanceModel->settingStatus($updateId, $this->_memberId, $status);
+        $res = $settleBlanceModel->settingStatus($updateId, $this->_memberId, $status, $mode);
 
         if($res) {
             //写日志

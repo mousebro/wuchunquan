@@ -537,7 +537,7 @@ if ( !defined('PFT_API') ) { exit('Access Deny'); }
             'ordertel'  => $Member->m_info['mobile'],
             'tnum'      => $tnum,
             'c_pids'    => $lian,
-            'paymode'   => 12,
+            'paymode'   => 13,
             'ordermode' => 18
         ];
 
