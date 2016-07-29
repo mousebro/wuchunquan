@@ -132,18 +132,31 @@ class AllApiOrderModel extends Model {
         if (!is_numeric($fid) || empty($bTime) || empty($eTime) || !is_numeric($start) || !is_numeric($size) || !is_array($applyDidArr)) {
             return false;
         }
-        $condition['fid'] = $fid;
-        $condition['bCode'] = array('in', $applyDidArr);
-        $condition['_logic'] = 'OR';
-        $params = array(
-            '_complex' => $condition,
-            'cTime' => array(
-                array('gt', $bTime),
-                array('lt', $eTime),
-            ),
-            'handleStatus' => array('in', self::ERRORSTATUS),
-            'coopB' => array('not in', self::GROUPON_IDENT),
-        );
+        if ($applyDidArr) {
+            $condition['fid'] = $fid;
+            $condition['bCode'] = array('in', $applyDidArr);
+            $condition['_logic'] = 'OR';
+            $params = array(
+                '_complex' => $condition,
+                'cTime' => array(
+                    array('gt', $bTime),
+                    array('lt', $eTime),
+                ),
+                'handleStatus' => array('in', self::ERRORSTATUS),
+                'coopB' => array('not in', self::GROUPON_IDENT),
+            );
+        } else {
+            $params = array(
+                'fid' => $fid,
+                'cTime' => array(
+                    array('gt', $bTime),
+                    array('lt', $eTime),
+                ),
+                'handleStatus' => array('in', self::ERRORSTATUS),
+                'coopB' => array('not in', self::GROUPON_IDENT),
+            );
+        }
+
         $data = $this->table(self::ALL_API_ORDER)->where($params)
                                                  ->order('id desc')
                                                  ->limit($start, $size)
