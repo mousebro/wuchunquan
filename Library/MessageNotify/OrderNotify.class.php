@@ -174,7 +174,7 @@ class OrderNotify {
      * 购买者短信通知
      *
      * @param array $infos
-     * @param $code
+     * @param int $code 大于0标识为必须发送短信
      * @return bool
      */
     public function BuyerNotify(Array $infos, $code, $manualQr)
@@ -190,7 +190,7 @@ class OrderNotify {
             );
         }
         //是否发送凭证码（短信）到取票人手机  0 发送 1 不发送
-        if ($infos['extAttrs'][0]['sendVoucher']==1) return true;
+        if ($infos['extAttrs'][0]['sendVoucher']==1 && $code==0) return true;
         $sms_channel = 0;
         $smsLog = $this->GetSmsLog($this->order_num);
         //pft_log('queue/debug', 'smslog:'.json_encode($smsLog));

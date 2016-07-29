@@ -33,6 +33,7 @@ class OrderQuery extends Controller
         if (!$_SESSION['memberID']) {
             self::apiReturn(self::CODE_AUTH_ERROR,[], '登录超时或未登陆');
         }
+        C(CONF_DIR . '/business.conf.php');
         $this->model = new \Model\Order\OrderQuery();
         $this->setCurrentMember();
     }

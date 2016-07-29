@@ -122,6 +122,7 @@ return array(
             'Mail_Job', //邮件队列
             'WxNotify_Job', //微信通知队列
             'OrderNotify_Job',//订单消息通知队列
+            'OrderCancel_Job',
         )
     ),
 );
