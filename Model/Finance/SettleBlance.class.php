@@ -629,7 +629,7 @@ class SettleBlance extends Model{
             $ticketNum   = $res['tickets'];
             $freezeMoney = $res['money'];
 
-            if($freezeMoney >= $amoney) {
+            if($freezeMoney > $amoney) {
                 //账号余额不足冻结金额
                 return ['status' => -5, 'amoney' => $amoney, 'freeze_money' => $freezeMoney];
             }
