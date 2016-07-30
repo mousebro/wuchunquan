@@ -70,7 +70,7 @@ class OrderNotify {
     public function Send( $code=0, $manualQr=false )
     {
         $infos = $this->getOrderInfo();
-        if (!is_array($infos)) return $infos;
+        if (!is_array($infos) && $code==0) return $infos;
 
         if ($this->not_to_buyer!=1) {
             $this->BuyerNotify($infos, $code, $manualQr);
