@@ -35,7 +35,7 @@ class VComSms
 
         $url_post   = 'http://userinterface.vcomcn.com/Opration.aspx';
         $ctime      = '';//发送时间，如为空则表示立即发送，日期格式：YYYY-MM-DD Hi24:MM:SS
-        $content    = iconv("UTF-8","GBK",$msg);
+        $content    = mb_convert_encoding($msg,"GBK","UTF-8");
         //要提交的内容
         $data=<<<XML
 <Group Login_Name='$account' Login_Pwd='$pwd' OpKind='0' InterFaceID='0'>
@@ -53,7 +53,7 @@ XML;
         $code = 200;
         if ($res!='00') {
             $code = 401;
-            pft_log('queue/vcom', "发送短信失败|$data");
+            pft_log('queue/vcom_fail', "发送短信失败|$data|msg=$msg");
         }
         return [
             'code'=>$code,
