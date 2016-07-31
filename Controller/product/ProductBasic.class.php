@@ -144,7 +144,7 @@ class ProductBasic extends Controller
         if (!empty($ticketData['price_section'])) {
             $ret = $this->VerifyPrice($ticketData['pid'], $ticketData['price_section'], $ticketObj, $isSectionTicket);
             if ($ret['code']!=200) {
-                return self::_return(self::CODE_INVALID_REQUEST, $ret['data']['msg'], $ticketData['ttitle']);
+                return self::_return(self::CODE_INVALID_REQUEST, '价格数据校验失败:'.$ret['data']['msg'], $ticketData['ttitle']);
             }
         }
         $lid = $ticketData['lid']+0;

@@ -8,8 +8,16 @@
 if (!class_exists('ServerInside')) {
     define('IN_PFT', true);
     include '/var/www/html/open/openService/ServerInside.class.php';
+    include '/var/www/html/open/conf/wsdl.le.je';
+    $le = new go_sql('localhost_wsdl');
+    $le->connect();
 }
 class OrderCancel_Job {
+    public function __destruct()
+    {
+        echo "OrderCancel_Job __destruct\n";
+    }
+
     public function perform(){
         $main_order = $this->args['ordernum'];
         $err_info   = $this->args['error_info'];

@@ -66,6 +66,14 @@ elseif (ENV=='DEVELOP') {
 
 //定义html目录的路径，方便后面的文件查找
 define('HTML_DIR', '/var/www/html');
-
+//定义配置文件路径
+define('CONF_DIR', HTML_DIR . '/Service/Conf');
 //定义新的模板路径
 define('VIEWS', HTML_DIR . '/Views');
+
+//定义前端新页面需要用到的域名 - 因为二级店铺是这样的
+if(isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/new/d/') !== false) {
+    define('PREFIX_DOMAIN', 'http://' . $_SERVER['HTTP_HOST'] . '/new/d/');
+} else {
+    define('PREFIX_DOMAIN', MAIN_DOMAIN);
+}

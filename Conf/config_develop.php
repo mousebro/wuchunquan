@@ -52,8 +52,8 @@ return array(
         'pft001'=>array(
             'db_type'   => 'mysql',
             'db_host'   => '192.168.20.138',
-            'db_user'   => 'develop',
-            'db_pwd'    => 'develop%',
+            'db_user'   => 'pft001',
+            'db_pwd'    => 'pft001',
             'db_port'   => 3307,
             'db_name' => 'pft001',
         ),
