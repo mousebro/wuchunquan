@@ -7,16 +7,20 @@ use Library\Model;
  * 异常订单 Model类
  * @author liubb
  */
+
+define('GROUPON_IDENT',json_encode(array(0,20,13,21,22,23)));//对接系统标识码 0去哪儿 20美团直连 13百度直达 21美团 22糯米 23美团V2
+define('ERRORSTATUS',json_encode(array(1, 2))); //异常订单状态码
 class orderAbnormal extends Model {
+
 
     const UU_QUNAR_USE = 'uu_qunar_use';
     const UU_JQ_TICKET = 'uu_jq_ticket';
     const UU_LAND = 'uu_land';
     const PFTCONSYS = 'pft_con_sys';
-    //对接系统标识码 0去哪儿 20美团直连 13百度直达 21美团 22糯米 23美团V2
-    const GROUPON_IDENT = array(0,20,13,21,22,23);
-    //异常订单状态码
-    const ERRORSTATUS = array(1, 2);
+
+//    const GROUPON_IDENT = array(0,20,13,21,22,23);
+//    const ERRORSTATUS = array(1, 2);
+
     /**
      * 通过fid从uu_qunar_use表获取tid，coop_id
      * @param int $fid 登录账号的id
@@ -92,9 +96,11 @@ class orderAbnormal extends Model {
         if (empty($bTime) || empty($eTime) || !is_numeric($start) || !is_numeric($size) || !is_numeric($fid)) {
             return false;
         }
+        $GROUPON_IDENT = json_decode(GROUPON_IDENT,true);
+        $ERRORSTATUS   = json_decode(ERRORSTATUS,true);
         $params = array(
-            'handleStatus' => array('in', self::ERRORSTATUS),
-            'coopB' => array('in', self::GROUPON_IDENT),
+            'handleStatus' => array('in', $ERRORSTATUS),
+            'coopB' => array('in', $GROUPON_IDENT),
             'cTime' => array(
                 array('egt', $bTime),
                 array('elt', $eTime),
