@@ -11,9 +11,9 @@ class AllApiOrderModel extends Model {
 
     const ALL_API_ORDER = 'all_api_order';
     //对接系统标识码 0去哪儿 20美团直连 13百度直达 21美团 22糯米 23美团V2
-    const GROUPON_IDENT = array(0,20,13,21,22,23);
+    private $_groupIdent = array(0,20,13,21,22,23);
     //异常订单状态码
-    const ERRORSTATUS = array(1, 2);
+    private $_errorsTatus = array(1, 2);
     public function __construct() {
         parent::__construct('pft001');
     }
@@ -32,8 +32,8 @@ class AllApiOrderModel extends Model {
             return false;
         }
         $params = array(
-            'handleStatus' => array('in', self::ERRORSTATUS),
-            'coopB' => array('in', self::GROUPON_IDENT),
+            'handleStatus' => array('in', $this->_errorsTatus),
+            'coopB' => array('in', $this->_groupIdent),
             'cTime' => array(
                 array('egt', $bTime),
                 array('elt', $eTime),
@@ -99,8 +99,8 @@ class AllApiOrderModel extends Model {
                 array('gt', $bTime),
                 array('lt', $eTime),
             ),
-            'handleStatus' => array('in', self::ERRORSTATUS),
-            'coopB' => array('not in', self::GROUPON_IDENT),
+            'handleStatus' => array('in', $this->_errorsTatus),
+            'coopB' => array('not in', $this->_groupIdent),
         );
         $data = $this->table(self::ALL_API_ORDER)->where($params)
                                                  ->order('id desc')
@@ -132,18 +132,31 @@ class AllApiOrderModel extends Model {
         if (!is_numeric($fid) || empty($bTime) || empty($eTime) || !is_numeric($start) || !is_numeric($size) || !is_array($applyDidArr)) {
             return false;
         }
-        $condition['fid'] = $fid;
-        $condition['bCode'] = array('in', $applyDidArr);
-        $condition['_logic'] = 'OR';
-        $params = array(
-            '_complex' => $condition,
-            'cTime' => array(
-                array('gt', $bTime),
-                array('lt', $eTime),
-            ),
-            'handleStatus' => array('in', self::ERRORSTATUS),
-            'coopB' => array('not in', self::GROUPON_IDENT),
-        );
+        if ($applyDidArr) {
+            $condition['fid'] = $fid;
+            $condition['bCode'] = array('in', $applyDidArr);
+            $condition['_logic'] = 'OR';
+            $params = array(
+                '_complex' => $condition,
+                'cTime' => array(
+                    array('gt', $bTime),
+                    array('lt', $eTime),
+                ),
+                'handleStatus' => array('in', $this->_errorsTatus),
+                'coopB' => array('not in', $this->_groupIdent),
+            );
+        } else {
+            $params = array(
+                'fid' => $fid,
+                'cTime' => array(
+                    array('gt', $bTime),
+                    array('lt', $eTime),
+                ),
+                'handleStatus' => array('in', $this->_errorsTatus),
+                'coopB' => array('not in', $this->_groupIdent),
+            );
+        }
+
         $data = $this->table(self::ALL_API_ORDER)->where($params)
                                                  ->order('id desc')
                                                  ->limit($start, $size)
