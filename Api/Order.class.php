@@ -13,6 +13,7 @@ use Library\Controller;
 use Model\Order\OrderCommon;
 use Model\Order\OrderQuery;
 use Model\Order\OrderTools;
+use Model\Order\OrderTrack;
 
 class Order extends Controller
 {
@@ -90,6 +91,51 @@ class Order extends Controller
             $log = $model->getLog($ordernum);
         }
         parent::apiReturn(200, $log, 'success');
+    }
+
+    /**
+     * 新增订单追踪记录
+     */
+    public function AddTrackLog()
+    {
+        $model = new OrderTrack();
+        $action_list = array_keys($model->getActionList());
+        $source_list = array_keys($model->getSourceList());
+        $source    = I('post.source');
+        $action    = I('post.action');
+        $ordernum  = I('post.ordernum');
+        $tid       = I('post.tid', 0, 'intval');
+        $tnum       = I('post.tnum', 0, 'intval');
+        $left_num  = I('post.left_num', 0, 'left_num');
+        $terminal_id  = I('post.terminal_id', 0, 'terminal_id');
+        $branch_terminal  = I('post.branch_terminal', 0, 'branch_terminal');
+        $id_card    = I('post.id_card', 0, 'id_card');
+        $oper       = I('post.oper', 0, 'oper');
+        $msg        = I('post.msg', '', 'strip_tags');
+        if (!in_array($source, $source_list)) {
+            $this->apiReturn(202,[], '来源错误');
+        }
+        if (!in_array($action, $action_list)) {
+            $this->apiReturn(202,[], 'action error');
+        }
+        if (!$ordernum)  $this->apiReturn(202,[], '订单号不能为空');
+        $ret = $model->addTrack(
+            $ordernum,
+            $action,
+            $tid,
+            $tnum,
+            $left_num,
+            $source,
+            $terminal_id,
+            $branch_terminal,
+            $id_card,
+            $oper,
+            0,
+            '',
+            $msg
+        );
+        if ($ret>0) parent::apiReturn(200,[],'success');
+        parent::apiReturn(201,[], 'add error');
     }
     public function QuickVerify()
     {
