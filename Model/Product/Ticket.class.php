@@ -281,7 +281,7 @@ class Ticket extends Model {
             $start_time = strtotime($price_info['start_date']);
             $end_time   = strtotime($price_info['end_date']);
             $cur_time   = strtotime($date);
-            if ($start_time <= $cur_time && $end_time >= $cur_time) {
+            if ($end_time >= $cur_time) {
                 $retail_price = $price_info['l_price'];
             } else {
                 return false;
