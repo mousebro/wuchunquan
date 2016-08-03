@@ -170,8 +170,8 @@ class Withdraws extends Model{
             return false;
         }
 
-        //如果手续费率为0而且是自动转账的，就没有最低手续费的限制
-        if($serviceFee == 0 && $isAuto == true) {
+        //如果手续费率为0，就没有最低手续费的限制
+        if($serviceFee == 0) {
             $serviceCharge = 0;
         } else {
             //手续费不足一元按一元计算
