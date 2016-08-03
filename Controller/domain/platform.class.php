@@ -55,6 +55,38 @@ class platform extends Controller
         return $data;
     }
     
+    public function Hconfig(){
+        $platform = new \Model\domain\platform();
+        $domainInfo = new \Model\Subdomain\SubdomainInfo();
+        $newSql = new \Library\Model('pft001');                          
+        $host_info = explode('.', $_SERVER['HTTP_HOST']);
+        $domain_info = $domainInfo->getBindedSubdomainInfo($host_info[0], 'account');
+        $newdomain_info = $platform->getDetails($newSql,$host_info[0], 'account');
+        $oldrecord = self::getShopConfig($domain_info['fid']);
+        $record = self::getNewdlogin($newdomain_info['fid']);
+        if($domain_info && !$newdomain_info){
+            $domainFid = $domain_info['fid'];
+            $record = self::getNewdlogin($domainFid);
+            if($record){
+               exit('404');
+            }
+        }
+        if(!$domain_info && !$newdomain_info){
+            exit('404');
+        }
+        if(!$record){
+            if($domain_info){
+                $info = $oldrecord;
+            }else{
+                exit('404');
+            }
+            
+        }else{
+            $info = $record;
+        }
+        return $info;
+    }
+    
     public static function getShopConfig($memberid) {      //店铺信息
         $SubdomainInfo = new SubdomainInfo();
         $platform = new \Model\domain\platform();
