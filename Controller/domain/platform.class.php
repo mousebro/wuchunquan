@@ -44,19 +44,37 @@ class platform extends Controller
         $host_info = explode('.', $_SERVER['HTTP_HOST']);
         $domain_info = $domainInfo->getBindedSubdomainInfo($host_info[0], 'account');
         $newdomain_info = $platform->getDetails($newSql,$host_info[0], 'account');
-        //$newdomain_info = $platform->getDetails($host_info[0], 'account');
         $oldrecord = self::getShopConfig($domain_info['fid']);
         $record = self::getNewdlogin($newdomain_info['fid']);
-        if(!$record && $oldrecord['site_name']===NULL)
-        {   
-            $this->apiReturn(100,[], '您访问的地址无效');
-            exit;
+        // if(!$record && $oldrecord['site_name']===NULL)
+        // {   
+            // $this->apiReturn(100,[], '您访问的地址无效');
+            // exit;
+        // }
+        // if(!$record){
+            // $info = $oldrecord;
+        // }else{
+            // $info = $record;
+        // }
+       // var_dump($domain_info);
+       // var_dump($newdomain_info);
+        //exit;
+        if($domain_info && !$newdomain_info){
+            $domainFid = $domain_info['fid'];
+            $record = self::getNewdlogin($domainFid);
+            if($record){
+               $this->apiReturn(100,[], '您访问的地址无效');
+               exit;
+            }
         }
         if(!$record){
             $info = $oldrecord;
         }else{
             $info = $record;
         }
+        
+        
+        
         $info = $info ?: [];
         $data = $this->apiReturn(200, $info, '成功');
         return $data;
@@ -72,17 +90,17 @@ class platform extends Controller
             //self::initSubdomainInfo($memberid, self::getAccount);  
             $config = $SubdomainInfo->getBindedSubdomainInfo($memberid);
         }
-        if (!$config['M_slider'] && $config['M_banner']) {
-            $config['M_slider'] = json_encode(array(
-                    array('imgpath' => $config['M_banner'], 'url' => $config['M_banner_url'])
-                )
-            );
-        }
-        
+
+        $banner = array(
+            array('imgpath' => 'http://www.12301.cc/images/img/benner1.jpg', 'url' =>''),
+            array('imgpath' => 'http://www.12301.cc/images/img/benner2.jpg', 'url' =>''),
+            array('imgpath' => 'http://www.12301.cc/images/img/benner3.jpg', 'url' =>'')
+        );
+
         return array(
                 'site_name'         => $config['M_name'],
                 'logo'              => $config['M_logo1']?$config['M_logo1']:"http://images.12301.test/images/index_logo.png",
-                'banner'            => json_decode($config['M_slider'], true),
+                'banner'            => $banner,
                 'tel'               => $config['M_tel'],
                 'address'           => $config['M_addr'],
                 'copyright'         => $config['M_copyright'],
