@@ -6,13 +6,15 @@ use Model\Subdomain\SubdomainInfo;
 use PFT\Tool\Tools;
 use Model\Product\Ticket;
 use Model\Order\OrderTools;
-use Library\Response;
+use Library\Response; 
 class platform extends Controller
 {
     private $code;
     private $msg;
     public function getdomainInfo(){                                        //配置页获取信息
+        $a = include __DIR__ . '/../../Conf/domain.conf.php';
         $sid = $_SESSION['sid'];
+        $account = $_SESSION['account']; 
         $oldrecord = self::getShopConfig($sid);
         $record = self::getNewdlogin($sid);
         if(!$record){
@@ -21,6 +23,11 @@ class platform extends Controller
             $info = $record;
         }
         $info = $info ?: [];
+        if(in_array($account, $a)){ 
+            $info['power'] = 1;
+        }else{
+            $info['power'] = 0;
+        }
         if(!isset($_SESSION['sid'])) {
             $info = [];
             $data = $this->apiReturn(102, $info, '登陆超时！');
@@ -94,25 +101,25 @@ class platform extends Controller
         $wxInfo = $platform->wxopen($wxModel,$memberid);
         $config = $platform->getBindedSubdomainInfo($memberid);
         if ((int)$memberid > 0 && !$config) {
-            self::initSubdomainInfo($memberid, self::getAccount);
+            //self::initSubdomainInfo($memberid, self::getAccount);  
             $config = $SubdomainInfo->getBindedSubdomainInfo($memberid);
         }
-        if (!$config['M_slider'] && $config['M_banner']) {
-            $config['M_slider'] = json_encode(array(
-                    array('imgpath' => $config['M_banner'], 'url' => $config['M_banner_url'])
-                )
-            );
-        }
-        
+
+        $banner = array(
+            array('imgpath' => 'http://www.12301.cc/images/img/benner1.jpg', 'url' =>''),
+            array('imgpath' => 'http://www.12301.cc/images/img/benner2.jpg', 'url' =>''),
+            array('imgpath' => 'http://www.12301.cc/images/img/benner3.jpg', 'url' =>'')
+        );
+
         return array(
                 'site_name'         => $config['M_name'],
-                'logo'              => $config['M_logo1'],
-                'banner'            => json_decode($config['M_slider'], true),
+                'logo'              => $config['M_logo1']?$config['M_logo1']:"http://images.12301.test/images/index_logo.png",
+                'banner'            => $banner,
                 'tel'               => $config['M_tel'],
                 'address'           => $config['M_addr'],
                 'copyright'         => $config['M_copyright'],
                 'qq'                => $config['M_qq'],
-                'host'              => $config['M_account_domain'],
+                'host'              => $config['M_account_domain']?$config['M_account_domain']:$_SESSION['account'],
                 'domain'            => $config['M_domain'],
                 'groupInfo'         => json_decode($config['M_slider'], true),
                 'setgroup'          => '1',
@@ -133,13 +140,13 @@ class platform extends Controller
         }else{
             return array(
                 'site_name'         => $config['p_name'],
-                'logo'              => $config['p_logo'],
+                'logo'              => $config['p_logo']?$config['p_logo']:"http://images.12301.test/images/index_logo.png",
                 'banner'            => json_decode($config['p_banner'], true),
                 'tel'               => $config['p_tel'],
                 'address'           => $config['p_addr'],
                 'copyright'         => $config['p_copyright'],
                 'qq'                => $config['p_qq'],
-                'host'              => $config['p_host'],
+                'host'              => $config['p_host']?$config['p_host']:$_SESSION['account'],
                 'domain'            => $config['p_domain'],
                 'groupInfo'         => json_decode($config['p_groupInfo'], true),
                 'setgroup'          => $config['p_setgroup'],
@@ -234,50 +241,36 @@ class platform extends Controller
             'p_account_domain'  => $_SESSION['account'],
             'createtime'        => date('Y-m-d H:i:s'),
         );
-        
         $upconfig = array(
             'M_domain'   =>    $_REQUEST['Cusdomain'] ? $_REQUEST['Cusdomain'] : $_SESSION['account'],
         );
         $SubdomainInfo = new \Model\domain\platform();
         $newSql = new \Library\Model('pft001'); 
-        $exist = $SubdomainInfo->getDetails($newSql,$_SESSION['sid']);
-        //$exist = $SubdomainInfo->getDetails($_SESSION['sid']);
-        $existold = $SubdomainInfo->getBindedSubdomainInfo($_SESSION['sid']);
-        $reDomain = $_REQUEST['Cusdomain'] ? $_REQUEST['Cusdomain'] : $_SESSION['account'];
-        $oldinfo = $SubdomainInfo->checkOlddomainInfo($reDomain);
+        $exist = $SubdomainInfo->getDetails($newSql,$_SESSION['sid']);  
+        $existold = $SubdomainInfo->getBindedSubdomainInfo($_SESSION['sid']);  
+        $reDomain = $_SESSION['account'];                                     
+        $oldinfo = $SubdomainInfo->checkOlddomainInfo($reDomain);             
         $newinfo = $SubdomainInfo->checknewddomainInfo($newSql,$reDomain);
-        //$newinfo = $SubdomainInfo->checknewddomainInfo($reDomain);
+        $checkNagain = $SubdomainInfo->checknewdAgain($newSql,$P_domain);     
+        $checkOagain = $SubdomainInfo->checkolddAgain($P_domain);            
         $ofid = $oldinfo['fid'];
-        if($exist) {
-           $config['id'] = $exist['id'];
-           $upconfig['id'] = $existold['id'];
-           if($ofid){
-                if($_SESSION['sid']!=$ofid){
+        $nfid = $newinfo['fid']; 
+        $oldfid = $existold['fid'];
+        $upconfig['id'] = $existold['id'];
+        if($exist){
+            $config['id'] = $exist['id'];
+            if($checkNagain){
+                if($_SESSION['sid']!=$nfid){
                     Response::send(array('status' => 0, 'code' => 1001,'msg' =>'自定义域名重复，请更换！'));
                 }else{
                     $result = $newSql->table('pft_member_domain_platform')->save($config);
                 }
-           }else{
-               if($newinfo){
-                   Response::send(array('status' => 0, 'code' => 1002,'msg' =>'自定义域名重复，请更换！'));
-               }else{
-                    $domainCheck = $SubdomainInfo->table('pft_member_domain_info')->save($upconfig);
-                    if($domainCheck!==false){
-                        
-                        $result = $newSql->table('pft_member_domain_platform')->save($config);
-                    }else{
-                        Response::send(array('status' => 0, 'code' => 1003,'msg' =>'自定义域名保存失败！'));
-                    }
-               }
-           }
-        } else {
-            if($ofid){
-               // Response::send(array('status' => 0, 'code' => 1004,'msg' =>'自定义域名重复，请更换！'));
-            // }else{
-               $result = $newSql->table('pft_member_domain_platform')->add($config);
+            }else{
+                $result = $newSql->table('pft_member_domain_platform')->save($config);
             }
+        }else{
+            $result = $newSql->table('pft_member_domain_platform')->add($config);
         }
-        //echo $SubdomainInfo->_sql();
         if ($result !== false) {
             Response::send(array('status' => 1, 'code' => 200 , 'msg' =>'保存成功！'));
         } else {    
